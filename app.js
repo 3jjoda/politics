@@ -25,6 +25,14 @@ try {
 app.use(express.json());
 app.use(express.static('public'));  // 정적 파일 서빙은 DB 연결과 상관없이 항상 가능
 
+/* db.query 함수를 래핑하여 모든 쿼리를 자동으로 로깅 */
+const originalQuery = db.query;
+db.query = function (sql, values, callback) {
+    const formattedSql = mysql.format(sql, values);
+    logger.info(`Executing query: ${formattedSql}`);
+    return originalQuery.call(this, sql, values, callback);
+};
+
 /* 데이터베이스 연결 */
 db.connect((err) => {
     if (err) {

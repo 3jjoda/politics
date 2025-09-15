@@ -1,5 +1,11 @@
+const fs = require('fs');
+const path = require('path');
 const winston = require('winston'); // 로깅을 위해 winston을 불러옴
 const logger = winston.createLogger({ /* 로거 설정 */ }); // 로거 객체를 생성 (또는 utils/logger.js에서 불러옴)
+
+const queriesPath = path.join(__dirname, 'queries/inquiry');
+
+const getList = fs.readFileSync(path.join(queriesPath, 'getList.sql'), 'utf8');
 
 // 모델은 db 객체를 외부에서 주입받아 사용
 module.exports = (db) => {
@@ -8,11 +14,11 @@ module.exports = (db) => {
 
     /* 견적 조회 */
     Inquiry.getAll = (callback) => {
-        const sql = 'SELECT id, name, email, phone, created_at FROM inquiries ORDER BY created_at DESC';
-        const formattedSql = db.format(sql); // 파라미터가 없으면 쿼리만 포맷
+        // const sql = 'SELECT id, name, email, phone, created_at FROM inquiries ORDER BY created_at DESC';
+        //const formattedSql = db.format(getList); // 파라미터가 없으면 쿼리만 포맷
 
-        logger.info(`Executing query: ${formattedSql}`);
-        db.query(sql, callback);
+        //logger.info(`Executing query: ${formattedSql}`);
+        db.query(getList, callback);
     };
 
     /* 견적 상세 조회 */
