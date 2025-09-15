@@ -1,25 +1,37 @@
-// 모델은 db 객체를 외부에서 주입받아 사용합니다.
+const winston = require('winston'); // 로깅을 위해 winston을 불러옴
+const logger = winston.createLogger({ /* 로거 설정 */ }); // 로거 객체를 생성 (또는 utils/logger.js에서 불러옴)
+
+// 모델은 db 객체를 외부에서 주입받아 사용
 module.exports = (db) => {
 
     const Inquiry = {};
 
-    // 새로운 문의를 데이터베이스에 저장
-    Inquiry.create = (inquiryData, callback) => {
-        const sql = 'INSERT INTO inquiries (name, email, phone, message) VALUES (?, ?, ?, ?)';
-        const values = [inquiryData.name, inquiryData.email, inquiryData.phone, inquiryData.message];
-        db.query(sql, values, callback);
-    };
-
-    // 모든 문의 목록을 조회
+    /* 견적 조회 */
     Inquiry.getAll = (callback) => {
         const sql = 'SELECT id, name, email, phone, created_at FROM inquiries ORDER BY created_at DESC';
+        const formattedSql = db.format(sql); // 파라미터가 없으면 쿼리만 포맷
+
+        logger.info(`Executing query: ${formattedSql}`);
         db.query(sql, callback);
     };
 
-    // 특정 ID의 문의 상세 내용을 조회
+    /* 견적 상세 조회 */
     Inquiry.getById = (id, callback) => {
         const sql = 'SELECT * FROM inquiries WHERE id = ?';
+        const formattedSql = db.format(sql, [id]); // id 파라미터와 결합
+
+        logger.info(`Executing query: ${formattedSql}`);
         db.query(sql, [id], callback);
+    };
+
+    /* 견적 저장 */
+    Inquiry.create = (inquiryData, callback) => {
+        const sql = 'INSERT INTO inquiries (name, email, phone, message) VALUES (?, ?, ?, ?)';
+        const values = [inquiryData.name, inquiryData.email, inquiryData.phone, inquiryData.message];
+        const formattedSql = db.format(sql, values); // 쿼리를 파라미터와 결합
+
+        logger.info(`Executing query: ${formattedSql}`); // 로그에 SQL 출력
+        db.query(sql, values, callback);
     };
 
     return Inquiry;

@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  # Node.js 애플리케이션 서비스
+  node-app:
+    build: . # 현재 폴더의 Dockerfile로 이미지를 빌드
+    container_name: test-homepage-app
+    ports:
+      - "3000:3000" # 로컬 3000번 포트를 컨테이너 3000번 포트에 연결
+    depends_on:
+      - mysql # mysql 컨테이너가 먼저 실행되도록 설정
+    volumes:
+      - .:/app # 로컬 코드와 컨테이너 코드를 동기화wjw
+    environment:
+      - DB_HOST=mysql # DB_HOST를 mysql 서비스 이름으로 설정
+      - DB_USER=root
+      - DB_PASSWORD=Dhdltk52%@
+      - DB_DATABASE=test_db
+
+  # MySQL 데이터베이스 서비스
+  mysql:
+    image: mysql:8.0 # 공식 MySQL 8.0 이미지를 사용
+    container_name: test-homepage-db
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=Dhdltk52%@ # root 비밀번호 설정
+      - MYSQL_DATABASE=test_db # 초기 데이터베이스 이름 설정
+    ports:
+      - "3306:3306" # 로컬 3306번 포트를 컨테이너 3306번 포트에 연결
+    volumes:
+      - mysql-data:/var/lib/mysql # 데이터의 영속성 유지를 위해 볼륨 설정
+
+volumes:
+  mysql-data: # 데이터를 저장할 볼륨을 정의
