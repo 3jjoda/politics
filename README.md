@@ -30,7 +30,7 @@ project-root/
 ```bash
 npm install
 node app.js
-
+```
 ---
 
 ## 🛠 기술 스택
