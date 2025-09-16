@@ -7,9 +7,9 @@ export default (db) => {
     const router = express.Router();
 
     /* 라우터가 컨트롤러 함수를 호출 */
-    router.get('/inquiries', inquiryController.getAllInquiries);
-    router.get('/inquiries/:id', inquiryController.getInquiryById);
-    router.post('/inquiry', inquiryController.createInquiry);
+    router.get('/inquiries', inquiryController.getList);
+    router.get('/inquiries/:id', inquiryController.getDetail);
+    router.post('/inquiry', inquiryController.insert);
 
     return router;
 };

@@ -19,17 +19,17 @@ export default (db) => {
     const Inquiry = {};
 
     /* 견적 조회 */
-    Inquiry.getAll = (callback) => {
+    Inquiry.getList = (callback) => {
         db.query(queries.getList, callback);
     };
 
     /* 견적 상세 조회 */
-    Inquiry.getById = (id, callback) => {
+    Inquiry.getDetail = (id, callback) => {
         db.query(queries.getDetail, [id], callback);
     };
 
     /* 견적 저장 */
-    Inquiry.create = (inquiryData, callback) => {
+    Inquiry.insert = (inquiryData, callback) => {
         const values = [inquiryData.name, inquiryData.email, inquiryData.phone, inquiryData.message];
         db.query(queries.insert, values, callback);
     };

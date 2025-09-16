@@ -8,9 +8,9 @@ export default (db) => {
     const controller = {};
 
     /* 견적 조회 */
-    controller.getAllInquiries = (req, res, next) => {
+    controller.getList = (req, res, next) => {
         try {
-            Inquiry.getAll((err, results) => {
+            Inquiry.getList((err, results) => {
                 if (err) {
                     logger.error('견적 목록 조회 중 에러:', { stack: err.stack });
                     return next(err);   // 에러를 전역 에러 핸들러로 전달
@@ -24,10 +24,10 @@ export default (db) => {
     };
 
     /* 견적 상세 조회 */
-    controller.getInquiryById = (req, res, next) => {
+    controller.getDetail = (req, res, next) => {
         try {
             const { id } = req.params;
-            Inquiry.getById(id, (err, result) => {
+            Inquiry.getDetail(id, (err, result) => {
                 if (err) {
                     logger.error('견적 상세 조회 중 에러:', { stack: err.stack });
                     return next(err);
@@ -45,7 +45,7 @@ export default (db) => {
     };
 
     /* 견적 저장 */
-    controller.createInquiry = (req, res, next) => {
+    controller.insert = (req, res, next) => {
         try {
             const { name, email, phone, message } = req.body;
             if (!name || !email || !phone || !message) {
@@ -53,7 +53,7 @@ export default (db) => {
             }
 
             const inquiryData = { name, email, phone, message };
-            Inquiry.create(inquiryData, (err, result) => {
+            Inquiry.insert(inquiryData, (err, result) => {
                 if (err) {
                     logger.error('문의 저장 중 에러:', { stack: err.stack });
                     return next(err);
