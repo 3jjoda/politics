@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import logger from '../utils/logger.js'; // 로거 객체를 생성 (또는 utils/logger.js에서 불러옴)
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
