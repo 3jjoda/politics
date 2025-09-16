@@ -1,7 +1,7 @@
-const InquiryModel = require('../models/Inquiry');
-const logger = require('../utils/logger');
+import InquiryModel from '../models/Inquiry.js';
+import logger from '../utils/logger.js';
 
-module.exports = (db) => {
+export default (db) => {
     // db 객체가 주입되면 모델을 초기화
     const Inquiry = InquiryModel(db);
 
@@ -21,7 +21,6 @@ module.exports = (db) => {
             logger.error('컨트롤러에서 예상치 못한 에러:', { stack: error.stack });
             next(error);
         }
-        
     };
 
     /* 견적 상세 조회 */
@@ -52,7 +51,7 @@ module.exports = (db) => {
             if (!name || !email || !phone || !message) {
                 return res.status(400).json({ success: false, message: '모든 필드를 입력해야 합니다.' });
             }
-            
+
             const inquiryData = { name, email, phone, message };
             Inquiry.create(inquiryData, (err, result) => {
                 if (err) {

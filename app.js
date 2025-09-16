@@ -1,61 +1,83 @@
-const express = require('express');
+import express from 'express';
+import mysql from 'mysql2';
+import logger from './utils/logger.js';
+import 'dotenv/config';
+
 const app = express();
-const mysql = require('mysql2');
-const logger = require('./utils/logger');
-
-/* dotenv 패키지 로드 */
-require('dotenv').config();
-
 const port = process.env.PORT || 3000;
 
-/* 데이터베이스 연결 객체 생성 */
-let db = null;
-try {
-    db = mysql.createConnection({
-        host: process.env.DB_HOST,
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_DATABASE
-    });
-} catch (error) {
-    logger.error('데이터베이스 연결 객체 생성 중 오류:', { stack: error.stack });
-}
+/* 커넥션풀 생성 */
+const db = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
 
 /* 미들웨어 설정 */
 app.use(express.json());
-app.use(express.static('public'));  // 정적 파일 서빙은 DB 연결과 상관없이 항상 가능
+app.use(express.static('public'));
 
-/* db.query 함수를 래핑하여 모든 쿼리를 자동으로 로깅 */
-const originalQuery = db.query;
+/* db.query 래핑: SQL + 결과 건수 자동 로깅 */
+const originalQuery = db.query.bind(db);
+
 db.query = function (sql, values, callback) {
-    const formattedSql = mysql.format(sql, values);
-    logger.info(`Executing query: ${formattedSql}`);
-    return originalQuery.call(this, sql, values, callback);
+  if (typeof values === 'function') {
+    callback = values;
+    values = [];
+  }
+
+  const formattedSql = mysql.format(sql, values);
+  logger.info(`Executing query:\n${formattedSql}`);
+
+  const wrappedCallback = function (err, results, fields) {
+    if (err) {
+      logger.error(`Query error: ${err.message}`);
+    } else if (Array.isArray(results)) {
+      logger.info(`Query result: ${results.length}건 조회됨`);
+    } else if (results && typeof results === 'object' && 'affectedRows' in results) {
+      logger.info(`Query result: ${results.affectedRows}건 영향받음`);
+    } else {
+      logger.info(`Query result: 형식 확인 필요`);
+    }
+
+    callback(err, results, fields);
+  };
+
+  return originalQuery(sql, values, wrappedCallback);
 };
 
-/* 데이터베이스 연결 */
-db.connect((err) => {
-    if (err) {
-        logger.error('MySQL 연결 실패:', { stack: err.stack });
-        return;
+/* 서버 초기화 함수 */
+const startServer = async () => {
+  try {
+    // ✅ 라우터 목록 정의
+    const routeModules = [
+      { path: '/api', file: './routes/inquiryRoutes.js' }
+      // 여기에 추가 가능: { path: '/api/users', file: './routes/userRoutes.js' }
+    ];
+
+    // ✅ 라우터 불러오기 및 등록
+    for (const route of routeModules) {
+      const module = await import(route.file);
+      app.use(route.path, module.default(db));
     }
-    logger.info('MySQL 연결 성공!');
 
-    /* 데이터베이스 연결 성공 시 이하 모든 설정을 진행 */
-
-    /* 라우터를 불러오고 DB 객체를 전달 */
-    const inquiryRoutes = require('./routes/inquiryRoutes')(db);
-    /* API 라우터 사용 */
-    app.use('/api', inquiryRoutes);
-
-    /* 에러 미들웨어 : 모든 라우터 처리 후, 예상치 못한 에러처리 */
+    // ✅ 에러 핸들링 미들웨어
     app.use((err, req, res, next) => {
-        logger.error(`서버 에러 발생: ${err.message}`, { stack: err.stack });
-        res.status(500).send('서버에서 에러가 발생했습니다.');
+      logger.error(`서버 에러 발생: ${err.message}`, { stack: err.stack });
+      res.status(500).send('서버에서 에러가 발생했습니다.');
     });
 
-    /* 서버 시작 */
+    // ✅ 서버 시작
     app.listen(port, () => {
-        logger.info(`웹 서버가 실행되었습니다: http://localhost:${port}`);
+      logger.info(`웹 서버가 실행되었습니다: http://localhost:${port}`);
     });
-});
+  } catch (error) {
+    logger.error('서버 초기화 중 오류 발생:', { stack: error.stack });
+  }
+};
+
+startServer();

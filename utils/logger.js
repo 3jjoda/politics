@@ -1,4 +1,4 @@
-const winston = require('winston');
+import winston from 'winston';
 
 const logger = winston.createLogger({
   level: 'info',
@@ -7,9 +7,9 @@ const logger = winston.createLogger({
     winston.format.timestamp(), // 시간 기록
     winston.format.printf(info => { // 커스텀 포맷 정의
       // SQL 쿼리 메시지는 줄바꿈을 포함한 그대로 출력
-      if (info.message.startsWith('Executing query:')) {
-        return `${info.timestamp} ${info.level}: ${info.message}`;
-      }
+      // if (info.message.startsWith('Executing query:')) {
+      //   return `${info.timestamp} ${info.level}: ${info.message}`;
+      // }
       return `${info.timestamp} ${info.level}: ${info.message}`;
     })
   ),
@@ -23,4 +23,4 @@ const logger = winston.createLogger({
   ],
 });
 
-module.exports = logger;
+export default logger;

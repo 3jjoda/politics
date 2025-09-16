@@ -46,13 +46,13 @@
 
             inquiries.forEach(inquiry => {
                 const row = document.createElement('tr');
-                const date = new Date(inquiry.created_at).toLocaleDateString('ko-KR');
+                const date = new Date(inquiry.CREATED_AT).toLocaleDateString('ko-KR');
 
                 row.innerHTML = `
-                    <td>${inquiry.id}</td>
-                    <td><a href="inquiry_detail.html?id=${inquiry.id}">${inquiry.name}</a></td>
-                    <td>${inquiry.email}</td>
-                    <td>${inquiry.phone}</td>
+                    <td>${inquiry.ID}</td>
+                    <td><a href="inquiry_detail.html?id=${inquiry.ID}">${inquiry.NAME}</a></td>
+                    <td>${inquiry.EMAIL}</td>
+                    <td>${inquiry.PHONE}</td>
                     <td>${date}</td>
                 `;
                 tableBody.appendChild(row);

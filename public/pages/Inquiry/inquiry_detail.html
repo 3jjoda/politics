@@ -38,24 +38,24 @@
 
             if (inquiry) {
                 const detailsDiv = document.getElementById('inquiryDetails');
-                const date = new Date(inquiry.created_at).toLocaleString('ko-KR');
+                const date = new Date(inquiry.CREATED_AT).toLocaleString('ko-KR');
                 
                 detailsDiv.innerHTML = `
                     <div class="detail-item">
-                        <strong>이름:</strong> ${inquiry.name}
+                        <strong>이름:</strong> ${inquiry.NAME}
                     </div>
                     <div class="detail-item">
-                        <strong>이메일:</strong> ${inquiry.email}
+                        <strong>이메일:</strong> ${inquiry.EMAIL}
                     </div>
                     <div class="detail-item">
-                        <strong>전화번호:</strong> ${inquiry.phone}
+                        <strong>전화번호:</strong> ${inquiry.PHONE}
                     </div>
                     <div class="detail-item">
                         <strong>문의 날짜:</strong> ${date}
                     </div>
                     <div class="detail-item">
                         <strong>문의 내용:</strong>
-                        <div class="message-box">${inquiry.message}</div>
+                        <div class="message-box">${inquiry.MESSAGE}</div>
                     </div>
                 `;
             } else {

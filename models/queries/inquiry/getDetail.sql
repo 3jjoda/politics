@@ -1,0 +1,8 @@
+SELECT ID
+     , NAME
+     , EMAIL
+     , PHONE
+     , MESSAGE
+     , CREATED_AT 
+  FROM INQUIRIES 
+ WHERE ID = ?

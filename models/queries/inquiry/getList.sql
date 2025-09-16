@@ -1,7 +1,8 @@
-select id,
-       name,
-       email,
-       phone,
-       created_at
-  from inquiries
- order by created_at desc
+SELECT ID
+     , NAME
+     , EMAIL
+     , PHONE
+     , MESSAGE
+     , CREATED_AT 
+  FROM INQUIRIES 
+ ORDER BY ID DESC

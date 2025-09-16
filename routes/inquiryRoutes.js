@@ -1,9 +1,10 @@
-const express = require('express');
-const router = express.Router();
+import express from 'express';
+import inquiryControllerFactory from '../controllers/InquiryController.js';
 
-module.exports = (db) => {
+export default (db) => {
     /* 컨트롤러를 불러와서 db 객체를 전달 */
-    const inquiryController = require('../controllers/InquiryController')(db);
+    const inquiryController = inquiryControllerFactory(db);
+    const router = express.Router();
 
     /* 라우터가 컨트롤러 함수를 호출 */
     router.get('/inquiries', inquiryController.getAllInquiries);
