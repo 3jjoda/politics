@@ -1,5 +1,6 @@
 import InquiryModel from '../models/Inquiry.js';
 import logger from '../utils/logger.js';
+import { wrapWithContext } from '../utils/wrapWithContext.js';
 
 export default (db) => {
     // db 객체가 주입되면 모델을 초기화
@@ -8,7 +9,7 @@ export default (db) => {
     const controller = {};
 
     /* 견적 조회 */
-    controller.getList = (req, res, next) => {
+    controller.getList = wrapWithContext(function getList(req, res, next) {
         try {
             Inquiry.getList((err, results) => {
                 if (err) {
@@ -21,10 +22,10 @@ export default (db) => {
             logger.error('컨트롤러에서 예상치 못한 에러:', { stack: error.stack });
             next(error);
         }
-    };
+    });
 
     /* 견적 상세 조회 */
-    controller.getDetail = (req, res, next) => {
+    controller.getDetail = wrapWithContext(function getDetail(req, res, next) {
         try {
             const { id } = req.params;
             Inquiry.getDetail(id, (err, result) => {
@@ -42,10 +43,10 @@ export default (db) => {
             logger.error('컨트롤러에서 예상치 못한 에러:', { stack: error.stack });
             next(error);
         }
-    };
+    });
 
     /* 견적 저장 */
-    controller.insert = (req, res, next) => {
+    controller.insert = wrapWithContext(function insert(req, res, next) {
         try {
             const { name, email, phone, message } = req.body;
             if (!name || !email || !phone || !message) {
@@ -64,7 +65,7 @@ export default (db) => {
             logger.error('컨트롤러에서 예상치 못한 에러:', { stack: error.stack });
             next(error);
         }
-    };
+    });
 
     return controller;
 };
