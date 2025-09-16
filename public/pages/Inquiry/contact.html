@@ -4,72 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>견적문의</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #eaf2f8; }
-        .container { max-width: 600px; margin: auto; padding: 20px; border: 1px solid #c9d8e0; border-radius: 8px; background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input, textarea, button { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; border: 1px solid #c9d8e0; border-radius: 4px; }
-        button { background-color: #2e86c1; color: white; border: none; cursor: pointer; transition: background-color 0.3s; }
-        button:hover { background-color: #1a5276; }
-    </style>
+    <link rel="stylesheet" href="/styles/inquiry/contact.css" />
 </head>
 <body>
+    <div class="container">
+        <h2>온라인 견적문의</h2>
+        <form id="contactForm">
+            <label for="name">이름:</label>
+            <input type="text" id="name" name="name" required>
 
-<div class="container">
-    <h2>온라인 견적문의</h2>
-    <form id="contactForm">
-        <label for="name">이름:</label>
-        <input type="text" id="name" name="name" required>
+            <label for="email">이메일:</label>
+            <input type="email" id="email" name="email" required>
 
-        <label for="email">이메일:</label>
-        <input type="email" id="email" name="email" required>
+            <label for="phone">전화번호:</label>
+            <input type="tel" id="phone" name="phone" required>
 
-        <label for="phone">전화번호:</label>
-        <input type="tel" id="phone" name="phone" required>
+            <label for="message">문의 내용:</label>
+            <textarea id="message" name="message" rows="5" required></textarea>
 
-        <label for="message">문의 내용:</label>
-        <textarea id="message" name="message" rows="5" required></textarea>
+            <button type="submit">문의하기</button>
+            <a href="inquiries.html">목록으로</a>
+        </form>
+    </div>
 
-        <button type="submit">문의하기</button>
-        <a href="inquiries.html">목록으로</a>
-    </form>
-</div>
-
-<script>
-    const form = document.getElementById('contactForm');
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const formData = {
-            name: document.getElementById('name').value,
-            email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value,
-            message: document.getElementById('message').value
-        };
-
-        try {
-            const response = await fetch('/api/inquiry', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                alert('문의가 성공적으로 접수되었습니다. 감사합니다!');
-                form.reset();
-            } else {
-                alert('문의 접수에 실패했습니다. 다시 시도해 주세요.');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('네트워크 오류가 발생했습니다. 다시 시도해 주세요.');
-        }
-    });
-</script>
-
+    <script src="/scripts/inquiry/contact.js" defer></script>
 </body>
 </html>

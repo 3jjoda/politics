@@ -1,0 +1,30 @@
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background-color: #eaf2f8;
+}
+.container {
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #c9d8e0;
+    border-radius: 8px;
+    background-color:
+    white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.detail-item {
+    margin-bottom: 15px;
+}
+.detail-item strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #2e86c1;
+}
+.message-box {
+    padding: 10px;
+    background-color: #f0f8ff;
+    border: 1px solid #c9d8e0;
+    border-radius: 4px;
+    white-space: pre-wrap;
+}

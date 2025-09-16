@@ -1,0 +1,32 @@
+body {
+    font-family: sans-serif;
+    margin: 20px;
+    background-color: #eaf2f8;
+}
+.container {
+    max-width: 600px;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #c9d8e0;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+input, textarea, button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+    border: 1px solid #c9d8e0;
+    border-radius: 4px;
+}
+button {
+    background-color: #2e86c1;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+button:hover {
+    background-color: #1a5276;
+}

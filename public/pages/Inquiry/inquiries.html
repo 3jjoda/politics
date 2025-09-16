@@ -1,70 +1,31 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>견적문의 목록</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #eaf2f8; }
-        .container { max-width: 800px; margin: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        th, td { border: 1px solid #c9d8e0; padding: 12px; text-align: left; }
-        th { background-color: #2e86c1; color: white; }
-        a { text-decoration: none; color: #3498db; }
-        a:hover { text-decoration: underline; }
-    </style>
+    <link rel="stylesheet" href="/styles/inquiry/inquiries.css" />
 </head>
 <body>
+    <div class="container">
+        <h2>견적문의 목록</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>번호</th>
+                    <th>문의자</th>
+                    <th>이메일</th>
+                    <th>전화번호</th>
+                    <th>문의 날짜</th>
+                </tr>
+            </thead>
+            <tbody id="inquiriesTableBody"></tbody>
+        </table>
+        <br />
+        <a href="../../index.html">홈으로</a>
+        <a href="contact.html">문의하기</a>
+    </div>
 
-<div class="container">
-    <h2>견적문의 목록</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>번호</th>
-                <th>문의자</th>
-                <th>이메일</th>
-                <th>전화번호</th>
-                <th>문의 날짜</th>
-            </tr>
-        </thead>
-        <tbody id="inquiriesTableBody">
-            </tbody>
-    </table>
-    <br>
-    <a href="../../index.html">홈으로</a>
-    <a href="contact.html">문의하기</a>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            const response = await fetch('/api/inquiries');
-            const inquiries = await response.json();
-
-            const tableBody = document.getElementById('inquiriesTableBody');
-
-            inquiries.forEach(inquiry => {
-                const row = document.createElement('tr');
-                const date = new Date(inquiry.CREATED_AT).toLocaleDateString('ko-KR');
-
-                row.innerHTML = `
-                    <td>${inquiry.ID}</td>
-                    <td><a href="inquiry_detail.html?id=${inquiry.ID}">${inquiry.NAME}</a></td>
-                    <td>${inquiry.EMAIL}</td>
-                    <td>${inquiry.PHONE}</td>
-                    <td>${date}</td>
-                `;
-                tableBody.appendChild(row);
-            });
-
-        } catch (error) {
-            console.error('Error fetching inquiries:', error);
-            const tableBody = document.getElementById('inquiriesTableBody');
-            tableBody.innerHTML = '<tr><td colspan="5">데이터를 불러오는데 실패했습니다.</td></tr>';
-        }
-    });
-</script>
-
+    <script src="/scripts/inquiry/inquiries.js" defer></script>
 </body>
 </html>

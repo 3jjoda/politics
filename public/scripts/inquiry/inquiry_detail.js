@@ -1,0 +1,44 @@
+document.addEventListener('DOMContentLoaded', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const inquiryId = urlParams.get('id');
+
+    if (!inquiryId) {
+        document.getElementById('inquiryDetails').innerHTML = '<p>유효한 문의 ID가 없습니다.</p>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/inquiries/${inquiryId}`);
+        const inquiry = await response.json();
+
+        if (inquiry) {
+            const detailsDiv = document.getElementById('inquiryDetails');
+            const date = new Date(inquiry.CREATED_AT).toLocaleString('ko-KR');
+            
+            detailsDiv.innerHTML = `
+                <div class="detail-item">
+                    <strong>이름:</strong> ${inquiry.NAME}
+                </div>
+                <div class="detail-item">
+                    <strong>이메일:</strong> ${inquiry.EMAIL}
+                </div>
+                <div class="detail-item">
+                    <strong>전화번호:</strong> ${inquiry.PHONE}
+                </div>
+                <div class="detail-item">
+                    <strong>문의 날짜:</strong> ${date}
+                </div>
+                <div class="detail-item">
+                    <strong>문의 내용:</strong>
+                    <div class="message-box">${inquiry.MESSAGE}</div>
+                </div>
+            `;
+        } else {
+            document.getElementById('inquiryDetails').innerHTML = '<p>해당 문의를 찾을 수 없습니다.</p>';
+        }
+
+    } catch (error) {
+        console.error('Error fetching inquiry details:', error);
+        document.getElementById('inquiryDetails').innerHTML = '<p>데이터를 불러오는데 실패했습니다.</p>';
+    }
+});
