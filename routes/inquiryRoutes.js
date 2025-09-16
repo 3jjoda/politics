@@ -7,9 +7,9 @@ export default (db) => {
     const router = express.Router();
 
     /* 라우터가 컨트롤러 함수를 호출 */
-    router.get('/inquiries', inquiryController.getList);
-    router.get('/inquiries/:id', inquiryController.getDetail);
-    router.post('/inquiry', inquiryController.insert);
+    router.get('/inquiries', inquiryController.getList);        // 견적 조회
+    router.get('/inquiries/:id', inquiryController.getDetail);  // 견적 상세 조회
+    router.post('/inquiry', inquiryController.insert);          // 견적 저장
 
     return router;
 };
