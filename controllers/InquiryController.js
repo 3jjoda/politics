@@ -1,17 +1,16 @@
-import InquiryModel from '../models/Inquiry.js';
+import InquiryService from '../services/InquiryService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
 export default (db) => {
-    // db 객체가 주입되면 모델을 초기화
-    const Inquiry = InquiryModel(db);
-
+    // db 객체가 주입되면 서비스를 초기화
+    const inquiryService = InquiryService(db);
     const controller = {};
 
     /* 견적 조회 */
     controller.getList = wrapWithContext(function getList(req, res, next) {
         try {
-            Inquiry.getList((err, results) => {
+            inquiryService.getList((err, results) => {
                 if (err) {
                     logger.error('견적 목록 조회 중 에러:', { stack: err.stack });
                     return next(err);   // 에러를 전역 에러 핸들러로 전달
@@ -28,7 +27,7 @@ export default (db) => {
     controller.getDetail = wrapWithContext(function getDetail(req, res, next) {
         try {
             const { id } = req.params;
-            Inquiry.getDetail(id, (err, result) => {
+            inquiryService.getDetail(id, (err, result) => {
                 if (err) {
                     logger.error('견적 상세 조회 중 에러:', { stack: err.stack });
                     return next(err);
@@ -54,7 +53,7 @@ export default (db) => {
             }
 
             const inquiryData = { name, email, phone, message };
-            Inquiry.insert(inquiryData, (err, result) => {
+            inquiryService.insert(inquiryData, (err, result) => {
                 if (err) {
                     logger.error('문의 저장 중 에러:', { stack: err.stack });
                     return next(err);

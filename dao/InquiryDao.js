@@ -14,24 +14,23 @@ fs.readdirSync(queriesPath).forEach(file => {
 
 // 모델은 db 객체를 외부에서 주입받아 사용
 export default (db) => {
-
-    const Inquiry = {};
+    const dao = {};
 
     /* 견적 조회 */
-    Inquiry.getList = (callback) => {
+    dao.getList = (callback) => {
         db.query(queries.getList, callback);
     };
 
     /* 견적 상세 조회 */
-    Inquiry.getDetail = (id, callback) => {
+    dao.getDetail = (id, callback) => {
         db.query(queries.getDetail, [id], callback);
     };
 
     /* 견적 저장 */
-    Inquiry.insert = (inquiryData, callback) => {
+    dao.insert = (inquiryData, callback) => {
         const values = [inquiryData.name, inquiryData.email, inquiryData.phone, inquiryData.message];
         db.query(queries.insert, values, callback);
     };
 
-    return Inquiry;
+    return dao;
 };
