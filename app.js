@@ -1,4 +1,4 @@
-import express from 'express'; 
+import express from 'express';
 import mysql from 'mysql2';
 import logger from './utils/logger.js';
 import dbConfig from './config/database.js';
