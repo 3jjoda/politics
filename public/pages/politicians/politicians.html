@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전체 국회의원 - 데이터정치</title>
+    <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="/styles/politicians/politicians.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <a href="/">데이터정치</a>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="/politicians_list.html" class="active">국회의원</a></li>
+                    <li><a href="#">의정활동</a></li>
+                    <li><a href="#">데이터 랭킹</a></li>
+                    <li><a href="#">사이트 소개</a></li>
+                </ul>
+            </nav>
+            <div class="search-icon">
+                <i class="fas fa-search"></i>
+            </div>
+        </header>
+
+        <main>
+            <section class="page-header">
+                <h1>전체 국회의원</h1>
+                <p>대한민국 국회의원 300명의 정보를 확인하세요.</p>
+            </section>
+
+            <section class="controls">
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="name-search" placeholder="이름으로 검색...">
+                </div>
+                <div class="sort-buttons">
+                    <button class="sort-btn active" data-sort="name">가나다순</button>
+                    <button class="sort-btn" data-sort="party">정당순</button>
+                    <button class="sort-btn" data-sort="age">나이순</button>
+                </div>
+            </section>
+
+            <section class="politician-grid">
+                <article class="politician-card-large">
+                    <img src="https://via.placeholder.com/250" alt="김민국 의원 사진">
+                    <div class="card-content">
+                        <h2 class="card-name">김민국</h2>
+                        <p class="card-party">데이터당</p>
+                        <p class="card-dob">1970년 05월 18일</p>
+                    </div>
+                </article>
+                <article class="politician-card-large">
+                    <img src="https://via.placeholder.com/250" alt="이하나 의원 사진">
+                    <div class="card-content">
+                        <h2 class="card-name">이하나</h2>
+                        <p class="card-party">미래당</p>
+                        <p class="card-dob">1982년 11월 02일</p>
+                    </div>
+                </article>
+                </section>
+        </main>
+        
+        <footer>
+             <div class="footer-links">
+                <a href="#">사이트 소개</a>
+                <a href="#">이용약관</a>
+                <a href="#">개인정보처리방침</a>
+                <a href="#">데이터 출처</a>
+            </div>
+            <div class="copyright">
+                &copy; 2025 데이터정치. All rights reserved.
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

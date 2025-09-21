@@ -1,0 +1,11 @@
+SELECT ID
+     , NAME
+     , PARTY
+     , POSITION
+     , DISTRICT
+     , PHONE
+     , EMAIL
+     , BIOGRAPHY
+     , CREATED_AT 
+  FROM POLITICIANS 
+ ORDER BY ID DESC

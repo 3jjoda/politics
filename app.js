@@ -2,6 +2,7 @@ import express from 'express';
 import mysql from 'mysql2';
 import logger from './utils/logger.js';
 import dbConfig from './config/database.js';
+import setupRoutes from './routes/index.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
 
@@ -71,16 +72,7 @@ db.query = function (sql, values, callback) {
 const startServer = async () => {
     try {
         // 라우터 목록 정의
-        const routeModules = [
-            { path: '/api', file: './routes/inquiryRoutes.js' }
-            // 여기에 추가 가능: { path: '/api/users', file: './routes/userRoutes.js' }
-        ];
-
-        // 라우터 불러오기 및 등록
-        for (const route of routeModules) {
-            const module = await import(route.file);
-            app.use(route.path, module.default(db));
-        }
+        setupRoutes(app, db);
 
         // 에러 핸들링 미들웨어
         app.use((err, req, res, next) => {
