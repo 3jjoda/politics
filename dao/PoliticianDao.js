@@ -26,19 +26,5 @@ export default (db) => {
         db.query(queries.getDetail, [id], callback);
     };
 
-    /* 정치인 저장 */
-    dao.insert = (politicianData, callback) => {
-        const values = [
-            politicianData.name, 
-            politicianData.party, 
-            politicianData.position, 
-            politicianData.district, 
-            politicianData.phone, 
-            politicianData.email, 
-            politicianData.biography
-        ];
-        db.query(queries.insert, values, callback);
-    };
-
     return dao;
 };

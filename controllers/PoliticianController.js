@@ -44,27 +44,5 @@ export default (db) => {
         }
     });
 
-    /* 정치인 저장 */
-    controller.insert = wrapWithContext(function insert(req, res, next) {
-        try {
-            const { name, party, position, district, phone, email, biography } = req.body;
-            if (!name || !party || !position || !district || !phone || !email) {
-                return res.status(400).json({ success: false, message: '필수 필드를 모두 입력해야 합니다.' });
-            }
-
-            const politicianData = { name, party, position, district, phone, email, biography };
-            politicianService.insert(politicianData, (err, result) => {
-                if (err) {
-                    logger.error('정치인 저장 중 에러:', { stack: err.stack });
-                    return next(err);
-                }
-                res.status(200).json({ success: true, message: '정치인 정보 저장 완료' });
-            });
-        } catch (error) {
-            logger.error('컨트롤러에서 예상치 못한 에러:', { stack: error.stack });
-            next(error);
-        }
-    });
-
     return controller;
 };

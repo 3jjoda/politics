@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>전체 국회의원 - 데이터정치</title>
     <link rel="stylesheet" href="/styles/main.css">
-    <link rel="stylesheet" href="/styles/politicians/politicians.css">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/styles/politician/politician.css" />
 </head>
 <body>
     <div class="container">
@@ -33,7 +34,7 @@
         <main>
             <section class="page-header">
                 <h1>전체 국회의원</h1>
-                <p>대한민국 국회의원 300명의 정보를 확인하세요.</p>
+                <p>대한민국 국회의원 298명의 정보를 확인하세요.</p>
             </section>
 
             <section class="controls">
@@ -49,23 +50,13 @@
             </section>
 
             <section class="politician-grid">
-                <article class="politician-card-large">
-                    <img src="https://via.placeholder.com/250" alt="김민국 의원 사진">
-                    <div class="card-content">
-                        <h2 class="card-name">김민국</h2>
-                        <p class="card-party">데이터당</p>
-                        <p class="card-dob">1970년 05월 18일</p>
-                    </div>
-                </article>
-                <article class="politician-card-large">
-                    <img src="https://via.placeholder.com/250" alt="이하나 의원 사진">
-                    <div class="card-content">
-                        <h2 class="card-name">이하나</h2>
-                        <p class="card-party">미래당</p>
-                        <p class="card-dob">1982년 11월 02일</p>
-                    </div>
-                </article>
-                </section>
+                <p class="loading-message">의원 목록을 불러오는 중입니다...</p>
+            </section>
+
+            <!-- <nav class="pagination-container" aria-label="Page navigation">
+                <ul class="pagination" id="pagination-controls">
+                </ul>
+            </nav> -->
         </main>
         
         <footer>
@@ -80,5 +71,7 @@
             </div>
         </footer>
     </div>
+
+    <script src="/scripts/politician/politician.js"></script>
 </body>
 </html>
