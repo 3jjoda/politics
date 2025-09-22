@@ -2,7 +2,7 @@ import express from 'express';
 import mysql from 'mysql2';
 import logger from './utils/logger.js';
 import dbConfig from './config/database.js';
-import setupRoutes from './routes/index.js';
+import setupRoutes from './routes/Index.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
 
