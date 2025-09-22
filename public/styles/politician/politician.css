@@ -1,79 +1,27 @@
 /* ==============================================
-  의원 목록 페이지 (politicians_list.html) 스타일
+  의원 목록 페이지 스타일 최종본
 ==============================================
 */
 
 /* 페이지 헤더 */
-.page-header {
-    text-align: center;
-    padding: 40px 0;
-    border-bottom: 1px solid var(--border-color);
-}
-.page-header h1 {
-    font-size: 32px;
-    margin-bottom: 10px;
-}
-.page-header p {
-    font-size: 16px;
-    color: var(--light-text-color);
-}
+.page-header { text-align: center; padding: 40px 0; border-bottom: 1px solid var(--border-color); }
+.page-header h1 { font-size: 32px; margin-bottom: 10px; }
+.page-header p { font-size: 16px; color: var(--light-text-color); }
 
 /* 컨트롤 영역 */
-.controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 30px 0;
-    flex-wrap: wrap;
-    gap: 20px;
-}
-.search-container {
-    position: relative;
-    width: 300px;
-}
-.search-container i {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--light-text-color);
-}
-.search-container input {
-    width: 100%;
-    padding: 12px 12px 12px 40px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 16px;
-}
-.sort-buttons {
-    display: flex;
-    gap: 10px;
-}
-.sort-btn {
-    padding: 10px 20px;
-    font-size: 14px;
-    font-weight: 500;
-    border: 1px solid var(--border-color);
-    background-color: var(--card-bg-color);
-    color: var(--text-color);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.sort-btn:hover {
-    background-color: #e9ecef;
-}
-.sort-btn.active {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-}
+.controls { display: flex; justify-content: space-between; align-items: center; padding: 30px 0; flex-wrap: wrap; gap: 20px; }
+.search-container { position: relative; width: 300px; }
+.search-container i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--light-text-color); }
+.search-container input { width: 100%; padding: 12px 12px 12px 40px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 16px; }
+.sort-buttons { display: flex; gap: 10px; }
+.sort-btn { padding: 10px 20px; font-size: 14px; font-weight: 500; border: 1px solid var(--border-color); background-color: var(--card-bg-color); color: var(--text-color); border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+.sort-btn:hover { background-color: #e9ecef; }
+.sort-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
 
-/* ==== [수정됨] 국회의원 카드 그리드 및 카드 디자인 ==== */
+/* 국회의원 카드 그리드 */
 .politician-grid {
     display: grid;
-    /* 화면 크기에 맞춰 200px 이상의 카드를 최대한 채우는 반응형 그리드 */
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 30px;
     padding: 20px 0;
     min-height: 200px;
@@ -83,104 +31,45 @@
     background-color: var(--card-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    text-align: center;
-    padding: 25px;
+    overflow: hidden;
     transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
 }
 
 .politician-card-large:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 8px M20px rgba(0,0,0,0.08);
 }
 
-/* 사진 (세로 방향) */
 .politician-card-large img {
-    width: 100%; /* 카드 너비에 이미지 사이즈 맞춤 */
-    aspect-ratio: 1 / 1;    /* 높이대신 가로세로 비율을 1:1(정사각형)으로 유지 */
-    border-radius: 8px; /* 모서리를 둥글게 */
+    width: 100%;
+    aspect-ratio: 1 / 1;
     object-fit: cover;
-    margin-bottom: 20px;
     background-color: #f0f0f0;
 }
 
-/* 텍스트 컨텐츠 (div 불필요) */
-.card-name {
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 5px;
+.card-content {
+    padding: 20px;
+    text-align: center;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
 }
 
-.card-party {
-    font-size: 14px;
-    color: var(--primary-color);
-    margin-bottom: 12px;
-}
+.card-name { font-size: 20px; font-weight: 700; margin-bottom: 5px; }
+.card-party { font-size: 16px; color: var(--primary-color); margin-bottom: 12px; }
+.card-meta { display: flex; flex-direction: column; align-items: center; font-size: 15px; color: #555; margin-bottom: 12px; gap: 4px; }
+.card-dob { font-size: 14px; color: var(--light-text-color); margin-top: auto; /* 생년월일을 항상 맨 아래에 위치시킴 */ }
 
-.card-re {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--primary-color);
-    margin-bottom: 5px;
-}
-
-.card-dob {
-    font-size: 13px;
-    color: var(--light-text-color);
-}
-/* ======================================================== */
-
+/* 재선 정보 배지 기본 스타일 */
+.card-reele { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; }
+.reele--first { color: #1f7822; background-color: #e9f5ec; }
+.reele--second { color: #0056b3; background-color: #e6f0f8; }
+.reele--multi { color: #563d7c; background-color: #f1ecf9; }
 
 /* 로딩/결과 없음 메시지 */
-.loading-message, .no-results {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 50px;
-    color: var(--light-text-color);
-    font-size: 18px;
-}
+.loading-message, .no-results { grid-column: 1 / -1; text-align: center; padding: 50px; color: var(--light-text-color); font-size: 18px; }
 
 /* 네비게이션 활성 메뉴 스타일 */
-nav a.active {
-    color: var(--primary-color);
-    font-weight: 700;
-}
-
-/* ==============================================
-  페이지네이션 (Pagination) 스타일
-==============================================
-*/
-.pagination-container {
-    display: flex;
-    justify-content: center;
-    padding: 40px 0;
-}
-.pagination {
-    display: flex;
-    list-style: none;
-    padding: 0;
-    gap: 8px;
-}
-.page-item .page-link {
-    display: block;
-    padding: 8px 14px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--primary-color);
-    background-color: white;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.page-item .page-link:hover {
-    background-color: #f0f0f0;
-}
-.page-item.active .page-link {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
-    font-weight: 700;
-}
-.page-item.disabled .page-link {
-    color: #aaa;
-    pointer-events: none;
-    background-color: #f8f9fa;
-}
+nav a.active { color: var(--primary-color); font-weight: 700; }

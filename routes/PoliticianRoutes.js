@@ -7,8 +7,10 @@ export default (db) => {
     const router = express.Router();
 
     /* 라우터가 컨트롤러 함수를 호출 */
-    router.get('/politician', politicianController.getList);        // 정치인 조회
-    router.get('/politician/:id', politicianController.getDetail);  // 정치인 상세 조회
+    router.get('/api/politician', politicianController.getList);        // 정치인 조회
+    router.get('/api/politician/:id', politicianController.getDetail);  // 정치인 상세 조회
+
+    router.get('/politician', politicianController.getListPage);    // 정치인 조회(페이지)
 
     return router;
 };

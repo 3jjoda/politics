@@ -9,6 +9,10 @@ import { contextMiddleware } from './utils/contextMiddleware.js';
 const app = express();
 const port = process.env.PORT || 3000;
 
+/* EJS 템플릿 엔진 설정 */
+app.set('view engine', 'ejs');
+app.set('views', './views'); // ejs 파일들이 있는 디렉토리 지정
+
 /* 커넥션풀 생성 */
 const db = mysql.createPool(dbConfig);
 
