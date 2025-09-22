@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <img src="${photoUrl}" alt="${politician.NAME} 의원 사진" onerror="this.onerror=null;this.src='https://via.placeholder.com/120/cccccc?text=No+Image';">
                 <h2 class="card-name">${politician.NAME}</h2>
                 <p class="card-party">${partyName}</p>
+                <p class="card-re">${politician.REELE_GBN_NM}</p>
                 <p class="card-dob">${birthDate}</p>
             </article>
         `;

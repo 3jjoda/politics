@@ -61,7 +61,8 @@ async function upsertPoliticiansToDB(pool, politicians) {
                 ENG_NM: eng_name,
                 POLY_NM: party_name,
                 ORIG_NM: electoral_district,
-                BTH_DATE: birthday
+                BTH_DATE: birthday,
+                REELE_GBN_NM: reGbn
             } = politician;
 
             const party_id = partyMap.get(party_name) || null;
@@ -71,9 +72,9 @@ async function upsertPoliticiansToDB(pool, politicians) {
             }
 
             // [수정됨] VALUES 절의 ? 개수를 6개로 수정
-            valueClauses.push('(?, ?, ?, ?, ?, ?)');
+            valueClauses.push('(?, ?, ?, ?, ?, ?, ?)');
             // [수정됨] params에 eng_name 추가 (총 6개)
-            params.push(mona_cd, name, eng_name, party_id, electoral_district, birthday);
+            params.push(mona_cd, name, eng_name, party_id, electoral_district, birthday, reGbn);
         }
         
         if (valueClauses.length === 0) {
@@ -84,7 +85,7 @@ async function upsertPoliticiansToDB(pool, politicians) {
 
         // [수정됨] SQL 문을 파라미터 개수에 맞게 최종 수정
         const sql = `
-            INSERT INTO POLITICIANS (MONA_CD, NAME, ENG_NM, PARTY_ID, ELECTORAL_DISTRICT, BIRTHDAY, INS_DATETIME)
+            INSERT INTO POLITICIANS (MONA_CD, NAME, ENG_NM, PARTY_ID, ELECTORAL_DISTRICT, BIRTHDAY, REELE_GBN_NM, INS_DATETIME)
             VALUES ${valueClauses.map(clause => clause.replace(')', ', NOW())')).join(', ')}
             ON DUPLICATE KEY UPDATE
                 NAME = VALUES(NAME),
@@ -92,6 +93,7 @@ async function upsertPoliticiansToDB(pool, politicians) {
                 PARTY_ID = VALUES(PARTY_ID),
                 ELECTORAL_DISTRICT = VALUES(ELECTORAL_DISTRICT),
                 BIRTHDAY = VALUES(BIRTHDAY),
+                REELE_GBN_NM = VALUES(REELE_GBN_NM),
                 UPD_DATETIME = NOW()
         `;
 

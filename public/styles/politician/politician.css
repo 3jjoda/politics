@@ -116,6 +116,13 @@
     margin-bottom: 12px;
 }
 
+.card-re {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
 .card-dob {
     font-size: 13px;
     color: var(--light-text-color);
