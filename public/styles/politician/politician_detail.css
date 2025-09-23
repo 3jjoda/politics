@@ -1,74 +1,60 @@
 /* ==============================================
-  의원 상세 페이지 (politician_detail.ejs) 스타일
+  의원 상세 페이지 스타일 최종본
 ==============================================
 */
+.politician-detail-container { display: grid; grid-template-columns: 280px 1fr; gap: 40px; padding: 40px 0; }
 
-.politician-detail-container {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 40px;
-    padding: 40px 0;
-}
-
-/* 프로필 영역 (좌측 사이드바) */
-.profile-sidebar .profile-card {
-    background-color: var(--card-bg-color);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    margin-bottom: 20px;
-    position: sticky; /* 스크롤 시 사이드바 상단에 고정 */
-    top: 20px;
-}
-.profile-photo { width: 150px; height: 150px; border-radius: 50%; object-fit: cover; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-.profile-name { font-size: 28px; font-weight: 700; margin-bottom: 5px; }
-.profile-eng-name { font-size: 16px; color: var(--light-text-color); margin-bottom: 10px; }
-.profile-party { font-size: 18px; font-weight: 500; color: var(--primary-color); margin-bottom: 20px; }
-.contact-info { background-color: var(--card-bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; }
-.contact-info h3 { font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
-.contact-info p { font-size: 14px; line-height: 1.8; color: #555; display: flex; align-items: center;}
+/* 핵심 프로필 (좌측) */
+.profile-sidebar { background-color: var(--card-bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 30px; text-align: center; align-self: flex-start; position: sticky; top: 20px; }
+.profile-photo-small { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+.profile-name { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+.profile-party { font-size: 16px; color: var(--primary-color); margin-bottom: 15px; }
+.profile-meta { border-top: 1px solid var(--border-color); padding-top: 15px; }
+.meta-item { display: block; font-size: 14px; color: #555; margin-bottom: 8px; }
+.meta-item strong { font-weight: 700; color: #333; }
+.contact-info { margin-top: 20px; text-align: left; }
+.contact-info h3 { font-size: 16px; margin-bottom: 15px; }
+.contact-info p { font-size: 14px; line-height: 1.8; color: #555; display: flex; align-items: center; }
 .contact-info i { margin-right: 10px; color: var(--light-text-color); width: 16px; text-align: center; }
 
-/* 상세 정보 영역 (우측 메인) */
+/* 평가 및 참여 영역 (우측) */
+.detail-main > div { margin-bottom: 50px; }
 .detail-main h2 { font-size: 22px; padding-bottom: 10px; border-bottom: 2px solid var(--text-color); margin-bottom: 20px; }
-.detail-list { font-size: 16px; }
-.detail-list dt { font-weight: 700; color: var(--text-color); padding: 15px; background-color: #f1f3f5; border-radius: 8px 8px 0 0; }
-.detail-list dd { padding: 15px; margin-bottom: 20px; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 8px 8px; }
-.profile-memo { background: var(--card-bg-color); border: 1px solid var(--border-color); padding: 20px; border-radius: 8px; line-height: 1.7; white-space: pre-wrap; }
-
-/* 탭 메뉴 스타일 */
-.detail-tabs {
-    display: flex;
-    border-bottom: 2px solid var(--border-color);
-    margin-bottom: 30px;
-}
-.tab-link {
-    padding: 10px 20px;
-    font-weight: 700;
-    color: var(--light-text-color);
-    border-bottom: 3px solid transparent;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.tab-link:hover {
-    color: var(--text-color);
-}
-.tab-link.active {
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-}
-
-/* 탭 콘텐츠 스타일 */
-.tab-content {
-    display: none; /* 기본적으로 모든 콘텐츠는 숨김 */
-}
-.tab-content.active {
-    display: block; /* active 클래스가 붙은 콘텐츠만 보여줌 */
-}
+.overall-dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.dashboard-box { background-color: var(--card-bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; text-align: center; }
+.grade-value { display: block; font-size: 48px; font-weight: 700; margin-bottom: 5px; }
+.grade-label { font-size: 14px; color: var(--light-text-color); }
+.dashboard-box.data-grade .grade-value { color: var(--primary-color); }
+.dashboard-box.citizen-grade .star { color: #fbbc05; }
+.analysis-container { display: grid; grid-template-columns: 1fr 1.5fr; gap: 30px; align-items: center; }
+.radar-chart-container { max-width: 300px; margin: 0 auto; }
+.metric-list { display: flex; flex-direction: column; gap: 15px; }
+.metric-item { display: grid; grid-template-columns: 1fr 80px; align-items: center; gap: 10px; }
+.metric-item label { font-weight: 500; }
+.metric-item span { font-size: 14px; font-weight: 700; text-align: right; }
+.progress-bar { grid-column: 1 / -1; height: 8px; background-color: #e9ecef; border-radius: 4px; }
+.progress-bar .bar { height: 100%; background-color: var(--primary-color); border-radius: 4px; }
+.evaluation-box { background-color: #f8f9fa; border-radius: 12px; padding: 25px; text-align: center; border: 1px solid var(--border-color); }
+.evaluation-box h3 { font-size: 18px; margin-bottom: 15px; }
+.star-rating { display: flex; flex-direction: row-reverse; justify-content: center; margin-bottom: 20px; }
+.star-rating input[type="radio"] { display: none; }
+.star-rating label { font-size: 36px; color: #ccc; cursor: pointer; transition: color 0.2s; }
+.star-rating input[type="radio"]:checked ~ label, .star-rating label:hover, .star-rating label:hover ~ label { color: #fbbc05; }
+.comment-form textarea { width: 100%; min-height: 80px; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; margin-bottom: 10px; }
+.comment-form button { width: 100%; padding: 12px; border: none; background-color: var(--primary-color); color: white; font-size: 16px; font-weight: 700; border-radius: 8px; cursor: pointer; }
+.comment-list { margin-top: 30px; }
+.comment-list h4 { margin-bottom: 15px; }
+.comment-item { background-color: var(--card-bg-color); border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+.comment-body { margin-bottom: 10px; }
+.comment-author { font-size: 12px; color: var(--light-text-color); text-align: right; display: block; }
+.toggle-details-wrapper { text-align: center; margin-bottom: 30px; }
+#toggle-details-btn { background-color: #f1f3f5; border: 1px solid var(--border-color); padding: 10px 20px; font-size: 14px; font-weight: 700; border-radius: 8px; cursor: pointer; transition: background-color 0.2s; }
+#toggle-details-btn:hover { background-color: #e9ecef; }
+.hidden-details { max-height: 0; overflow: hidden; transition: all 0.5s ease-in-out; opacity: 0; }
+.hidden-details.visible { max-height: 1000px; opacity: 1; margin-top: -20px; }
+.detail-list dt { font-weight: 700; padding: 15px; background-color: #f8f9fa; border-bottom: 1px solid var(--border-color); }
+.detail-list dd { padding: 15px; margin-bottom: 20px; line-height: 1.7; }
+.detail-list dd strong { font-weight: 500; color: #333; }
 
 /* 반응형 */
-@media (max-width: 992px) {
-    .politician-detail-container { grid-template-columns: 1fr; }
-    .profile-sidebar .profile-card { position: static; }
-}
+@media (max-width: 992px) { .politician-detail-container { grid-template-columns: 1fr; } .profile-sidebar { position: static; } .analysis-container { grid-template-columns: 1fr; } }

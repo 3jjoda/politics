@@ -2,68 +2,122 @@
 
 <div class="politician-detail-container">
     <aside class="profile-sidebar">
-        <div class="profile-card">
-            <img src="<%= politician.PHOTO_URL %>" alt="<%= politician.NAME %> 의원 사진" class="profile-photo">
-            <h1 class="profile-name"><%= politician.NAME %></h1>
-            <p class="profile-eng-name"><%= politician.ENG_NM %></p>
-            <p class="profile-party"><%= politician.PARTY_NAME %></p>
-            <div class="profile-badges">
-                <span class="card-reele <%= politician.reeleClass %>"><%= politician.REELE_GBN_NM %></span>
-            </div>
+        <img src="<%= politician.PHOTO_URL %>" class="profile-photo-small">
+        <h1 class="profile-name"><%= politician.NAME %></h1>
+        <p class="profile-party"><%= politician.PARTY_NAME %></p>
+        <div class="profile-meta">
+            <span class="meta-item"><%= politician.ELECTORAL_DISTRICT %></span>
+            <span class="meta-item"><span class="card-reele reele--second"><%= politician.REELE_GBN_NM %></span></span>
         </div>
         <div class="contact-info">
             <h3>연락처 정보</h3>
-            <p><i class="fas fa-phone"></i> <%= politician.TEL_NO %></p>
-            <p><i class="fas fa-envelope"></i> <%= politician.E_MAIL %></p>
-            <p><i class="fas fa-home"></i> <a href="https://<%= politician.HOMEPAGE %>" target="_blank" rel="noopener noreferrer">홈페이지</a></p>
-            <p><i class="fas fa-building"></i> <%= politician.ASSEM_ADDR %></p>
+            <p><i class="fas fa-phone"></i> 02-784-5700</p>
+            <p><i class="fas fa-envelope"></i> kmg@assembly.go.kr</p>
+            <p><i class="fas fa-home"></i> <a href="#" target="_blank" rel="noopener noreferrer">홈페이지</a></p>
+            <p><i class="fas fa-building"></i> 의원회관 817호</p>
         </div>
     </aside>
 
     <section class="detail-main">
-        <nav class="detail-tabs">
-            <a href="#" class="tab-link active" data-tab="tab-main">주요 정보</a>
-            <a href="#" class="tab-link" data-tab="tab-staff">보좌진</a>
-            <a href="#" class="tab-link" data-tab="tab-bio">상세 약력</a>
-        </nav>
-
-        <div id="tab-main" class="tab-content active">
-            <h2>주요 정보</h2>
-            <dl class="detail-list">
-                <dt>선거구</dt>
-                <dd><%= politician.ELECTORAL_DISTRICT %> (<%= politician.ELECT_GBN_NM %>)</dd>
-                <dt>소속위원회</dt>
-                <dd><%= politician.CMITS %></dd>
-                <dt>성별</dt>
-                <dd><%= politician.SEX_GBN_NM %></dd>
-                <dt>생년월일</dt>
-                <dd><%= new Date(politician.BIRTHDAY).toLocaleDateString('ko-KR') %> (<%= politician.BTH_GBN_NM %>)</dd>
-                 <dt>한자명</dt>
-                <dd><%= politician.HJ_NM %></dd>
-            </dl>
+        <div class="overall-dashboard">
+            <div class="dashboard-box data-grade">
+                <span class="grade-value">A-</span>
+                <span class="grade-label">데이터 종합 등급</span>
+            </div>
+            <div class="dashboard-box citizen-grade">
+                <span class="grade-value">4.2 <span class="star">★</span></span>
+                <span class="grade-label">시민 종합 평점</span>
+            </div>
         </div>
 
-        <div id="tab-staff" class="tab-content">
-            <h2>보좌진</h2>
-            <dl class="detail-list">
-                <dt>보좌관 (4급)</dt>
-                <dd><%= politician.STAFF %></dd>
-                <dt>비서관 (5급)</dt>
-                <dd><%= politician.SECRETARY %></dd>
-                <dt>비서 (6,7,9급)</dt>
-                <dd><%= politician.SECRETARY2 %></dd>
-            </dl>
+        <div class="data-analysis">
+            <h2>데이터 기반 상세 분석</h2>
+            <div class="analysis-container">
+                <div class="radar-chart-container">
+                    <canvas id="politicianRadarChart"></canvas>
+                </div>
+                <div class="metric-list">
+                    <div class="metric-item">
+                        <label>본회의 출석률</label>
+                        <div class="progress-bar"><div class="bar" style="width: 95%;"></div></div>
+                        <span>95% (S)</span>
+                    </div>
+                    <div class="metric-item">
+                        <label>법안 대표발의</label>
+                        <div class="progress-bar"><div class="bar" style="width: 82%;"></div></div>
+                        <span>82건 (A)</span>
+                    </div>
+                    <div class="metric-item">
+                        <label>법안 통과율</label>
+                        <div class="progress-bar"><div class="bar" style="width: 75%;"></div></div>
+                        <span>75% (B+)</span>
+                    </div>
+                     <div class="metric-item">
+                        <label>상임위 출석률</label>
+                        <div class="progress-bar"><div class="bar" style="width: 92%;"></div></div>
+                        <span>92% (A+)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="citizen-evaluation">
+             <h2>시민 평가 및 참여</h2>
+             <div class="evaluation-box">
+                <h3>이 의원을 평가해주세요 (로그인 필요)</h3>
+                <div class="star-rating">
+                    <input type="radio" id="5-stars" name="rating" value="5" /><label for="5-stars" class="star">★</label>
+                    <input type="radio" id="4-stars" name="rating" value="4" /><label for="4-stars" class="star">★</label>
+                    <input type="radio" id="3-stars" name="rating" value="3" /><label for="3-stars" class="star">★</label>
+                    <input type="radio" id="2-stars" name="rating" value="2" /><label for="2-stars" class="star">★</label>
+                    <input type="radio" id="1-star" name="rating" value="1" /><label for="1-star" class="star">★</label>
+                </div>
+                <div class="comment-form">
+                    <textarea placeholder="평가에 대한 의견을 남겨주세요..."></textarea>
+                    <button>의견 등록</button>
+                </div>
+            </div>
+            <div class="comment-list">
+                <h4>최신 의견 (3)</h4>
+                <div class="comment-item">
+                    <p class="comment-body">이번 법안 발의 내용이 좋았습니다. 응원합니다.</p>
+                    <span class="comment-author">시민 a*** (★★★★★)</span>
+                </div>
+                 <div class="comment-item">
+                    <p class="comment-body">출석률은 좋지만, 지역구 현안에 더 신경써주세요.</p>
+                    <span class="comment-author">유권자 b*** (★★★☆☆)</span>
+                </div>
+            </div>
         </div>
         
-        <div id="tab-bio" class="tab-content">
-            <h2>상세 약력</h2>
-            <div class="profile-memo">
-                <p><%= (politician.MEM_TITLE || '').replace(/\n/g, '<br>') %></p>
-            </div>
+        <div class="toggle-details-wrapper">
+            <button id="toggle-details-btn">상세 프로필 펼쳐보기 ▼</button>
+        </div>
+        <div id="hidden-details" class="hidden-details">
+            <h2>상세 프로필</h2>
+            <dl class="detail-list">
+                <dt>인적사항</dt>
+                <dd>
+                    <strong>한자명:</strong> 姜民國 <br>
+                    <strong>영문명:</strong> KANG MINKUK <br>
+                    <strong>성별:</strong> 남성 <br>
+                    <strong>생년월일:</strong> 1971-03-03 (양력)
+                </dd>
+                <dt>약력</dt>
+                <dd style="white-space: pre-wrap;">제21대 국회의원 (경남 진주시을/국민의힘)
+국회 정무위원회 위원
+국민의힘 원내부대표</dd>
+                <dt>보좌진</dt>
+                <dd>
+                    <strong>보좌관:</strong> 김보좌, 이보좌 <br>
+                    <strong>선임비서관:</strong> 박비서, 최비서 <br>
+                    <strong>비서관:</strong> 정비서
+                </dd>
+            </dl>
         </div>
     </section>
 </div>
 
 <%- include('../partials/footer') %>
-
-<script src="/scripts/politician/politician_detail.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/scripts/politician_detail.js"></script>
