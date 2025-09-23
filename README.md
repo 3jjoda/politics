@@ -13,13 +13,12 @@ project-root/
 │   ├── assets/              # 이미지, 폰트 등
 │   ├── styles/              # CSS 파일 (페이지별 분리)
 │   ├── scripts/             # JS 파일 (페이지별 분리)
-│   └── pages/               # HTML 페이지 (메뉴/기능별 분리)
 ├── routes/                  # Express 라우터
 ├── controllers/             # 요청 처리 로직
 ├── models/                  # DB 접근 및 트랜잭션 처리
 ├── utils/                   # 로깅, 에러 핸들링 등
 ├── config/                  # 환경변수 및 DB 설정
-├── views/                   # 서버 렌더링용 템플릿 (선택)
+├── views/                   # 서버 렌더링용 템플릿
 └── app.js                   # 서버 초기화
 ```
 
@@ -46,7 +45,7 @@ node app.js
 ## 📌 특징
 
 - ✅ **페이지별 리소스 분리**: HTML/CSS/JS를 기능 단위로 관리
-- ✅ **RESTful API 구조**: `/api/inquiries`, `/api/users` 등
+- ✅ **RESTful API 구조**: `/api/politician`, `/api/users` 등
 - ✅ **트랜잭션 처리 가능**: DB 일관성 확보
 - ✅ **확장성 높은 구조**: 관리자 페이지, 인증 기능 등 쉽게 추가 가능
 - ✅ **템플릿화 가능**: 다른 프로젝트에 그대로 복제해서 사용 가능
@@ -55,9 +54,8 @@ node app.js
 
 ## 📁 예시 페이지
 
-- `/pages/inquiries/inquiries.html` : 견적문의 목록
-- `/pages/inquiries/inquiry_detail.html` : 상세보기
-- `/pages/inquiries/contact.html` : 문의하기
+- `/pages/politician/politician.html` : 국회의원 목록
+- `/pages/politician/politician_detail.html` : 국회의원 상세보기
 
 ---
 

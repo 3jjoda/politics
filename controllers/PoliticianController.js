@@ -44,7 +44,7 @@ export default (db) => {
         } catch (error) {
             next(error);
         }
-    };    
+    };
 
     /* 정치인 상세 조회 */
     controller.getDetail = wrapWithContext(function getDetail(req, res, next) {
@@ -66,6 +66,29 @@ export default (db) => {
             next(error);
         }
     });
+
+    /* 웹페이지용: EJS 페이지를 렌더링하여 반환 (콜백 방식) */
+    controller.getDetailPage = (req, res, next) => {
+        try {
+            // 서비스의 getList 함수를 콜백 방식으로 호출
+            politicianService.getDetailPage(req.params.id, (err, results) => {
+                // 1. 서비스에서 에러가 발생하면 에러 핸들러로 전달
+                if (err) {
+                    return next(err);
+                }
+    
+                // 2. 에러가 없으면, 받아온 데이터를 템플릿에 넣어 렌더링
+                res.render('politician/politician_detail', {
+                    pageTitle: '상세정보 - ' + results[0].NAME,
+                    pageStyles: 'politician/politician_detail',
+                    currentUrl: '/politician',
+                    politician: results[0] // 서비스가 가공 완료한 데이터를 전달
+                });
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
     return controller;
 };

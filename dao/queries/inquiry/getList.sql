@@ -1,8 +1,0 @@
-SELECT ID
-     , NAME
-     , EMAIL
-     , PHONE
-     , MESSAGE
-     , CREATED_AT 
-  FROM INQUIRIES 
- ORDER BY ID DESC

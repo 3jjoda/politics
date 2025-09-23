@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let displayedPoliticians = []; // 검색 결과가 반영된 데이터
 
     let currentSort = { key: 'name', order: 'asc' };
-    
+
     const countDisplay = document.getElementById('politician-count');
     // === 함수 정의 ===
 
@@ -92,8 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    /**
-     * 의원 카드 HTML 생성
+   /**
+     * 의원 카드 HTML을 생성하는 함수
      */
     function createPoliticianCard(politician) {
         const photoUrl = politician.PHOTO_URL || `https://via.placeholder.com/220/cccccc?text=No+Image`;
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </article>
         `;
     }
-
+    
     /**
      * 화면에 의원 목록 렌더링
      */

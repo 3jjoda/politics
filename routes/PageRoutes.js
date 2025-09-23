@@ -16,10 +16,8 @@ export default (db) => {
 
     // 국회의원 목록 페이지
     router.get('/politician', politicianController.getListPage);
-
     // 국회의원 상세 페이지
-    // router.get('/politicians/:id', politicianController.getDetailPage);
-    
+    router.get('/politician/:id', politicianController.getDetailPage);
 
     return router;
 };
