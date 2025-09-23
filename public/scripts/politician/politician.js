@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let displayedPoliticians = []; // 검색 결과가 반영된 데이터
 
     let currentSort = { key: 'name', order: 'asc' };
-
+    
+    const countDisplay = document.getElementById('politician-count');
     // === 함수 정의 ===
 
     /**
@@ -183,8 +184,31 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function filterPoliticians() {
         const searchTerm = searchInput.value.toLowerCase();
+
+        // [수정됨] 검색어 길이에 따라 현황 섹션을 숨기거나 보여줍니다.
+        if (summarySection) {
+            summarySection.style.display = searchTerm.length > 0 ? 'none' : 'grid';
+        }
+
         displayedPoliticians = allPoliticians.filter(p => p.NAME.toLowerCase().includes(searchTerm));
         sortPoliticians();
+    }
+
+    /**
+     * 주어진 의원 데이터 배열을 화면에 렌더링하는 함수
+     */
+    function renderPoliticians(politicians) {
+        // [신규] 렌더링될 의원 수를 계산하여 텍스트 업데이트
+        if (countDisplay) {
+            countDisplay.textContent = `총 ${politicians.length}명`;
+        }
+
+        if (!grid) return;
+        if (politicians.length === 0) {
+            grid.innerHTML = '<p class="no-results">검색 결과가 없습니다.</p>';
+            return;
+        }
+        grid.innerHTML = politicians.map(createPoliticianCard).join('');
     }
 
     // === 이벤트 리스너 설정 ===

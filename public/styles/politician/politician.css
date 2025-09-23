@@ -132,3 +132,14 @@ nav a.active { color: var(--primary-color); font-weight: 700; }
     border-radius: 4px;
     transition: width 0.5s ease-in-out;
 }
+
+/* ==============================================
+  의원 수 표시 (Count Display) 스타일
+==============================================
+*/
+.politician-count {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-right: auto; /* 검색창과 정렬 버튼을 오른쪽으로 밀어냄 */
+}
