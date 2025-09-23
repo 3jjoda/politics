@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // === DOM 요소 선택 ===
+    const summarySection = document.getElementById('politician-summary');
     const grid = document.querySelector('.politician-grid');
     const searchInput = document.getElementById('name-search');
     const sortButtons = document.querySelectorAll('.sort-btn');
@@ -8,11 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allPoliticians = []; // 원본 데이터
     let displayedPoliticians = []; // 검색 결과가 반영된 데이터
 
-    // 현재 정렬 상태 (기본: 이름, 오름차순)
-    let currentSort = {
-        key: 'name',
-        order: 'asc'
-    };
+    let currentSort = { key: 'name', order: 'asc' };
 
     // === 함수 정의 ===
 
@@ -41,6 +38,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * 집계 데이터를 계산하고 화면에 렌더링하는 함수
+     */
+    function renderStatistics(politicians) {
+        if (!summarySection) return;
+        const total = politicians.length;
+
+        const partyCount = politicians.reduce((acc, p) => {
+            const party = p.PARTY_NAME || '무소속';
+            acc[party] = (acc[party] || 0) + 1;
+            return acc;
+        }, {});
+
+        const reeleCount = politicians.reduce((acc, p) => {
+            const reele = p.REELE_GBN_NM || '정보없음';
+            acc[reele] = (acc[reele] || 0) + 1;
+            return acc;
+        }, {});
+
+        const ageGroupCount = { '20대': 0, '30대': 0, '40대': 0, '50대': 0, '60대': 0, '70대 이상': 0 };
+        politicians.forEach(p => {
+            if (!p.age) return;
+            if (p.age >= 70) ageGroupCount['70대 이상']++;
+            else if (p.age >= 60) ageGroupCount['60대']++;
+            else if (p.age >= 50) ageGroupCount['50대']++;
+            else if (p.age >= 40) ageGroupCount['40대']++;
+            else if (p.age >= 30) ageGroupCount['30대']++;
+            else if (p.age >= 20) ageGroupCount['20대']++;
+        });
+
+        const createStatHTML = (title, data) => {
+            const sortedData = Object.entries(data).sort((a, b) => b[1] - a[1]);
+            let itemsHTML = sortedData.map(([label, count]) => {
+                const percentage = ((count / total) * 100).toFixed(1);
+                return `
+                    <div class="stat-item">
+                        <span class="stat-label">${label}</span>
+                        <span class="stat-count">${count}명</span>
+                        <div class="stat-bar-wrapper">
+                            <div class="stat-bar" style="width: ${percentage}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            return `<div class="stat-box"><h3>${title}</h3>${itemsHTML}</div>`;
+        };
+
+        summarySection.innerHTML = `
+            ${createStatHTML('정당별 현황', partyCount)}
+            ${createStatHTML('재선별 현황', reeleCount)}
+            ${createStatHTML('나이대별 현황', ageGroupCount)}
+        `;
+    }
+
+    /**
      * 의원 카드 HTML 생성
      */
     function createPoliticianCard(politician) {
@@ -48,8 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const partyName = politician.PARTY_NAME || '무소속';
         const birthDate = politician.BIRTHDAY ? new Date(politician.BIRTHDAY).toLocaleDateString('ko-KR') : '정보 없음';
         const reeleClass = getReeleClass(politician.REELE_GBN_NM);
-        
-        // 만나이 텍스트 생성 (나이 정보가 있을 경우에만 표시)
         const ageText = politician.age ? ` (만 ${politician.age}세)` : '';
 
         return `
@@ -81,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * 정렬 버튼 UI (아이콘, 활성 상태) 업데이트
+     * 정렬 버튼 UI 업데이트
      */
     function updateSortIndicators() {
         sortButtons.forEach(button => {
@@ -111,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'party':
                     return (a.PARTY_NAME || '').localeCompare(b.PARTY_NAME || '', 'ko-KR') * sortOrder;
                 case 'age':
-                    // 오름차순 : 어린사람 부터
                     return (a.age - b.age) * sortOrder;
                 case 'reele':
                     const getReeleValue = (r) => {
@@ -140,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // === 이벤트 리스너 설정 ===
-
     searchInput.addEventListener('input', filterPoliticians);
 
     sortButtons.forEach(button => {
@@ -150,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSort.key = newSortKey;
-                // '재선'은 기본값을 내림차순(다선 -> 초선), 나머지는 오름차순으로 설정
                 currentSort.order = newSortKey === 'reele' ? 'desc' : 'asc';
             }
             sortPoliticians();
@@ -167,16 +213,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let rawPoliticians = await response.json();
             
-            // 모든 의원 데이터에 대해 'age' 프로퍼티를 미리 계산하여 추가
-            allPoliticians = rawPoliticians.map(p => {
-                return {
-                    ...p,
-                    age: calculateAge(p.BIRTHDAY)
-                };
-            });
-            
+            allPoliticians = rawPoliticians.map(p => ({ ...p, age: calculateAge(p.BIRTHDAY) }));
             displayedPoliticians = [...allPoliticians];
             
+            renderStatistics(allPoliticians);
             sortPoliticians();
         } catch (error) {
             console.error(error);
