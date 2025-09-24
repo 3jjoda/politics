@@ -1,17 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
     // === DOM 요소 선택 ===
     const summarySection = document.getElementById('politician-summary');
+    const categoryFilters = document.getElementById('category-filters');
     const grid = document.querySelector('.politician-grid');
+    const countDisplay = document.getElementById('politician-count');
     const searchInput = document.getElementById('name-search');
     const sortButtons = document.querySelectorAll('.sort-btn');
+    const typeFilter = document.getElementById('type-filter');
 
     // === 상태 관리 변수 ===
-    let allPoliticians = []; // 원본 데이터
-    let displayedPoliticians = []; // 검색 결과가 반영된 데이터
-
+    let allPoliticians = []; // API로 받은 전체 원본 데이터
+    let displayedPoliticians = []; // 현재 화면에 표시될 데이터
     let currentSort = { key: 'name', order: 'asc' };
 
-    const countDisplay = document.getElementById('politician-count');
     // === 함수 정의 ===
 
     /**
@@ -92,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-   /**
+    /**
      * 의원 카드 HTML을 생성하는 함수
      */
     function createPoliticianCard(politician) {
@@ -101,12 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const birthDate = politician.BIRTHDAY ? new Date(politician.BIRTHDAY).toLocaleDateString('ko-KR') : '정보 없음';
         const reeleClass = getReeleClass(politician.REELE_GBN_NM);
         const ageText = politician.age ? ` (만 ${politician.age}세)` : '';
+        const typeName = politician.POLITICIAN_TYPE_NAME || '';
+        const typeClass = getPoliticianTypeClass(politician.POLITICIAN_TYPE);
 
         return `
             <article class="politician-card-large">
                 <a href="/politician/${politician.MONA_CD}">
+                    <span class="card-name-overlay ${typeClass}">${politician.POLITICIAN_TYPE_NAME}</span>
                     <img src="${photoUrl}" alt="${politician.NAME} 의원 사진" onerror="this.onerror=null;this.src='https://via.placeholder.com/220/cccccc?text=No+Image';">
                     <div class="card-content">
+                        <span class="card-type">${typeName}</span>
                         <h2 class="card-name">${politician.NAME}</h2>
                         <p class="card-party">${partyName}</p>
                         <div class="card-meta">
@@ -119,11 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
             </article>
         `;
     }
-    
+
     /**
      * 화면에 의원 목록 렌더링
      */
     function renderPoliticians(politicians) {
+        if (countDisplay) {
+            countDisplay.textContent = `총 ${politicians.length}명`;
+        }
         if (!grid) return;
         grid.innerHTML = politicians.length > 0
             ? politicians.map(createPoliticianCard).join('')
@@ -143,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.classList.remove('active');
                 indicator.textContent = '';
             }
-        });
+    });
     }
 
     /**
@@ -180,39 +188,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * 검색 기능 처리
+     * [신규] 카테고리(유형) 필터와 검색을 모두 적용하고 정렬을 실행하는 통합 함수
      */
-    function filterPoliticians() {
+    function applyFiltersAndSort() {
         const searchTerm = searchInput.value.toLowerCase();
+        const selectedTypeId = typeFilter.value;
 
-        // [수정됨] 검색어 길이에 따라 현황 섹션을 숨기거나 보여줍니다.
-        if (summarySection) {
-            summarySection.style.display = searchTerm.length > 0 ? 'none' : 'grid';
+        let filtered = [...allPoliticians];
+
+        if (selectedTypeId && selectedTypeId !== 'all') {
+            filtered = filtered.filter(p => p.politician_type_id == selectedTypeId);
         }
 
-        displayedPoliticians = allPoliticians.filter(p => p.NAME.toLowerCase().includes(searchTerm));
+        if (searchTerm) {
+            filtered = filtered.filter(p => p.NAME.toLowerCase().includes(searchTerm));
+        }
+        
+        if (summarySection) {
+            const hasFilter = searchTerm || (selectedTypeId && selectedTypeId !== 'all');
+            summarySection.style.display = hasFilter ? 'none' : 'grid';
+        }
+
+        displayedPoliticians = filtered;
         sortPoliticians();
     }
-
+    
     /**
-     * 주어진 의원 데이터 배열을 화면에 렌더링하는 함수
+     * 필터 드롭다운 옵션을 생성하는 함수
      */
-    function renderPoliticians(politicians) {
-        // [신규] 렌더링될 의원 수를 계산하여 텍스트 업데이트
-        if (countDisplay) {
-            countDisplay.textContent = `총 ${politicians.length}명`;
-        }
-
-        if (!grid) return;
-        if (politicians.length === 0) {
-            grid.innerHTML = '<p class="no-results">검색 결과가 없습니다.</p>';
-            return;
-        }
-        grid.innerHTML = politicians.map(createPoliticianCard).join('');
+    function renderTypeFilter(categories) {
+        if (!typeFilter) return;
+        let optionsHTML = '<option value="all">전체</option>';
+        optionsHTML += categories.map(cat => 
+            `<option value="${cat.CODE_ID}">${cat.CODE_NAME}</option>`
+        ).join('');
+        typeFilter.innerHTML = optionsHTML;
     }
-
+    
     // === 이벤트 리스너 설정 ===
-    searchInput.addEventListener('input', filterPoliticians);
+    searchInput.addEventListener('input', applyFiltersAndSort);
+    typeFilter.addEventListener('change', applyFiltersAndSort);
 
     sortButtons.forEach(button => {
         button.addEventListener('click', () => {
@@ -227,24 +242,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    /* 정치인 유형별 클래스 동적 적용 */
+    function getPoliticianTypeClass(typeId) {
+        switch (typeId) {
+            // 국가 단위
+            case 101: return 'type--president';
+            case 102: return 'type--mp';
+            // 광역 단위
+            case 201: return 'type--governor';
+            case 202: return 'type--superintendent';
+            case 203: return 'type--metro-council';
+            // 기초 단위
+            case 301: return 'type--mayor';
+            case 302: return 'type--local-council';
+            // 기본값
+            default: return '';
+        }
+    }
+
     /**
-     * 페이지 로드 시 실행될 메인 비동기 함수
+     * [수정됨] 페이지 로드 시 실행될 메인 비동기 함수 (레이스 컨디션 해결)
      */
     async function initialize() {
         try {
+            grid.innerHTML = '<p class="loading-message">의원 목록을 불러오는 중입니다...</p>';
+
+            // 공통 코드 콤보에 담기
+            const politicianTypes = JSON.parse(sessionStorage.getItem('initialData')).CODES.POLITICIAN_TYPE;
+            if (politicianTypes) {
+                renderTypeFilter(politicianTypes);
+            }
+
+            // 전체 정치인 데이터를 한번만 불러옵니다.
             const response = await fetch('/api/politician');
-            if (!response.ok) throw new Error(`데이터 로딩 실패: ${response.statusText}`);
+            if (!response.ok) throw new Error(`데이터 로딩 실패`);
             
-            let rawPoliticians = await response.json();
-            
-            allPoliticians = rawPoliticians.map(p => ({ ...p, age: calculateAge(p.BIRTHDAY) }));
-            displayedPoliticians = [...allPoliticians];
+            allPoliticians = (await response.json()).map(p => ({ ...p, age: calculateAge(p.BIRTHDAY) }));
             
             renderStatistics(allPoliticians);
-            sortPoliticians();
+            applyFiltersAndSort();
+
         } catch (error) {
-            console.error(error);
-            if (grid) grid.innerHTML = '<p class="no-results">데이터를 불러오는 중 오류가 발생했습니다.</p>';
+            console.error("초기화 오류:", error);
+            if (grid) grid.innerHTML = '<p class="no-results">페이지를 초기화하는 중 오류가 발생했습니다.</p>';
         }
     }
 

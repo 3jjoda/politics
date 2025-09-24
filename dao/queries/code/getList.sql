@@ -1,0 +1,7 @@
+/* 공통코드 조회 */
+SELECT CODE_ID
+     , GROUP_CODE
+     , CODE_NAME
+     , DESCRIPTION
+  FROM CODES
+ WHERE USE_YN = 1

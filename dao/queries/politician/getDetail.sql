@@ -1,3 +1,4 @@
+/* 정치인 상세정보 */
 SELECT POLITICIAN_ID
      , POL.PARTY_ID
      , POL.PARTY_NAME

@@ -35,8 +35,8 @@ export default (db) => {
     
                 // 2. 에러가 없으면, 받아온 데이터를 템플릿에 넣어 렌더링
                 res.render('politician/politician', {
-                    pageTitle: '전체 국회의원',
-                    pageStyles: 'politician',
+                    pageTitle: '정치인',
+                    pageStyles: 'politician/politician',
                     currentUrl: '/politician',
                     politicians: results // 서비스가 가공 완료한 데이터를 전달
                 });

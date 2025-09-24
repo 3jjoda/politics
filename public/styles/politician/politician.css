@@ -28,6 +28,7 @@
 }
 
 .politician-card-large {
+    position: relative; /* 자식 요소의 absolute 위치 기준점으로 설정 */
     background-color: var(--card-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -143,3 +144,46 @@ nav a.active { color: var(--primary-color); font-weight: 700; }
     color: var(--text-color);
     margin-right: auto; /* 검색창과 정렬 버튼을 오른쪽으로 밀어냄 */
 }
+
+/* ==============================================
+  필터 드롭다운 (Filter Dropdown) 스타일
+==============================================
+*/
+.filter-container {
+    /* 기존 요소들과 정렬을 맞추기 위함 */
+}
+
+.filter-select {
+    padding: 10px 15px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: white;
+}
+
+/* 이름 오버레이 스타일을 별도로 분리합니다. */
+.card-name-overlay {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    z-index: 10; /* 이미지가 가리지 않도록 위로 올림 */
+}
+
+/* ==============================================
+  유형별 이름표 배경색 (무지개색)
+==============================================
+*/
+.type--president { background-color: rgba(220, 53, 69, 0.8); }   /* 빨강 (대통령) */
+.type--mp { background-color: rgba(253, 126, 20, 0.8); }    /* 주황 (국회의원) */
+.type--governor { background-color: rgba(255, 193, 7, 0.8); color: #333; } /* 노랑 (시도지사) */
+.type--superintendent { background-color: rgba(40, 167, 69, 0.8); } /* 초록 (교육감) */
+.type--metro-council { background-color: rgba(0, 86, 179, 0.7); } /* 파랑 (광역의원) */
+.type--mayor { background-color: rgba(13, 110, 253, 0.7); } /* 남색 (구시군장) */
+.type--local-council { background-color: rgba(111, 66, 193, 0.8); } /* 보라 (기초의원) */
