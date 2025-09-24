@@ -1,3 +1,5 @@
+import { createDashboardBox } from "../components/dashboard.js";
+
 document.addEventListener('DOMContentLoaded', () => {
     // === DOM 요소 선택 ===
     const summarySection = document.getElementById('politician-summary');
@@ -46,18 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!summarySection) return;
         const total = politicians.length;
 
-        const partyCount = politicians.reduce((acc, p) => {
-            const party = p.PARTY_NAME || '무소속';
-            acc[party] = (acc[party] || 0) + 1;
-            return acc;
-        }, {});
+        const partyDashboard = createDashboardBox(politicians, 'PARTY_NAME', '정당별 현황');
+        const reeleDashboard = createDashboardBox(politicians, 'REELE_GBN_NM', '재선별 현황');
 
-        const reeleCount = politicians.reduce((acc, p) => {
-            const reele = p.REELE_GBN_NM || '정보없음';
-            acc[reele] = (acc[reele] || 0) + 1;
-            return acc;
-        }, {});
-
+        // 나이대별은 공통함수 활용 안되서 커스터마이징
         const ageGroupCount = { '20대': 0, '30대': 0, '40대': 0, '50대': 0, '60대': 0, '70대 이상': 0 };
         politicians.forEach(p => {
             if (!p.age) return;
@@ -69,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (p.age >= 20) ageGroupCount['20대']++;
         });
 
-        const createStatHTML = (title, data) => {
+        const createAgeStatHTML = (title, data) => {
             const sortedData = Object.entries(data).sort((a, b) => b[1] - a[1]);
             let itemsHTML = sortedData.map(([label, count]) => {
                 const percentage = ((count / total) * 100).toFixed(1);
@@ -85,12 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
             return `<div class="stat-box"><h3>${title}</h3>${itemsHTML}</div>`;
         };
+        const ageDashboard = createAgeStatHTML('나이대별 현황', ageGroupCount);
 
-        summarySection.innerHTML = `
-            ${createStatHTML('정당별 현황', partyCount)}
-            ${createStatHTML('재선별 현황', reeleCount)}
-            ${createStatHTML('나이대별 현황', ageGroupCount)}
-        `;
+        summarySection.innerHTML = partyDashboard + reeleDashboard + ageDashboard;
     }
 
     /**
