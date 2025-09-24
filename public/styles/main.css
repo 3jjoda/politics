@@ -48,6 +48,7 @@ header {
     padding: 20px 0;
     border-bottom: 1px solid var(--border-color);
 }
+
 .logo a { font-weight: 700; font-size: 24px; }
 nav ul { list-style: none; display: flex; gap: 30px; }
 nav a { font-weight: 500; color: var(--light-text-color); transition: color 0.2s; }
@@ -179,11 +180,103 @@ footer {
     color: var(--light-text-color);
 }
 
-/* ==== 반응형 디자인 ==== */
+.visitor-counter {
+    font-size: 14px;
+    color: #555;
+    margin-left: auto; /* 네비게이션과 검색 아이콘 사이 공간을 모두 차지하여 오른쪽으로 밀어냄 */
+    padding: 0 20px;
+}
+.visitor-counter .count {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* ==============================================
+  모바일 메뉴 (최종 수정)
+==============================================
+*/
+
+/* 모바일 메뉴 버튼 (햄버거) */
+.hamburger-btn {
+    display: none; /* PC에서는 숨김 */
+    font-size: 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+/* 모바일 메뉴 패널 */
+.nav-mobile-panel {
+    display: none; /* 평소엔 숨김 */
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 280px;
+    height: 100%;
+    background-color: white;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+    padding: 60px 20px 20px 20px;
+    z-index: 100;
+}
+
+/* [핵심] 모바일 패널 안의 nav, ul, li, a 태그 스타일 명시 */
+.nav-mobile-panel nav {
+    display: block; /* 항상 보이도록 설정 */
+}
+.nav-mobile-panel nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    /* [추가] Flexbox를 사용하여 내부 아이템 정렬 */
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* 텍스트 가운데 정렬 */
+    width: 100%;
+}
+
+.nav-mobile-panel nav li {
+    width: 100%; /* 각 항목이 패널 너비를 모두 차지하도록 */
+    text-align: center; /* 텍스트 가운데 정렬 */
+    border-bottom: 1px solid #f0f0f0;
+}
+.nav-mobile-panel nav a {
+    display: block;
+    padding: 15px 10px;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-color);
+    text-decoration: none;
+}
+.nav-mobile-panel nav a:hover {
+    background-color: #f8f9fa;
+}
+
+.nav-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 32px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+/*.nav-mobile-panel nav ul {
+    display: block !important;
+}*/
+
+/* ==============================================
+  반응형 디자인 (통합본)
+==============================================
+*/
 @media (max-width: 768px) {
+    /* 메인페이지 스타일 */
     .hero-content h1 { font-size: 28px; }
-    nav ul { display: none; }
     .kpi-cards { flex-direction: column; align-items: center; }
     .bill-item { flex-direction: column; align-items: flex-start; gap: 15px; }
     .vote-result { width: 100%; }
+
+    /* 메뉴 스타일 */
+    .nav-pc { display: none !important; } /* [수정] .nav-pc 자체를 숨김 */
+    .hamburger-btn { display: block; }
 }

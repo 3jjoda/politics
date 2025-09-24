@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= pageTitle %></title>
+    <title><%= pageTitle %> - 데이터정치</title>
     <link rel="stylesheet" href="/styles/main.css">
     <% if (locals.pageStyles) { %>
         <link rel="stylesheet" href="/styles/<%= pageStyles %>.css">
@@ -19,16 +19,30 @@
             <div class="logo">
                 <a href="/">데이터정치</a>
             </div>
-            <nav>
+            <nav class="nav-pc">
                 <ul>
-                    <li><a href="/politician" class="<%= (currentUrl === '/politician') ? 'active' : '' %>">국회의원</a></li>
+                    <li><a href="/politician" class="<%= (currentUrl === '/politician') ? 'active' : '' %>">정치인</a></li>
                     <li><a href="#">의정활동</a></li>
                     <li><a href="#">데이터 랭킹</a></li>
                     <li><a href="#">사이트 소개</a></li>
                 </ul>
             </nav>
-            <div class="search-icon">
-                <i class="fas fa-search"></i>
+            <div class="visitor-counter">
+                오늘 <span class="count"><%= locals.visitorCount %></span>명이 관심을 보여주셨습니다.
             </div>
+            <button class="hamburger-btn" id="hamburger-btn">☰</button>
         </header>
+
+        <div class="nav-mobile-panel" id="nav-mobile-panel">
+            <nav>
+                <ul>
+                    <li><a href="/politician">정치인</a></li>
+                    <li><a href="#">의정활동</a></li>
+                    <li><a href="#">데이터 랭킹</a></li>
+                    <li><a href="#">사이트 소개</a></li>
+                </ul>
+            </nav>
+            <button class="nav-close-btn" id="nav-close-btn">×</button>
+        </div>
+
         <main>

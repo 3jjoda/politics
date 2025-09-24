@@ -5,6 +5,8 @@ import dbConfig from './config/database.js';
 import setupRoutes from './routes/Index.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
+import session from 'express-session'; // 세션 라이브러리
+import { visitorCounter } from './utils/visitorCounter.js'; // 방문자 카운터
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -20,6 +22,15 @@ const db = mysql.createPool(dbConfig);
 app.use(express.json());
 app.use(express.static('public'));
 app.use(contextMiddleware); // 모든 요청에 대해 컨텍스트 연결
+app.use(session({
+    secret: 'a_very_secret_key_for_session', // 실제 프로젝트에서는 .env 파일로 관리하세요.
+    resave: false,
+    saveUninitialized: true,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 } // 쿠키 유효기간: 1일 (하루 기준)
+}));
+
+// 방문자 카운터 미들웨어 적용
+app.use(visitorCounter());
 
 /* db.query 래핑: SQL + 결과 건수 자동 로깅 */
 const originalQuery = db.query.bind(db);
