@@ -1,11 +1,12 @@
 {
-  "name": "test_homepage",
+  "name": "politics",
   "version": "1.0.0",
-  "description": "",
+  "description": "데이터 기반 정치인 평가 사이트",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon --ignore 'visitor_count.json' app.js"
   },
   "keywords": [],
   "author": "",
@@ -23,10 +24,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/3jjoda/test_homepage.git"
+    "url": "git+https://github.com/3jjoda/politics.git"
   },
   "bugs": {
-    "url": "https://github.com/3jjoda/test_homepage/issues"
+    "url": "https://github.com/3jjoda/politics/issues"
   },
-  "homepage": "https://github.com/3jjoda/test_homepage#readme"
+  "homepage": "https://github.com/3jjoda/politics#readme"
 }

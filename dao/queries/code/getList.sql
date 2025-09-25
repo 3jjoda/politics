@@ -1,7 +1,7 @@
 /* 공통코드 조회 */
-SELECT CODE_ID
-     , GROUP_CODE
-     , CODE_NAME
-     , DESCRIPTION
-  FROM CODES
- WHERE USE_YN = 1
+select code_id
+     , group_code
+     , code_name
+     , description
+  from codes
+ where use_yn = 1

@@ -1,14 +1,14 @@
 /* 정치인 목록 */
-SELECT P.POLITICIAN_ID
-     , P.PARTY_ID
-     , P.PARTY_NAME
-     , P.POLITICIAN_TYPE
-     , FN_GET_CODE_NAME(P.POLITICIAN_TYPE) AS POLITICIAN_TYPE_NAME
-     , P.NAME
-     , P.ENG_NM
-     , P.ELECTORAL_DISTRICT
-     , P.PHOTO_URL
-     , P.BIRTHDAY
-     , P.REELE_GBN_NM
-     , P.MONA_CD 
-  FROM POLITICIANS P
+select p.politician_id
+     , p.party_id
+     , p.party_name
+     , p.politician_type
+     , fn_get_code_name(p.politician_type) as politician_type_name
+     , p.name
+     , p.eng_nm
+     , p.electoral_district
+     , p.photo_url
+     , p.birthday
+     , p.reele_gbn_nm
+     , p.mona_cd 
+  from politicians p

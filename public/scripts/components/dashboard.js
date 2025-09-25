@@ -1,5 +1,5 @@
 /**
- * 범용 대시보드 생성 함수
+ * 대시보드 (가로 막대 그래프)
  */
 export function createDashboardBox(data, groupByKey, title) {
     if (!data || data.length === 0) return '';
@@ -26,6 +26,6 @@ export function createDashboardBox(data, groupByKey, title) {
         `;
     }).join('');
 
-    // [수정] 박스 전체 HTML을 완성하여 반환
+    // 박스 전체 HTML을 완성하여 반환
     return `<div class="stat-box"><h3>${title}</h3>${itemsHTML}</div>`;
 }

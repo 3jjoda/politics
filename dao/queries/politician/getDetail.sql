@@ -1,14 +1,14 @@
 /* 정치인 상세정보 */
-SELECT POLITICIAN_ID
-     , POL.PARTY_ID
-     , POL.PARTY_NAME
-     , POL.NAME
-     , POL.ENG_NM
-     , POL.ELECTORAL_DISTRICT
-     , POL.PHOTO_URL
-     , POL.BIRTHDAY
-     , POL.REELE_GBN_NM
-     , POL.MEM_TITLE
-     , POL.MONA_CD 
-  FROM POLITICIANS POL
- WHERE MONA_CD = ?
+select p.politician_id
+     , p.party_id
+     , p.party_name
+     , p.name
+     , p.eng_nm
+     , p.electoral_district
+     , p.photo_url
+     , p.birthday
+     , p.reele_gbn_nm
+     , p.mem_title
+     , p.mona_cd 
+  from politicians p
+ where p.mona_cd = ?

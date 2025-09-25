@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!summarySection) return;
         const total = politicians.length;
 
-        const partyDashboard = createDashboardBox(politicians, 'PARTY_NAME', '정당별 현황');
-        const reeleDashboard = createDashboardBox(politicians, 'REELE_GBN_NM', '재선별 현황');
+        const partyDashboard = createDashboardBox(politicians, 'party_name', '정당별 현황');
+        const reeleDashboard = createDashboardBox(politicians, 'reele_gbn_nm', '재선별 현황');
 
         // 나이대별은 공통함수 활용 안되서 커스터마이징
         const ageGroupCount = { '20대': 0, '30대': 0, '40대': 0, '50대': 0, '60대': 0, '70대 이상': 0 };
@@ -88,26 +88,26 @@ document.addEventListener('DOMContentLoaded', () => {
      * 의원 카드 HTML을 생성하는 함수
      */
     function createPoliticianCard(politician) {
-        const photoUrl = politician.PHOTO_URL || `https://via.placeholder.com/220/cccccc?text=No+Image`;
-        const partyName = politician.PARTY_NAME || '무소속';
-        const birthDate = politician.BIRTHDAY ? new Date(politician.BIRTHDAY).toLocaleDateString('ko-KR') : '정보 없음';
-        const reeleClass = getReeleClass(politician.REELE_GBN_NM);
+        const photoUrl = politician.photo_url || `https://via.placeholder.com/220/cccccc?text=No+Image`;
+        const partyName = politician.party_name || '무소속';
+        const birthDate = politician.birthday ? new Date(politician.birthday).toLocaleDateString('ko-KR') : '정보 없음';
+        const reeleClass = getReeleClass(politician.reele_gbn_nm);
         const ageText = politician.age ? ` (만 ${politician.age}세)` : '';
-        const typeName = politician.POLITICIAN_TYPE_NAME || '';
-        const typeClass = getPoliticianTypeClass(politician.POLITICIAN_TYPE);
+        const typeName = politician.politician_type_name || '';
+        const typeClass = getPoliticianTypeClass(politician.politician_type);
 
         return `
             <article class="politician-card-large">
-                <a href="/politician/${politician.MONA_CD}">
-                    <span class="card-name-overlay ${typeClass}">${politician.POLITICIAN_TYPE_NAME}</span>
-                    <img src="${photoUrl}" alt="${politician.NAME} 의원 사진" onerror="this.onerror=null;this.src='https://via.placeholder.com/220/cccccc?text=No+Image';">
+                <a href="/politician/${politician.mona_cd}">
+                    <span class="card-name-overlay ${typeClass}">${politician.politician_type_name}</span>
+                    <img src="${photoUrl}" alt="${politician.name} 의원 사진" onerror="this.onerror=null;this.src='https://via.placeholder.com/220/cccccc?text=No+Image';">
                     <div class="card-content">
                         <span class="card-type">${typeName}</span>
-                        <h2 class="card-name">${politician.NAME}</h2>
+                        <h2 class="card-name">${politician.name}</h2>
                         <p class="card-party">${partyName}</p>
                         <div class="card-meta">
-                            <span class="card-district">${politician.ELECTORAL_DISTRICT}</span>
-                            <span class="card-reele ${reeleClass}">${politician.REELE_GBN_NM}</span>
+                            <span class="card-district">${politician.electoral_district}</span>
+                            <span class="card-reele ${reeleClass}">${politician.reele_gbn_nm}</span>
                         </div>
                         <p class="card-dob">${birthDate}${ageText}</p>
                     </div>
@@ -156,9 +156,9 @@ document.addEventListener('DOMContentLoaded', () => {
         sorted.sort((a, b) => {
             switch (key) {
                 case 'name':
-                    return a.NAME.localeCompare(b.NAME, 'ko-KR') * sortOrder;
+                    return a.name.localeCompare(b.name, 'ko-KR') * sortOrder;
                 case 'party':
-                    return (a.PARTY_NAME || '').localeCompare(b.PARTY_NAME || '', 'ko-KR') * sortOrder;
+                    return (a.party_name || '').localeCompare(b.party_name || '', 'ko-KR') * sortOrder;
                 case 'age':
                     return (a.age - b.age) * sortOrder;
                 case 'reele':
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const val = parseInt(r);
                         return isNaN(val) ? 0 : val;
                     };
-                    return (getReeleValue(a.REELE_GBN_NM) - getReeleValue(b.REELE_GBN_NM)) * sortOrder;
+                    return (getReeleValue(a.reele_gbn_nm) - getReeleValue(b.reele_gbn_nm)) * sortOrder;
                 default:
                     return 0;
             }
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (searchTerm) {
-            filtered = filtered.filter(p => p.NAME.toLowerCase().includes(searchTerm));
+            filtered = filtered.filter(p => p.name.toLowerCase().includes(searchTerm));
         }
         
         if (summarySection) {
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!typeFilter) return;
         let optionsHTML = '<option value="all">전체</option>';
         optionsHTML += categories.map(cat => 
-            `<option value="${cat.CODE_ID}">${cat.CODE_NAME}</option>`
+            `<option value="${cat.code_id}">${cat.code_name}</option>`
         ).join('');
         typeFilter.innerHTML = optionsHTML;
     }
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/politician');
             if (!response.ok) throw new Error(`데이터 로딩 실패`);
             
-            allPoliticians = (await response.json()).map(p => ({ ...p, age: calculateAge(p.BIRTHDAY) }));
+            allPoliticians = (await response.json()).map(p => ({ ...p, age: calculateAge(p.birthday) }));
             
             renderStatistics(allPoliticians);
             applyFiltersAndSort();
