@@ -48,6 +48,10 @@ header {
     padding: 20px 0;
     border-bottom: 1px solid var(--border-color);
 }
+/* 햄버거 버튼을 헤더의 오른쪽 끝에 고정 */
+.hamburger-btn {
+    margin-left: auto;
+}
 
 .logo a { font-weight: 700; font-size: 24px; }
 nav ul { list-style: none; display: flex; gap: 30px; }

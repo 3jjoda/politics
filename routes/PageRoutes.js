@@ -11,9 +11,8 @@ export default (db) => {
     router.get('/', async (req, res, next) => {
         try {
             const initialData = await initController.getInitialData(req);
-            console.log('initialData : ' +JSON.stringify(initialData));
             res.render('index', { 
-                pageTitle: '메인',
+                pageTitle: '정치 바로미터',
                 pageStyles: null,
                 currentUrl: '/',
                 initialData: initialData

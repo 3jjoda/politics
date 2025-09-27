@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= pageTitle %> - 데이터정치</title>
+    <title><%= pageTitle %></title>
     <link rel="stylesheet" href="/styles/main.css">
     <% if (locals.pageStyles) { %>
         <link rel="stylesheet" href="/styles/<%= pageStyles %>.css">
@@ -17,9 +17,8 @@
     <div class="container">
         <header>
             <div class="logo">
-                <a href="/">데이터정치</a>
+                <a href="/">정치 바로미터</a>
             </div>
-            <nav class="nav-pc">
                 <ul>
                     <li><a href="/politician" class="<%= (currentUrl === '/politician') ? 'active' : '' %>">정치인</a></li>
                     <li><a href="#">의정활동</a></li>
@@ -27,10 +26,7 @@
                     <li><a href="#">사이트 소개</a></li>
                 </ul>
             </nav>
-            <div class="visitor-counter">
-                오늘 <span class="count"><%= locals.visitorCount %></span>명이 관심을 보여주셨습니다.
-            </div>
-            <button class="hamburger-btn" id="hamburger-btn">☰</button>
+            <button class="hamburger-btn" style="margin-left: auto" id="hamburger-btn">☰</button>
         </header>
 
         <div class="nav-mobile-panel" id="nav-mobile-panel">
