@@ -1,13 +1,48 @@
 <%- include('../partials/header', { pageTitle: bill.name || "법안 상세", pageStyles: 'bill_detail', currentUrl: '/bills' }) %>
 
-<%# bill 객체는 백엔드에서 API를 통해 가져온 데이터 %>
+<%
+    // 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bill` 객체)
+    // 실제 API 연동 시 이 객체에 API 응답 데이터를 매핑합니다.
+    const bill = {
+        id: '12345',
+        name: '미래산업 육성 특별법',
+        statusClass: 'pass',
+        statusText: '본회의 가결',
+        proposerMonCode: '9770330', // API: 대표발의 의원의 MON_CODE
+        proposerName: '강민국', // API: 대표발의 의원 이름
+        proposeDate: '2025-04-11', // API: PROPOSE_DT
+        committeeName: '정무위원회', // API: COMMITTEE_NAME
+        summary: '미래 신산업 분야의 규제 혁신 및 집중 지원을 통해 국가 경쟁력을 강화하고 새로운 성장 동력을 확보하기 위한 법안입니다. 인공지능, 바이오, 친환경 에너지 등 핵심 기술 개발 및 사업화를 촉진하며, 관련 기업에 대한 세제 혜택 및 연구 지원을 확대하는 내용을 포함합니다.', // API: BILL_SUMMARY
+        originalLink: '#', // API: DETAIL_URL
+        voteCounts: { // API: 표결정보를 집계하여 백엔드에서 계산
+            agree: 195,
+            disagree: 75,
+            abstain: 30
+        },
+        voters: { // API: 표결정보 및 국회의원정보를 조합하여 백엔드에서 생성
+            agree: [
+                { monCode: '9770330', name: '강민국', party: '국민의힘' },
+                { monCode: '9770123', name: '김민석', party: '더불어민주당' },
+                { monCode: '9770001', name: '박영선', party: '무소속' }
+            ],
+            disagree: [
+                { monCode: '9770456', name: '이준석', party: '개혁신당' },
+                { monCode: '9770002', name: '홍길동', party: '국민의힘' }
+            ],
+            abstain: [
+                { monCode: '9770789', name: '조국', party: '조국혁신당' }
+            ]
+        }
+    };
+%>
+
 <div class="page-container">
     <section class="bill-detail-header">
         <%# API: 의안정보 (BILL_ID로 조회) - 처리 결과, 법안명 %>
         <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span>
         <h1 class="bill-title"><%= bill.name %></h1>
         <div class="bill-meta">
-            <span><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %></a></span> <%# API: PROPOSER_MON_CODE (대표발의 의원 MON_CODE로 링크) %>
+            <span><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %></a></span> <%# API: PROPOSER_MON_CODE로 링크, PROPOSER 이름 표시 %>
             <span><strong>발의일:</strong> <%= bill.proposeDate %></span> <%# API: PROPOSE_DT %>
             <span><strong>소관위:</strong> <%= bill.committeeName %></span> <%# API: COMMITTEE_NAME %>
         </div>
@@ -23,14 +58,14 @@
     <section class="vote-results">
         <h2>본회의 표결 결과</h2>
         <div class="vote-dashboard">
-            <%# API: 표결정보 (BILL_ID로 조회) - 찬성, 반대, 기권 총 인원 %>
+            <%# API: 표결정보 (BILL_ID로 조회)를 집계하여 백엔드에서 계산한 총 인원 %>
             <div class="vote-box agree"><strong>찬성</strong><span><%= bill.voteCounts.agree %></span></div>
             <div class="vote-box disagree"><strong>반대</strong><span><%= bill.voteCounts.disagree %></span></div>
             <div class="vote-box abstain"><strong>기권</strong><span><%= bill.voteCounts.abstain %></span></div>
         </div>
 
         <div class="vote-lists">
-            <%# API: 표결정보 (BILL_ID로 조회) 및 국회의원정보 (MON_CODE로 조회) %>
+            <%# API: 표결정보 및 국회의원정보를 조합하여 백엔드에서 생성한 의원 목록 %>
             <div class="vote-list-container">
                 <h3>찬성 의원 (<span id="agree-count"><%= bill.voteCounts.agree %></span>명)</h3>
                 <ul class="voter-list">

@@ -1,6 +1,38 @@
 <%- include('../partials/header', { pageTitle: '의안 정보', pageStyles: 'bill_list', currentUrl: '/bills' }) %>
 
-<%# bills 배열과 filterOptions 객체는 백엔드에서 API를 통해 가져온 데이터 %>
+<%
+    // 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bills` 배열과 `filterOptions`, `query` 객체)
+    // 실제 API 연동 시 이 객체에 API 응답 데이터를 매핑합니다.
+    const bills = [ // API: 의안정보를 통해 가져올 법안 목록
+        { id: '12345', name: '미래산업 육성 특별법', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '정무위원회', processDate: '2025-09-18' },
+        { id: '12346', name: '소상공인 지원에 관한 법률 개정안', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770123', proposerName: '김민석', committeeName: '산업통상자원중소벤처기업위원회', processDate: '2025-08-01' },
+        { id: '12347', name: '국가재정법 일부개정법률안', statusClass: 'reject', statusText: '부결', proposerMonCode: '9770456', proposerName: '이준석', committeeName: '기획재정위원회', processDate: '2025-07-20' },
+        { id: '12348', name: '공공기관 채용 비리 방지법', statusClass: 'pending', statusText: '심사 중', proposerMonCode: '9770789', proposerName: '조국', committeeName: '법제사법위원회', processDate: '2025-06-05' },
+        { id: '12349', name: '탄소중립 산업 육성 특별조치법', statusClass: 'pending', statusText: '심사 중', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '환경노동위원회', processDate: '2025-05-10' }
+    ];
+
+    const filterOptions = { // API: 의안정보의 처리결과코드, 위원회명 등을 기반으로 동적 생성
+        statuses: [
+            { value: 'pass', text: '가결' },
+            { value: 'reject', text: '부결' },
+            { value: 'pending', text: '심사 중' }
+        ],
+        committees: [
+            { value: '정무위원회', text: '정무위원회' },
+            { value: '산업통상자원중소벤처기업위원회', text: '산업통상자원중소벤처기업위원회' },
+            { value: '기획재정위원회', text: '기획재정위원회' },
+            { value: '법제사법위원회', text: '법제사법위원회' },
+            { value: '환경노동위원회', text: '환경노동위원회' }
+        ]
+    };
+
+    const query = { // 현재 URL의 쿼리 파라미터 (검색어, 필터 값 등)
+        search: '', // 예: request.query.search
+        status: '', // 예: request.query.status
+        committee: '' // 예: request.query.committee
+    };
+%>
+
 <div class="page-container">
     <section class="page-header">
         <h1>의안 정보</h1>
@@ -11,13 +43,13 @@
         <div class="search-container">
             <i class="fas fa-search"></i>
             <%# API: 의안정보 - 검색 파라미터 (BILL_NAME, PROPOSER 등) %>
-            <input type="text" id="bill-search" placeholder="법안명, 의원 이름으로 검색..." value="<%= query.search || '' %>">
+            <input type="text" id="bill-search" placeholder="법안명, 의원 이름으로 검색..." value="<%= query.search %>">
         </div>
         <div class="filter-group">
             <%# API: 의안정보 - 필터 파라미터 (PROC_RESULT_CD, COMMITTEE_NAME 등) %>
             <select id="status-filter" class="filter-select">
                 <option value="">전체 상태</option>
-                <%# filterOptions.statuses는 백엔드에서 제공하는 처리 결과 목록 (예: [{ value: 'pass', text: '가결' }, ...]) %>
+                <%# filterOptions.statuses는 백엔드에서 API 데이터를 파싱하여 생성 %>
                 <% if (filterOptions.statuses && filterOptions.statuses.length > 0) { %>
                     <% filterOptions.statuses.forEach(status => { %>
                         <option value="<%= status.value %>" <%= query.status === status.value ? 'selected' : '' %>>
@@ -28,7 +60,7 @@
             </select>
             <select id="committee-filter" class="filter-select">
                 <option value="">전체 위원회</option>
-                <%# filterOptions.committees는 백엔드에서 제공하는 위원회 목록 %>
+                <%# filterOptions.committees는 백엔드에서 API 데이터를 파싱하여 생성 %>
                 <% if (filterOptions.committees && filterOptions.committees.length > 0) { %>
                     <% filterOptions.committees.forEach(committee => { %>
                         <option value="<%= committee.value %>" <%= query.committee === committee.value ? 'selected' : '' %>>
@@ -72,4 +104,4 @@
 </div>
 
 <%- include('../partials/footer') %>
-<script src="/scripts/bill/bill_list.js"></script>
+<script src="/scripts/bill/bill.js"></script>

@@ -1,34 +1,64 @@
 <%- include('../partials/header', { pageTitle: politician.name || "정치인 상세", pageStyles: 'politician_detail', currentUrl: '/politician' }) %>
 
-<%# politician 객체는 백엔드에서 API를 통해 가져온 데이터 (예: { name: '강민국', party: '국민의힘', constituency: '경남 진주시을', reele: 2, photo: '...', bills: [...] }) %>
+<%
+    // 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `politician` 객체)
+    // 실제 API 연연동 시 이 객체에 API 응답 데이터를 매핑합니다.
+    const politician = {
+        name: "강민국",
+        party: "국민의힘",
+        constituency: "경남 진주시을",
+        reele_count: 2,
+        photo_url: "https://via.placeholder.com/120", // API: 국회의원 이미지 URL
+        data_grade: "A-", // API: 커스텀 데이터 (백엔드에서 계산)
+        citizen_rating: "4.2", // API: 커스텀 데이터 (백엔드에서 계산)
+        metrics: [ // API: (커스텀 데이터) 의원의 분석 지표
+            { label: '본회의 출석률', value: 95, grade: 'S' },
+            { label: '법안 대표발의', value: 82, grade: 'A' },
+            { label: '국정감사 참여도', value: 70, grade: 'B' },
+            { label: '정책 제안 혁신성', value: 88, grade: 'A' }
+        ],
+        bills: [ // API: 대표발의의원정보, 공동발의의원정보, 표결정보를 조합하여 백엔드에서 생성
+            { id: '12345', name: '미래산업 육성 특별법', statusClass: 'pass', statusText: '가결', roleClass: '', roleText: '대표발의' },
+            { id: '12346', name: '소상공인 지원에 관한 법률 개정안', statusClass: 'pass', statusText: '가결', roleClass: 'agree', roleText: '찬성' },
+            { id: '12347', name: '국가재정법 일부개정법률안', statusClass: 'reject', statusText: '부결', roleClass: 'disagree', roleText: '반대' },
+            { id: '12348', name: '공공기관 채용 비리 방지법', statusClass: 'pending', statusText: '심사 중', roleClass: 'abstain', roleText: '기권' }
+        ],
+        analysisData: { // JS 레이더 차트에 전달될 데이터
+            labels: ['출석률', '대표발의', '공동발의', '위원회활동', '표결참여', '정책일치'],
+            values: [95, 82, 70, 88, 75, 80]
+        }
+    };
+%>
+
 <div class="politician-detail-container">
     <aside class="profile-sidebar">
-        <%# API: 국회의원정보 (MON_CODE로 조회) - 의원 사진, 이름, 정당, 선거구, 재선 정보 %>
-        <img src="<%= politician.photo || 'https://via.placeholder.com/120' %>" alt="<%= politician.name %> 의원 사진" class="profile-photo-small">
+        <%# API: 국회의원정보 (MON_CODE로 조회) %>
+        <img src="<%= politician.photo_url %>" alt="<%= politician.name %> 의원 사진" class="profile-photo-small">
         <h1 class="profile-name"><%= politician.name %></h1>
         <p class="profile-party"><%= politician.party %></p>
         <div class="profile-meta">
             <span class="meta-item"><strong>선거구:</strong> <%= politician.constituency %></span>
-            <span class="meta-item"><strong>재선:</strong> <span class="card-reele reele--<%= politician.reele === 2 ? 'second' : (politician.reele === 3 ? 'third' : 'first') %>"><%= politician.reele %>선</span></span>
+            <span class="meta-item"><strong>재선:</strong> <span class="card-reele reele--<%= politician.reele_count === 2 ? 'second' : (politician.reele_count === 3 ? 'third' : 'first') %>"><%= politician.reele_count %>선</span></span>
         </div>
-        <%# 추가 정보: 상임위원회, 경력 등은 politician 객체에 추가 가능 %>
+        <%# 추가 정보: 상임위원회, 경력 등은 politician 객체에 추가하고 표시 %>
+        <%# 예: <span class="meta-item"><strong>상임위:</strong> <%= politician.committee %></span> %>
     </aside>
 
     <section class="detail-main">
         <div class="overall-dashboard">
             <%# API: (커스텀 데이터) - 데이터 종합 등급, 시민 종합 평점 (백엔드에서 계산하여 전달) %>
-            <div class="dashboard-box data-grade"><span class="grade-value"><%= politician.dataGrade %></span><span class="grade-label">데이터 종합 등급</span></div>
-            <div class="dashboard-box citizen-grade"><span class="grade-value"><%= politician.citizenRating %> <span class="star">★</span></span><span class="grade-label">시민 종합 평점</span></div>
+            <div class="dashboard-box data-grade"><span class="grade-value"><%= politician.data_grade %></span><span class="grade-label">데이터 종합 등급</span></div>
+            <div class="dashboard-box citizen-grade"><span class="grade-value"><%= politician.citizen_rating %> <span class="star">★</span></span><span class="grade-label">시민 종합 평점</span></div>
         </div>
 
         <div class="data-analysis">
             <h2>데이터 기반 상세 분석</h2>
             <div class="analysis-container">
-                <%# API: (커스텀 데이터) - 의원의 다양한 지표 (예: 출석률, 법안발의, 표결일치도 등) %>
-                <%# 레이더 차트는 JS에서 `politician.analysisData` 등을 받아 동적으로 그림 %>
-                <div class="radar-chart-container"><canvas id="politicianRadarChart" data-analysis='<%= JSON.stringify(politician.analysisData) %>'></canvas></div>
+                <%# API: (커스텀 데이터) - 의원의 다양한 지표 %>
+                <%# 레이더 차트는 JS에서 `politician.analysisData`를 받아 동적으로 그림 %>
+                <div class="radar-chart-container" data-analysis='<%= JSON.stringify(politician.analysisData) %>'><canvas id="politicianRadarChart"></canvas></div>
                 <div class="metric-list">
-                    <%# politician.metrics 배열 등을 순회하여 표시 %>
+                    <%# politician.metrics 배열을 순회하여 표시 %>
                     <% if (politician.metrics && politician.metrics.length > 0) { %>
                         <% politician.metrics.forEach(metric => { %>
                             <div class="metric-item">
@@ -47,7 +77,7 @@
         <div class="related-bills">
             <h2>관련 법안</h2>
             <div class="bill-list-simple">
-                <%# API: 대표발의의원정보, 공동발의의원정보, 표결정보 (MON_CODE로 조회) %>
+                <%# API: 대표발의의원정보, 공동발의의원정보, 표결정보 (MON_CODE로 조회)를 조합한 백엔드 데이터 %>
                 <%# 백엔드에서 politician.bills 배열 (각 법안 객체 포함)을 전달받아 렌더링 %>
                 <% if (politician.bills && politician.bills.length > 0) { %>
                     <% politician.bills.forEach(bill => { %>
