@@ -6,7 +6,7 @@ import setupRoutes from './routes/Index.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
 import session from 'express-session'; // 세션 라이브러리
-import { visitorCounter } from './utils/visitorCounter.js'; // 방문자 카운터
+// import { visitorCounter } from './utils/visitorCounter.js'; // 방문자 카운터
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -30,7 +30,7 @@ app.use(session({
 }));
 
 // 방문자 카운터 미들웨어 적용
-app.use(visitorCounter());
+// app.use(visitorCounter());
 
 /* db.query 래핑: SQL + 결과 건수 자동 로깅 */
 const originalQuery = db.query.bind(db);

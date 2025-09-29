@@ -1,5 +1,5 @@
 /* 정치인 상세정보 */
-select p.politician_id
+SELECT p.politician_id
      , p.party_id
      , p.party_name
      , p.name
@@ -10,5 +10,5 @@ select p.politician_id
      , p.reele_gbn_nm
      , p.mem_title
      , p.mona_cd 
-  from politicians p
- where p.mona_cd = ?
+  FROM politicians p
+ WHERE p.mona_cd = ?
