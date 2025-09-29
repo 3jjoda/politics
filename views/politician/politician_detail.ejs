@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: politician.name || "정치인 상세", pageStyles: 'politician_detail', currentUrl: '/politician' }) %>
+<%- include('../partials/header', { pageTitle: 'test' || "정치인 상세", pageStyles: 'politician/politician_detail', currentUrl: '/politician' }) %>
 
 <%
     /*
@@ -52,7 +52,6 @@
 
 <div class="politician-detail-container">
     <aside class="profile-sidebar">
-        <% /* API: 국회의원정보 (MON_CODE로 조회) - 의원 사진, 이름, 정당, 선거구, 재선 정보 */ %>
         <img src="<%= politician.photo_url %>" alt="<%= politician.name %> 의원 사진" class="profile-photo-small">
         <h1 class="profile-name"><%= politician.name %></h1>
         <p class="profile-party"><%= politician.party %></p>
@@ -60,13 +59,10 @@
             <span class="meta-item"><strong>선거구:</strong> <%= politician.constituency %></span>
             <span class="meta-item"><strong>재선:</strong> <span class="card-reele reele--<%= politician.reele_count === 2 ? 'second' : (politician.reele_count === 3 ? 'third' : 'first') %>"><%= politician.reele_count %>선</span></span>
         </div>
-        <% /* 추가 정보: 상임위원회, 경력 등은 politician 객체에 추가하고 표시 */ %>
-        <% /* 예: <span class="meta-item"><strong>상임위:</strong> <%= politician.committee %></span> */ %>
     </aside>
 
     <section class="detail-main">
         <div class="overall-dashboard">
-            <% /* API: (커스텀 데이터) - 데이터 종합 등급, 시민 종합 평점 (백엔드에서 계산하여 전달) */ %>
             <div class="dashboard-box data-grade"><span class="grade-value"><%= politician.data_grade %></span><span class="grade-label">데이터 종합 등급</span></div>
             <div class="dashboard-box citizen-grade"><span class="grade-value"><%= politician.citizen_rating %> <span class="star">★</span></span><span class="grade-label">시민 종합 평점</span></div>
         </div>
@@ -74,8 +70,6 @@
         <div class="data-analysis">
             <h2>데이터 기반 상세 분석</h2>
             <div class="analysis-container">
-                <% /* API: (커스텀 데이터) - 의원의 다양한 지표 */ %>
-                <% /* 레이더 차트는 JS에서 `politician.analysisData`를 받아 동적으로 그림 */ %>
                 <div class="radar-chart-container" data-analysis='<%= JSON.stringify(politician.analysisData) %>'><canvas id="politicianRadarChart"></canvas></div>
                 <div class="metric-list">
                     <% /* politician.metrics 배열을 순회하여 표시 */ %>
@@ -97,8 +91,6 @@
         <div class="related-bills">
             <h2>관련 법안</h2>
             <div class="bill-list-simple">
-                <% /* API: 대표발의의원정보, 공동발의의원정보, 표결정보 (MON_CODE로 조회)를 조합한 백엔드 데이터 */ %>
-                <% /* 백엔드에서 politician.bills 배열 (각 법안 객체 포함)을 전달받아 렌더링 */ %>
                 <% if (politician.bills && politician.bills.length > 0) { %>
                     <% politician.bills.forEach(bill => { %>
                         <a href="/bill/<%= bill.id %>" class="bill-item-simple">
@@ -118,4 +110,4 @@
 
 <%- include('../partials/footer') %>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/scripts/politician_detail.js"></script>
+<script src="/scripts/poltician/politician_detail.js"></script>

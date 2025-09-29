@@ -43,7 +43,6 @@ export default (db) => {
 
         getDetailPage: (id, callback) => {
             politicianDao.getDetail(id, (err, results) => {
-                logger.info("test2");
                 // 1. DAO에서 에러가 발생했다면, 그대로 컨트롤러로 에러를 전달합니다.
                 if (err) {
                     return callback(err, null);
