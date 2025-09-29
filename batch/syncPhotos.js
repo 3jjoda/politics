@@ -47,7 +47,7 @@ async function fetchPoliticianPhoto(monaCd) {
  */
 async function updatePhotoInDB(connection, mona_cd, photo_url) {
     try {
-        const sql = `UPDATE POLITICIANS SET PHOTO_URL = ? WHERE MONA_CD = ?`;
+        const sql = `UPDATE politicians SET photo_url = ? WHERE mona_cd = ?`;
         const [result] = await connection.execute(sql, [photo_url, mona_cd]);
         return result.affectedRows > 0;
     } catch (error) {
@@ -106,4 +106,4 @@ async function runPhotoSync() {
     }
 }
 
-runPhotoSync();
+// runPhotoSync();

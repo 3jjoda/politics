@@ -46,7 +46,7 @@ async function upsertPoliticiansToDB(pool, politicians) {
     try {
         const start = Date.now();
         
-        const [parties] = await connection.execute('SELECT PARTY_ID, PARTY_NM FROM PARTIES');
+        const [parties] = await connection.execute('SELECT party_id, party_nm FROM parties');
         const partyMap = new Map(parties.map(p => [p.PARTY_NM, p.PARTY_ID]));
 
         const records = [];
@@ -59,7 +59,7 @@ async function upsertPoliticiansToDB(pool, politicians) {
             
             // [수정됨] API의 모든 컬럼을 순서에 맞게 배열에 추가
             records.push([
-                p.MONA_CD, p.HG_NM, p.HJ_NM, p.ENG_NM, p.BTH_GBN_NM, p.BTH_DATE,
+                p.MONA_CD, p.NAME, p.HJ_NM, p.ENG_NM, p.BTH_GBN_NM, p.BTH_DATE,
                 p.JOB_RES_NM, party_id, p.POLY_NM, p.ORIG_NM, p.ELECT_GBN_NM, p.CMITS,
                 p.REELE_GBN_NM, p.SEX_GBN_NM, p.TEL_NO, p.E_MAIL, p.HOMEPAGE,
                 p.STAFF, p.SECRETARY, p.SECRETARY2, p.MEM_TITLE, p.ASSEM_ADDR,
@@ -75,22 +75,22 @@ async function upsertPoliticiansToDB(pool, politicians) {
 
         // [수정됨] SQL 문에 모든 컬럼 추가 및 안정적인 Bulk Insert 방식으로 변경
         const sql = `
-            INSERT INTO POLITICIANS (
-                MONA_CD, NAME, HJ_NM, ENG_NM, BTH_GBN_NM, BIRTHDAY,
-                JOB_RES_NM, PARTY_ID, PARTY_NAME, ELECTORAL_DISTRICT, ELECT_GBN_NM, CMITS,
-                REELE_GBN_NM, SEX_GBN_NM, TEL_NO, E_MAIL, HOMEPAGE,
-                STAFF, SECRETARY, SECRETARY2, MEM_TITLE, ASSEM_ADDR, INS_DATETIME
+            INSERT INTO politicians (
+                mona_cd, name, hj_nm, eng_nm, bth_gbn_nm, birthday,
+                job_res_nm, party_id, party_name, electoral_district, elect_gbn_nm, cmits,
+                reele_gbn_nm, sex_gbn_nm, tel_no, e_mail, homepage,
+                staff, secretary, secretary2, mem_title, assem_addr, ins_datetime
             )
             VALUES ?
             ON DUPLICATE KEY UPDATE
-                NAME = VALUES(NAME), HJ_NM = VALUES(HJ_NM), ENG_NM = VALUES(ENG_NM), 
-                BTH_GBN_NM = VALUES(BTH_GBN_NM), BIRTHDAY = VALUES(BIRTHDAY), JOB_RES_NM = VALUES(JOB_RES_NM), 
-                PARTY_ID = VALUES(PARTY_ID), PARTY_NAME = VALUES(POLY_NM), ELECTORAL_DISTRICT = VALUES(ELECTORAL_DISTRICT), 
-                ELECT_GBN_NM = VALUES(ELECT_GBN_NM), CMITS = VALUES(CMITS), REELE_GBN_NM = VALUES(REELE_GBN_NM), 
-                SEX_GBN_NM = VALUES(SEX_GBN_NM), TEL_NO = VALUES(TEL_NO), E_MAIL = VALUES(E_MAIL), 
-                HOMEPAGE = VALUES(HOMEPAGE), STAFF = VALUES(STAFF), SECRETARY = VALUES(SECRETARY), 
-                SECRETARY2 = VALUES(SECRETARY2), MEM_TITLE = VALUES(MEM_TITLE), ASSEM_ADDR = VALUES(ASSEM_ADDR), 
-                UPD_DATETIME = NOW()
+                name = VALUES(name), hj_nm = VALUES(hj_nm), eng_nm = VALUES(eng_nm), 
+                bth_gbn_nm = VALUES(bth_gbn_nm), birthday = VALUES(birthday), job_res_nm = VALUES(job_res_nm), 
+                party_id = VALUES(party_id), party_name = VALUES(poly_nm), electoral_district = VALUES(electoral_district), 
+                elect_gbn_nm = VALUES(elect_gbn_nm), cmits = VALUES(cmits), reele_gbn_nm = VALUES(reele_gbn_nm), 
+                sex_gbn_nm = VALUES(sex_gbn_nm), tel_no = VALUES(tel_no), e_mail = VALUES(e_mail), 
+                homepage = VALUES(homepage), staff = VALUES(staff), secretary = VALUES(secretary), 
+                secretary2 = VALUES(secretary2), mem_title = VALUES(mem_title), assem_addr = VALUES(assem_addr), 
+                upd_datetime = NOW()
         `;
         
         const [result] = await connection.query(sql, [records]);
@@ -125,4 +125,4 @@ cron.schedule('0 4 * * *', () => { runSync(); }, { scheduled: true, timezone: "A
 logger.info('국회의원 데이터 동기화 배치가 설정되었습니다. (매일 새벽 4시 실행)');
 
 // 즉시 실행하려면 아래 코드의 주석을 해제하세요.
-runSync();
+// runSync();
