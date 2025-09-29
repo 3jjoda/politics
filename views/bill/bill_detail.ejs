@@ -1,8 +1,41 @@
 <%- include('../partials/header', { pageTitle: bill.name || "법안 상세", pageStyles: 'bill_detail', currentUrl: '/bills' }) %>
 
 <%
-    // 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bill` 객체)
-    // 실제 API 연동 시 이 객체에 API 응답 데이터를 매핑합니다.
+    /*
+     * 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bill` 객체)
+     * 실제 API 연동 시 백엔드에서 이 객체에 API 응답 데이터를 매핑하여 EJS에 전달합니다.
+     * 예시:
+     * router.get('/bill/:bill_id', async (req, res) => {
+     * const billId = req.params.bill_id;
+     * const billData = await fetchBillDetails(billId); // 의안정보 API
+     * const proposers = await fetchBillProposers(billId); // 공동발의의원정보 API
+     * const votes = await fetchBillVotes(billId); // 표결정보 API
+     *
+     * const bill = {
+     * id: billData.BILL_ID,
+     * name: billData.BILL_NAME,
+     * statusClass: billData.PROC_RESULT_CD === '90100' ? 'pass' : (billData.PROC_RESULT_CD === '90200' ? 'reject' : 'pending'),
+     * statusText: billData.PROC_RESULT_TEXT,
+     * proposerMonCode: billData.PROPOSER_MON_CODE,
+     * proposerName: billData.PROPOSER,
+     * proposeDate: billData.PROPOSE_DT,
+     * committeeName: billData.COMMITTEE_NAME,
+     * summary: billData.BILL_SUMMARY,
+     * originalLink: billData.DETAIL_URL,
+     * voteCounts: { // 백엔드에서 표결정보 집계
+     * agree: votes.filter(v => v.VOTE_RESULT_CD === '1').length,
+     * disagree: votes.filter(v => v.VOTE_RESULT_CD === '2').length,
+     * abstain: votes.filter(v => v.VOTE_RESULT_CD === '3').length
+     * },
+     * voters: { // 백엔드에서 표결정보와 의원정보 조합
+     * agree: votes.filter(v => v.VOTE_RESULT_CD === '1').map(v => ({ monCode: v.MON_CODE, name: v.MON_NAME, party: v.POLY_NAME })),
+     * disagree: votes.filter(v => v.VOTE_RESULT_CD === '2').map(v => ({ monCode: v.MON_CODE, name: v.MON_NAME, party: v.POLY_NAME })),
+     * abstain: votes.filter(v => v.VOTE_RESULT_CD === '3').map(v => ({ monCode: v.MON_CODE, name: v.MON_NAME, party: v.POLY_NAME }))
+     * }
+     * };
+     * res.render('bill_detail', { bill });
+     * });
+     */
     const bill = {
         id: '12345',
         name: '미래산업 육성 특별법',
@@ -23,11 +56,11 @@
             agree: [
                 { monCode: '9770330', name: '강민국', party: '국민의힘' },
                 { monCode: '9770123', name: '김민석', party: '더불어민주당' },
-                { monCode: '9770001', name: '박영선', party: '무소속' }
+                { monCode: '9770001', name: '박영선', party: '무소속' } // 더미 데이터
             ],
             disagree: [
                 { monCode: '9770456', name: '이준석', party: '개혁신당' },
-                { monCode: '9770002', name: '홍길동', party: '국민의힘' }
+                { monCode: '9770002', name: '홍길동', party: '국민의힘' } // 더미 데이터
             ],
             abstain: [
                 { monCode: '9770789', name: '조국', party: '조국혁신당' }
@@ -38,34 +71,34 @@
 
 <div class="page-container">
     <section class="bill-detail-header">
-        <%# API: 의안정보 (BILL_ID로 조회) - 처리 결과, 법안명 %>
+        <% /* API: 의안정보 (BILL_ID로 조회) - 처리 결과, 법안명 */ %>
         <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span>
         <h1 class="bill-title"><%= bill.name %></h1>
         <div class="bill-meta">
-            <span><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %></a></span> <%# API: PROPOSER_MON_CODE로 링크, PROPOSER 이름 표시 %>
-            <span><strong>발의일:</strong> <%= bill.proposeDate %></span> <%# API: PROPOSE_DT %>
-            <span><strong>소관위:</strong> <%= bill.committeeName %></span> <%# API: COMMITTEE_NAME %>
+            <span><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %></a></span> <% /* API: PROPOSER_MON_CODE로 링크, PROPOSER 이름 표시 */ %>
+            <span><strong>발의일:</strong> <%= bill.proposeDate %></span> <% /* API: PROPOSE_DT */ %>
+            <span><strong>소관위:</strong> <%= bill.committeeName %></span> <% /* API: COMMITTEE_NAME */ %>
         </div>
     </section>
 
     <section class="bill-summary">
         <h2>제안 이유 및 주요 내용</h2>
-        <%# API: 의안정보 - BILL_SUMMARY (요약 정보) %>
+        <% /* API: 의안정보 - BILL_SUMMARY (요약 정보) */ %>
         <p><%= bill.summary %></p>
-        <a href="<%= bill.originalLink %>" target="_blank" class="external-link">국회 원문 보기 <i class="fas fa-external-link-alt"></i></a> <%# API: DETAIL_URL %>
+        <a href="<%= bill.originalLink %>" target="_blank" class="external-link">국회 원문 보기 <i class="fas fa-external-link-alt"></i></a> <% /* API: DETAIL_URL */ %>
     </section>
 
     <section class="vote-results">
         <h2>본회의 표결 결과</h2>
         <div class="vote-dashboard">
-            <%# API: 표결정보 (BILL_ID로 조회)를 집계하여 백엔드에서 계산한 총 인원 %>
+            <% /* API: 표결정보 (BILL_ID로 조회)를 집계하여 백엔드에서 계산한 총 인원 */ %>
             <div class="vote-box agree"><strong>찬성</strong><span><%= bill.voteCounts.agree %></span></div>
             <div class="vote-box disagree"><strong>반대</strong><span><%= bill.voteCounts.disagree %></span></div>
             <div class="vote-box abstain"><strong>기권</strong><span><%= bill.voteCounts.abstain %></span></div>
         </div>
 
         <div class="vote-lists">
-            <%# API: 표결정보 및 국회의원정보를 조합하여 백엔드에서 생성한 의원 목록 %>
+            <% /* API: 표결정보 및 국회의원정보를 조합하여 백엔드에서 생성한 의원 목록 */ %>
             <div class="vote-list-container">
                 <h3>찬성 의원 (<span id="agree-count"><%= bill.voteCounts.agree %></span>명)</h3>
                 <ul class="voter-list">

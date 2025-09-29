@@ -1,9 +1,31 @@
 <%- include('../partials/header', { pageTitle: '의안 정보', pageStyles: 'bill_list', currentUrl: '/bills' }) %>
 
 <%
-    // 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bills` 배열과 `filterOptions`, `query` 객체)
-    // 실제 API 연동 시 이 객체에 API 응답 데이터를 매핑합니다.
-    const bills = [ // API: 의안정보를 통해 가져올 법안 목록
+    /*
+     * 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bills` 배열과 `filterOptions`, `query` 객체)
+     * 실제 API 연동 시 백엔드에서 이 객체에 API 응답 데이터를 매핑하여 EJS에 전달합니다.
+     * 예시:
+     * router.get('/bills', async (req, res) => {
+     * const { search, status, committee } = req.query;
+     * const billsApiData = await fetchBillsList(search, status, committee); // API 호출 함수
+     * const bills = billsApiData.map(item => ({
+     * id: item.BILL_ID,
+     * name: item.BILL_NAME,
+     * statusClass: item.PROC_RESULT_CD === '90100' ? 'pass' : (item.PROC_RESULT_CD === '90200' ? 'reject' : 'pending'),
+     * statusText: item.PROC_RESULT_TEXT,
+     * proposerMonCode: item.PROPOSER_MON_CODE,
+     * proposerName: item.PROPOSER,
+     * committeeName: item.COMMITTEE_NAME,
+     * processDate: item.PROC_DT || item.PROPOSE_DT
+     * }));
+     * const filterOptions = {
+     * statuses: await fetchBillStatuses(), // API에서 가져올 처리 결과 목록
+     * committees: await fetchCommittees() // API에서 가져올 위원회 목록
+     * };
+     * res.render('bill_list', { bills, filterOptions, query: req.query });
+     * });
+     */
+    const bills = [
         { id: '12345', name: '미래산업 육성 특별법', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '정무위원회', processDate: '2025-09-18' },
         { id: '12346', name: '소상공인 지원에 관한 법률 개정안', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770123', proposerName: '김민석', committeeName: '산업통상자원중소벤처기업위원회', processDate: '2025-08-01' },
         { id: '12347', name: '국가재정법 일부개정법률안', statusClass: 'reject', statusText: '부결', proposerMonCode: '9770456', proposerName: '이준석', committeeName: '기획재정위원회', processDate: '2025-07-20' },
@@ -11,7 +33,7 @@
         { id: '12349', name: '탄소중립 산업 육성 특별조치법', statusClass: 'pending', statusText: '심사 중', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '환경노동위원회', processDate: '2025-05-10' }
     ];
 
-    const filterOptions = { // API: 의안정보의 처리결과코드, 위원회명 등을 기반으로 동적 생성
+    const filterOptions = {
         statuses: [
             { value: 'pass', text: '가결' },
             { value: 'reject', text: '부결' },
@@ -26,10 +48,10 @@
         ]
     };
 
-    const query = { // 현재 URL의 쿼리 파라미터 (검색어, 필터 값 등)
-        search: '', // 예: request.query.search
-        status: '', // 예: request.query.status
-        committee: '' // 예: request.query.committee
+    const query = {
+        search: '', // 실제 request.query.search 값
+        status: '', // 실제 request.query.status 값
+        committee: '' // 실제 request.query.committee 값
     };
 %>
 
@@ -42,14 +64,14 @@
     <section class="controls">
         <div class="search-container">
             <i class="fas fa-search"></i>
-            <%# API: 의안정보 - 검색 파라미터 (BILL_NAME, PROPOSER 등) %>
+            <% /* API: 의안정보 - 검색 파라미터 (BILL_NAME, PROPOSER 등) */ %>
             <input type="text" id="bill-search" placeholder="법안명, 의원 이름으로 검색..." value="<%= query.search %>">
         </div>
         <div class="filter-group">
-            <%# API: 의안정보 - 필터 파라미터 (PROC_RESULT_CD, COMMITTEE_NAME 등) %>
+            <% /* API: 의안정보 - 필터 파라미터 (PROC_RESULT_CD, COMMITTEE_NAME 등) */ %>
             <select id="status-filter" class="filter-select">
                 <option value="">전체 상태</option>
-                <%# filterOptions.statuses는 백엔드에서 API 데이터를 파싱하여 생성 %>
+                <% /* filterOptions.statuses는 백엔드에서 API 데이터를 파싱하여 생성 */ %>
                 <% if (filterOptions.statuses && filterOptions.statuses.length > 0) { %>
                     <% filterOptions.statuses.forEach(status => { %>
                         <option value="<%= status.value %>" <%= query.status === status.value ? 'selected' : '' %>>
@@ -60,7 +82,7 @@
             </select>
             <select id="committee-filter" class="filter-select">
                 <option value="">전체 위원회</option>
-                <%# filterOptions.committees는 백엔드에서 API 데이터를 파싱하여 생성 %>
+                <% /* filterOptions.committees는 백엔드에서 API 데이터를 파싱하여 생성 */ %>
                 <% if (filterOptions.committees && filterOptions.committees.length > 0) { %>
                     <% filterOptions.committees.forEach(committee => { %>
                         <option value="<%= committee.value %>" <%= query.committee === committee.value ? 'selected' : '' %>>
@@ -69,27 +91,27 @@
                     <% }); %>
                 <% } %>
             </select>
-            <%# 정렬 버튼 추가 가능 (예: 최신순, 가결일자순, 공동발의자 수순) %>
+            <% /* 정렬 버튼 추가 가능 (예: 최신순, 가결일자순, 공동발의자 수순) */ %>
         </div>
     </section>
 
     <section class="bill-grid">
         <% if (bills && bills.length > 0) { %>
-            <%# API: 의안정보 - 법안 목록 (필터/검색 결과에 따라) %>
-            <%# bills 배열을 순회하여 각 <article> 태그 동적 생성 %>
+            <% /* API: 의안정보 - 법안 목록 (필터/검색 결과에 따라) */ %>
+            <% /* bills 배열을 순회하여 각 <article> 태그 동적 생성 */ %>
             <% bills.forEach(bill => { %>
                 <article class="bill-card">
-                    <a href="/bill/<%= bill.id %>"> <%# href는 실제 BILL_ID를 포함해야 함 %>
+                    <a href="/bill/<%= bill.id %>"> <% /* href는 실제 BILL_ID를 포함해야 함 */ %>
                         <div class="card-header">
-                            <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span> <%# API: PROC_RESULT_CD %>
+                            <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span> <% /* API: PROC_RESULT_CD */ %>
                         </div>
                         <div class="card-body">
-                            <h3 class="bill-title"><%= bill.name %></h3> <%# API: BILL_NAME %>
-                            <p class="proposer"><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %> 의원</a></p> <%# API: PROPOSER_MON_CODE, PROPOSER %>
-                            <p class="committee"><strong>소관위:</strong> <%= bill.committeeName %></p> <%# API: COMMITTEE_NAME %>
+                            <h3 class="bill-title"><%= bill.name %></h3> <% /* API: BILL_NAME */ %>
+                            <p class="proposer"><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %> 의원</a></p> <% /* API: PROPOSER_MON_CODE, PROPOSER */ %>
+                            <p class="committee"><strong>소관위:</strong> <%= bill.committeeName %></p> <% /* API: COMMITTEE_NAME */ %>
                         </div>
                         <div class="card-footer">
-                            <span class="date"><%= bill.processDate %> 처리</span> <%# API: PROC_DT (처리일자) 또는 PROPOSE_DT (발의일자) %>
+                            <span class="date"><%= bill.processDate %> 처리</span> <% /* API: PROC_DT (처리일자) 또는 PROPOSE_DT (발의일자) */ %>
                         </div>
                     </a>
                 </article>
@@ -99,9 +121,9 @@
         <% } %>
     </section>
     
-    <%# 페이지네이션 또는 무한 스크롤 구현 위치 (API 결과에 따라) %>
-    <%# 예시: <div class="pagination"><a href="#">이전</a><span>1 / 10</span><a href="#">다음</a></div> %>
+    <% /* 페이지네이션 또는 무한 스크롤 구현 위치 (API 결과에 따라) */ %>
+    <% /* 예시: <div class="pagination"><a href="#">이전</a><span>1 / 10</span><a href="#">다음</a></div> */ %>
 </div>
 
 <%- include('../partials/footer') %>
-<script src="/scripts/bill/bill.js"></script>
+<script src="/scripts/bill_list.js"></script>
