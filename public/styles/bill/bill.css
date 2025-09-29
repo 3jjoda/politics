@@ -1,0 +1,216 @@
+/* bill_list.css */
+
+.page-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.page-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.page-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.page-header p {
+    font-size: 18px;
+    color: var(--light-text-color);
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap; /* 모바일 대응 */
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.search-container {
+    flex: 2 1 300px; /* 검색창이 넓게 차지 */
+    position: relative;
+}
+
+.search-container input {
+    width: 100%;
+    padding: 12px 15px 12px 45px; /* 아이콘 공간 확보 */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-container input:focus {
+    border-color: var(--primary-color);
+}
+
+.search-container .fas {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--light-text-color);
+}
+
+.filter-group {
+    flex: 1 1 200px; /* 필터는 검색창보다 좁게 */
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end; /* 필터들이 오른쪽으로 정렬 */
+}
+
+.filter-select {
+    padding: 10px 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    background-color: var(--card-bg-color);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.filter-select:hover, .filter-select:focus {
+    border-color: var(--primary-color);
+}
+
+/* 법안 그리드 */
+.bill-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* 최소 300px, 반응형 */
+    gap: 25px;
+}
+
+.bill-card {
+    background-color: var(--card-bg-color);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.bill-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.bill-card a {
+    display: block;
+    padding: 20px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.bill-card .card-header {
+    margin-bottom: 15px;
+}
+
+.bill-card .bill-status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    background-color: #6c757d; /* 기본 회색 */
+}
+
+.bill-status.status-pass { background-color: #28a745; }
+.bill-status.status-reject { background-color: #dc3545; }
+.bill-status.status-pending { background-color: #ffc107; }
+
+.bill-card .card-body {
+    margin-bottom: 15px;
+}
+
+.bill-card .bill-title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-color);
+    margin-bottom: 10px;
+    display: -webkit-box; /* 텍스트 2줄 제한 */
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.bill-card .proposer, .bill-card .committee {
+    font-size: 15px;
+    color: var(--light-text-color);
+    margin-bottom: 5px;
+}
+
+.bill-card .proposer a {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.bill-card .card-footer {
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+.bill-card .date {
+    font-size: 14px;
+    color: var(--light-text-color);
+}
+
+.no-results-message, .loading-message {
+    grid-column: 1 / -1; /* 그리드 전체 폭 차지 */
+    text-align: center;
+    padding: 50px 0;
+    font-size: 18px;
+    color: var(--light-text-color);
+}
+
+
+/* 반응형 (모바일) */
+@media (max-width: 768px) {
+    .page-container {
+        margin: 20px auto;
+    }
+
+    .page-header {
+        margin-bottom: 30px;
+    }
+
+    .page-header h1 {
+        font-size: 28px;
+    }
+    .page-header p {
+        font-size: 16px;
+    }
+
+    .controls {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .filter-group {
+        flex-direction: column;
+        align-items: stretch; /* 세로로 늘림 */
+    }
+
+    .filter-select {
+        width: 100%;
+    }
+
+    .bill-grid {
+        grid-template-columns: 1fr; /* 모바일에서는 한 줄에 하나 */
+    }
+
+    .bill-card a {
+        padding: 15px;
+    }
+
+    .bill-card .bill-title {
+        font-size: 18px;
+    }
+}

@@ -1,123 +1,71 @@
-<%- include('../partials/header', { pageTitle: pageTitle, pageStyles: pageStyles, currentUrl: currentUrl }) %>
+<%- include('../partials/header', { pageTitle: politician.name || "정치인 상세", pageStyles: 'politician_detail', currentUrl: '/politician' }) %>
 
+<%# politician 객체는 백엔드에서 API를 통해 가져온 데이터 (예: { name: '강민국', party: '국민의힘', constituency: '경남 진주시을', reele: 2, photo: '...', bills: [...] }) %>
 <div class="politician-detail-container">
     <aside class="profile-sidebar">
-        <img src="<%= politician.PHOTO_URL %>" class="profile-photo-small">
-        <h1 class="profile-name"><%= politician.NAME %></h1>
-        <p class="profile-party"><%= politician.PARTY_NAME %></p>
+        <%# API: 국회의원정보 (MON_CODE로 조회) - 의원 사진, 이름, 정당, 선거구, 재선 정보 %>
+        <img src="<%= politician.photo || 'https://via.placeholder.com/120' %>" alt="<%= politician.name %> 의원 사진" class="profile-photo-small">
+        <h1 class="profile-name"><%= politician.name %></h1>
+        <p class="profile-party"><%= politician.party %></p>
         <div class="profile-meta">
-            <span class="meta-item"><%= politician.ELECTORAL_DISTRICT %></span>
-            <span class="meta-item"><span class="card-reele reele--second"><%= politician.REELE_GBN_NM %></span></span>
+            <span class="meta-item"><strong>선거구:</strong> <%= politician.constituency %></span>
+            <span class="meta-item"><strong>재선:</strong> <span class="card-reele reele--<%= politician.reele === 2 ? 'second' : (politician.reele === 3 ? 'third' : 'first') %>"><%= politician.reele %>선</span></span>
         </div>
-        <div class="contact-info">
-            <h3>연락처 정보</h3>
-            <p><i class="fas fa-phone"></i> 02-784-5700</p>
-            <p><i class="fas fa-envelope"></i> kmg@assembly.go.kr</p>
-            <p><i class="fas fa-home"></i> <a href="#" target="_blank" rel="noopener noreferrer">홈페이지</a></p>
-            <p><i class="fas fa-building"></i> 의원회관 817호</p>
-        </div>
+        <%# 추가 정보: 상임위원회, 경력 등은 politician 객체에 추가 가능 %>
     </aside>
 
     <section class="detail-main">
         <div class="overall-dashboard">
-            <div class="dashboard-box data-grade">
-                <span class="grade-value">A-</span>
-                <span class="grade-label">데이터 종합 등급</span>
-            </div>
-            <div class="dashboard-box citizen-grade">
-                <span class="grade-value">4.2 <span class="star">★</span></span>
-                <span class="grade-label">시민 종합 평점</span>
-            </div>
+            <%# API: (커스텀 데이터) - 데이터 종합 등급, 시민 종합 평점 (백엔드에서 계산하여 전달) %>
+            <div class="dashboard-box data-grade"><span class="grade-value"><%= politician.dataGrade %></span><span class="grade-label">데이터 종합 등급</span></div>
+            <div class="dashboard-box citizen-grade"><span class="grade-value"><%= politician.citizenRating %> <span class="star">★</span></span><span class="grade-label">시민 종합 평점</span></div>
         </div>
 
         <div class="data-analysis">
             <h2>데이터 기반 상세 분석</h2>
             <div class="analysis-container">
-                <div class="radar-chart-container">
-                    <canvas id="politicianRadarChart"></canvas>
-                </div>
+                <%# API: (커스텀 데이터) - 의원의 다양한 지표 (예: 출석률, 법안발의, 표결일치도 등) %>
+                <%# 레이더 차트는 JS에서 `politician.analysisData` 등을 받아 동적으로 그림 %>
+                <div class="radar-chart-container"><canvas id="politicianRadarChart" data-analysis='<%= JSON.stringify(politician.analysisData) %>'></canvas></div>
                 <div class="metric-list">
-                    <div class="metric-item">
-                        <label>본회의 출석률</label>
-                        <div class="progress-bar"><div class="bar" style="width: 95%;"></div></div>
-                        <span>95% (S)</span>
-                    </div>
-                    <div class="metric-item">
-                        <label>법안 대표발의</label>
-                        <div class="progress-bar"><div class="bar" style="width: 82%;"></div></div>
-                        <span>82건 (A)</span>
-                    </div>
-                    <div class="metric-item">
-                        <label>법안 통과율</label>
-                        <div class="progress-bar"><div class="bar" style="width: 75%;"></div></div>
-                        <span>75% (B+)</span>
-                    </div>
-                     <div class="metric-item">
-                        <label>상임위 출석률</label>
-                        <div class="progress-bar"><div class="bar" style="width: 92%;"></div></div>
-                        <span>92% (A+)</span>
-                    </div>
+                    <%# politician.metrics 배열 등을 순회하여 표시 %>
+                    <% if (politician.metrics && politician.metrics.length > 0) { %>
+                        <% politician.metrics.forEach(metric => { %>
+                            <div class="metric-item">
+                                <label><%= metric.label %></label>
+                                <div class="progress-bar"><div class="bar" style="width: <%= metric.value %>%;"></div></div>
+                                <span><%= metric.value %>% (<%= metric.grade %>)</span>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <p>분석 데이터를 불러오는 중입니다...</p>
+                    <% } %>
                 </div>
             </div>
         </div>
 
-        <div class="citizen-evaluation">
-             <h2>시민 평가 및 참여</h2>
-             <div class="evaluation-box">
-                <h3>이 의원을 평가해주세요 (로그인 필요)</h3>
-                <div class="star-rating">
-                    <input type="radio" id="5-stars" name="rating" value="5" /><label for="5-stars" class="star">★</label>
-                    <input type="radio" id="4-stars" name="rating" value="4" /><label for="4-stars" class="star">★</label>
-                    <input type="radio" id="3-stars" name="rating" value="3" /><label for="3-stars" class="star">★</label>
-                    <input type="radio" id="2-stars" name="rating" value="2" /><label for="2-stars" class="star">★</label>
-                    <input type="radio" id="1-star" name="rating" value="1" /><label for="1-star" class="star">★</label>
-                </div>
-                <div class="comment-form">
-                    <textarea placeholder="평가에 대한 의견을 남겨주세요..."></textarea>
-                    <button>의견 등록</button>
-                </div>
-            </div>
-            <div class="comment-list">
-                <h4>최신 의견 (3)</h4>
-                <div class="comment-item">
-                    <p class="comment-body">이번 법안 발의 내용이 좋았습니다. 응원합니다.</p>
-                    <span class="comment-author">시민 a*** (★★★★★)</span>
-                </div>
-                 <div class="comment-item">
-                    <p class="comment-body">출석률은 좋지만, 지역구 현안에 더 신경써주세요.</p>
-                    <span class="comment-author">유권자 b*** (★★★☆☆)</span>
-                </div>
+        <div class="related-bills">
+            <h2>관련 법안</h2>
+            <div class="bill-list-simple">
+                <%# API: 대표발의의원정보, 공동발의의원정보, 표결정보 (MON_CODE로 조회) %>
+                <%# 백엔드에서 politician.bills 배열 (각 법안 객체 포함)을 전달받아 렌더링 %>
+                <% if (politician.bills && politician.bills.length > 0) { %>
+                    <% politician.bills.forEach(bill => { %>
+                        <a href="/bill/<%= bill.id %>" class="bill-item-simple">
+                            <span class="bill-title"><%= bill.name %></span>
+                            <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span>
+                            <span class="bill-role vote-<%= bill.roleClass %>"><%= bill.roleText %></span>
+                        </a>
+                    <% }); %>
+                <% } else { %>
+                    <p>등록된 관련 법안이 없습니다.</p>
+                <% } %>
             </div>
         </div>
         
-        <div class="toggle-details-wrapper">
-            <button id="toggle-details-btn">상세 프로필 펼쳐보기 ▼</button>
-        </div>
-        <div id="hidden-details" class="hidden-details">
-            <h2>상세 프로필</h2>
-            <dl class="detail-list">
-                <dt>인적사항</dt>
-                <dd>
-                    <strong>한자명:</strong> 姜民國 <br>
-                    <strong>영문명:</strong> KANG MINKUK <br>
-                    <strong>성별:</strong> 남성 <br>
-                    <strong>생년월일:</strong> 1971-03-03 (양력)
-                </dd>
-                <dt>약력</dt>
-                <dd style="white-space: pre-wrap;">제21대 국회의원 (경남 진주시을/국민의힘)
-국회 정무위원회 위원
-국민의힘 원내부대표</dd>
-                <dt>보좌진</dt>
-                <dd>
-                    <strong>보좌관:</strong> 김보좌, 이보좌 <br>
-                    <strong>선임비서관:</strong> 박비서, 최비서 <br>
-                    <strong>비서관:</strong> 정비서
-                </dd>
-            </dl>
-        </div>
     </section>
 </div>
 
 <%- include('../partials/footer') %>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/scripts/politician_detail.js"></script>
+<script src="/scripts/politician/politician_detail.js"></script>

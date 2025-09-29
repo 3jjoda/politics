@@ -1,0 +1,75 @@
+<%- include('../partials/header', { pageTitle: '의안 정보', pageStyles: 'bill_list', currentUrl: '/bills' }) %>
+
+<%# bills 배열과 filterOptions 객체는 백엔드에서 API를 통해 가져온 데이터 %>
+<div class="page-container">
+    <section class="page-header">
+        <h1>의안 정보</h1>
+        <p>대한민국 국회에 발의된 법안들을 검색하고 확인하세요.</p>
+    </section>
+
+    <section class="controls">
+        <div class="search-container">
+            <i class="fas fa-search"></i>
+            <%# API: 의안정보 - 검색 파라미터 (BILL_NAME, PROPOSER 등) %>
+            <input type="text" id="bill-search" placeholder="법안명, 의원 이름으로 검색..." value="<%= query.search || '' %>">
+        </div>
+        <div class="filter-group">
+            <%# API: 의안정보 - 필터 파라미터 (PROC_RESULT_CD, COMMITTEE_NAME 등) %>
+            <select id="status-filter" class="filter-select">
+                <option value="">전체 상태</option>
+                <%# filterOptions.statuses는 백엔드에서 제공하는 처리 결과 목록 (예: [{ value: 'pass', text: '가결' }, ...]) %>
+                <% if (filterOptions.statuses && filterOptions.statuses.length > 0) { %>
+                    <% filterOptions.statuses.forEach(status => { %>
+                        <option value="<%= status.value %>" <%= query.status === status.value ? 'selected' : '' %>>
+                            <%= status.text %>
+                        </option>
+                    <% }); %>
+                <% } %>
+            </select>
+            <select id="committee-filter" class="filter-select">
+                <option value="">전체 위원회</option>
+                <%# filterOptions.committees는 백엔드에서 제공하는 위원회 목록 %>
+                <% if (filterOptions.committees && filterOptions.committees.length > 0) { %>
+                    <% filterOptions.committees.forEach(committee => { %>
+                        <option value="<%= committee.value %>" <%= query.committee === committee.value ? 'selected' : '' %>>
+                            <%= committee.text %>
+                        </option>
+                    <% }); %>
+                <% } %>
+            </select>
+            <%# 정렬 버튼 추가 가능 (예: 최신순, 가결일자순, 공동발의자 수순) %>
+        </div>
+    </section>
+
+    <section class="bill-grid">
+        <% if (bills && bills.length > 0) { %>
+            <%# API: 의안정보 - 법안 목록 (필터/검색 결과에 따라) %>
+            <%# bills 배열을 순회하여 각 <article> 태그 동적 생성 %>
+            <% bills.forEach(bill => { %>
+                <article class="bill-card">
+                    <a href="/bill/<%= bill.id %>"> <%# href는 실제 BILL_ID를 포함해야 함 %>
+                        <div class="card-header">
+                            <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span> <%# API: PROC_RESULT_CD %>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="bill-title"><%= bill.name %></h3> <%# API: BILL_NAME %>
+                            <p class="proposer"><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %> 의원</a></p> <%# API: PROPOSER_MON_CODE, PROPOSER %>
+                            <p class="committee"><strong>소관위:</strong> <%= bill.committeeName %></p> <%# API: COMMITTEE_NAME %>
+                        </div>
+                        <div class="card-footer">
+                            <span class="date"><%= bill.processDate %> 처리</span> <%# API: PROC_DT (처리일자) 또는 PROPOSE_DT (발의일자) %>
+                        </div>
+                    </a>
+                </article>
+            <% }); %>
+        <% } else { %>
+            <p class="no-results-message">검색 결과가 없습니다.</p>
+        <% } %>
+    </section>
+    
+    <%# 페이지네이션 또는 무한 스크롤 구현 위치 (API 결과에 따라) %>
+    <%# 예시: <div class="pagination"><a href="#">이전</a><span>1 / 10</span><a href="#">다음</a></div> %>
+</div>
+
+<%- include('../partials/footer') %>
+<script src="/scripts/bill/bill_list.js"></script>

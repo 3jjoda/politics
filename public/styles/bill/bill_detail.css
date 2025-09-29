@@ -1,0 +1,243 @@
+/* bill_detail.css */
+
+.page-container {
+    max-width: 900px; /* 상세 페이지는 너비를 좀 더 줄여서 가독성 향상 */
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.bill-detail-header {
+    background-color: var(--card-bg-color);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+}
+
+.bill-detail-header .bill-status {
+    display: inline-block;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+    background-color: #6c757d; /* 기본 회색 */
+    margin-bottom: 15px;
+}
+
+.bill-detail-header .bill-status.status-pass { background-color: #28a745; }
+.bill-detail-header .bill-status.status-reject { background-color: #dc3545; }
+.bill-detail-header .bill-status.status-pending { background-color: #ffc107; }
+
+.bill-detail-header .bill-title {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: var(--text-color);
+    margin-bottom: 20px;
+}
+
+.bill-detail-header .bill-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px 30px; /* 상하 15px, 좌우 30px */
+    font-size: 15px;
+    color: var(--light-text-color);
+}
+
+.bill-detail-header .bill-meta strong {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.bill-detail-header .bill-meta a {
+    color: var(--primary-color);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.bill-detail-header .bill-meta a:hover {
+    color: #004494;
+}
+
+/* 법안 요약 섹션 */
+.bill-summary, .vote-results {
+    background-color: var(--card-bg-color);
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+}
+
+.bill-summary h2, .vote-results h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: var(--text-color);
+}
+
+.bill-summary p {
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text-color);
+    margin-bottom: 20px;
+}
+
+.bill-summary .external-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    transition: opacity 0.2s;
+}
+
+.bill-summary .external-link:hover {
+    opacity: 0.8;
+}
+
+/* 표결 결과 대시보드 */
+.vote-dashboard {
+    display: flex;
+    gap: 20px;
+    justify-content: space-around;
+    margin-bottom: 40px;
+}
+
+.vote-box {
+    flex: 1;
+    text-align: center;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.vote-box strong {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.vote-box span {
+    font-size: 32px;
+    font-weight: 700;
+    display: block;
+}
+
+.vote-box.agree {
+    background-color: #e6f6ed;
+    color: #28a745;
+    border: 1px solid #28a745;
+}
+
+.vote-box.disagree {
+    background-color: #fcebeb;
+    color: #dc3545;
+    border: 1px solid #dc3545;
+}
+
+.vote-box.abstain {
+    background-color: #fff9e6;
+    color: #ffc107;
+    border: 1px solid #ffc107;
+}
+
+/* 표결 의원 리스트 */
+.vote-lists {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* 반응형 그리드 */
+    gap: 30px;
+}
+
+.vote-list-container {
+    background-color: #f8f8f8;
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.vote-list-container h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+.voter-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 250px; /* 스크롤바 */
+    overflow-y: auto;
+}
+
+.voter-list li {
+    padding: 8px 0;
+    border-bottom: 1px dashed #eee;
+    font-size: 15px;
+}
+
+.voter-list li:last-child {
+    border-bottom: none;
+}
+
+.voter-list li a {
+    color: var(--text-color);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.voter-list li a:hover {
+    color: var(--primary-color);
+}
+
+/* 반응형 (모바일) */
+@media (max-width: 768px) {
+    .page-container {
+        margin: 20px auto;
+    }
+
+    .bill-detail-header {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .bill-detail-header .bill-title {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+
+    .bill-detail-header .bill-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .bill-summary, .vote-results {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .bill-summary h2, .vote-results h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+
+    .vote-dashboard {
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .vote-lists {
+        grid-template-columns: 1fr; /* 모바일에서 한 줄에 하나 */
+        gap: 20px;
+    }
+    
+    .voter-list {
+        max-height: 200px; /* 모바일에서 스크롤 높이 조정 */
+    }
+}
