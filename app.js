@@ -1,5 +1,5 @@
 import express from 'express';
-import mysql from 'mysql2';
+import mysql_promise from 'mysql2/promise'; // 🚨 Promise 기반 모듈 임포트
 import logger from './utils/logger.js';
 import dbConfig from './config/database.js';
 import setupRoutes from './routes/Index.js';
@@ -16,7 +16,7 @@ app.set('view engine', 'ejs');
 app.set('views', './views'); // ejs 파일들이 있는 디렉토리 지정
 
 /* 커넥션풀 생성 */
-const db = mysql.createPool(dbConfig);
+const db = mysql_promise.createPool(dbConfig);
 
 /* 미들웨어 설정 */
 app.use(express.json());
@@ -54,7 +54,7 @@ db.query = function (sql, values, callback) {
                             .join(' ');
 
     const tag = [requestTag, otherTags].filter(Boolean).join(' ');
-    const formattedSql = mysql.format(sql, values);
+    const formattedSql = mysql_promise.format(sql, values);
     logger.info(`Executing query: /* ${tag} */\n${formattedSql}`);
     const start = Date.now(); // 시작 시간 기록
 
@@ -105,22 +105,3 @@ const startServer = async () => {
 };
 
 startServer();
-
-
-// app.js (startServer 함수 내 catch 블록)
-
-// const startServer = async () => {
-//     try {
-//         // ... (기존 코드) ...
-//     } catch (error) {
-//         // 1. 에러 객체 전체를 직접 로거에 전달 (로거가 알아서 포매팅하도록)
-//         //    대부분의 로거 라이브러리(Winston, Pino 등)는 이렇게 하면 상세 스택을 출력
-//         logger.error('서버 초기화 중 오류 발생:', error);
-
-//         // 2. 또는, 에러 메시지와 스택을 수동으로 결합하여 전달
-//         // logger.error(`서버 초기화 중 오류 발생: ${error.message}\n${error.stack}`);
-
-//         // 3. 만약 로거가 여전히 상세 정보를 표시하지 않는다면, console.error를 사용
-//         // console.error('서버 초기화 중 오류 발생:', error);
-//     }
-// };

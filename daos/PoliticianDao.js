@@ -15,16 +15,19 @@ fs.readdirSync(queriesPath).forEach(file => {
 });
 
 export default (db) => {
+    // promise db로 생성됨
+    // const promiseDb = db;
+
     return {
         /* 정치인 조회 */
         getList: async () => {
-            const [rows] = await db.promise().query(queries.getList);
+            const [rows] = await db.query(queries.getList);
             return rows;
         },
 
         /* 정치인 상세 조회 */
         getDetail: async (id) => {
-            const [rows] = await db.promise.query(queries.getDetail, [id], callback);
+            const [rows] = await db.query(queries.getDetail, id);
             return rows;
         }
     };

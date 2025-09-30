@@ -18,19 +18,19 @@ export default (db) => {
     /**
      * 공통코드 조회
      */
-    dao.getList = async () => {
-        try {
-            // mysql2/promise 라이브러리의 query 함수는 Promise를 반환
-            // await를 사용해 DB 조회가 끝날 때까지 기다린다
-            const [rows] = await db.promise().query(queries.getList);
-
-            // 조회된 결과를 바로 반환
-            return rows;
-        } catch (error) {
-            // 에러 발생 시 그대로 상위(서비스) 계층으로 에러를 던진다
-            throw error;
+    return {
+        getList: async () => {
+            try {
+                // mysql2/promise 라이브러리의 query 함수는 Promise를 반환
+                // await를 사용해 DB 조회가 끝날 때까지 기다린다
+                const [rows] = await db.query(queries.getList);
+    
+                // 조회된 결과를 바로 반환
+                return rows;
+            } catch (error) {
+                // 에러 발생 시 그대로 상위(서비스) 계층으로 에러를 던진다
+                throw error;
+            }
         }
-    };
-
-    return dao;
+    }
 };
