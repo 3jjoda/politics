@@ -22,12 +22,12 @@ const db = mysql.createPool(dbConfig);
 app.use(express.json());
 app.use(express.static('public'));
 app.use(contextMiddleware); // 모든 요청에 대해 컨텍스트 연결
-app.use(session({
-    secret: 'a_very_secret_key_for_session', // 실제 프로젝트에서는 .env 파일로 관리하세요.
-    resave: false,
-    saveUninitialized: true,
-    cookie: { maxAge: 24 * 60 * 60 * 1000 } // 쿠키 유효기간: 1일 (하루 기준)
-}));
+// app.use(session({
+//     secret: 'a_very_secret_key_for_session', // 실제 프로젝트에서는 .env 파일로 관리하세요.
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: { maxAge: 24 * 60 * 60 * 1000 } // 쿠키 유효기간: 1일 (하루 기준)
+// }));
 
 // 방문자 카운터 미들웨어 적용
 // app.use(visitorCounter());
@@ -100,8 +100,27 @@ const startServer = async () => {
             logger.info(`웹 서버가 실행되었습니다: http://localhost:${port}`);
         });
     } catch (error) {
-        logger.error('서버 초기화 중 오류 발생:', { stack: error.stack });
+        logger.error(`서버 초기화 중 오류 발생: ${error.message}\n${error.stack}`);
     }
 };
 
 startServer();
+
+
+// app.js (startServer 함수 내 catch 블록)
+
+// const startServer = async () => {
+//     try {
+//         // ... (기존 코드) ...
+//     } catch (error) {
+//         // 1. 에러 객체 전체를 직접 로거에 전달 (로거가 알아서 포매팅하도록)
+//         //    대부분의 로거 라이브러리(Winston, Pino 등)는 이렇게 하면 상세 스택을 출력
+//         logger.error('서버 초기화 중 오류 발생:', error);
+
+//         // 2. 또는, 에러 메시지와 스택을 수동으로 결합하여 전달
+//         // logger.error(`서버 초기화 중 오류 발생: ${error.message}\n${error.stack}`);
+
+//         // 3. 만약 로거가 여전히 상세 정보를 표시하지 않는다면, console.error를 사용
+//         // console.error('서버 초기화 중 오류 발생:', error);
+//     }
+// };

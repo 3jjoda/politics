@@ -18,7 +18,7 @@ export default (db) => {
                 res.status(200).json(results);
             });
         } catch(error) {
-            logger.error('컨트롤러에서 예상치 못한 에러:', { stack: error.stack });
+            logger.error('컨트롤러에서 예상치 못한 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });
@@ -62,7 +62,7 @@ export default (db) => {
                 }
             });
         } catch (error) {
-            logger.error('컨트롤러에서 예상치 못한 에러:', { stack: error.stack });
+            logger.error('컨트롤러에서 예상치 못한 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });

@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * [신규] 카테고리(유형) 필터와 검색을 모두 적용하고 정렬을 실행하는 통합 함수
+     * 카테고리(유형) 필터와 검색을 모두 적용하고 정렬을 실행하는 통합 함수
      */
     function applyFiltersAndSort() {
         const searchTerm = searchInput.value.toLowerCase();
@@ -252,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * [수정됨] 페이지 로드 시 실행될 메인 비동기 함수 (레이스 컨디션 해결)
+     * 페이지 로드 시 실행될 메인 비동기 함수 (레이스 컨디션 해결)
      */
     async function initialize() {
         try {
@@ -263,12 +263,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (politicianTypes) {
                 renderTypeFilter(politicianTypes);
             }
-
-            // 전체 정치인 데이터를 한번만 불러옵니다.
-            const response = await fetch('/api/politician');
-            if (!response.ok) throw new Error(`데이터 로딩 실패`);
             
-            allPoliticians = (await response.json()).map(p => ({ ...p, age: calculateAge(p.birthday) }));
+            // 변수에 담아둔 페이지 데이터 가져와서 처리
+            allPoliticians = window.politicianData.map(p => ({ ...p, age: calculateAge(p.birthday) }));
             
             renderStatistics(allPoliticians);
             applyFiltersAndSort();

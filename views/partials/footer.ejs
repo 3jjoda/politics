@@ -24,7 +24,7 @@
             sessionStorage.setItem('initialData', JSON.stringify(serverData));
             console.log('최초 세션데이터 초기화');
         } else if (storedData) {
-            // 3-1. 저장된 문자열을 다시 객체로 변환합니다.
+            // 3-1. 저장된 문자열을 다시 객체로 변환
             const parsedData = JSON.parse(storedData);
             console.log('저장된 세션데이터 초기화');
         }

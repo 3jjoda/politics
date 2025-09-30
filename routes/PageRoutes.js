@@ -1,3 +1,5 @@
+// routes/PageRoutes.js
+
 import express from 'express';
 import InitController from '../controllers/InitController.js';
 import PoliticianController from '../controllers/PoliticianController.js';

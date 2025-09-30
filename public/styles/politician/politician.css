@@ -162,7 +162,7 @@ nav a.active { color: var(--primary-color); font-weight: 700; }
     background-color: white;
 }
 
-/* 이름 오버레이 스타일을 별도로 분리합니다. */
+/* 이름 오버레이 스타일을 별도로 분리 */
 .card-name-overlay {
     position: absolute;
     top: 15px;

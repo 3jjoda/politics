@@ -1,7 +1,12 @@
 <%# 1. 헤더 공통 영역을 불러옵니다. %>
 <%- include('../partials/header', { pageTitle: pageTitle, pageStyles: pageStyles, currentUrl: currentUrl }) %>
 
-<%# 2. 페이지 고유의 콘텐츠가 시작됩니다. %>
+<%# 2. 페이지에서 사용할 데이터 글로벌 변수로 셋팅 (서버에서 politician로 넘김) %>
+<script>
+    window.politicianData = <%- JSON.stringify(politician) %>;
+</script>
+
+<%# 3. 페이지 고유의 콘텐츠 %>
 <section class="controls">
     <div class="filter-container">
         <div class="custom-select-wrapper">
@@ -29,8 +34,8 @@
     <p class="loading-message">의원 목록을 불러오는 중입니다...</p>
 </section>
 
-<%# 3. 푸터 공통 영역을 불러옵니다. %>
+<%# 4. 푸터 공통 영역 %>
 <%- include('../partials/footer') %>
 
-<%# 4. 이 페이지에서만 사용하는 스크립트를 가장 마지막에 추가합니다. %>
+<%# 5. 이 페이지에서만 사용하는 스크립트를 가장 마지막에 추가 %>
 <script src="/scripts/politician/politician.js" type="module"></script>

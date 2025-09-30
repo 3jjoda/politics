@@ -1,4 +1,4 @@
-import BillDao from '../dao/BillDao.js';
+import BillDao from '../daos/BillDao.js';
 import logger from '../utils/logger.js';
 
 export default (db) => {
@@ -12,12 +12,12 @@ export default (db) => {
 
         getListPage: (callback) => {
             billDao.getList((err, results) => {
-                // 1. DAO에서 에러가 발생했다면, 그대로 컨트롤러로 에러를 전달합니다.
+                // 1. DAO에서 에러가 발생했다면, 그대로 컨트롤러로 에러를 전달
                 if (err) {
                     return callback(err, null);
                 }
 
-                // 3. 가공이 완료된 데이터를 최종적으로 컨트롤러의 콜백 함수에 전달합니다.
+                // 3. 가공이 완료된 데이터를 최종적으로 컨트롤러의 콜백 함수에 전달
                 callback(null, results);
             });
         },
@@ -29,12 +29,12 @@ export default (db) => {
 
         getDetailPage: (id, callback) => {
             billDao.getDetail(id, (err, results) => {
-                // 1. DAO에서 에러가 발생했다면, 그대로 컨트롤러로 에러를 전달합니다.
+                // 1. DAO에서 에러가 발생했다면, 그대로 컨트롤러로 에러를 전달
                 if (err) {
                     return callback(err, null);
                 }
 
-                // 3. 가공이 완료된 데이터를 최종적으로 컨트롤러의 콜백 함수에 전달합니다.
+                // 3. 가공이 완료된 데이터를 최종적으로 컨트롤러의 콜백 함수에 전달
                 callback(null, results);
             });
         },

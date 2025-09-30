@@ -1,4 +1,5 @@
-// routes/index.js (최종본)
+// routes/index.js
+
 import pageRoutes from './PageRoutes.js';
 import apiRoutes from './ApiRoutes.js';
 

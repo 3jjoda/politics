@@ -1,6 +1,6 @@
 # Node.js Web Service Template
 
-이 템플릿은 Node.js + Express + MySQL 기반의 웹서비스를 위한 기본 구조를 제공합니다.  
+이 템플릿은 Node.js + Express + MySQL 기반의 웹서비스를 위한 기본 구조를 제공  
 정적 페이지부터 API 서버, 관리자 기능까지 확장 가능한 구조로 설계되었습니다.
 
 ---

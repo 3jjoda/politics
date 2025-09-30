@@ -1,4 +1,5 @@
-// routes/apiRoutes.js (새 파일)
+// routes/ApiRoutes.js
+
 import express from 'express';
 import InitController from '../controllers/InitController.js';
 import PoliticianController from '../controllers/PoliticianController.js';

@@ -1,4 +1,4 @@
-import CodeDao from '../dao/CodeDao.js';
+import CodeDao from '../daos/CodeDao.js';
 
 export default (db) => {
     const codeDao = CodeDao(db);

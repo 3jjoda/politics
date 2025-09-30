@@ -6,7 +6,7 @@ import logger from '../utils/logger.js';
 
 // API 호출을 위한 기본 설정
 const API_KEY = process.env.OPEN_ASSEMBLY_API_KEY;
-// [중요] 본인의 Service ID로 교체해야 합니다.
+// [중요] 본인의 Service ID로 교체해야 
 const YOUR_SERVICE_ID = 'nwvrqwxyaytdsfvhu'; // 예시 ID입니다.
 const API_URL = `https://open.assembly.go.kr/portal/openapi/${YOUR_SERVICE_ID}`;
 
@@ -18,7 +18,7 @@ async function fetchPoliticiansFromAPI() {
         const response = await axios.get(API_URL, {
             params: {
                 KEY: API_KEY,
-                // [수정됨] 이전에 성공했던 파라미터(소문자 type)로 수정
+                // 이전에 성공했던 파라미터(소문자 type)로 수정
                 type: 'json',
                 pIndex: 1,
                 pSize: 500
@@ -57,7 +57,7 @@ async function upsertPoliticiansToDB(pool, politicians) {
                 continue;
             }
             
-            // [수정됨] API의 모든 컬럼을 순서에 맞게 배열에 추가
+            // API의 모든 컬럼을 순서에 맞게 배열에 추가
             records.push([
                 p.MONA_CD, p.NAME, p.HJ_NM, p.ENG_NM, p.BTH_GBN_NM, p.BTH_DATE,
                 p.JOB_RES_NM, party_id, p.POLY_NM, p.ORIG_NM, p.ELECT_GBN_NM, p.CMITS,
@@ -73,7 +73,7 @@ async function upsertPoliticiansToDB(pool, politicians) {
             return;
         }
 
-        // [수정됨] SQL 문에 모든 컬럼 추가 및 안정적인 Bulk Insert 방식으로 변경
+        // SQL 문에 모든 컬럼 추가 및 안정적인 Bulk Insert 방식으로 변경
         const sql = `
             INSERT INTO politicians (
                 mona_cd, name, hj_nm, eng_nm, bth_gbn_nm, birthday,
@@ -111,7 +111,7 @@ async function upsertPoliticiansToDB(pool, politicians) {
 }
 
 async function runSync() {
-    logger.info('[배치 시작] 국회의원 데이터 동기화를 시작합니다.');
+    logger.info('[배치 시작] 국회의원 데이터 동기화를 시작');
     const pool = mysql.createPool(dbConfig);
     const politiciansFromAPI = await fetchPoliticiansFromAPI();
     if (politiciansFromAPI && politiciansFromAPI.length > 0) {

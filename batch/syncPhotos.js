@@ -19,7 +19,7 @@ async function fetchPoliticianPhoto(monaCd) {
         
         const $ = cheerio.load(response.data);
 
-        // [수정됨] CSS background-image에서 URL을 추출하는 로직
+        // CSS background-image에서 URL을 추출하는 로직
         const styleAttribute = $('.info-con.present .img-set .img').attr('style');
         
         if (styleAttribute) {
@@ -61,7 +61,7 @@ async function updatePhotoInDB(connection, mona_cd, photo_url) {
  * 메인 실행 함수 (기존과 동일)
  */
 async function runPhotoSync() {
-    logger.info('[사진 배치 시작] 최종 방식으로 동기화를 시작합니다.');
+    logger.info('[사진 배치 시작] 최종 방식으로 동기화를 시작');
     const pool = mysql.createPool(dbConfig);
     const connection = await pool.getConnection();
     let updatedCount = 0;
@@ -77,7 +77,7 @@ async function runPhotoSync() {
             return;
         }
         
-        logger.info(`총 ${politiciansToUpdate.length}명의 의원 사진을 업데이트합니다.`);
+        logger.info(`총 ${politiciansToUpdate.length}명의 의원 사진을 업데이트`);
 
         for (let i = 0; i < politiciansToUpdate.length; i += CONCURRENCY_LEVEL) {
             const chunk = politiciansToUpdate.slice(i, i + CONCURRENCY_LEVEL);

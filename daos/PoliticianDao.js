@@ -1,3 +1,5 @@
+// daos/PoliticianDao.js
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,19 +14,18 @@ fs.readdirSync(queriesPath).forEach(file => {
     queries[key] = fs.readFileSync(path.join(queriesPath, file), 'utf8');
 });
 
-// 모델은 db 객체를 외부에서 주입받아 사용
 export default (db) => {
-    const dao = {};
+    return {
+        /* 정치인 조회 */
+        getList: async () => {
+            const [rows] = await db.promise().query(queries.getList);
+            return rows;
+        },
 
-    /* 정치인 조회 */
-    dao.getList = (callback) => {
-        db.query(queries.getList, callback);
+        /* 정치인 상세 조회 */
+        getDetail: async (id) => {
+            const [rows] = await db.promise.query(queries.getDetail, [id], callback);
+            return rows;
+        }
     };
-
-    /* 정치인 상세 조회 */
-    dao.getDetail = (id, callback) => {
-        db.query(queries.getDetail, [id], callback);
-    };
-
-    return dao;
 };
