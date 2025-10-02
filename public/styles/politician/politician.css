@@ -1,8 +1,3 @@
-/* ==============================================
-  의원 목록 페이지 스타일 최종본
-==============================================
-*/
-
 /* 페이지 헤더 */
 .page-header { text-align: center; padding: 40px 0; border-bottom: 1px solid var(--border-color); }
 .page-header h1 { font-size: 32px; margin-bottom: 10px; }
@@ -75,7 +70,8 @@
 /* 네비게이션 활성 메뉴 스타일 */
 nav a.active { color: var(--primary-color); font-weight: 700; }
 
-/* ==============================================
+/* 
+==============================================
   현황 요약 (Summary Section) 스타일
 ==============================================
 */
@@ -134,7 +130,8 @@ nav a.active { color: var(--primary-color); font-weight: 700; }
     transition: width 0.5s ease-in-out;
 }
 
-/* ==============================================
+/* 
+==============================================
   의원 수 표시 (Count Display) 스타일
 ==============================================
 */
@@ -145,7 +142,8 @@ nav a.active { color: var(--primary-color); font-weight: 700; }
     margin-right: auto; /* 검색창과 정렬 버튼을 오른쪽으로 밀어냄 */
 }
 
-/* ==============================================
+/* 
+==============================================
   필터 드롭다운 (Filter Dropdown) 스타일
 ==============================================
 */
@@ -176,7 +174,8 @@ nav a.active { color: var(--primary-color); font-weight: 700; }
     z-index: 10; /* 이미지가 가리지 않도록 위로 올림 */
 }
 
-/* ==============================================
+/* 
+==============================================
   유형별 이름표 배경색 (무지개색)
 ==============================================
 */
@@ -187,3 +186,48 @@ nav a.active { color: var(--primary-color); font-weight: 700; }
 .type--metro-council { background-color: rgba(0, 86, 179, 0.7); } /* 파랑 (광역의원) */
 .type--mayor { background-color: rgba(13, 110, 253, 0.7); } /* 남색 (구시군장) */
 .type--local-council { background-color: rgba(111, 66, 193, 0.8); } /* 보라 (기초의원) */
+
+
+/* 
+==============================================
+  페이징 컨트롤 스타일
+==============================================
+*/
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 30px;
+    gap: 10px; /* 버튼들 사이의 간격 */
+}
+
+.pagination-btn, .page-number-btn {
+    padding: 8px 15px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled), .page-number-btn:hover:not(.active) {
+    background-color: #e9e9e9;
+    border-color: #ccc;
+}
+
+.pagination-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.page-numbers {
+    display: flex;
+    gap: 5px; /* 페이지 번호 버튼들 사이의 간격 */
+}
+
+.page-number-btn.active {
+    background-color: #007bff; /* 활성 페이지 버튼 색상 */
+    color: white;
+    border-color: #007bff;
+    font-weight: bold;
+}
