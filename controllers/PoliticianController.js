@@ -144,8 +144,8 @@ export default (db) => {
             politician = politicianData[0]; // 단일 row 결과이므로, 배열의 첫 번째 요소를 할당
 
             /* 법안 정보 (멀티 row) */
-            const billData = await billService.getList(monaCd); // Promise 반환 가정
-            politician.bills = billData; // 법안 정보 배열을 politician 객체에 속성으로 추가
+            // const billData = await billService.getList(monaCd); // Promise 반환 가정
+            // politician.bills = billData; // 법안 정보 배열을 politician 객체에 속성으로 추가
 
             /* (향후 추가) 댓글 정보 - 멀티 row */
             // const replyData = await replyService.getReplies(monaCd);

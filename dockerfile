@@ -1,5 +1,5 @@
-# Node.js 20 버전 기반의 이미지를 사용
-FROM node:20-alpine
+# Node.js 22 버전 기반의 이미지를 사용
+FROM node:22-alpine
 
 # 컨테이너의 작업 디렉토리를 /app으로 설정
 WORKDIR /app

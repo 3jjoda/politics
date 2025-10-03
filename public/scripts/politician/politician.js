@@ -1,6 +1,7 @@
-// public/scripts/politician/politician.js
+// public/scripts/pages/politician.js
 
-import { createDashboardBox } from "../components/dashboard.js";
+import { CreateDashboardBox } from "../components/dashboard.js"; // 🚨 함수명 소문자로 변경 (convention)
+import { Pagination } from "../components/pagination.js"; // 🚨 경로 수정: ../components -> ../utils
 
 document.addEventListener('DOMContentLoaded', () => {
     // === DOM 요소 선택 ===
@@ -11,19 +12,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const sortButtons = document.querySelectorAll('.sort-btn');
     const typeFilter = document.getElementById('type-filter');
 
-    // 페이징 관련 DOM 요소 가져오기
-    const prevPageBtn = document.getElementById('prev-page-btn');
-    const nextPageBtn = document.getElementById('next-page-btn');
-    const pageNumbersContainer = document.getElementById('page-numbers');
-
     // === 상태 관리 변수 ===
     let allPoliticians = []; // API로 받은 전체 원본 데이터
-    let displayedPoliticians = []; // 현재 필터링 및 정렬까지 완료된 전체 데이터 (페이징 전)
+    let displayedPoliticians = []; // 현재 화면에 표시될 데이터
     let currentSort = { key: 'name', order: 'asc' };
 
-    // 페이징 관련 변수
-    let currentPage = 1;
-    const itemsPerPage = 20; // 한 페이지에 표시할 항목 수
+    // Pagination 인스턴스 생성
+    const pagination = new Pagination(
+        'pagination-container', // 페이징 컨트롤이 들어갈 컨테이너 ID
+        (paginatedData) => { // renderCallback 함수: 페이징된 데이터를 받아 그리드를 렌더링
+            if (!grid) return;
+            grid.innerHTML = paginatedData.length > 0
+                ? paginatedData.map(createPoliticianCard).join('')
+                : '<p class="no-results">검색 결과가 없습니다.</p>';
+        },
+        20, // 한 페이지당 항목 수 (itemsPerPage)
+        5,  // 표시할 페이지 버튼 수 (maxPageButtons)
+        'politician-grid', // 스크롤을 이동할 대상 요소의 ID
+        true, // showFirstLastButtons (맨 앞/맨 뒤 버튼 표시 여부)
+        true  // showGoToPageInput (페이지 입력 필드 표시 여부)
+    );
 
     // === 함수 정의 ===
 
@@ -76,8 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!summarySection) return;
         const total = politicians.length;
 
-        const partyDashboard = createDashboardBox(politicians, 'party_name', '정당별 현황');
-        const reeleDashboard = createDashboardBox(politicians, 'reele_gbn_nm', '재선별 현황');
+        const partyDashboard = CreateDashboardBox(politicians, 'party_name', '정당별 현황'); // 🚨 함수명 수정
+        const reeleDashboard = CreateDashboardBox(politicians, 'reele_gbn_nm', '재선별 현황'); // 🚨 함수명 수정
 
         // 나이대별은 공통함수 활용 안되서 커스터마이징
         const ageGroupCount = { '20대': 0, '30대': 0, '40대': 0, '50대': 0, '60대': 0, '70대 이상': 0 };
@@ -116,99 +124,41 @@ document.addEventListener('DOMContentLoaded', () => {
      * 의원 카드 HTML을 생성하는 함수
      */
     function createPoliticianCard(politician) {
-        const photoUrl = politician.photo_url || `https://via.placeholder.com/220/cccccc?text=No+Image`;
+        // 🚨 via.placeholder.com -> placehold.co 변경
+        const photoUrl = politician.photo_url;
         const partyName = politician.party_name || '무소속';
         const birthDate = politician.birthday ? new Date(politician.birthday).toLocaleDateString('ko-KR') : '정보 없음';
         const reeleClass = getReeleClass(politician.reele_gbn_nm);
         const ageText = politician.age ? ` (만 ${politician.age}세)` : '';
-        const typeName = politician.politician_type_name || '';
+        const typeName = politician.politician_type_name || ''; // 🚨 null/undefined 처리
         const typeClass = getPoliticianTypeClass(politician.politician_type);
+
+        // 🚨 politician.mona_cd가 null 또는 undefined일 경우 '#'으로 대체하여 /null 요청 방지
+        const politicianId = politician.mona_cd || '#'; 
+        const linkHref = politicianId === '#' ? '#' : `/politician/${politicianId}`;
+
+        // mona_cd가 없는 경우 링크 기능을 비활성화
+        const linkTagStart = politicianId === '#' ? `<div class="politician-card-no-link">` : `<a href="${linkHref}">`;
+        const linkTagEnd = politicianId === '#' ? `</div>` : `</a>`;
 
         return `
             <article class="politician-card-large">
-                <a href="/politician/${politician.mona_cd}">
-                    <span class="card-name-overlay ${typeClass}">${politician.politician_type_name}</span>
-                    <img src="${photoUrl}" alt="${politician.name} 의원 사진" onerror="this.onerror=null;this.src='https://via.placeholder.com/220/cccccc?text=No+Image';">
+                ${linkTagStart}
+                    <span class="card-name-overlay ${typeClass}">${typeName}</span>
+                    <img src="${photoUrl}">
                     <div class="card-content">
+                        <span class="card-type">${typeName}</span>
                         <h2 class="card-name">${politician.name}</h2>
                         <p class="card-party">${partyName}</p>
                         <div class="card-meta">
-                            <span class="card-district">${politician.electoral_district}</span>
-                            <span class="card-reele ${reeleClass}">${politician.reele_gbn_nm}</span>
+                            <span class="card-district">${politician.electoral_district || '정보 없음'}</span>
+                            <span class="card-reele ${reeleClass}">${politician.reele_gbn_nm || '정보 없음'}</span>
                         </div>
                         <p class="card-dob">${birthDate}${ageText}</p>
                     </div>
-                </a>
+                ${linkTagEnd}
             </article>
         `;
-    }
-
-    /**
-     * 화면에 의원 목록 렌더링 (페이징 적용)
-     */
-    function renderPoliticians(politiciansToRender) {
-        if (!grid) return;
-
-        // 페이징 적용
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        const paginatedPoliticians = politiciansToRender.slice(startIndex, endIndex);
-
-        if (countDisplay) {
-            countDisplay.textContent = `총 ${politiciansToRender.length}명`; // 필터링/정렬된 전체 아이템 수
-        }
-
-        grid.innerHTML = paginatedPoliticians.length > 0
-            ? paginatedPoliticians.map(createPoliticianCard).join('')
-            : '<p class="no-results">검색 결과가 없습니다.</p>';
-
-        // 페이징 컨트롤 업데이트
-        updatePaginationControls(politiciansToRender.length);
-    }
-
-    /**
-     * 페이징 컨트롤 업데이트 함수
-     */
-    function updatePaginationControls(totalItems) {
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-        prevPageBtn.disabled = currentPage === 1;
-        nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
-
-        pageNumbersContainer.innerHTML = '';
-        const maxPageButtons = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
-        let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
-
-        if (endPage - startPage + 1 < maxPageButtons && totalPages > maxPageButtons) {
-            startPage = Math.max(1, endPage - maxPageButtons + 1);
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            const pageBtn = document.createElement('button');
-            pageBtn.textContent = i;
-            pageBtn.classList.add('page-number-btn');
-            if (i === currentPage) {
-                pageBtn.classList.add('active');
-            }
-            pageBtn.addEventListener('click', () => {
-                currentPage = i;
-                renderPoliticians(displayedPoliticians); // 현재 필터/정렬 상태 유지
-            });
-            pageNumbersContainer.appendChild(pageBtn);
-        }
-    }
-
-    /**
-     * 페이지 이동 함수
-     */
-    function goToPage(direction) {
-        if (direction === 'prev' && currentPage > 1) {
-            currentPage--;
-        } else if (direction === 'next' && currentPage < Math.ceil(displayedPoliticians.length / itemsPerPage)) {
-            currentPage++;
-        }
-        renderPoliticians(displayedPoliticians);
     }
 
     /**
@@ -232,49 +182,39 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function sortPoliticians() {
         const { key, order } = currentSort;
-        const sorted = [...displayedPoliticians]; // displayedPoliticians를 정렬
+        const sorted = [...displayedPoliticians];
+        const sortOrder = order === 'asc' ? 1 : -1;
 
         sorted.sort((a, b) => {
-            let valA = a[key];
-            let valB = b[key];
-
-            // 데이터의 실제 필드명에 맞게 key 조정
             switch (key) {
                 case 'name':
-                    valA = a.name;
-                    valB = b.name;
-                    break;
+                    return (a.name || '').localeCompare(b.name || '', 'ko-KR') * sortOrder;
                 case 'party':
-                    valA = a.party_name || '';
-                    valB = b.party_name || '';
-                    break;
+                    return (a.party_name || '').localeCompare(b.party_name || '', 'ko-KR') * sortOrder;
                 case 'age':
-                    valA = a.age;
-                    valB = b.age;
-                    break;
+                    return (a.age - b.age) * sortOrder;
                 case 'reele':
-                    valA = a.reele_gbn_nm;
-                    valB = b.reele_gbn_nm;
-                    break;
+                    const getReeleValue = (r) => {
+                        if (r === '초선') return 1;
+                        if (r === '재선') return 2;
+                        const val = parseInt(r);
+                        return isNaN(val) ? 0 : val;
+                    };
+                    return (getReeleValue(a.reele_gbn_nm) - getReeleValue(b.reele_gbn_nm)) * sortOrder;
                 default:
-                    // 정의되지 않은 키는 원본 데이터 그대로 유지
                     return 0;
             }
-
-            // 숫자 비교
-            if (typeof valA === 'number' && typeof valB === 'number') {
-                return (valA - valB) * (order === 'asc' ? 1 : -1);
-            }
-            // 문자열 비교 (한글 포함)
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                return valA.localeCompare(valB, 'ko-KR') * (order === 'asc' ? 1 : -1);
-            }
-            return 0; // 동일
         });
         
-        displayedPoliticians = sorted; // 정렬된 결과를 다시 displayedPoliticians에 저장
-        renderPoliticians(displayedPoliticians); // 정렬된 결과를 렌더링 (페이징 포함)
+        // 🚨 renderPoliticians 대신 pagination.update를 직접 호출하여 데이터 갱신
+        // renderPoliticians(sorted); // 제거
+        pagination.update(sorted); // pagination이 데이터를 가지고 자체적으로 렌더링하도록 함
         updateSortIndicators();
+        
+        // 총 카운트 업데이트
+        if (countDisplay) {
+            countDisplay.textContent = `총 ${sorted.length}명`;
+        }
     }
 
     /**
@@ -291,31 +231,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (searchTerm) {
-            filtered = filtered.filter(p => p.name.toLowerCase().includes(searchTerm));
+            filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(searchTerm)); // 🚨 name 필드도 null/undefined 처리
         }
-
+        
         if (summarySection) {
             const hasFilter = searchTerm || (selectedTypeId && selectedTypeId !== 'all');
             summarySection.style.display = hasFilter ? 'none' : 'grid';
         }
-        
-        displayedPoliticians = filtered; // 필터링된 전체 데이터 업데이트
-        currentPage = 1; // 필터 변경 시 첫 페이지로 이동
-        sortPoliticians(); // 필터링 후 정렬 및 렌더링
-    }
 
+        displayedPoliticians = filtered;
+        sortPoliticians(); // 필터링된 데이터를 정렬하고 pagination을 업데이트
+    }
+    
     /**
      * 필터 드롭다운 옵션을 생성하는 함수
      */
     function renderTypeFilter(categories) {
         if (!typeFilter) return;
         let optionsHTML = '<option value="all">전체</option>';
-        optionsHTML += categories.map(cat =>
+        optionsHTML += categories.map(cat => 
             `<option value="${cat.code_id}">${cat.code_name}</option>`
         ).join('');
         typeFilter.innerHTML = optionsHTML;
     }
-
+    
     // === 이벤트 리스너 설정 ===
     searchInput.addEventListener('input', applyFiltersAndSort);
     typeFilter.addEventListener('change', applyFiltersAndSort);
@@ -327,44 +266,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
             } else {
                 currentSort.key = newSortKey;
-                // '재선순'은 기본적으로 내림차순이 더 자연스러울 수 있음
-                currentSort.order = newSortKey === 'reele' ? 'desc' : 'asc';
+                currentSort.order = newSortKey === 'reele' ? 'desc' : 'asc'; // 재선 정렬 기본 내림차순 (고선이 위로 오도록)
             }
-            applyFiltersAndSort(); // 정렬 변경 시 필터 및 정렬 재적용 (페이징 초기화 포함)
+            sortPoliticians();
         });
     });
 
-    // 페이징 버튼 이벤트 리스너
-    prevPageBtn.addEventListener('click', () => goToPage('prev'));
-    nextPageBtn.addEventListener('click', () => goToPage('next'));
-
     /**
-     * 페이지 로드 시 실행될 메인 비동기 함수 (레이스 컨디션 해결)
+     * 페이지 로드 시 실행될 메인 비동기 함수
      */
     async function initialize() {
         try {
-            grid.innerHTML = '<p class="loading-message">의원 목록을 불러오는 중입니다...</p>';
+            // 🚨 이제 pagination이 자체적으로 로딩 메시지를 처리하거나, 
+            // initial renderCallback 호출에서 처리되므로 여기서 불필요
+            // if (grid) grid.innerHTML = '<p class="loading-message">의원 목록을 불러오는 중입니다...</p>';
 
             // 공통 코드 콤보에 담기
             const initialData = JSON.parse(sessionStorage.getItem('initialData'));
             if (initialData && initialData.CODES && initialData.CODES.POLITICIAN_TYPE) {
                 renderTypeFilter(initialData.CODES.POLITICIAN_TYPE);
-            } else {
-                console.warn("sessionStorage에서 POLITICIAN_TYPE 데이터를 찾을 수 없습니다.");
             }
             
             // 변수에 담아둔 페이지 데이터 가져와서 처리
-            if (!window.politicianData) {
-                 console.error("window.politicianData를 찾을 수 없습니다. EJS 템플릿에서 데이터를 올바르게 설정했는지 확인하세요.");
-                 grid.innerHTML = '<p class="no-results">데이터를 불러올 수 없습니다.</p>';
-                 return;
+            // window.politicianData가 전역에 있을 때
+            if (window.politicianData) {
+                allPoliticians = window.politicianData.map(p => ({ 
+                    ...p, 
+                    age: calculateAge(p.birthday),
+                    name: p.name || '이름 없음', // 이름이 없는 경우도 대비
+                    politician_type_name: p.politician_type_name || '', // null인 경우 빈 문자열
+                    electoral_district: p.electoral_district || '정보 없음', // null인 경우 대체
+                    reele_gbn_nm: p.reele_gbn_nm || '정보 없음', // null인 경우 대체
+                }));
+            } else {
+                console.warn("window.politicianData를 찾을 수 없습니다.");
+                if (grid) grid.innerHTML = '<p class="no-results">의원 데이터를 불러오지 못했습니다.</p>';
+                return; // 데이터 없으면 더 이상 진행하지 않음
             }
 
-            allPoliticians = window.politicianData.map(p => ({ ...p, age: calculateAge(p.birthday) }));
-            
             renderStatistics(allPoliticians);
-            applyFiltersAndSort(); // 초기 로딩 시 필터, 정렬 및 페이징까지 모두 적용
-
+            applyFiltersAndSort(); // 필터, 정렬 적용 후 pagination이 첫 페이지 렌더링
+            updateSortIndicators(); // 초기 정렬 버튼 UI 업데이트
+            
         } catch (error) {
             console.error("초기화 오류:", error);
             if (grid) grid.innerHTML = '<p class="no-results">페이지를 초기화하는 중 오류가 발생했습니다.</p>';

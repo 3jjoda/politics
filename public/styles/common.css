@@ -1,0 +1,182 @@
+/* public/styles/common.css 공통 CSS 파일 */
+
+/* 
+==============================================
+  페이징 컨트롤 스타일
+==============================================
+*/
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 30px;
+    gap: 10px; /* 버튼들 사이의 간격 */
+    flex-wrap: wrap; /* 작은 화면에서 요소들이 줄바꿈되도록 */
+}
+
+.pagination-btn, .page-number-btn {
+    padding: 8px 15px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled), .page-number-btn:hover:not(.active) {
+    background-color: #e9e9e9;
+    border-color: #ccc;
+}
+
+.pagination-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.page-numbers {
+    display: flex;
+    gap: 5px; /* 페이지 번호 버튼들 사이의 간격 */
+}
+
+.page-number-btn.active {
+    background-color: #007bff; /* 활성 페이지 버튼 색상 */
+    color: white;
+    border-color: #007bff;
+    font-weight: bold;
+}
+
+.pagination-btn.first-last-btn {
+    padding: 8px 12px;
+    font-size: 0.9em;
+    min-width: 90px; /* 최소 너비로 일관된 크기 유지 */
+}
+
+.go-to-page-input-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 20px; /* 페이징 버튼 그룹과 간격 주기 */
+}
+
+.page-input {
+    width: 60px; /* 적절한 너비 조정 */
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.95em;
+    -moz-appearance: textfield; /* Firefox에서 input type=number의 스피너 제거 */
+}
+
+/* Chrome, Safari, Edge에서 input type=number의 스피너 제거 */
+.page-input::-webkit-outer-spin-button,
+.page-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.go-to-page-btn {
+    padding: 8px 15px;
+    border: 1px solid #007bff;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.go-to-page-btn:hover:not(:disabled) {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.go-to-page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    background-color: #cccccc;
+    border-color: #cccccc;
+}
+
+/* 모바일 반응형 (예시) */
+@media (max-width: 768px) {
+    .pagination-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    .page-numbers {
+        order: 2; /* 페이지 번호를 중앙에 배치 */
+    }
+    .go-to-page-input-container {
+        order: 3;
+        margin-left: 0;
+        margin-top: 10px;
+    }
+    .pagination-btn.first-last-btn {
+        min-width: auto;
+    }
+}
+
+
+/* 
+==============================================
+  custom_alert 스타일
+==============================================
+*/
+.custom_alert-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* 반투명 배경 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* 다른 요소들 위에 표시 */
+    transition: opacity 0.3s ease;
+}
+
+.custom_alert-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none; /* 숨겨졌을 때 클릭 이벤트 방지 */
+}
+
+.custom_alert-box {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+    transform: translateY(-20px); /* 약간 위에서 내려오는 효과 */
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.custom_alert-overlay.hidden .custom_alert-box {
+    transform: translateY(-50px);
+    opacity: 0;
+}
+
+.custom_alert-message {
+    font-size: 1.1em;
+    color: #333;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+.custom_alert-ok-btn {
+    padding: 10px 25px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+}
+
+.custom_alert-ok-btn:hover {
+    background-color: #0056b3;
+}

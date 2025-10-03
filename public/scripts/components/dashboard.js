@@ -1,7 +1,7 @@
 /**
  * 대시보드 (가로 막대 그래프)
  */
-export function createDashboardBox(data, groupByKey, title) {
+export function CreateDashboardBox(data, groupByKey, title) {
     if (!data || data.length === 0) return '';
     const total = data.length;
 
