@@ -1,268 +1,288 @@
 // public/scripts/utils/pagination.js
 
-import { ShowAlert } from '../components/custom_alert.js'; 
+import { ShowAlert } from './custom_alert.js'; 
 
-class Pagination {
+/**
+ * Pagination 클래스: 웹 페이지의 데이터를 분할하여 표시하고 페이지 이동 기능을 제공
+ */
+export class Pagination {
     /**
-     * 페이징 컨트롤을 생성하고 관리하는 클래스
-     * @param {string} containerId - 페이징 컨트롤이 삽입될 HTML 요소의 ID.
-     * @param {function(Array<any>): void} renderCallback - 현재 페이지에 해당하는 데이터를 받아 DOM에 렌더링하는 콜백 함수.
-     * @param {number} [itemsPerPage=20] - 한 페이지에 표시할 항목의 수.
-     * @param {number} [maxPageButtons=5] - 페이지 번호 버튼 중 최대로 표시할 개수. (예: 1 ... 4 5 6 ... 10)
-     * @param {string|null} [scrollToTopElementId=null] - 페이지 이동 시 스크롤을 이동할 대상 요소의 ID. null이면 window 상단으로 스크롤.
-     * @param {boolean} [showFirstLastButtons=true] - '처음으로'/'마지막으로' 페이지 이동 버튼 표시 여부.
-     * @param {boolean} [showGoToPageInput=true] - 특정 페이지 번호 입력 필드 및 이동 버튼 표시 여부.
+     * Pagination 인스턴스를 초기화
+     * @param {string} containerId - 페이징 컨트롤이 렌더링될 DOM 컨테이너의 ID.
+     * @param {function} renderCallback - 페이징된 데이터를 받아 실제 화면에 렌더링하는 콜백 함수.
+     * @param {number} [itemsPerPage=10] - 한 페이지당 표시할 항목 수.
+     * @param {number} [maxPageButtons=5] - 페이징 컨트롤에 표시할 최대 페이지 버튼 수.
+     * @param {string|null} [scrollToElementId=null] - 페이지 이동 시 스크롤할 대상 요소의 ID.
+     * @param {boolean} [showFirstLastButtons=true] - '맨 처음'/'맨 끝' 버튼 표시 여부.
+     * @param {boolean} [showGoToPageInput=true] - 페이지 번호 직접 입력 필드 표시 여부.
      */
     constructor(
         containerId,
         renderCallback,
-        itemsPerPage = 20,
+        itemsPerPage = 10,
         maxPageButtons = 5,
-        scrollToTopElementId = null,
+        scrollToElementId = null,
         showFirstLastButtons = true,
         showGoToPageInput = true
     ) {
         this.container = document.getElementById(containerId);
         if (!this.container) {
-            console.error(`Pagination container with ID '${containerId}' not found.`);
-            // 컨테이너가 없으면 더 이상 진행하지 않음
+            console.error(`Pagination container with ID "${containerId}" not found.`);
             return;
         }
+        this.container.classList.add('pagination-wrapper'); // 전체 컨테이너에 wrapper 클래스 추가
 
         this.renderCallback = renderCallback;
         this.itemsPerPage = itemsPerPage;
         this.maxPageButtons = maxPageButtons;
-        this.scrollToTopElement = scrollToTopElementId ? document.getElementById(scrollToTopElementId) : null;
+        this.scrollToElementId = scrollToElementId;
         this.showFirstLastButtons = showFirstLastButtons;
         this.showGoToPageInput = showGoToPageInput;
 
-        this.currentPage = 1;
         this.totalItems = 0;
-        this.data = []; // 페이징할 전체 데이터 (필터링/정렬 완료된 상태)
+        this.currentPage = 1;
+        this.data = [];
 
-        // 모든 컨트롤 요소를 생성하고 컨테이너에 추가
-        this._createControls();
+        this.pageButtonsContainer = document.createElement('div');
+        this.pageButtonsContainer.classList.add('pagination-buttons');
+        this.container.appendChild(this.pageButtonsContainer);
+
+        if (this.showGoToPageInput) {
+            this.goToPageContainer = document.createElement('div');
+            this.goToPageContainer.classList.add('pagination-goto');
+            this.container.appendChild(this.goToPageContainer);
+        }
+
+        this._setupEventListeners();
     }
 
     /**
-     * 페이징 컨트롤의 DOM 요소를 생성하고 컨테이너에 추가
-     * 이 함수는 constructor에서 한 번만 호출
+     * 이벤트 리스너를 설정
+     * 주로 페이지 이동 입력 필드에 대한 키보드 이벤트를 처리
      */
-    _createControls() {
-        this.container.innerHTML = ''; // 기존 내용 초기화
-
-        // --- 맨 앞 페이지 버튼 ---
-        if (this.showFirstLastButtons) {
-            this.firstPageBtn = document.createElement('button');
-            this.firstPageBtn.textContent = '<< 첫 페이지'; // Font Awesome 아이콘도 좋음: '<i class="fas fa-angle-double-left"></i>'
-            this.firstPageBtn.className = 'pagination-btn first-last-btn';
-            this.firstPageBtn.addEventListener('click', () => this.goToPage(1));
-            this.container.appendChild(this.firstPageBtn);
-        }
-
-        // --- 이전 페이지 버튼 ---
-        this.prevPageBtn = document.createElement('button');
-        this.prevPageBtn.id = 'prev-page-btn';
-        this.prevPageBtn.className = 'pagination-btn';
-        this.prevPageBtn.textContent = '이전'; // Font Awesome 아이콘도 좋음: '<i class="fas fa-angle-left"></i>'
-        this.prevPageBtn.addEventListener('click', () => this.goToPage('prev'));
-        this.container.appendChild(this.prevPageBtn);
-
-        // --- 페이지 번호 컨테이너 ---
-        this.pageNumbersContainer = document.createElement('div');
-        this.pageNumbersContainer.id = 'page-numbers';
-        this.pageNumbersContainer.className = 'page-numbers';
-        this.container.appendChild(this.pageNumbersContainer);
-
-        // --- 다음 페이지 버튼 ---
-        this.nextPageBtn = document.createElement('button');
-        this.nextPageBtn.id = 'next-page-btn';
-        this.nextPageBtn.className = 'pagination-btn';
-        this.nextPageBtn.textContent = '다음'; // Font Awesome 아이콘도 좋음: '<i class="fas fa-angle-right"></i>'
-        this.nextPageBtn.addEventListener('click', () => this.goToPage('next'));
-        this.container.appendChild(this.nextPageBtn);
-        
-        // --- 맨 뒤 페이지 버튼 ---
-        if (this.showFirstLastButtons) {
-            this.lastPageBtn = document.createElement('button');
-            this.lastPageBtn.textContent = '마지막 페이지 >>'; // Font Awesome 아이콘도 좋음: '<i class="fas fa-angle-double-right"></i>'
-            this.lastPageBtn.className = 'pagination-btn first-last-btn';
-            this.lastPageBtn.addEventListener('click', () => this.goToPage(Math.ceil(this.totalItems / this.itemsPerPage)));
-            this.container.appendChild(this.lastPageBtn);
-        }
-
-        // --- 특정 페이지 입력 필드 ---
-        if (this.showGoToPageInput) {
-            this.goToPageInputContainer = document.createElement('div');
-            this.goToPageInputContainer.className = 'go-to-page-input-container';
-
-            this.pageInput = document.createElement('input');
-            this.pageInput.type = 'number';
-            this.pageInput.min = '1';
-            this.pageInput.className = 'page-input';
-            this.pageInput.placeholder = '페이지';
-            this.pageInput.addEventListener('keypress', (e) => {
+    _setupEventListeners() {
+        if (this.showGoToPageInput && this.goToPageContainer) {
+            // goToPageContainer가 생성된 후에만 이벤트 리스너를 설정
+            this.goToPageContainer.addEventListener('keypress', (e) => {
+                // Enter 키가 눌렸을 때 _handleGoToPageInput 함수를 호출
                 if (e.key === 'Enter') {
-                    e.preventDefault(); // 폼 제출 방지
-                    this._handleGoToPageInput();
+                    this._handleGoToPageInput(e);
                 }
             });
-
-            this.goToPageButton = document.createElement('button');
-            this.goToPageButton.textContent = '이동';
-            this.goToPageButton.className = 'go-to-page-btn';
-            this.goToPageButton.addEventListener('click', () => this._handleGoToPageInput());
-
-            this.goToPageInputContainer.appendChild(this.pageInput);
-            this.goToPageInputContainer.appendChild(this.goToPageButton);
-            this.container.appendChild(this.goToPageInputContainer);
         }
     }
 
-
     /**
-     * 페이징할 전체 데이터를 업데이트하고 첫 페이지로 초기화
-     * 필터링이나 정렬 결과가 변경될 때 호출
-     * @param {Array<any>} data - 페이징할 전체 데이터 배열.
+     * 페이징 데이터를 업데이트하고 첫 페이지로 리셋하여 다시 렌더링
+     * @param {Array} newData - 새로 페이징할 데이터 배열.
+     * @param {number} [newItemsPerPage=this.itemsPerPage] - 업데이트된 한 페이지당 항목 수.
      */
-    update(data) {
-        this.data = data;
-        this.totalItems = data.length;
-        this.currentPage = 1; // 새 데이터가 주어지면 항상 첫 페이지로 초기화
-        this.render();
+    update(newData, newItemsPerPage = this.itemsPerPage) {
+        this.data = newData;
+        this.totalItems = newData.length;
+        this.itemsPerPage = newItemsPerPage;
+        this.currentPage = 1; // 데이터가 업데이트되면 첫 페이지로 리셋
+        this._render();
     }
 
     /**
-     * 현재 페이지에 표시될 데이터 항목 배열을 반환
-     * @returns {Array<any>} 현재 페이지의 데이터 항목 배열.
+     * 지정된 페이지 번호로 이동하고 UI를 업데이트
+     * @param {number} pageNumber - 이동할 페이지 번호.
+     * @param {boolean} [suppressScroll=false] - 스크롤 이동을 억제할지 여부.
      */
-    getCurrentPageData() {
+    goToPage(pageNumber, suppressScroll = false) {
+        const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+        if (pageNumber < 1) pageNumber = 1;
+        if (pageNumber > totalPages) pageNumber = totalPages;
+
+        // 현재 페이지와 요청 페이지가 같고 데이터가 있을 경우, 중복 렌더링 방지 (스크롤만 억제)
+        if (this.currentPage === pageNumber && this.totalItems > 0 && totalPages > 0) {
+            // 하지만 페이지 전환 없이 데이터만 업데이트되는 경우를 대비해 렌더링은 유지
+             const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+             const endIndex = startIndex + this.itemsPerPage;
+             const paginatedData = this.data.slice(startIndex, endIndex);
+             this.renderCallback(paginatedData);
+             this._renderButtons(); // 버튼 상태는 갱신
+             return;
+        }
+        
+        // 데이터가 없어서 총 페이지 수가 0일 경우, 어떤 페이지로도 이동할 수 없음
+        if (totalPages === 0 && this.totalItems === 0) {
+            this.currentPage = 1; // 기본값 1 유지
+            this._render(suppressScroll); // 데이터 없는 상태 렌더링
+            return;
+        }
+
+        this.currentPage = pageNumber;
+        this._render(suppressScroll);
+    }
+
+    /**
+     * 현재 페이지의 데이터를 가져와 renderCallback을 호출하고 페이지 UI를 업데이트
+     * @param {boolean} [suppressScroll=false] - 스크롤 이동을 억제할지 여부.
+     */
+    _render(suppressScroll = false) {
         const startIndex = (this.currentPage - 1) * this.itemsPerPage;
         const endIndex = startIndex + this.itemsPerPage;
-        return this.data.slice(startIndex, endIndex);
-    }
+        const paginatedData = this.data.slice(startIndex, endIndex);
 
-    /**
-     * 현재 페이지의 데이터를 렌더링하고 페이징 컨트롤 UI를 업데이트
-     * 페이지가 변경될 때마다 호출
-     */
-    render() {
-        // 렌더링 콜백 함수를 호출하여 현재 페이지 데이터로 그리드를 업데이트
-        this.renderCallback(this.getCurrentPageData());
-        this._updatePaginationControls(); // 이전/다음/페이지 번호 버튼 업데이트
-        this._updateFirstLastButtons();   // 맨 앞/맨 뒤 버튼 업데이트
-        this._updateGoToPageInput();      // 페이지 입력 필드 업데이트
+        this.renderCallback(paginatedData); // 페이징된 데이터를 콜백으로 전달하여 실제 DOM 렌더링
 
-        // 스크롤을 지정된 요소 또는 창의 상단으로 이동
-        if (this.scrollToTopElement) {
-            this.scrollToTopElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        this._renderButtons(); // 페이지 버튼 UI 업데이트
+
+        // 스크롤 이동이 억제되지 않았다면 페이지의 맨 위로 스크롤
+        if (!suppressScroll) {
+            // window.scrollTo({
+            //     top: 0,
+            //     behavior: 'smooth' // 부드럽게 스크롤
+            // });
+            // 특정 요소까지 스크롤
+            const element = document.getElementById(this.scrollToElementId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
     }
 
     /**
-     * '이전'/'다음' 버튼 및 페이지 번호 버튼의 상태를 업데이트 (내부용)
+     * 페이지 버튼을 생성하고 컨테이너에 추가
+     * @param {string} text - 버튼에 표시될 텍스트 (예: '1', '>>').
+     * @param {number} pageNumber - 이 버튼이 연결될 페이지 번호.
+     * @param {boolean} isActive - 현재 활성화된 페이지 버튼인지 여부.
+     * @param {boolean} [isDisabled=false] - 버튼을 비활성화할지 여부.
      */
-    _updatePaginationControls() {
+    _appendPageButton(text, pageNumber, isActive, isDisabled = false) {
+        const button = document.createElement('button');
+        button.textContent = text;
+        button.classList.add('pagination-btn');
+        if (isActive) button.classList.add('active');
+        if (isDisabled) button.disabled = true;
+
+        if (!isDisabled) {
+            button.addEventListener('click', () => {
+                this.goToPage(pageNumber);
+            });
+        }
+        this.pageButtonsContainer.appendChild(button);
+    }
+
+    /**
+     * 페이지 버튼 사이에 생략 부호 '...'를 추가
+     */
+    _appendEllipsis() {
+        const ellipsis = document.createElement('span');
+        ellipsis.classList.add('pagination-ellipsis');
+        ellipsis.textContent = '...';
+        this.pageButtonsContainer.appendChild(ellipsis);
+    }
+
+    /**
+     * 페이지 번호 버튼 UI를 렌더링
+     * 첫 페이지와 마지막 페이지를 항상 표시하며, 중간 페이지는 생략 부호로 처리
+     */
+    _renderButtons() {
         const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+        this.pageButtonsContainer.innerHTML = ''; // 기존 버튼 초기화
 
-        this.prevPageBtn.disabled = this.currentPage === 1;
-        this.nextPageBtn.disabled = this.currentPage === totalPages || totalPages === 0;
+        // 총 페이지가 1이하이거나, 데이터가 없으면 페이징 컨트롤을 숨김
+        if (totalPages <= 1 && !this.showGoToPageInput && this.totalItems === 0) {
+            this.container.classList.add('hidden');
+            return;
+        } else {
+            this.container.classList.remove('hidden');
+        }
 
-        this.pageNumbersContainer.innerHTML = ''; // 기존 페이지 번호 버튼 제거
-        
-        // 표시할 페이지 번호 버튼의 범위 계산
+        // --- 맨 처음/이전 페이지 버튼 ---
+        if (this.showFirstLastButtons) {
+            this._appendPageButton('<<', 1, false, this.currentPage === 1);
+        }
+        this._appendPageButton('<', Math.max(1, this.currentPage - 1), false, this.currentPage === 1);
+
+        // --- 페이지 번호 버튼 로직 (첫 페이지와 마지막 페이지 포함) ---
         let startPage = Math.max(1, this.currentPage - Math.floor(this.maxPageButtons / 2));
         let endPage = Math.min(totalPages, startPage + this.maxPageButtons - 1);
 
-        // 만약 끝 페이지가 충분히 크지 않다면 시작 페이지를 조정하여 버튼 개수 유지
-        if (endPage - startPage + 1 < this.maxPageButtons && totalPages > this.maxPageButtons) {
+        // 끝 페이지가 충분히 나오지 않을 경우, 시작 페이지를 조정하여 `maxPageButtons` 개수 유지
+        if (endPage - startPage + 1 < this.maxPageButtons) {
             startPage = Math.max(1, endPage - this.maxPageButtons + 1);
         }
 
-        // 페이지 번호 버튼 생성
-        for (let i = startPage; i <= endPage; i++) {
-            const pageBtn = document.createElement('button');
-            pageBtn.textContent = i;
-            pageBtn.classList.add('page-number-btn');
-            if (i === this.currentPage) {
-                pageBtn.classList.add('active'); // 현재 페이지 버튼 활성화
+        // 첫 페이지 (1) 버튼 (startPage가 1보다 클 경우에만 표시)
+        if (startPage > 1) {
+            this._appendPageButton('1', 1, this.currentPage === 1);
+            if (startPage > 2) { // 1 다음에 바로 startPage가 아니면 ... 표시
+                this._appendEllipsis();
             }
-            pageBtn.addEventListener('click', () => {
-                this.goToPage(i); // 클릭 시 해당 페이지로 이동
-            });
-            this.pageNumbersContainer.appendChild(pageBtn);
         }
-    }
 
-    /**
-     * '첫 페이지'/'마지막 페이지' 버튼의 활성화/비활성화 상태를 업데이트 (내부용)
-     */
-    _updateFirstLastButtons() {
+        // 중간 페이지 버튼들
+        for (let i = startPage; i <= endPage; i++) {
+            this._appendPageButton(i.toString(), i, i === this.currentPage);
+        }
+
+        // 마지막 페이지 (totalPages) 버튼 (endPage가 totalPages보다 작을 경우에만 표시)
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) { // endPage가 마지막 페이지 바로 앞이 아니면 ... 표시
+                this._appendEllipsis();
+            }
+            this._appendPageButton(totalPages.toString(), totalPages, this.currentPage === totalPages);
+        }
+
+        // --- 다음 페이지/맨 끝 버튼 ---
+        this._appendPageButton('>', Math.min(totalPages, this.currentPage + 1), false, this.currentPage === totalPages);
         if (this.showFirstLastButtons) {
-            const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-            this.firstPageBtn.disabled = this.currentPage === 1 || totalPages === 0;
-            this.lastPageBtn.disabled = this.currentPage === totalPages || totalPages === 0;
+            this._appendPageButton('>>', totalPages, false, this.currentPage === totalPages);
         }
+
+        this._renderGoToPageInput(totalPages); // 페이지 입력 필드 렌더링
     }
 
     /**
-     * 특정 페이지 입력 필드의 상태를 업데이트 (내부용)
+     * 페이지 번호 직접 입력 필드를 렌더링
+     * @param {number} totalPages - 총 페이지 수.
      */
-    _updateGoToPageInput() {
-        if (this.showGoToPageInput) {
-            const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-            this.pageInput.value = this.currentPage; // 현재 페이지 번호로 자동 설정
-            this.pageInput.max = totalPages; // 입력 가능한 최대 페이지 설정
-            this.pageInput.disabled = totalPages === 0; // 페이지가 없으면 비활성화
-            this.goToPageButton.disabled = totalPages === 0; // 버튼도 비활성화
-        }
+    _renderGoToPageInput(totalPages) {
+        if (!this.showGoToPageInput || !this.goToPageContainer) return;
+
+        this.goToPageContainer.innerHTML = ''; // 기존 입력 필드 초기화
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = '1';
+        input.max = totalPages.toString();
+        input.value = this.currentPage.toString();
+        input.classList.add('pagination-goto-input');
+        input.placeholder = `${totalPages} 페이지`;
+        input.title = `총 ${totalPages} 페이지`; // 툴팁으로 총 페이지 수 표시
+
+        const label = document.createElement('label');
+        label.classList.add('pagination-goto-label');
+        label.textContent = `페이지 이동 (1 - ${totalPages})`;
+
+        const button = document.createElement('button'); // 이동 버튼 추가
+        button.classList.add('pagination-goto-btn');
+        button.textContent = '이동';
+        button.addEventListener('click', (e) => this._handleGoToPageInput({target: input})); // input 필드 참조
+
+        this.goToPageContainer.appendChild(label);
+        this.goToPageContainer.appendChild(input);
+        this.goToPageContainer.appendChild(button);
     }
 
     /**
-     * 특정 페이지 번호 입력 필드의 값으로 페이지를 이동하는 핸들러 (내부용)
+     * 페이지 이동 입력 필드의 입력값을 처리
+     * @param {Event} e - 키보드 또는 클릭 이벤트 객체.
      */
-    _handleGoToPageInput() {
-        const pageNum = parseInt(this.pageInput.value, 10);
+    _handleGoToPageInput(e) {
         const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
+        const inputElement = e.target;
+        let page = parseInt(inputElement.value, 10);
 
-        // 유효성 검사
-        if (isNaN(pageNum) || pageNum < 1 || pageNum > totalPages || totalPages === 0) {
-            ShowAlert(`1에서 ${totalPages || 1} 사이의 유효한 페이지 번호를 입력하세요.`);
-            this.pageInput.value = this.currentPage; // 유효하지 않으면 현재 페이지로 되돌림
+        if (isNaN(page) || page < 1 || page > totalPages) {
+            ShowAlert(`1에서 ${totalPages} 사이의 유효한 페이지 번호를 입력하세요.`);
+            inputElement.value = this.currentPage.toString(); // 잘못된 입력시 현재 페이지로 복구
             return;
         }
-        this.goToPage(pageNum); // 유효하면 해당 페이지로 이동
-    }
-
-    /**
-     * 지정된 방향(이전/다음) 또는 특정 페이지 번호로 이동
-     * @param {string|number} targetPage - 'prev', 'next' 문자열이거나 이동할 페이지 번호(숫자).
-     */
-    goToPage(targetPage) {
-        let newPage = this.currentPage;
-        const totalPages = Math.ceil(this.totalItems / this.itemsPerPage);
-
-        if (typeof targetPage === 'string') {
-            if (targetPage === 'prev' && this.currentPage > 1) {
-                newPage = this.currentPage - 1;
-            } else if (targetPage === 'next' && this.currentPage < totalPages) {
-                newPage = this.currentPage + 1;
-            }
-        } else if (typeof targetPage === 'number') {
-            // 유효한 페이지 범위 내에서만 이동 허용
-            if (targetPage >= 1 && targetPage <= totalPages) {
-                newPage = targetPage;
-            }
-        }
-        
-        // 실제로 페이지가 변경되었을 경우에만 렌더링
-        if (newPage !== this.currentPage) {
-            this.currentPage = newPage;
-            this.render();
-        }
+        this.goToPage(page);
     }
 }
-
-export { Pagination };

@@ -2,118 +2,176 @@
 
 /* 
 ==============================================
-  페이징 컨트롤 스타일
+  paging 스타일
 ==============================================
 */
-.pagination-container {
+.pagination-wrapper {
     display: flex;
+    flex-wrap: wrap; /* 작은 화면에서 줄바꿈 */
     justify-content: center;
     align-items: center;
-    margin-top: 30px;
-    gap: 10px; /* 버튼들 사이의 간격 */
-    flex-wrap: wrap; /* 작은 화면에서 요소들이 줄바꿈되도록 */
+    margin: 20px 0;
+    gap: 10px; /* 요소들 사이의 간격 */
+    padding: 10px;
+    border-top: 1px solid var(--color-gray-200);
+    border-bottom: 1px solid var(--color-gray-200);
+    background-color: var(--color-light-bg);
 }
 
-.pagination-btn, .page-number-btn {
-    padding: 8px 15px;
-    border: 1px solid #ddd;
-    background-color: #f9f9f9;
+.pagination-wrapper.hidden {
+    display: none;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 5px; /* 버튼들 사이의 간격 */
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pagination-btn {
+    background-color: var(--color-white);
+    color: var(--color-dark-text);
+    border: 1px solid var(--color-gray-300);
+    padding: 8px 14px;
+    font-size: 15px;
     cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.2s, border-color 0.2s;
+    border-radius: 5px;
+    transition: all 0.2s ease-in-out;
+    min-width: 40px; /* 버튼 최소 너비 설정 */
+    text-align: center;
 }
 
-.pagination-btn:hover:not(:disabled), .page-number-btn:hover:not(.active) {
-    background-color: #e9e9e9;
-    border-color: #ccc;
+.pagination-btn:hover:not(:disabled) {
+    background-color: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary-dark);
+}
+
+/* 선택된 페이지 버튼 강조 */
+.pagination-btn.active {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary-dark); /* 테두리를 더 짙게 */
+    font-weight: bold;
+    cursor: default;
+    /* 추가: 그림자 효과와 미세한 배경색 조정 */
+    box-shadow: 0 4px 8px rgba(var(--color-primary-rgb), 0.3); /* 눈에 띄는 그림자 */
+    transform: translateY(-2px); /* 살짝 떠오르는 효과 */
 }
 
 .pagination-btn:disabled {
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-400);
     cursor: not-allowed;
-    opacity: 0.6;
 }
 
-.page-numbers {
-    display: flex;
-    gap: 5px; /* 페이지 번호 버튼들 사이의 간격 */
+.pagination-ellipsis {
+    padding: 8px 5px;
+    font-size: 15px;
+    color: var(--color-gray-500);
+    user-select: none; /* 드래그 방지 */
 }
 
-.page-number-btn.active {
-    background-color: #007bff; /* 활성 페이지 버튼 색상 */
-    color: white;
-    border-color: #007bff;
-    font-weight: bold;
-}
-
-.pagination-btn.first-last-btn {
-    padding: 8px 12px;
-    font-size: 0.9em;
-    min-width: 90px; /* 최소 너비로 일관된 크기 유지 */
-}
-
-.go-to-page-input-container {
+/* 페이지 이동 입력 필드 섹션 */
+.pagination-goto {
     display: flex;
     align-items: center;
-    gap: 5px;
-    margin-left: 20px; /* 페이징 버튼 그룹과 간격 주기 */
+    gap: 8px; /* 입력 필드와 버튼 사이 간격 */
+    margin-left: 15px; /* 버튼 그룹과의 분리 */
+    padding-left: 15px; /* 시각적 구분 */
+    border-left: 1px solid var(--color-gray-200);
 }
 
-.page-input {
-    width: 60px; /* 적절한 너비 조정 */
-    padding: 8px 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+.pagination-goto-label {
+    font-size: 14px;
+    color: var(--color-dark-text);
+    white-space: nowrap; /* 줄바꿈 방지 */
+}
+
+/* 페이지 이동 입력 필드 강조 */
+.pagination-goto-input {
+    width: 60px; /* 너비 조정 */
+    padding: 7px 10px;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 5px;
+    font-size: 15px;
     text-align: center;
-    font-size: 0.95em;
-    -moz-appearance: textfield; /* Firefox에서 input type=number의 스피너 제거 */
+    background-color: var(--color-gray-100); /* 살짝 어두운 배경색 */
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); /* 미세한 내부 그림자 */
+    -moz-appearance: textfield; /* Firefox에서 숫자 입력 필드 화살표 제거 */
 }
-
-/* Chrome, Safari, Edge에서 input type=number의 스피너 제거 */
-.page-input::-webkit-outer-spin-button,
-.page-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
+.pagination-goto-input::-webkit-outer-spin-button,
+.pagination-goto-input::-webkit-inner-spin-button {
+    -webkit-appearance: none; /* Chrome, Safari에서 숫자 입력 필드 화살표 제거 */
     margin: 0;
 }
 
-.go-to-page-btn {
-    padding: 8px 15px;
-    border: 1px solid #007bff;
-    background-color: #007bff;
-    color: white;
+.pagination-goto-input:focus {
+    border-color: var(--color-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.3); /* 포커스 시 더 강한 그림자 */
+    background-color: var(--color-white); /* 포커스 시 흰색 배경 */
+}
+
+/* 페이지 이동 버튼 강조 */
+.pagination-goto-btn {
+    background-color: var(--color-secondary);
+    color: var(--color-white);
+    border: 1px solid var(--color-secondary-dark);
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: bold; /* 굵게 */
     cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.2s, border-color 0.2s;
+    border-radius: 5px;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15); /* 그림자 추가 */
 }
 
-.go-to-page-btn:hover:not(:disabled) {
-    background-color: #0056b3;
-    border-color: #0056b3;
+.pagination-goto-btn:hover {
+    background-color: var(--color-secondary-dark);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2); /* 호버 시 그림자 강화 */
 }
 
-.go-to-page-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.6;
-    background-color: #cccccc;
-    border-color: #cccccc;
-}
-
-/* 모바일 반응형 (예시) */
+/* 반응형 디자인 */
 @media (max-width: 768px) {
-    .pagination-container {
-        flex-direction: column;
+    .pagination-wrapper {
+        flex-direction: column; /* 세로로 정렬 */
         gap: 15px;
+        border-top: none; /* 모바일에서는 상단 테두리 제거 */
+        padding: 15px 0;
+        margin: 15px 0;
     }
-    .page-numbers {
-        order: 2; /* 페이지 번호를 중앙에 배치 */
-    }
-    .go-to-page-input-container {
-        order: 3;
+    .pagination-goto {
         margin-left: 0;
-        margin-top: 10px;
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid var(--color-gray-200); /* 위쪽 테두리 추가 */
+        padding-top: 15px;
+        width: 100%;
+        justify-content: center;
     }
-    .pagination-btn.first-last-btn {
-        min-width: auto;
+    .pagination-goto-label {
+        font-size: 13px;
     }
+}
+
+/* 색상 변수 */
+:root {
+    --color-primary: #007bff;
+    --color-primary-light: #e6f2ff;
+    --color-primary-dark: #0056b3;
+    --color-secondary: #6c757d;
+    --color-secondary-dark: #5a6268;
+    --color-white: #ffffff;
+    --color-dark-text: #333;
+    --color-gray-100: #f8f9fa;
+    --color-gray-200: #e9ecef;
+    --color-gray-300: #dee2e6;
+    --color-gray-400: #ced4da;
+    --color-gray-500: #adb5bd;
+    --color-light-bg: #fdfdfd;
+    --color-primary-rgb: 0, 123, 255;
 }
 
 

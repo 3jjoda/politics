@@ -1,7 +1,7 @@
 // public/scripts/pages/politician.js
 
-import { CreateDashboardBox } from "../components/dashboard.js"; // 🚨 함수명 소문자로 변경 (convention)
-import { Pagination } from "../components/pagination.js"; // 🚨 경로 수정: ../components -> ../utils
+import { CreateDashboardBox } from "../components/dashboard.js";
+import { Pagination } from "../components/pagination.js";
 
 document.addEventListener('DOMContentLoaded', () => {
     // === DOM 요소 선택 ===
@@ -84,8 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!summarySection) return;
         const total = politicians.length;
 
-        const partyDashboard = CreateDashboardBox(politicians, 'party_name', '정당별 현황'); // 🚨 함수명 수정
-        const reeleDashboard = CreateDashboardBox(politicians, 'reele_gbn_nm', '재선별 현황'); // 🚨 함수명 수정
+        const partyDashboard = CreateDashboardBox(politicians, 'party_name', '정당별 현황');
+        const reeleDashboard = CreateDashboardBox(politicians, 'reele_gbn_nm', '재선별 현황');
 
         // 나이대별은 공통함수 활용 안되서 커스터마이징
         const ageGroupCount = { '20대': 0, '30대': 0, '40대': 0, '50대': 0, '60대': 0, '70대 이상': 0 };
@@ -124,16 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
      * 의원 카드 HTML을 생성하는 함수
      */
     function createPoliticianCard(politician) {
-        // 🚨 via.placeholder.com -> placehold.co 변경
         const photoUrl = politician.photo_url;
         const partyName = politician.party_name || '무소속';
         const birthDate = politician.birthday ? new Date(politician.birthday).toLocaleDateString('ko-KR') : '정보 없음';
         const reeleClass = getReeleClass(politician.reele_gbn_nm);
         const ageText = politician.age ? ` (만 ${politician.age}세)` : '';
-        const typeName = politician.politician_type_name || ''; // 🚨 null/undefined 처리
+        const typeName = politician.politician_type_name || '';
         const typeClass = getPoliticianTypeClass(politician.politician_type);
 
-        // 🚨 politician.mona_cd가 null 또는 undefined일 경우 '#'으로 대체하여 /null 요청 방지
         const politicianId = politician.mona_cd || '#'; 
         const linkHref = politicianId === '#' ? '#' : `/politician/${politicianId}`;
 
@@ -206,8 +204,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // 🚨 renderPoliticians 대신 pagination.update를 직접 호출하여 데이터 갱신
-        // renderPoliticians(sorted); // 제거
         pagination.update(sorted); // pagination이 데이터를 가지고 자체적으로 렌더링하도록 함
         updateSortIndicators();
         
@@ -231,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (searchTerm) {
-            filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(searchTerm)); // 🚨 name 필드도 null/undefined 처리
+            filtered = filtered.filter(p => (p.name || '').toLowerCase().includes(searchTerm));
         }
         
         if (summarySection) {
@@ -277,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function initialize() {
         try {
-            // 🚨 이제 pagination이 자체적으로 로딩 메시지를 처리하거나, 
             // initial renderCallback 호출에서 처리되므로 여기서 불필요
             // if (grid) grid.innerHTML = '<p class="loading-message">의원 목록을 불러오는 중입니다...</p>';
 
