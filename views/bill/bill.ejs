@@ -2,13 +2,13 @@
 
 <%
     /*
-     * 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bills` 배열과 `filterOptions`, `query` 객체)
+     * 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bill` 배열과 `filterOptions`, `query` 객체)
      * 실제 API 연동 시 백엔드에서 이 객체에 API 응답 데이터를 매핑하여 EJS에 전달
      * 예시:
-     * router.get('/bills', async (req, res) => {
+     * router.get('/bill', async (req, res) => {
      * const { search, status, committee } = req.query;
-     * const billsApiData = await fetchBillsList(search, status, committee); // API 호출 함수
-     * const bills = billsApiData.map(item => ({
+     * const billApiData = await fetchbillList(search, status, committee); // API 호출 함수
+     * const bill = billApiData.map(item => ({
      * id: item.BILL_ID,
      * name: item.BILL_NAME,
      * statusClass: item.PROC_RESULT_CD === '90100' ? 'pass' : (item.PROC_RESULT_CD === '90200' ? 'reject' : 'pending'),
@@ -19,20 +19,20 @@
      * processDate: item.PROC_DT || item.PROPOSE_DT
      * }));
      * const filterOptions = {
-     * statuses: await fetchBillStatuses(), // API에서 가져올 처리 결과 목록
+     * statuses: await fetchbilltatuses(), // API에서 가져올 처리 결과 목록
      * committees: await fetchCommittees() // API에서 가져올 위원회 목록
      * };
-     * res.render('bill_list', { bills, filterOptions, query: req.query });
+     * res.render('bill_list', { bill, filterOptions, query: req.query });
      * });
-     */
-    const bills = [
+     
+    const bill = [
         { id: '12345', name: '미래산업 육성 특별법', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '정무위원회', processDate: '2025-09-18' },
         { id: '12346', name: '소상공인 지원에 관한 법률 개정안', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770123', proposerName: '김민석', committeeName: '산업통상자원중소벤처기업위원회', processDate: '2025-08-01' },
         { id: '12347', name: '국가재정법 일부개정법률안', statusClass: 'reject', statusText: '부결', proposerMonCode: '9770456', proposerName: '이준석', committeeName: '기획재정위원회', processDate: '2025-07-20' },
         { id: '12348', name: '공공기관 채용 비리 방지법', statusClass: 'pending', statusText: '심사 중', proposerMonCode: '9770789', proposerName: '조국', committeeName: '법제사법위원회', processDate: '2025-06-05' },
         { id: '12349', name: '탄소중립 산업 육성 특별조치법', statusClass: 'pending', statusText: '심사 중', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '환경노동위원회', processDate: '2025-05-10' }
     ];
-
+    */
     const filterOptions = {
         statuses: [
             { value: 'pass', text: '가결' },
@@ -56,11 +56,6 @@
 %>
 
 <div class="page-container">
-    <section class="page-header">
-        <h1>의안 정보</h1>
-        <p>대한민국 국회에 발의된 법안들을 검색하고 확인하세요.</p>
-    </section>
-
     <section class="controls">
         <div class="search-container">
             <i class="fas fa-search"></i>
@@ -96,10 +91,10 @@
     </section>
 
     <section class="bill-grid">
-        <% if (bills && bills.length > 0) { %>
+        <% if (bill && bill.length > 0) { %>
             <% /* API: 의안정보 - 법안 목록 (필터/검색 결과에 따라) */ %>
-            <% /* bills 배열을 순회하여 각 <article> 태그 동적 생성 */ %>
-            <% bills.forEach(bill => { %>
+            <% /* bill 배열을 순회하여 각 <article> 태그 동적 생성 */ %>
+            <% bill.forEach(bill => { %>
                 <article class="bill-card">
                     <a href="/bill/<%= bill.id %>"> <% /* href는 실제 BILL_ID를 포함해야 함 */ %>
                         <div class="card-header">

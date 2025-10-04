@@ -1,4 +1,4 @@
-<%- include('../partials/header', { pageTitle: 'test' || "정치인 상세", pageStyles: 'politician/politician_detail', currentUrl: '/politician' }) %>
+<%- include('../partials/header', { pageTitle: pageTitle, pageStyles: pageStyles, currentUrl: currentUrl }) %>
 
 <%
     /*
@@ -22,7 +22,7 @@
      * };
      * res.render('politician_detail', { politician });
      * });
-     */
+     
     const politician = {
         name: "강민국",
         party: "국민의힘",
@@ -48,6 +48,7 @@
             values: [95, 82, 70, 88, 75, 80]
         }
     };
+    */
 %>
 
 <div class="politician-detail-container">

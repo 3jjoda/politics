@@ -76,13 +76,14 @@ export class Pagination {
      * 페이징 데이터를 업데이트하고 첫 페이지로 리셋하여 다시 렌더링
      * @param {Array} newData - 새로 페이징할 데이터 배열.
      * @param {number} [newItemsPerPage=this.itemsPerPage] - 업데이트된 한 페이지당 항목 수.
+     * @param {boolean} [suppressInitialScroll = false] - 스크롤 이동을 억제할지 여부.
      */
-    update(newData, newItemsPerPage = this.itemsPerPage) {
+    update(newData, newItemsPerPage = this.itemsPerPage, suppressInitialScroll = false) {
         this.data = newData;
         this.totalItems = newData.length;
         this.itemsPerPage = newItemsPerPage;
         this.currentPage = 1; // 데이터가 업데이트되면 첫 페이지로 리셋
-        this._render();
+        this._render(suppressInitialScroll); // suppressInitialScroll 값을 _render로 전달
     }
 
     /**

@@ -5,38 +5,51 @@ export default (db) => {
     const billDao = BillDao(db);
     
     return {
-        /* 법안 조회 */
-        getList: (callback) => {
-            billDao.getList(callback);
+        /* 법안 목록 조회 (Promise 기반) */
+        getList: async () => {
+            try {
+                // DAO가 Promise를 반환하므로 await
+                const results = await billDao.getList();
+                return results;
+            } catch (error) {
+                logger.error('Error in billService.getList:', error);
+                throw error; // 에러를 다시 던져서 상위(컨트롤러)에서 catch하도록 함
+            }
         },
 
-        getListPage: (callback) => {
-            billDao.getList((err, results) => {
-                // 1. DAO에서 에러가 발생했다면, 그대로 컨트롤러로 에러를 전달
-                if (err) {
-                    return callback(err, null);
-                }
-
-                // 3. 가공이 완료된 데이터를 최종적으로 컨트롤러의 콜백 함수에 전달
-                callback(null, results);
-            });
+        /* 법안 목록 조회 - 페이지 (Promise 기반) */
+        getListPage: async () => {
+            try {
+                // DAO가 Promise를 반환하므로 await
+                const results = await billDao.getList();
+                return results;
+            } catch (error) {
+                logger.error('Error in billService.getListPage:', error);
+                throw error;
+            }
         },
 
-        /* 법안 상세 조회 */
-        getDetail: (id, callback) => {
-            billDao.getDetail(id, callback);
+        /* 법안 상세 조회 (Promise 기반) */
+        getDetail: async (id) => {
+            try {
+                // DAO가 Promise를 반환하므로 await
+                const results = await billDao.getDetail(id);
+                return results;
+            } catch (error) {
+                logger.error(`Error in billService.getDetail for ID ${id}:`, error);
+                throw error;
+            }
         },
-
-        getDetailPage: (id, callback) => {
-            billDao.getDetail(id, (err, results) => {
-                // 1. DAO에서 에러가 발생했다면, 그대로 컨트롤러로 에러를 전달
-                if (err) {
-                    return callback(err, null);
-                }
-
-                // 3. 가공이 완료된 데이터를 최종적으로 컨트롤러의 콜백 함수에 전달
-                callback(null, results);
-            });
-        },
+        
+        /* 법안 상세 조회 - 페이지 (async/await 기반) */
+        getDetailPage: async (id) => {
+            try {
+                const results = await billDao.getDetail(id);
+                return results; // 결과 배열 (단일 레코드가 담긴)
+            } catch (error) {
+                logger.error(`Error in billService.getDetailPage for ID ${id}:`, error);
+                throw error;
+            }
+        }
     };
 };

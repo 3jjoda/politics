@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('name-search');
     const sortButtons = document.querySelectorAll('.sort-btn');
     const typeFilter = document.getElementById('type-filter');
+    const itemsPerPage = 20;
 
     // === 상태 관리 변수 ===
     let allPoliticians = []; // API로 받은 전체 원본 데이터
@@ -26,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? paginatedData.map(createPoliticianCard).join('')
                 : '<p class="no-results">검색 결과가 없습니다.</p>';
         },
-        20, // 한 페이지당 항목 수 (itemsPerPage)
+        itemsPerPage, // 한 페이지당 항목 수 (itemsPerPage)
         5,  // 표시할 페이지 버튼 수 (maxPageButtons)
         'politician-grid', // 스크롤을 이동할 대상 요소의 ID
         true, // showFirstLastButtons (맨 앞/맨 뒤 버튼 표시 여부)
@@ -204,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        pagination.update(sorted); // pagination이 데이터를 가지고 자체적으로 렌더링하도록 함
+        pagination.update(sorted, itemsPerPage, true); // pagination이 데이터를 가지고 자체적으로 렌더링하도록 함
         updateSortIndicators();
         
         // 총 카운트 업데이트

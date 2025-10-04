@@ -7,88 +7,103 @@ export default (db) => {
     const billService = BillService(db);
     const controller = {};
 
-    /* 법안 조회 */
-    controller.getList = wrapWithContext(function getList(req, res, next) {
+    /**
+     * API 엔드포인트: 모든 법안 목록을 JSON 형태로 반환
+     * 클라이언트 측에서 동적으로 데이터를 받아와 사용할 때 사용
+     */
+    controller.getList = wrapWithContext(async function getList(req, res, next) {
         try {
-            billService.getList((err, results) => {
-                if (err) {
-                    logger.error('법안 목록 조회 중 에러:', { stack: err.stack });
-                    return next(err);   // 에러를 전역 에러 핸들러로 전달
-                }
-                res.status(200).json(results);
-            });
-        } catch(error) {
-            logger.error('컨트롤러에서 예상치 못한 에러:', `${error.message}\n${error.stack}`);
+            const results = await billService.getList(); // 가공된 데이터 반환
+            res.status(200).json(results);
+        } catch (error) {
+            logger.error('API 컨트롤러에서 법안 목록 조회 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });
 
-    /* 웹페이지용: EJS 페이지를 렌더링하여 반환 (콜백 방식) */
-    controller.getListPage = (req, res, next) => {
+    /**
+     * 웹 페이지 엔드포인트: 법안 목록 페이지 (EJS)를 렌더링
+     * 이 페이지는 초기 렌더링 시 빈 데이터를 전달하거나, 모든 데이터를 미리 불러와 클라이언트 측 JS에 넘겨줄 수 있음
+     * 현재는 모든 데이터를 미리 불러와 window.billData로 전달하는 방식
+     */
+    controller.getListPage = wrapWithContext(async function getListPage(req, res, next) {
         try {
-            // 서비스의 getList 함수를 콜백 방식으로 호출
-            billService.getListPage((err, results) => {
-                // 1. 서비스에서 에러가 발생하면 에러 핸들러로 전달
-                if (err) {
-                    return next(err);
-                }
-    
-                // 2. 에러가 없으면, 받아온 데이터를 템플릿에 넣어 렌더링
-                res.render('bill/bill', {
-                    pageTitle: '법안',
-                    pageStyles: 'bill/bill',
-                    currentUrl: '/bill',
-                    bills: results // 서비스가 가공 완료한 데이터를 전달
-                });
-            });
-        } catch (error) {
-            next(error);
-        }
-    };
+            // 모든 법안 데이터를 불러와 클라이언트 측에 넘겨줌
+            // 클라이언트 측 JS(bill.js)에서 이 데이터를 사용하여 렌더링 및 페이징을 처리
+            const results = await billService.getList(); 
 
-    /* 법안 상세 조회 */
-    controller.getDetail = wrapWithContext(function getDetail(req, res, next) {
-        try {
-            const { id } = req.params;
-            billService.getDetail(id, (err, result) => {
-                if (err) {
-                    logger.error('법안 상세 조회 중 에러:', { stack: err.stack });
-                    return next(err);
-                }
-                if (result.length > 0) {
-                    res.status(200).json(result[0]);
-                } else {
-                    res.status(404).json({ success: false, message: '법안을 찾을 수 없습니다' });
-                }
+            res.render('bill/bill', {
+                pageTitle: '정치 바로미터 - 법안',
+                pageStyles: 'bill/bill',
+                currentUrl: '/bill',
+                bill: results // 서비스가 가공 완료한 데이터를 전달
             });
         } catch (error) {
-            logger.error('컨트롤러에서 예상치 못한 에러:', `${error.message}\n${error.stack}`);
+            logger.error('웹 컨트롤러에서 법안 목록 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error); 
+        }
+    });
+    
+    /**
+     * API 엔드포인트: 특정 법안의 상세 정보를 JSON 형태로 반환합니다.
+     */
+    controller.getDetail = wrapWithContext(async function getDetail(req, res, next) {
+        try {
+            const billData = await billService.getDetail(req.params.id);
+            if (!billData) {
+                return res.status(404).json({ message: '법안을 찾을 수 없습니다.' });
+            }
+            res.status(200).json(billData);
+        } catch (error) {
+            logger.error('API 컨트롤러에서 법안 상세 정보 조회 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });
 
-    /* 웹페이지용: EJS 페이지를 렌더링하여 반환 (콜백 방식) */
-    controller.getDetailPage = (req, res, next) => {
+    /**
+     * 웹 페이지 엔드포인트: 특정 법안의 상세 정보 페이지 (EJS)를 렌더링합니다.
+     * 필요한 모든 데이터를 여기서 조회하고 EJS 템플릿으로 전달합니다.
+     */
+    controller.getDetailPage = wrapWithContext(async function getDetailPage(req, res, next) {
         try {
-            // 서비스의 getList 함수를 콜백 방식으로 호출
-            billService.getDetailPage(req.params.id, (err, results) => {
-                // 1. 서비스에서 에러가 발생하면 에러 핸들러로 전달
-                if (err) {
-                    return next(err);
-                }
-    
-                // 2. 에러가 없으면, 받아온 데이터를 템플릿에 넣어 렌더링
-                res.render('bill/bill_detail', {
-                    pageTitle: '법안 상세정보',
-                    pageStyles: 'bill/bill_detail',
-                    currentUrl: '/bill',
-                    bill: results[0] // 서비스가 가공 완료한 데이터를 전달
+            const monaCd = req.params.id;
+            let bill = {};
+
+            // 1. 법안 상세 정보 조회
+            const billData = await billService.getDetail(monaCd);
+            if (!bill) { // 데이터가 없는 경우
+                return res.status(404).render('error_pages/404', { // 404 페이지 렌더링
+                    pageTitle: '법안 찾을 수 없음',
+                    pageStyles: 'error',
+                    message: '요청하신 법안 정보를 찾을 수 없습니다.'
                 });
+            }
+
+            bill = billData[0];
+            
+            // 2. 추가 정보 (법안, 댓글, 점수 등) 조회 (가정)
+            // 서비스 계층에서 각 데이터를 가져오는 함수를 호출
+            // 예: const billData = await billService.getList(monaCd);
+            // 예: const replyData = await replyService.getReplies(monaCd);
+            // 예: const scoreData = await scoreService.getScores(monaCd);
+
+            // 현재는 임시 데이터로 할당
+            bill.bills = []; 
+            bill.replys = []; 
+            bill.scores = []; 
+
+            res.render('bill/bill_detail', {
+                pageTitle: '법안 정보 - ' + bill.HG_NM, // billService.getDetail의 결과 구조에 따라 변경 (HG_NM이 이름으로 가정)
+                pageStyles: 'bill/bill_detail',
+                currentUrl: `/bill/${monaCd}`, // 상세 페이지의 실제 URL 반영
+                bill: bill // 모든 관련 정보가 포함된 법안 객체 전달
             });
+
         } catch (error) {
+            logger.error('웹 컨트롤러에서 법안 상세 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
-    };
+    });
 
     return controller;
 };
