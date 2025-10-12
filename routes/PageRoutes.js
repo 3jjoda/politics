@@ -26,6 +26,19 @@ export default (db) => {
         }
     });
 
+    // 소개 페이지
+    router.get('/about', async (req, res, next) => {
+        try {
+            res.render('about', { 
+                pageTitle: '사이트 소개',
+                pageStyles: 'about',
+                currentUrl: '/about'
+            }); 
+        } catch (error) {
+            next(error);
+        }
+    });
+
     // 국회의원 목록 페이지
     router.get('/politician', politicianController.getListPage);
     // 국회의원 상세 페이지

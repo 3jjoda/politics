@@ -251,6 +251,10 @@ body {
   margin-bottom: -1px; /* 탭 하단 보더 겹치지 않게 */
   border: none;
   border-radius: 8px 8px 0 0;
+  /* 추가: 탭 텍스트가 항상 한 줄로 표시되도록 최소 너비 및 중앙 정렬 */
+  min-width: 120px; /* 가장 긴 텍스트 ('국민 평가 (3)', '활동 분석')가 한 줄에 들어갈 수 있는 충분한 너비 */
+  white-space: nowrap; /* 텍스트 줄 바꿈 방지 (nav-tabs에 이미 적용되었지만 한번 더 명시적으로) */
+  text-align: center; /* 텍스트를 탭 중앙에 정렬 */
 }
 .politician-tabs .nav-link.active {
   background-color: var(--color-primary);
@@ -480,8 +484,11 @@ body {
   }
   /* 탭 메뉴는 이미 992px에서 처리되었으므로 추가 변경 불필요 */
   .politician-tabs .nav-link {
+      /* font-size는 576px 이하에서만 작게 유지 */
       font-size: 1rem;
       padding: 10px 15px;
+      /* min-width는 992px 이하에서 이미 설정되었으므로 여기서는 추가 조정 불필요.
+         혹은 더 작은 최소 너비가 필요하면 여기서 재정의 가능. */
   }
   .tab-section-title {
       font-size: 1.5rem;

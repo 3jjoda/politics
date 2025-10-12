@@ -1,12 +1,9 @@
-<%# 1. 헤더 공통 영역을 불러옵니다. %>
-<%- include('../partials/header', { pageTitle: pageTitle, pageStyles: pageStyles, currentUrl: currentUrl }) %>
-
-<%# 2. 페이지에서 사용할 데이터 글로벌 변수로 셋팅 (서버에서 politician로 넘김) %>
+<%# 1. 페이지에서 사용할 데이터 글로벌 변수로 셋팅 (서버에서 politician로 넘김) %>
 <script>
     window.politicianData = <%- JSON.stringify(politician) %>;
 </script>
 
-<%# 3. 페이지 고유의 콘텐츠 %>
+<%# 2. 페이지 고유의 콘텐츠 %>
 <section class="controls">
     <div class="filter-container">
         <div class="custom-select-wrapper">
@@ -37,8 +34,5 @@
 <%# 페이징 동적으로 생성 %>
 <div class="pagination-container" id="pagination-container"></div>
 
-<%# 4. 푸터 공통 영역 %>
-<%- include('../partials/footer') %>
-
-<%# 5. 이 페이지에서만 사용하는 스크립트를 가장 마지막에 추가 %>
+<%# 3. 이 페이지에서만 사용하는 스크립트를 가장 마지막에 추가 %>
 <script src="/scripts/politician/politician.js" type="module"></script>
