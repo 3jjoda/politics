@@ -1,114 +1,283 @@
-<%- include('../partials/header', { pageTitle: pageTitle, pageStyles: pageStyles, currentUrl: currentUrl }) %>
-
 <%
-    /*
-     * 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `politician` 객체)
-     * 실제 API 연동 시 백엔드에서 이 객체에 API 응답 데이터를 매핑하여 EJS에 전달
-     * 예시:
-     * router.get('/politician/:mon_code', async (req, res) => {
-     * const monCode = req.params.mon_code;
-     * const apiData = await fetchPoliticianData(monCode); // API 호출 함수
-     * const politician = {
-     * name: apiData.MON_NAME,
-     * party: apiData.POLY_NAME,
-     * constituency: apiData.ORIG_NAME,
-     * reele_count: apiData.DAESU, // 예시: 몇 대 국회인지 등
-     * photo_url: apiData.PHOTO_URL",
-     * data_grade: "A-", // 백엔드에서 계산
-     * citizen_rating: "4.2", // 백엔드에서 계산
-     * metrics: [ ... ], // 백엔드에서 계산
-     * bills: [ ... ], // 백엔드에서 API 데이터 조합
-     * analysisData: { ... } // 백엔드에서 계산
-     * };
-     * res.render('politician_detail', { politician });
-     * });
-     
+    // ==========================================================
+    // 가비지(더미) 데이터 정의
+    // 실제 데이터는 politician 객체를 통해 전달됩니다.
+    // ==========================================================
     const politician = {
-        name: "강민국",
-        party: "국민의힘",
-        constituency: "경남 진주시을",
-        reele_count: 2, // '몇 선'인지
-        <!-- photo_url: "https://via.placeholder.com/120", -->
-        data_grade: "A-",
-        citizen_rating: "4.2",
-        metrics: [
-            { label: '본회의 출석률', value: 95, grade: 'S' },
-            { label: '법안 대표발의', value: 82, grade: 'A' },
-            { label: '국정감사 참여도', value: 70, grade: 'B' },
-            { label: '정책 제안 혁신성', value: 88, grade: 'A' }
+        MONA_CD: 'T2T8225E',
+        HG_NM: '가비지 정치인', // 실제: 윤상현
+        DJY_NM: '국민의힘',
+        REELE_GBN_NM: '3선', // 3선 이상은 '다선'으로 표기할 수도 있음
+        AGE: 62,
+        BIRTH_DATE: '1962-09-01',
+        ELECT_GBN_NM: '지역구 (인천 동구·미추홀구을)',
+        HP_URL: 'https://blog.naver.com/sh_yoon',
+        IMG_URL: 'https://via.placeholder.com/200x250?text=Politician+Image', // 실제 정치인 이미지 URL
+        
+        ACTIVE_SCORE: 78, // 활동성 점수 (가비지)
+        COMM_SCORE: 65, // 소통성 점수 (가비지)
+        AVG_RATING: 3.8, // 사용자 평균 평점 (가비지)
+        RATING_COUNT: 1250, // 평점 참여자 수 (가비지)
+
+        bills: [ // 법안 목록 (가비지)
+            {
+                bill_id: 'PRC_A1234',
+                bill_name: '국민 건강 증진을 위한 법률 개정안',
+                proposer: '가비지 정치인',
+                propose_date: '2023-11-20',
+                proc_result_cd: '가결',
+                proc_date: '2024-02-15',
+                detail_link: 'https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_A1234',
+                BILL_SUMMARY: '모든 국민에게 연 1회 무료 건강 검진을 제공하고, 건강 증진 활동 참여 시 인센티브를 지급하는 내용을 담고 있습니다.',
+                IMPACT_ANALYSIS: '국민 건강 증진에 기여하며, 의료비 부담을 장기적으로 줄일 수 있습니다. 다만 초기 재정 투입이 필요할 수 있습니다.',
+                CATEGORY: '보건복지',
+            },
+            {
+                bill_id: 'PRC_B5678',
+                bill_name: '중소기업 육성 및 지원에 관한 특별법',
+                proposer: '가비지 정치인',
+                propose_date: '2024-01-05',
+                proc_result_cd: '계류',
+                proc_date: null,
+                detail_link: 'https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_B5678',
+                BILL_SUMMARY: '중소기업의 기술 개발 자금 지원을 확대하고, 판로 개척을 위한 국제 박람회 참여를 지원하는 내용의 법안입니다.',
+                IMPACT_ANALYSIS: '중소기업의 경쟁력 강화에 기여하고 일자리 창출 효과를 기대할 수 있습니다. 대기업과의 불균형 해소에도 도움이 될 것입니다.',
+                CATEGORY: '산업경제',
+            },
+            {
+                bill_id: 'PRC_C9012',
+                bill_name: '친환경 에너지 전환 가속화에 관한 법률안',
+                proposer: '가비지 정치인',
+                propose_date: '2023-09-10',
+                proc_result_cd: '폐기',
+                proc_date: '2024-01-20',
+                detail_link: 'https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_C9012',
+                BILL_SUMMARY: '재생에너지 발전 비중 확대를 위한 인프라 구축을 지원하고, 탄소 배출 저감 기술 개발을 장려하는 법안입니다.',
+                IMPACT_ANALYSIS: '기후 변화 대응에 긍정적이며, 미래 에너지 산업 육성에 기여합니다. 그러나 기존 화력 발전 관련 산업의 전환 과정에서 진통이 예상됩니다.',
+                CATEGORY: '환경에너지',
+            }
         ],
-        bills: [
-            { id: '12345', name: '미래산업 육성 특별법', statusClass: 'pass', statusText: '가결', roleClass: '', roleText: '대표발의' },
-            { id: '12346', name: '소상공인 지원에 관한 법률 개정안', statusClass: 'pass', statusText: '가결', roleClass: 'agree', roleText: '찬성' },
-            { id: '12347', name: '국가재정법 일부개정법률안', statusClass: 'reject', statusText: '부결', roleClass: 'disagree', roleText: '반대' },
-            { id: '12348', name: '공공기관 채용 비리 방지법', statusClass: 'pending', statusText: '심사 중', roleClass: 'abstain', roleText: '기권' }
+        
+        // 가비지 댓글 데이터
+        replys: [
+            { user_nickname: '현명한시민1', content: '항상 열심히 일해주셔서 감사합니다. 응원합니다!', created_at: '2024-05-20 14:30', like_count: 5, reply_id: 1 },
+            { user_nickname: '바른말투표자', content: '최근 법안 발의 방향이 저희 지역에는 좀 안 맞는 것 같아요. 조금 더 주민들의 의견을 들어주시면 좋겠습니다.', created_at: '2024-05-19 10:00', like_count: 3, reply_id: 2 },
+            { user_nickname: '정책관심러', content: '법안 요약이 정말 이해하기 쉬워서 좋네요! 감사합니다.', created_at: '2024-05-18 18:45', like_count: 8, reply_id: 3 }
         ],
-        analysisData: {
-            labels: ['출석률', '대표발의', '공동발의', '위원회활동', '표결참여', '정책일치'],
-            values: [95, 82, 70, 88, 75, 80]
+        // 가비지 공동 발의 의원 (간단하게 이름만)
+        co_proposers: [
+            { MONA_CD: 'T2T8225F', HG_NM: '공동발의A' },
+            { MONA_CD: 'T2T8225G', HG_NM: '공동발의B' },
+            { MONA_CD: 'T2T8225H', HG_NM: '공동발의C' },
+        ],
+        // 가비지 투표 현황 (예시)
+        vote_summary: {
+            찬성: 70,
+            반대: 15,
+            기권: 5,
+            불참: 10
         }
     };
-    */
+
+    // 현재 URL 설정 (실제 컨트롤러에서 전달)
+    const currentUrl = `/politician/${politician.MONA_CD}`;
+    const pageTitle = `정치인 정보 - ${politician.HG_NM}`;
+    const pageStyles = 'politician/politician_detail';
+
+    // Helper function for star rating display
+    const renderStars = (rating) => {
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 >= 0.5 ? 1 : 0;
+        const emptyStars = 5 - fullStars - halfStar;
+        let starsHtml = '';
+        for (let i = 0; i < fullStars; i++) starsHtml += '<i class="fas fa-star full"></i>';
+        if (halfStar) starsHtml += '<i class="fas fa-star-half-alt half"></i>';
+        for (let i = 0; i < emptyStars; i++) starsHtml += '<i class="far fa-star empty"></i>';
+        return starsHtml;
+    };
 %>
 
-<div class="politician-detail-container">
-    <aside class="profile-sidebar">
-        <img src="<%= politician.photo_url %>" alt="<%= politician.name %> 의원 사진" class="profile-photo-small">
-        <h1 class="profile-name"><%= politician.name %></h1>
-        <p class="profile-party"><%= politician.party %></p>
-        <div class="profile-meta">
-            <span class="meta-item"><strong>선거구:</strong> <%= politician.constituency %></span>
-            <span class="meta-item"><strong>재선:</strong> <span class="card-reele reele--<%= politician.reele_count === 2 ? 'second' : (politician.reele_count === 3 ? 'third' : 'first') %>"><%= politician.reele_count %>선</span></span>
-        </div>
-    </aside>
+<%- include('../partials/header', { pageTitle: pageTitle, pageStyles: pageStyles, currentUrl: currentUrl }) %>
 
-    <section class="detail-main">
-        <div class="overall-dashboard">
-            <div class="dashboard-box data-grade"><span class="grade-value"><%= politician.data_grade %></span><span class="grade-label">데이터 종합 등급</span></div>
-            <div class="dashboard-box citizen-grade"><span class="grade-value"><%= politician.citizen_rating %> <span class="star">★</span></span><span class="grade-label">시민 종합 평점</span></div>
+<main class="politician-detail-main">
+    <section class="politician-profile">
+        <div class="profile-info-section"> <div class="name-and-meta">
+                <h2><%= politician.HG_NM %></h2>
+                <p class="party-reele-group">
+                    <span class="badge party-<%= politician.DJY_NM.replace(/\s/g, '').toLowerCase() %>"><%= politician.DJY_NM %></span>
+                    <span class="reele-status <%= politician.reeleClass || '' %>"><%= politician.REELE_GBN_NM %></span>
+                </p>
+            </div>
         </div>
-
-        <div class="data-analysis">
-            <h2>데이터 기반 상세 분석</h2>
-            <div class="analysis-container">
-                <div class="radar-chart-container" data-analysis='<%= JSON.stringify(politician.analysisData) %>'><canvas id="politicianRadarChart"></canvas></div>
-                <div class="metric-list">
-                    <% /* politician.metrics 배열을 순회하여 표시 */ %>
-                    <% if (politician.metrics && politician.metrics.length > 0) { %>
-                        <% politician.metrics.forEach(metric => { %>
-                            <div class="metric-item">
-                                <label><%= metric.label %></label>
-                                <div class="progress-bar"><div class="bar" style="width: <%= metric.value %>%;"></div></div>
-                                <span><%= metric.value %>% (<%= metric.grade %>)</span>
-                            </div>
-                        <% }); %>
-                    <% } else { %>
-                        <p>분석 데이터를 불러오는 중입니다...</p>
-                    <% } %>
+    
+        <div class="profile-image-section"> <div class="profile-image-container">
+                <img src="<%= politician.IMG_URL %>" alt="<%= politician.HG_NM %> 프로필 이미지">
+            </div>
+        </div>
+    
+        <div class="profile-details-section"> <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">선거구</span>
+                    <span class="stat-value"><%= politician.ELECT_GBN_NM %></span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">생년월일</span>
+                    <span class="stat-value"><%= politician.BIRTH_DATE %> (<%= politician.AGE %>세)</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">홈페이지</span>
+                    <span class="stat-value"><a href="<%= politician.HP_URL %>" target="_blank" rel="noopener noreferrer">바로가기 <i class="fas fa-external-link-alt"></i></a></span>
+                </div>
+            </div>
+    
+            <div class="barometer-scores">
+                <div class="score-item">
+                    <h4>활동성 점수</h4>
+                    <div class="score-gauge">
+                        <div class="gauge-fill" style="width: <%= politician.ACTIVE_SCORE %>%"></div>
+                        <span class="score-value"><%= politician.ACTIVE_SCORE %>점</span>
+                    </div>
+                </div>
+                <div class="score-item">
+                    <h4>소통성 점수</h4>
+                    <div class="score-gauge">
+                        <div class="gauge-fill" style="width: <%= politician.COMM_SCORE %>%"></div>
+                        <span class="score-value"><%= politician.COMM_SCORE %>점</span>
+                    </div>
+                </div>
+                <div class="score-item user-rating">
+                    <h4>국민 평점</h4>
+                    <div class="star-rating">
+                        <%- renderStars(politician.AVG_RATING) %>
+                    </div>
+                    <span class="rating-value"><%= politician.AVG_RATING %> / 5.0 (<%= politician.RATING_COUNT %>명 참여)</span>
+                    <button class="btn btn-primary btn-sm mt-2" id="ratePoliticianBtn">평점 주기</button>
                 </div>
             </div>
         </div>
+    </section>
 
-        <div class="related-bills">
-            <h2>관련 법안</h2>
-            <div class="bill-list-simple">
+    <section class="politician-tabs mt-4">
+        <ul class="nav nav-tabs" id="politicianTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="bills-tab" data-bs-toggle="tab" data-bs-target="#bills" type="button" role="tab" aria-controls="bills" aria-selected="true">법안 활동</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="replies-tab" data-bs-toggle="tab" data-bs-target="#replies" type="button" role="tab" aria-controls="replies" aria-selected="false">국민 평가 (<%= politician.replys.length %>)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab" aria-controls="analytics" aria-selected="false">활동 분석</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="politicianTabsContent">
+            <div class="tab-pane fade show active" id="bills" role="tabpanel" aria-labelledby="bills-tab">
+                <h3 class="tab-section-title mt-4">주요 발의 법안</h3>
                 <% if (politician.bills && politician.bills.length > 0) { %>
-                    <% politician.bills.forEach(bill => { %>
-                        <a href="/bill/<%= bill.id %>" class="bill-item-simple">
-                            <span class="bill-title"><%= bill.name %></span>
-                            <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span>
-                            <span class="bill-role vote-<%= bill.roleClass %>"><%= bill.roleText %></span>
-                        </a>
-                    <% }); %>
+                    <div class="bill-cards-container">
+                        <% politician.bills.forEach(bill => { %>
+                            <div class="bill-card">
+                                <h4>
+                                    <a href="<%= bill.detail_link %>" target="_blank" rel="noopener noreferrer">
+                                        <%= bill.bill_name %> <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </h4>
+                                <p class="bill-meta">
+                                    <span class="badge badge-category"><%= bill.CATEGORY %></span>
+                                    <span class="propose-date">제안일: <%= bill.propose_date %></span>
+                                </p>
+                                <p class="bill-summary"><%= bill.BILL_SUMMARY %></p>
+                                <div class="bill-impact">
+                                    <strong>영향 분석:</strong> <%= bill.IMPACT_ANALYSIS %>
+                                </div>
+                                <div class="bill-status">
+                                    <span class="status-label">처리 결과:</span>
+                                    <span class="status-value status-<%= bill.proc_result_cd === '가결' ? 'success' : (bill.proc_result_cd === '폐기' ? 'danger' : 'info') %>">
+                                        <%= bill.proc_result_cd %>
+                                    </span>
+                                    <% if (bill.proc_date) { %>
+                                        <span class="status-date">(<%= bill.proc_date %>)</span>
+                                    <% } %>
+                                </div>
+                                <% if (politician.co_proposers && politician.co_proposers.length > 0) { %>
+                                <div class="co-proposers">
+                                    <strong>공동 발의:</strong>
+                                    <% politician.co_proposers.slice(0, 3).forEach((co, index) => { %>
+                                        <a href="/politician/<%= co.MONA_CD %>"><%= co.HG_NM %></a><%= index < 2 ? ', ' : '' %>
+                                    <% }); %>
+                                    <% if (politician.co_proposers.length > 3) { %>
+                                        ... 외 <%= politician.co_proposers.length - 3 %>명
+                                    <% } %>
+                                </div>
+                                <% } %>
+                            </div>
+                        <% }); %>
+                    </div>
                 <% } else { %>
-                    <p>등록된 관련 법안이 없습니다.</p>
+                    <p class="mt-3">아직 등록된 주요 발의 법안 정보가 없습니다.</p>
                 <% } %>
             </div>
+
+            <div class="tab-pane fade" id="replies" role="tabpanel" aria-labelledby="replies-tab">
+                <h3 class="tab-section-title mt-4">국민 평가 및 댓글</h3>
+                <div class="reply-form-section">
+                    <h4>의견 남기기</h4>
+                    <textarea class="form-control" rows="3" placeholder="의원에게 바라는 점이나 평가를 남겨주세요 (로그인 필요)"></textarea>
+                    <button class="btn btn-secondary mt-2">댓글 작성</button>
+                </div>
+                <div class="reply-list mt-4">
+                    <% if (politician.replys && politician.replys.length > 0) { %>
+                        <% politician.replys.forEach(reply => { %>
+                            <div class="reply-item">
+                                <p class="reply-meta">
+                                    <strong><%= reply.user_nickname %></strong>
+                                    <span class="text-muted ms-2"><%= reply.created_at %></span>
+                                </p>
+                                <p class="reply-content"><%= reply.content %></p>
+                                <div class="reply-actions">
+                                    <button class="btn btn-sm btn-light"><i class="far fa-thumbs-up"></i> 좋아요 (<%= reply.like_count %>)</button>
+                                    <button class="btn btn-sm btn-light ms-2"><i class="far fa-flag"></i> 신고</button>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <p class="mt-3">아직 등록된 국민 평가 및 댓글이 없습니다.</p>
+                    <% } %>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="analytics" role="tabpanel" aria-labelledby="analytics-tab">
+                <h3 class="tab-section-title mt-4">의정 활동 상세 분석</h3>
+                <div class="analytics-content">
+                    <h4>법안 발의 분야 분석</h4>
+                    <div class="chart-container" style="height: 200px; width: 100%;">
+                        <p class="placeholder-text">이곳에 법안 발의 분야 파이 차트가 표시됩니다.</p>
+                    </div>
+
+                    <h4 class="mt-4">주요 공약 이행률</h4>
+                    <div class="progress mt-2">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 70%;" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100">70%</div>
+                    </div>
+                    <p class="placeholder-text">이곳에 공약 목록과 이행률 추적 정보가 표시됩니다.</p>
+
+                    <h4 class="mt-4">법안 투표 성향 분석 (예시)</h4>
+                    <div class="chart-container" style="height: 150px; width: 100%;">
+                        <p class="placeholder-text">이곳에 의원의 법안 투표 성향 차트가 표시됩니다.</p>
+                        <% if (politician.vote_summary) { %>
+                            <p>찬성: <%= politician.vote_summary.찬성 %>%, 반대: <%= politician.vote_summary.반대 %>%, 기권: <%= politician.vote_summary.기권 %>%, 불참: <%= politician.vote_summary.불참 %>%</p>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
         </div>
-        
     </section>
-</div>
+</main>
 
 <%- include('../partials/footer') %>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="/scripts/poltician/politician_detail.js"></script>
+
+<script>
+    // 평점 주기 버튼 클릭 이벤트 (간단한 예시)
+    document.getElementById('ratePoliticianBtn')?.addEventListener('click', () => {
+        alert('평점 주기 기능은 준비 중입니다! 로그인 후 이용 가능합니다.');
+        // 실제로는 모달을 띄우고 평점 입력 폼을 보여줍니다.
+    });
+</script>

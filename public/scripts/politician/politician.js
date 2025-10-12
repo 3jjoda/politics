@@ -146,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="card-name-overlay ${typeClass}">${typeName}</span>
                     <img src="${photoUrl}">
                     <div class="card-content">
-                        <span class="card-type">${typeName}</span>
                         <h2 class="card-name">${politician.name}</h2>
                         <p class="card-party">${partyName}</p>
                         <div class="card-meta">
