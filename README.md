@@ -34,6 +34,7 @@
     * `express-ejs-layouts`: EJS 템플릿 레이아웃 관리 미들웨어
 
 ## 📁 프로젝트 구조
+```
 POLITICS/
 ├── app.js                      # Express 서버 진입점 및 주요 설정 (DB 연결 로직 포함)
 ├── package.json                # 프로젝트 정보 및 의존성
@@ -60,6 +61,7 @@ POLITICS/
     ├── politician/
     │   └── politician.ejs      # '정치인 목록' 페이지
     └── ...
+```
 
 ## 🚀 시작하는 방법
 
@@ -72,6 +74,7 @@ https://github.com/3jjoda/politics.git
 npm install
 
 ### 3. 환경 변수 설정
+```
 프로젝트 루트에 .env 파일을 생성하고 다음 환경 변수를 설정해야 합니다. 이 변수들은 AWS RDS 데이터베이스 연결 및 기타 설정에 사용됩니다.
 (.env 파일은 .gitignore에 추가하여 버전 관리에서 제외하는 것이 중요합니다.)
 
@@ -80,6 +83,7 @@ DB_USER=your_db_username
 DB_PASSWORD=your_db_password
 DB_DATABASE=politics
 PORT=3000
+```
 
 ### 4. 서버 실행
 node app.js
