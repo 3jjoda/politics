@@ -75,7 +75,7 @@ npm install
 
 ### 3. 환경 변수 설정
 ```
-프로젝트 루트에 .env 파일을 생성하고 다음 환경 변수를 설정해야 합니다. 이 변수들은 AWS RDS 데이터베이스 연결 및 기타 설정에 사용됩니다.
+프로젝트 루트에 `.env` 파일을 생성하고 다음 환경 변수를 설정해야 합니다. 이 변수들은 AWS RDS 데이터베이스 연결 및 기타 설정에 사용됩니다.
 (.env 파일은 .gitignore에 추가하여 버전 관리에서 제외하는 것이 중요합니다.)
 
 DB_HOST=politics.cdg04ws4c5db.ap-southeast-2.rds.amazonaws.com
