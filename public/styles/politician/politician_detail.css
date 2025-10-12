@@ -120,10 +120,6 @@ body {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  /* profile-image-section이 이미 flex로 정렬하므로 여기서는 제거해도 됨 */
-  /* display: flex;  */
-  /* align-items: flex-start; */
-  /* justify-content: center; */
 }
 
 .profile-image-container img {
@@ -233,8 +229,21 @@ body {
 /* 탭 메뉴 */
 .politician-tabs .nav-tabs {
   border-bottom: 2px solid var(--color-primary-light);
+  /* 모바일에서 탭 스크롤 기능 추가 */
+  display: flex; /* 탭 항목들이 한 줄에 있도록 */
+  flex-wrap: nowrap; /* 줄 바꿈 방지 */
+  overflow-x: auto; /* 내용이 넘치면 가로 스크롤 */
+  -webkit-overflow-scrolling: touch; /* iOS에서 부드러운 스크롤 */
+  scrollbar-width: none; /* Firefox 스크롤바 숨기기 */
+  -ms-overflow-style: none; /* IE/Edge 스크롤바 숨기기 */
 }
+/* Chrome, Safari 등 웹킷 브라우저 스크롤바 숨기기 */
+.politician-tabs .nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
 .politician-tabs .nav-link {
+  flex-shrink: 0; /* 탭 항목이 축소되지 않도록 */
   color: var(--color-dark-text);
   font-weight: 500;
   font-size: 1.1rem;
@@ -267,7 +276,8 @@ body {
 /* 법안 카드 */
 .bill-cards-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  /* 작은 화면에서 minmax 최소 너비를 더 유연하게 조정 */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* 350px에서 300px로 줄임 */
   gap: 25px;
 }
 .bill-card {
@@ -427,28 +437,38 @@ body {
       padding: 20px;
   }
   .politician-profile {
+      /* 992px 이하에서는 모든 섹션을 수직으로 쌓음 */
       grid-template-areas:
           "info"
           "image"
-          "details"; /* 작은 화면에서는 모든 요소가 수직으로 쌓임 */
+          "details";
       grid-template-columns: 1fr; /* 단일 컬럼 */
       grid-template-rows: auto auto auto; /* 각 행 높이 자동 */
       gap: 20px;
-      text-align: center;
+      text-align: center; /* 내부 텍스트 중앙 정렬 */
   }
   .profile-info-section,
   .profile-image-section,
   .profile-details-section {
       width: 100%; /* 전체 너비 차지 */
+      text-align: center;
   }
   .profile-image-container {
       width: 250px; /* 이미지 자체의 너비 고정 */
       height: 280px; /* 이미지 높이 고정 (원하는 비율에 따라 조정) */
       margin: 0 auto; /* 중앙 정렬 */
   }
-  .name-and-meta h2, .party-reele-group {
+  /* name-and-meta 내부 요소들을 중앙 정렬 */
+  .name-and-meta h2 {
       text-align: center;
-      justify-content: center; /* flex 자식 요소 중앙 정렬 (party-reele-group만 해당) */
+  }
+  .party-reele-group {
+      justify-content: center; /* flex 자식 요소 중앙 정렬 */
+  }
+
+  /* 법안 카드도 반응형으로 조정 */
+  .bill-cards-container {
+      grid-template-columns: 1fr; /* 992px 이하에서는 한 줄에 하나의 카드만 표시 */
   }
 }
 @media (max-width: 576px) {
@@ -458,6 +478,7 @@ body {
   .name-and-meta h2 {
       font-size: 1.8rem;
   }
+  /* 탭 메뉴는 이미 992px에서 처리되었으므로 추가 변경 불필요 */
   .politician-tabs .nav-link {
       font-size: 1rem;
       padding: 10px 15px;
@@ -465,4 +486,5 @@ body {
   .tab-section-title {
       font-size: 1.5rem;
   }
+  /* 법안 카드도 이미 992px에서 처리되었으므로 추가 변경 불필요 */
 }
