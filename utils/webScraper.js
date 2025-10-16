@@ -1,17 +1,24 @@
-// C:\dev\politics\utils\webScraper.js
-import axios from 'axios';
-import { JSDOM } from 'jsdom'; // HTML 파싱을 위해 'jsdom' 라이브러리 설치 필요
-import * as toughCookie from 'tough-cookie'; // <-- 이렇게 수정합니다.
-import { wrapper as axiosCookieJarSupport } from 'axios-cookiejar-support';
-import logger from './logger.js'; // 로거 경로 조정
-import qs from 'qs'; // <-- 이 라인을 추가합니다.
+// C:\dev\politics\utils\webScraper.js (The True Final - Manual Cookie Handling)
 
-// 쿠키 저장소 설정
-const cookieJar = new toughCookie.CookieJar();
-axiosCookieJarSupport(axios); // axios에 쿠키 jar 지원 추가
+import axios from 'axios';
+import { JSDOM } from 'jsdom';
+import * as toughCookie from 'tough-cookie';
+import logger from './logger.js';
+import qs from 'qs';
+import axiosRetry from 'axios-retry';
 
 class WebScraper {
     constructor() {
+        this.cookieJar = new toughCookie.CookieJar();
+        this.axiosInstance = axios.create({ timeout: 60000 });
+        axiosRetry(this.axiosInstance, {
+            retries: 3,
+            retryDelay: (retryCount, error) => {
+                logger.warn(`Request failed (attempt #${retryCount}). Retrying... Error: ${error.message}`);
+                return retryCount * 1000;
+            },
+            retryCondition: (error) => axiosRetry.isNetworkOrIdempotentRequestError(error) || error.response?.status >= 500
+        });
         this.csrfToken = null;
         this.headers = {
             'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -31,86 +38,46 @@ class WebScraper {
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"Windows"'
         };
-        // axios 인스턴스에 쿠키 jar 연결
-        this.axiosInstance = axios.create({
-            jar: cookieJar,
-            withCredentials: true, // 쿠키가 요청에 자동으로 포함되도록 설정
-            timeout: 30000 // 타임아웃 30초
-        });
     }
+    async _applyCookies(url, headers) { const cookieString = await this.cookieJar.getCookieString(url); if (cookieString) { headers['Cookie'] = cookieString; } }
+    async _storeCookies(url, responseHeaders) { const setCookie = responseHeaders['set-cookie']; if (setCookie) { await Promise.all(setCookie.map(cookie => this.cookieJar.setCookie(cookie, url))); } }
 
     async initialize(initialUrl) {
-        logger.info('Initializing scraper: Fetching initial page to get CSRF token and cookies...');
+        logger.info(`Initializing scraper for ${initialUrl.split('monaCd=')[1].split('&')[0]}...`);
         try {
-            const response = await this.axiosInstance.get(initialUrl, { headers: {
-                'User-Agent': this.headers['User-Agent'],
-                'Accept-Language': this.headers['Accept-Language'],
-                'Connection': this.headers['Connection']
-                // GET 요청은 POST 요청보다 헤더가 덜 필요할 수 있음
-            }});
-
+            const requestHeaders = { 'User-Agent': this.headers['User-Agent'] };
+            const response = await this.axiosInstance.get(initialUrl, { headers: requestHeaders });
+            await this._storeCookies(initialUrl, response.headers);
             const dom = new JSDOM(response.data);
-            
-            // CSRF 토큰 추출 (HTML에서 <input type="hidden" name="_csrf" value="토큰"> 형태를 가정)
             const csrfInput = dom.window.document.querySelector('input[name="_csrf"]');
-            if (csrfInput && csrfInput.value) {
-                this.csrfToken = csrfInput.value;
-                this.headers['X-CSRF-TOKEN'] = this.csrfToken; // 헤더에 CSRF 토큰 추가
-                logger.info(`CSRF token extracted: ${this.csrfToken.substring(0, 10)}...`);
-            } else {
-                logger.warn('CSRF token not found on the initial page. Proceeding without it.');
-            }
-
-            // 쿠키는 axios-cookiejar-support가 자동으로 처리합니다.
-            logger.info('Cookies should be handled automatically by axios-cookiejar-support.');
-
+            if (csrfInput?.value) { this.csrfToken = csrfInput.value; }
             return true;
-        } catch (error) {
-            logger.error(`Failed to initialize scraper from ${initialUrl}:`, error.message);
-            if (error.response) {
-                logger.error('  Status:', error.response.status);
-                logger.error('  Data:', error.response.data);
-            }
-            return false;
-        }
+        } catch (error) { throw new Error(`Scraper initialization failed: ${error.message}`); }
     }
 
     async postData(endpoint, params, refererUrl) {
         const url = `https://www.assembly.go.kr/portal/assm/assmPrpl/${endpoint}`;
         const data = qs.stringify(params);
-
-        const currentHeaders = { ...this.headers }; // 기본 헤더 복사
-        if (refererUrl) {
-            currentHeaders['Referer'] = refererUrl; // Referer 동적 설정
-        }
-        if (this.csrfToken) {
-            currentHeaders['X-CSRF-TOKEN'] = this.csrfToken; // CSRF 토큰 추가
-        }
-        currentHeaders['Content-Length'] = Buffer.byteLength(data).toString(); // 정확한 Content-Length 계산
-
-        logger.debug(`Calling POST API: ${url} with params: ${JSON.stringify(params)}`);
-
+        const currentHeaders = { ...this.headers, 'Referer': refererUrl };
+        if (this.csrfToken) { currentHeaders['X-CSRF-TOKEN'] = this.csrfToken; }
         try {
+            await this._applyCookies(url, currentHeaders);
             const response = await this.axiosInstance.post(url, data, { headers: currentHeaders });
-            logger.debug(`API Success for ${endpoint}. Status: ${response.status}`);
-            return response.data;
-        } catch (error) {
-            logger.error(`API Error calling ${url} with params ${JSON.stringify(params)}:`);
-            logger.error('  Error Message:', error.message);
-            logger.error('  Error Code (if any):', error.code);
-            if (error.response) {
-                logger.error('  API Response Status:', error.response.status);
-                logger.error('  API Response Data:', JSON.stringify(error.response.data, null, 2));
-                logger.error('  API Response Headers:', JSON.stringify(error.response.headers, null, 2));
-            } else if (error.request) {
-                logger.error('  No response received from API server (request was made).');
-                logger.error('  Request config:', JSON.stringify(error.config, null, 2));
-            } else {
-                logger.error('  Error setting up request:', error.message);
+            await this._storeCookies(url, response.headers);
+            const responseData = response.data;
+            if (responseData?.pageNav) {
+                const dom = new JSDOM(responseData.pageNav);
+                const newCsrfInput = dom.window.document.querySelector('input[name="_csrf"]');
+                if (newCsrfInput?.value && newCsrfInput.value !== this.csrfToken) {
+                    this.csrfToken = newCsrfInput.value;
+                    logger.debug(`New CSRF token from pageNav updated.`);
+                }
             }
-            return null;
+            return responseData;
+        } catch (error) {
+            logger.error(`API Error calling ${url}`, error.message);
+            throw error;
         }
     }
 }
-
 export default WebScraper;
