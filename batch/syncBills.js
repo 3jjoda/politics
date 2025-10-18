@@ -1,4 +1,4 @@
-// C:\dev\politics\jobs\syncBills.js (Topic 분류 로직 제거 후 최종 버전)
+// syncBills.js (Topic 분류 로직 제거 후 최종 버전)
 
 import cron from 'node-cron';
 import mysql from 'mysql2/promise';
@@ -253,7 +253,7 @@ async function runBillSync(assemblyAge, limitCount = 0) {
             logger.info(`- temp_bill_votes: ${votesTempCount.count} 건`);
             logger.info('------------------------');
 
-            // ✅ 1. bills 테이블 최종 INSERT/UPDATE (Topic 관련 로직 제거)
+            // 1. bills 테이블 최종 INSERT/UPDATE
             const [billResult] = await connection.execute(`
                 INSERT INTO bills (bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url)
                 SELECT bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url FROM temp_bills
@@ -265,7 +265,7 @@ async function runBillSync(assemblyAge, limitCount = 0) {
             `);
             billsAffected = billResult.affectedRows;
             
-            // ✅ 2. 껍데기 법안 생성 (bill_no 반영)
+            // 2. 껍데기 법안 생성
             const [placeholderResult] = await connection.execute(`
                 INSERT IGNORE INTO bills (bill_id, bill_no, bill_name, link_url, bill_kind_cd)
                 SELECT DISTINCT t.bill_id, t.bill_no, '정보 수집 필요', '', ${BILL_KIND.UNKNOWN.ID}
@@ -294,7 +294,7 @@ async function runBillSync(assemblyAge, limitCount = 0) {
             `);
             votesAffected = voteResult.affectedRows;
             
-            // ✅ API 원본 카운트 업데이트 로직 (변동 없음)
+            // API 원본 카운트 업데이트 로직
             const updatePromises = [];
             for (const [monaCd, apiCount] of apiBillCountUpdateMap.entries()) {
                 const updateSql = `UPDATE politicians SET last_bill_api_count = ? WHERE mona_cd = ?`;
