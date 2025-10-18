@@ -1,4 +1,4 @@
-// C:\dev\politics\jobs\syncBills.js (최종 반영 완료 버전)
+// C:\dev\politics\jobs\syncBills.js (Topic 분류 로직 제거 후 최종 버전)
 
 import cron from 'node-cron';
 import mysql from 'mysql2/promise';
@@ -7,94 +7,33 @@ import logger from '../utils/logger.js';
 import { format } from 'date-fns';
 import WebScraper from '../utils/webScraper.js';
 import pLimit from 'p-limit';
-import fs from 'fs'; // 파일 시스템 모듈 추가
-import path from 'path'; // 경로 모듈 추가
 
 const CONCURRENT_POLITICIAN_LIMIT = 5;
 const PAGE_CONCURRENT_LIMIT = 10;
 const ROWS_PER_PAGE = 100;
 const API_CALL_DELAY_MS = 150; 
-const TOPIC_REVIEW_FILE = path.join(process.cwd(), 'data', 'new_topic_review_list.txt'); // 신규 토픽 파일 경로
 
 // --- [정의] 의안 종류 코드 및 이름 ---
 const BILL_KIND = {
     LAW: { ID: 1, NAME: '법률안' },
     ETC: { ID: 2, NAME: '기타의안' },
-    UNKNOWN: { ID: 0, NAME: '정보수집필요' } // Placeholder용 코드 추가
-};
-
-// --- [정의] Topic 분류 기준 ---
-const TOPIC_KEYWORDS = {
-    '보건/복지/의료': ['건강보험', '의료', '치매', '환자', '간호', '장애인복지', '노인복지', '영유아보육', '국민연금', '기초연금', '정신건강', '응급의료', '후천성면역결핍', '희귀질환', '돌봄', '보건'],
-    '교육/인재/학술': ['교육', '학교', '학생', '대학', '사립학교', '학술', '직업교육', '평생교육', '영재교육', '교원', '학점인정', '과학관', '사관학교', '인재'],
-    '노동/고용/자영업': ['근로', '노동조합', '임금', '고용', '소상공인', '자영업', '직능인', '필수노동자', '기간제', '파견근로', '산재', '경력단절', '일자리', '노동'],
-    '국토/도시/주택': ['주택', '건축', '도시', '재개발', '도로', '철도', '교통', '부동산', '택지', '주차장', '공동주택', '개발제한구역', '도시재생', '항공', '공항', '물류', '철도안전'],
-    '환경/기후/에너지': ['환경', '기후', '탄소', '에너지', '원자력', '폐기물', '소음', '물관리', '석면', '대기', '재활용', '오존층', '토양환경', '하천', '해양환경', '수소'],
-    '농림축산/수산/해양': ['농지', '농산물', '어촌', '수산', '축산', '산림', '농림어업', '양곡', '낙농', '김산업', '종자산업', '양봉', '임업', '가축', '어선', '해양', '수산식품'],
-    '조세/재정/금융': ['조세', '세법', '금융', '보험', '국세', '지방세', '국채', '예금자', '자산관리', '신용보증', '증권거래세', '상속세', '법인세', '부가가치세', '주세'],
-    '산업/기술/R&D': ['산업', '기술', '과학', '정보통신', '반도체', 'AI', '인공지능', '벤처기업', '중소기업', '기술혁신', '지식재산', '소재ㆍ부품ㆍ장비', '디지털', '컴퓨팅', '로봇', '데이터베이스'],
-    '행정/공공/사법': ['공무원', '지방자치', '공공기관', '민원', '행정심판', '행정절차', '사법', '법원조직', '헌법재판소', '검찰청', '감사원', '공직자윤리', '국민권익', '인사청문회', '경찰'],
-    '안보/국방/병무': ['군인', '군사', '국방', '병역', '군형법', '예비군', '군사시설', '방위사업', '군검찰', '국가안보', '군포로', '국군'],
-    '문화/체육/예술': ['문화재', '문화', '예술', '체육', '영화', '미디어', '방송', '박물관', '만화', '태권도', '이스포츠', '국악', '한복', '스포츠', '콘텐츠'],
-    '안전/재난/소방': ['안전관리', '재난', '소방', '화재', '응급의료', '승강기안전', '방사능', '위험물', '경비업', '지진', '119', '사격장', '급경사지'],
-    '통일/외교/남북': ['북한', '남북교류', '통일', '재외국민', '외교', '위안부', '강제동원', '북한이탈주민', '판문점', '개성공단', '한미동맹', '일본정부'],
-    '정치/선거/규제': ['공직선거', '국회법', '국민투표', '정당', '규제', '특별검사', '징계안', '탄핵소추', '윤석열', '김건희', '비상계엄', '헌법', '대통령', '사법농단'],
-    '유통/소비자/공정': ['유통', '소비자', '공정거래', '하도급', '방문판매', '담배', '화장품', '대리점거래', '경품', '상품권', '약관', '전자상거래', '독점규제', '집단소송'],
-    '99': ['일부개정법률안', '전부개정법률안', '법률안', '특별법안', '기본법안', '폐지법률안', '결의안'] // 기타/일반법/특별 및 가장 흔한 일반 명칭
+    UNKNOWN: { ID: 0, NAME: '정보수집필요' } 
 };
 
 
-// --- 유틸리티 함수 ---
+// --- 유틸리티 함수 (변동 없음) ---
 function getPoliticianDetailPageUrl(monaCd, age) { return `https://www.assembly.go.kr/portal/assm/assmPrpl/prplMst.do?monaCd=${monaCd}&st=${age}&viewType=CONTBODY&tabId=repbill`; }
-async function callAssemblyApiWithScraper(endpoint, params, refererUrl, scraperInstance) { return scraperInstance.postData(endpoint, params, refererUrl); }
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 function extractBillIdFromUrl(url) { const match = url.match(/billId=([^&]+)/); return match ? match[1] : null; }
 function parseProposerInfo(proposerText) { if (!proposerText) return { proposerName: null, coProposerCount: 0, names: [] }; const nameMatch = proposerText.match(/^([^등]+?)(?:의원|$)/); const coProposerCountMatch = proposerText.match(/등 (\d+)인/); const proposerName = nameMatch ? nameMatch[1].trim() + '의원' : proposerText.split('등')[0].trim(); const coProposerCount = coProposerCountMatch ? parseInt(coProposerCountMatch[1]) : 0; const names = proposerName.split('ㆍ').map(n => n.trim()); return { proposerName, coProposerCount, names }; }
 
-// --- [신규 기능] 토픽 분류 및 검토 파일 저장 ---
-function classifyTopic(billName) {
-    for (const topic in TOPIC_KEYWORDS) {
-        for (const keyword of TOPIC_KEYWORDS[topic]) {
-            if (billName.includes(keyword)) {
-                return topic; 
-            }
-        }
-    }
-    // 키워드에 없는 경우 '기타'로 분류
-    return '기타/일반법/특별';
-}
-
-async function logNewTopicForReview(billId, billNo, billName) {
-    // data 디렉토리가 없으면 생성
-    const dir = path.dirname(TOPIC_REVIEW_FILE);
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
-    
-    const timestamp = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
-    const logEntry = `[${timestamp}] [${billId}] [${billNo}] 신규 토픽 검토 필요: ${billName}\n`;
-
-    try {
-        fs.appendFileSync(TOPIC_REVIEW_FILE, logEntry);
-    } catch (error) {
-        logger.error(`[File Write Error] 신규 토픽 파일 저장 실패: ${error.message}`);
-    }
-}
 
 // --- 임시 테이블 저장 전용 함수 ---
 async function saveToTempBill(connection, bill, proposerMonaCd, billKindId) {
     const { proposerName, coProposerCount } = parseProposerInfo(bill.proposer);
-    // ✅ Topic 분류 후 저장
-    const billTopic = classifyTopic(bill.billName);
     
-    if (billTopic === '기타/일반법/특별') {
-        // 신규 토픽 검토 필요시 파일에 로깅 (PK가 아닌 고유 bill_id 기준)
-        await logNewTopicForReview(bill.billId, bill.billNo, bill.billName); 
-    }
-
-    // ✅ SQL에 bill_topic 컬럼 추가
-    const sql = `INSERT INTO temp_bills (bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url, bill_topic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE bill_id = VALUES(bill_id)`;
-    const values = [bill.billId, bill.billNo, bill.billName, billKindId, bill.age, bill.ageNm, bill.proposerKindCd, proposerName, proposerMonaCd, coProposerCount, bill.proposeDt, bill.currCommittee, bill.currCommitteeId, bill.procResultCd, bill.procResultNm, bill.billLinkUrl, billTopic];
+    const sql = `INSERT INTO temp_bills (bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url, bill_topic_cd) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL) ON DUPLICATE KEY UPDATE bill_id = VALUES(bill_id)`;
+    const values = [bill.billId, bill.billNo, bill.billName, billKindId, bill.age, bill.ageNm, bill.proposerKindCd, proposerName, proposerMonaCd, coProposerCount, bill.proposeDt, bill.currCommittee, bill.currCommitteeId, bill.procResultCd, bill.procResultNm, bill.billLinkUrl];
     await connection.execute(sql, values);
 }
 async function saveToTempCoProposer(connection, billId, billNo, monaCd, isRepresentative) { const sql = `INSERT INTO temp_bill_co_proposers (bill_id, bill_no, mona_cd, proposer_yn) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE bill_id=bill_id`; await connection.execute(sql, [billId, billNo, monaCd, isRepresentative ? 1 : 0]); }
@@ -105,7 +44,6 @@ async function saveToTempVote(connection, billId, billNo, monaCd, voteResult, vo
         await connection.execute(sql, [billId, billNo, monaCd, voteResult, formattedDate]); 
         return true; 
     } catch (error) {
-        // 이 단계의 에러는 DB의 PK 중복 외에 발생하면 안됨.
         logger.error(`[DB Error] Failed to save vote for bill ${billId}. Error: ${error.message}`);
         return false;
     }
@@ -131,7 +69,7 @@ async function fastFetchAllPages(monaCd, scraper, endpoint, baseParams, firstPag
             const currentParams = { ...baseParams, pageIndex };
             const response = await scraper.postData(endpoint, currentParams, refererUrl);
             const items = response?.resultList || [];
-            if (pageIndex < totalPages) await sleep(API_CALL_DELAY_MS); // API 호출 간 딜레이
+            if (pageIndex < totalPages) await sleep(API_CALL_DELAY_MS); 
             return items;
         }));
     }
@@ -152,15 +90,15 @@ async function collectAndStageData(politician, assemblyAge, pool, politicianName
         bills: 0, 
         coProposers: 0, 
         votes: 0, 
-        apiBillCount: 0, // 법안 API 원본 건수
-        apiVoteCount: 0  // 표결 API 원본 건수 
+        apiBillCount: 0, 
+        apiVoteCount: 0  
     };
 
     try {
         await connection.query("SET NAMES 'utf8mb4'");
         await scraper.initialize(getPoliticianDetailPageUrl(monaCd, assemblyAge));
 
-        // --- 법안 수집 로직 (대표/공동 발의) ---
+        // --- 법안 수집 로직 ---
         const commonBillParams = { monaCd, age: '', rowPerPage: ROWS_PER_PAGE, billName: '', procResultCd: '', pageLink: 'doActionRepBill.goPage' };
         const billSources = [
             { kind: BILL_KIND.LAW, type: 'law_rep', endpoint: 'findRepPrpsBill.json', params: { ...commonBillParams, represent: BILL_KIND.LAW.NAME } },
@@ -172,7 +110,6 @@ async function collectAndStageData(politician, assemblyAge, pool, politicianName
         let currentApiBillCount = 0;
         let lastApiBillCount = politician.last_bill_api_count || 0; 
 
-        // API 카운트 합산 및 변동 감지
         for (const source of billSources) {
             const firstPageResponse = await scraper.postData(source.endpoint, { ...source.params, pageIndex: 1 }, getPoliticianDetailPageUrl(monaCd, assemblyAge));
             currentApiBillCount += (firstPageResponse?.paginationInfo?.totalRecordCount || 0);
@@ -184,7 +121,6 @@ async function collectAndStageData(politician, assemblyAge, pool, politicianName
         } else {
             if(currentApiBillCount !== lastApiBillCount) logger.warn(`[${politicianName}] 법안: 변동 감지 (DB: ${lastApiBillCount} -> API: ${currentApiBillCount}). 전체 스캔 시작.`);
             
-            // --- 변동 감지 시 전체 데이터 수집 및 임시 테이블 저장 ---
             for (const source of billSources) {
                 const firstPageResponse = await scraper.postData(source.endpoint, { ...source.params, pageIndex: 1 }, getPoliticianDetailPageUrl(monaCd, assemblyAge));
                 const allItems = await fastFetchAllPages(monaCd, scraper, source.endpoint, source.params, firstPageResponse);
@@ -248,16 +184,22 @@ async function runBillSync(assemblyAge, limitCount = 0) {
     
     const apiBillCountUpdateMap = new Map();
     const apiVoteCountUpdateMap = new Map();
-    let politiciansToUpdate = []; // 업데이트할 의원 목록 (API 카운트 업데이트용)
 
     try {
-        // ✅ politicians 쿼리 수정: last_bill_api_count 컬럼 포함
-        let [politicians] = await pool.execute('SELECT mona_cd, name, last_vote_api_count, last_bill_api_count FROM politicians WHERE active_yn = TRUE ORDER BY name ASC');
+        let [politicians] = await pool.execute(`
+            SELECT 
+                mona_cd, 
+                name, 
+                IFNULL(last_vote_api_count, 0) AS last_vote_api_count,
+                IFNULL(last_bill_api_count, 0) AS last_bill_api_count 
+            FROM politicians 
+            WHERE active_yn = TRUE 
+            ORDER BY name ASC
+        `);
         if (limitCount > 0) {
             logger.warn(`[테스트 모드] ${limitCount}명만 데이터를 수집합니다.`);
             politicians = politicians.slice(0, limitCount);
         }
-        politiciansToUpdate = [...politicians]; // 전체 의원 목록 복사
 
         const totalPoliticians = politicians.length;
         if (totalPoliticians === 0) { logger.warn('DB에서 처리할 현역 의원 정보를 찾을 수 없습니다.'); return; }
@@ -269,9 +211,6 @@ async function runBillSync(assemblyAge, limitCount = 0) {
         const globalBillStatusMap = new Map(allBillsInDb.map(b => [b.bill_id, b.proc_result_cd]));
         logger.info(`[준비] DB에서 ${globalBillStatusMap.size}개의 기존 법안 상태 정보를 로드했습니다.`);
         
-        // 기존 DB 저장 건수 로드 (변동 감지 외의 용도 - 로그 등에 사용)
-        // 이 부분의 로직은 생략되었습니다. (existingCounts 로직)
-        
         logger.info('[준비] 임시 테이블을 비웁니다...');
         await pool.execute('TRUNCATE TABLE temp_bills');
         await pool.execute('TRUNCATE TABLE temp_bill_co_proposers');
@@ -279,7 +218,7 @@ async function runBillSync(assemblyAge, limitCount = 0) {
 
         logger.info(`--- [1단계 시작] ${totalPoliticians}명의 의원 정보를 병렬로 수집합니다...`);
         const limit = pLimit(CONCURRENT_POLITICIAN_LIMIT);
-        let completedCount = 0; // ✅ 잔여 의원 카운트 변수 초기화
+        let completedCount = 0; 
         
         const collectionPromises = politicians.map(politician => limit(async () => {
             await sleep(Math.random() * 1000);
@@ -289,14 +228,15 @@ async function runBillSync(assemblyAge, limitCount = 0) {
             apiVoteCountUpdateMap.set(politician.mona_cd, collected.apiVoteCount);
 
             completedCount++;
-            const remaining = totalPoliticians - completedCount; // ✅ 잔여 의원 계산
+            const remaining = totalPoliticians - completedCount; 
             
-            logger.info(`[수집 진행] ${completedCount}/${totalPoliticians}명 완료 (${politician.name}: 법안 ${collected.bills}, 공동발의 ${collected.coProposers}, 표결 ${collected.votes} 건 임시 저장, 잔여: ${remaining}명)`); // ✅ 잔여 의원 로깅 추가
+            logger.info(`[수집 진행] ${completedCount}/${totalPoliticians}명 완료 (${politician.name}: 법안 ${collected.bills}, 공동발의 ${collected.coProposers}, 표결 ${collected.votes} 건 임시 저장, 잔여: ${remaining}명)`); 
             return collected;
         }));
         await Promise.all(collectionPromises);
         logger.info('--- [1단계 완료] 모든 데이터 수집 완료. ---');
 
+        // --- 2단계 최종 이관 로직 ---
         logger.info('--- [2단계 시작] 임시 테이블의 데이터를 업무 테이블로 이전합니다... ---');
         const connection = await pool.getConnection();
         await connection.beginTransaction();
@@ -313,15 +253,19 @@ async function runBillSync(assemblyAge, limitCount = 0) {
             logger.info(`- temp_bill_votes: ${votesTempCount.count} 건`);
             logger.info('------------------------');
 
+            // ✅ 1. bills 테이블 최종 INSERT/UPDATE (Topic 관련 로직 제거)
             const [billResult] = await connection.execute(`
-                INSERT INTO bills (bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url, bill_topic)
-                SELECT bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url, bill_topic FROM temp_bills
+                INSERT INTO bills (bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url)
+                SELECT bill_id, bill_no, bill_name, bill_kind_cd, age_cd, age_name, proposer_kind_cd, proposer_name, mona_cd, co_proposer_count, propose_dt, committee, committee_id, proc_result_cd, proc_result_name, link_url FROM temp_bills
                 ON DUPLICATE KEY UPDATE
-                    bill_name = VALUES(bill_name), proc_result_cd = VALUES(proc_result_cd), proc_result_name = VALUES(proc_result_name), bill_topic = VALUES(bill_topic), updated_at = NOW()
+                    bill_name = VALUES(bill_name), 
+                    proc_result_cd = VALUES(proc_result_cd), 
+                    proc_result_name = VALUES(proc_result_name), 
+                    updated_at = NOW()
             `);
             billsAffected = billResult.affectedRows;
             
-            // 껍데기 법안 생성 (bill_no 반영)
+            // ✅ 2. 껍데기 법안 생성 (bill_no 반영)
             const [placeholderResult] = await connection.execute(`
                 INSERT IGNORE INTO bills (bill_id, bill_no, bill_name, link_url, bill_kind_cd)
                 SELECT DISTINCT t.bill_id, t.bill_no, '정보 수집 필요', '', ${BILL_KIND.UNKNOWN.ID}
@@ -350,7 +294,7 @@ async function runBillSync(assemblyAge, limitCount = 0) {
             `);
             votesAffected = voteResult.affectedRows;
             
-            // ✅ API 원본 카운트 업데이트 로직 (2가지 컬럼 분리 업데이트)
+            // ✅ API 원본 카운트 업데이트 로직 (변동 없음)
             const updatePromises = [];
             for (const [monaCd, apiCount] of apiBillCountUpdateMap.entries()) {
                 const updateSql = `UPDATE politicians SET last_bill_api_count = ? WHERE mona_cd = ?`;
