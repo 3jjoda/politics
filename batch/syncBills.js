@@ -333,6 +333,6 @@ async function runBillSync(assemblyAge, limitCount = 0) {
 const ASSEMBLY_AGE_TO_SYNC = process.env.ASSEMBLY_AGE || '22';
 const testLimit = parseInt(process.argv[2], 10) || 0;
 
-cron.schedule('30 5 * * *', () => { runBillSync(ASSEMBLY_AGE_TO_SYNC, testLimit); });
+cron.schedule('30 23 * * *', () => { runBillSync(ASSEMBLY_AGE_TO_SYNC, testLimit); });
 logger.info(`법안 데이터 동기화 배치가 설정되었습니다.`);
 // runBillSync(ASSEMBLY_AGE_TO_SYNC, testLimit);
