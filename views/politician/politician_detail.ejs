@@ -1,4 +1,4 @@
-<%
+<%#
     // ==========================================================
     // 가비지(더미) 데이터 정의
     // 실제 데이터는 politician 객체를 통해 전달됩니다.
@@ -100,31 +100,27 @@
 <main class="politician-detail-main">
     <section class="politician-profile">
         <div class="profile-info-section"> <div class="name-and-meta">
-                <h2><%= politician.HG_NM %></h2>
+                <h2><%= politician.name %></h2>
                 <p class="party-reele-group">
-                    <span class="badge party-<%= politician.DJY_NM.replace(/\s/g, '').toLowerCase() %>"><%= politician.DJY_NM %></span>
-                    <span class="reele-status <%= politician.reeleClass || '' %>"><%= politician.REELE_GBN_NM %></span>
+                    <span class="badge party-<%= politician.party_name.replace(/\s/g, '').toLowerCase() %>"><%= politician.party_name %></span>
+                    <span class="reele-status <%= politician.reeleClass || '' %>"><%= politician.reele_gbn_nm %></span>
                 </p>
             </div>
         </div>
     
         <div class="profile-image-section"> <div class="profile-image-container">
-                <img src="<%= politician.IMG_URL %>" alt="<%= politician.HG_NM %> 프로필 이미지">
+                <img src="<%= politician.photo_url %>" alt="<%= politician.name %>">
             </div>
         </div>
     
         <div class="profile-details-section"> <div class="stats-grid">
                 <div class="stat-item">
                     <span class="stat-label">선거구</span>
-                    <span class="stat-value"><%= politician.ELECT_GBN_NM %></span>
+                    <span class="stat-value"><%= politician.elect_gbn_nm %></span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">생년월일</span>
-                    <span class="stat-value"><%= politician.BIRTH_DATE %> (<%= politician.AGE %>세)</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">홈페이지</span>
-                    <span class="stat-value"><a href="<%= politician.HP_URL %>" target="_blank" rel="noopener noreferrer">바로가기 <i class="fas fa-external-link-alt"></i></a></span>
+                    <span class="stat-value"><%= politician.birthday %> (<%= politician.birthday %>세)</span>
                 </div>
             </div>
     
@@ -180,10 +176,10 @@
                                     </a>
                                 </h4>
                                 <p class="bill-meta">
-                                    <span class="badge badge-category"><%= bill.CATEGORY %></span>
-                                    <span class="propose-date">제안일: <%= bill.propose_date %></span>
+                                    <span class="badge badge-category"><%= bill.proposer_kind_cd %></span>
+                                    <span class="propose-date">제안일: <%= bill.propose_dt %></span>
                                 </p>
-                                <p class="bill-summary"><%= bill.BILL_SUMMARY %></p>
+                                <p class="bill-summary"><%= bill.bill_topic_nm %></p>
                                 <div class="bill-impact">
                                     <strong>영향 분석:</strong> <%= bill.IMPACT_ANALYSIS %>
                                 </div>
@@ -196,7 +192,7 @@
                                         <span class="status-date">(<%= bill.proc_date %>)</span>
                                     <% } %>
                                 </div>
-                                <% if (politician.co_proposers && politician.co_proposers.length > 0) { %>
+                                <!-- <% if (politician.co_proposers && politician.co_proposers.length > 0) { %>
                                 <div class="co-proposers">
                                     <strong>공동 발의:</strong>
                                     <% politician.co_proposers.slice(0, 3).forEach((co, index) => { %>
@@ -206,7 +202,7 @@
                                         ... 외 <%= politician.co_proposers.length - 3 %>명
                                     <% } %>
                                 </div>
-                                <% } %>
+                                <% } %> -->
                             </div>
                         <% }); %>
                     </div>

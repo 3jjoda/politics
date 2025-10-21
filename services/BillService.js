@@ -17,6 +17,18 @@ export default (db) => {
             }
         },
 
+        /* 법안 목록 조회 - 정치인인 */
+        getListOne: async (id) => {
+            try {
+                // DAO가 Promise를 반환하므로 await
+                const results = await billDao.getListOne(id);
+                return results;
+            } catch (error) {
+                logger.error('Error in billService.getListOne:', error);
+                throw error; // 에러를 다시 던져서 상위(컨트롤러)에서 catch하도록 함
+            }
+        },
+
         /* 법안 목록 조회 - 페이지 (Promise 기반) */
         getListPage: async () => {
             try {

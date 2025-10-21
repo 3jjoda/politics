@@ -15,13 +15,19 @@ fs.readdirSync(queriesPath).forEach(file => {
 // 모델은 db 객체를 외부에서 주입받아 사용
 export default (db) => {
     return {
-        /* 법안안 조회 */
+        /* 법안 조회 */
         getList: async () => {
             const [rows] = await db.query(queries.getList);
             return rows;
         },
 
-        /* 법안안 상세 조회 */
+        /* 법안 조회 - 정치인 */
+        getListOne: async (id) => {
+            const [rows] = await db.query(queries.getListOne, id);
+            return rows;
+        },
+
+        /* 법안 상세 조회 */
         getDetail: async (id) => {
             const [rows] = await db.query(queries.getDetail, id);
             return rows;

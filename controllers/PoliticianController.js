@@ -1,9 +1,11 @@
 import PoliticianService from '../services/PoliticianService.js';
+import BillService from '../services/BillService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
 export default (db) => {
     const politicianService = PoliticianService(db);
+    const billService = BillService(db);
     const controller = {};
 
     /**
@@ -80,14 +82,16 @@ export default (db) => {
 
             politician = politicianData[0];
             
-            // 2. 추가 정보 (법안, 댓글, 점수 등) 조회 (가정)
+            // 2. 법안 정보 조회
+            const billData = await billService.getListOne(monaCd);
+
             // 서비스 계층에서 각 데이터를 가져오는 함수를 호출
             // 예: const billData = await billService.getList(monaCd);
             // 예: const replyData = await replyService.getReplies(monaCd);
             // 예: const scoreData = await scoreService.getScores(monaCd);
 
             // 현재는 임시 데이터로 할당
-            politician.bills = []; 
+            politician.bills = billData; 
             politician.replys = []; 
             politician.scores = []; 
 
@@ -95,7 +99,7 @@ export default (db) => {
                 pageTitle: '정치인 정보 - ' + politician.HG_NM, // politicianService.getDetail의 결과 구조에 따라 변경 (HG_NM이 이름으로 가정)
                 pageStyles: 'politician/politician_detail',
                 currentUrl: `/politician/${monaCd}`, // 상세 페이지의 실제 URL 반영
-                politician: politician // 모든 관련 정보가 포함된 정치인 객체 전달
+                politician: politician  // 모든 관련 정보가 포함된 정치인 객체 전달
             });
 
         } catch (error) {
