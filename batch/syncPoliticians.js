@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import axios from 'axios'; // API 호출을 위해 axios는 다시 사용합니다.
-import mysql from 'mysql2/promise';
+import pg from 'pg';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
 
@@ -10,7 +10,7 @@ const YOUR_SERVICE_ID = 'nwvrqwxyaytdsfvhu'; // 본인의 Service ID로 교체 �
 const API_URL = `https://open.assembly.go.kr/portal/openapi/`; // 서비스 ID는 호출 시점에 URL 뒤에 붙임
 
 // 국회의원 유형 코드 하드코딩
-const POLITICIAN_TYPE_NATIONAL_ASSEMBLY = 102; 
+const POLITICIAN_TYPE_NATIONAL_ASSEMBLY = 102;
 
 /**
  * 열린국회정보포털 API에서 현직 국회의원 목록을 가져오는 함수
@@ -49,13 +49,13 @@ async function fetchPoliticiansFromAPI() {
  * DB에 정당 정보가 있는지 확인하고 없으면 추가하는 함수
  * (정당명 변경 이력 관리 로직 포함)
  */
-async function ensurePartyExistsAndTrackHistory(connection, partyNameFromAPI) {
+async function ensurePartyExistsAndTrackHistory(client, partyNameFromAPI) {
     let party_id = null;
     let existingPartyName = null;
 
     // 1. party_name으로 정당 정보 조회
-    const [partyRows] = await connection.execute(
-        'SELECT party_id, party_name FROM parties WHERE party_name = ?',
+    const { rows: partyRows } = await client.query(
+        'SELECT party_id, party_name FROM parties WHERE party_name = $1',
         [partyNameFromAPI]
     );
 
@@ -65,16 +65,16 @@ async function ensurePartyExistsAndTrackHistory(connection, partyNameFromAPI) {
         existingPartyName = partyRows[0].party_name;
     } else {
         // 2. 정당이 존재하지 않으면 새로 추가
-        const [insertResult] = await connection.execute(
-            'INSERT INTO parties (party_name) VALUES (?)',
+        const insertResult = await client.query(
+            'INSERT INTO parties (party_name) VALUES ($1) RETURNING party_id',
             [partyNameFromAPI]
         );
-        party_id = insertResult.insertId;
+        party_id = insertResult.rows[0].party_id;
         logger.info(`[Party] 새로운 정당 '${partyNameFromAPI}' 추가됨 (ID: ${party_id})`);
 
         // 새로운 정당이므로 party_names_history에도 첫 이력 추가
-        await connection.execute(
-            'INSERT INTO party_names_history (party_id, party_name, start_date) VALUES (?, ?, CURDATE())',
+        await client.query(
+            'INSERT INTO party_names_history (party_id, party_name, start_date) VALUES ($1, $2, CURRENT_DATE)',
             [party_id, partyNameFromAPI]
         );
         logger.info(`[Party History] 새로운 정당 '${partyNameFromAPI}'의 첫 이름 이력 추가됨.`);
@@ -92,18 +92,18 @@ async function ensurePartyExistsAndTrackHistory(connection, partyNameFromAPI) {
  * DB에 국회의원 정보를 'Bulk Upsert'하고 정당 이력을 관리하는 함수
  */
 async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
-    const connection = await pool.getConnection();
-    await connection.beginTransaction(); // 트랜잭션 시작
+    const client = await pool.connect();
+    await client.query('BEGIN'); // 트랜잭션 시작
     try {
         const start = Date.now();
 
         // 1. 현재 DB의 정당 정보를 가져와 맵으로 생성 (ensurePartyExistsAndTrackHistory에서 처리되지만, 의원 매핑을 위해 필요)
-        const [partiesResult] = await connection.execute('SELECT party_id, party_name FROM parties');
+        const { rows: partiesResult } = await client.query('SELECT party_id, party_name FROM parties');
         const partyMap = new Map(partiesResult.map(p => [p.party_name, p.party_id]));
 
 
         // 2. 현재 DB에 있는 모든 의원의 MONA_CD를 가져옴 (활동 여부 업데이트 위함)
-        const [existingPoliticians] = await connection.execute('SELECT mona_cd, party_id, name FROM politicians');
+        const { rows: existingPoliticians } = await client.query('SELECT mona_cd, party_id, name FROM politicians');
         const existingPoliticianMap = new Map(existingPoliticians.map(p => [p.mona_cd, p]));
 
         const politiciansToInsertOrUpdate = []; // politicians 테이블에 upsert할 데이터
@@ -113,13 +113,13 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
             currentMonaCdsInAPI.add(apiPolitician.MONA_CD);
 
             // API에서 가져온 정당명으로 party_id를 찾거나 새로 생성/관리
-            const party_id = await ensurePartyExistsAndTrackHistory(connection, apiPolitician.POLY_NM);
-            
+            const party_id = await ensurePartyExistsAndTrackHistory(client, apiPolitician.POLY_NM);
+
             if (!party_id) {
                 logger.warn(`'${apiPolitician.POLY_NM}' 정당 처리 실패. 의원(${apiPolitician.HG_NM}) 데이터는 건너뜐다.`);
                 continue;
             }
-            
+
             // politicians 테이블에 upsert할 레코드
             politiciansToInsertOrUpdate.push([
                 apiPolitician.MONA_CD, apiPolitician.HG_NM, apiPolitician.HJ_NM, apiPolitician.ENG_NM,
@@ -128,7 +128,7 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
                 apiPolitician.CMITS, apiPolitician.REELE_GBN_NM, apiPolitician.SEX_GBN_NM,
                 apiPolitician.TEL_NO, apiPolitician.E_MAIL, apiPolitician.HOMEPAGE,
                 apiPolitician.STAFF, apiPolitician.SECRETARY, apiPolitician.SECRETARY2,
-                apiPolitician.MEM_TITLE, apiPolitician.ASSEM_ADDR, 
+                apiPolitician.MEM_TITLE, apiPolitician.ASSEM_ADDR,
                 POLITICIAN_TYPE_NATIONAL_ASSEMBLY,
                 true // active_yn 기본값 true
             ]);
@@ -138,30 +138,32 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
             logger.info("[배치] 업데이트할 유효한 의원 데이터가 없습니다.");
         } else {
             // 3. politicians 테이블 Bulk Upsert
+            const colCount = 24;
+            const valuesClause = politiciansToInsertOrUpdate.map((_, i) =>
+                `(${Array.from({length: colCount}, (_, j) => `$${i * colCount + j + 1}`).join(', ')})`
+            ).join(', ');
+
             const upsertSql = `
                 INSERT INTO politicians (
                     mona_cd, name, hj_nm, eng_nm, bth_gbn_nm, birthday, job_res_nm,
                     party_id, party_name, electoral_district, elect_gbn_nm, cmits,
                     reele_gbn_nm, sex_gbn_nm, tel_no, e_mail, homepage,
-                    staff, secretary, secretary2, mem_title, assem_addr, 
-                    politician_type, active_yn # <<<< 추가된 부분: politician_type
-                ) VALUES ?
-                ON DUPLICATE KEY UPDATE
-                    name = VALUES(name), hj_nm = VALUES(hj_nm), eng_nm = VALUES(eng_nm), 
-                    bth_gbn_nm = VALUES(bth_gbn_nm), birthday = VALUES(birthday), job_res_nm = VALUES(job_res_nm), 
-                    party_id = VALUES(party_id), party_name = VALUES(party_name), electoral_district = VALUES(electoral_district), 
-                    elect_gbn_nm = VALUES(elect_gbn_nm), cmits = VALUES(cmits), reele_gbn_nm = VALUES(reele_gbn_nm), 
-                    sex_gbn_nm = VALUES(sex_gbn_nm), tel_no = VALUES(tel_no), e_mail = VALUES(e_mail), 
-                    homepage = VALUES(homepage), staff = VALUES(staff), secretary = VALUES(secretary), 
-                    secretary2 = VALUES(secretary2), mem_title = VALUES(mem_title), assem_addr = VALUES(assem_addr), 
-                    politician_type = VALUES(politician_type), # <<<< 추가된 부분: politician_type
-                    active_yn = VALUES(active_yn), updated_at = NOW()
+                    staff, secretary, secretary2, mem_title, assem_addr,
+                    politician_type, active_yn
+                ) VALUES ${valuesClause}
+                ON CONFLICT (mona_cd) DO UPDATE SET
+                    name = EXCLUDED.name, hj_nm = EXCLUDED.hj_nm, eng_nm = EXCLUDED.eng_nm,
+                    bth_gbn_nm = EXCLUDED.bth_gbn_nm, birthday = EXCLUDED.birthday, job_res_nm = EXCLUDED.job_res_nm,
+                    party_id = EXCLUDED.party_id, party_name = EXCLUDED.party_name, electoral_district = EXCLUDED.electoral_district,
+                    elect_gbn_nm = EXCLUDED.elect_gbn_nm, cmits = EXCLUDED.cmits, reele_gbn_nm = EXCLUDED.reele_gbn_nm,
+                    sex_gbn_nm = EXCLUDED.sex_gbn_nm, tel_no = EXCLUDED.tel_no, e_mail = EXCLUDED.e_mail,
+                    homepage = EXCLUDED.homepage, staff = EXCLUDED.staff, secretary = EXCLUDED.secretary,
+                    secretary2 = EXCLUDED.secretary2, mem_title = EXCLUDED.mem_title, assem_addr = EXCLUDED.assem_addr,
+                    politician_type = EXCLUDED.politician_type,
+                    active_yn = EXCLUDED.active_yn, updated_at = NOW()
             `;
-            const [upsertResult] = await connection.query(upsertSql, [politiciansToInsertOrUpdate]);
-            const totalProcessed = politiciansToInsertOrUpdate.length;
-            const updatedCount = upsertResult.affectedRows - totalProcessed;
-            const insertedCount = totalProcessed - updatedCount;
-            logger.info(`[Politicians Upsert] 신규 추가: ${insertedCount}건, 정보 업데이트: ${updatedCount}건`);
+            const result = await client.query(upsertSql, politiciansToInsertOrUpdate.flat());
+            logger.info(`[Politicians Upsert] 처리 완료: ${result.rowCount}건`);
 
             // 4. `active_yn` 업데이트 (API에 없는 의원)
             const monaCdsToDeactivate = [...existingPoliticianMap.keys()].filter(
@@ -171,10 +173,10 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
                 const deactivateSql = `
                     UPDATE politicians
                     SET active_yn = FALSE, updated_at = NOW()
-                    WHERE mona_cd IN (?) AND active_yn = TRUE
+                    WHERE mona_cd = ANY($1) AND active_yn = TRUE
                 `;
-                const [deactivateResult] = await connection.query(deactivateSql, [monaCdsToDeactivate]);
-                logger.info(`[Politicians Deactivate] 활동 중지 처리: ${deactivateResult.affectedRows}건`);
+                const deactivateResult = await client.query(deactivateSql, [monaCdsToDeactivate]);
+                logger.info(`[Politicians Deactivate] 활동 중지 처리: ${deactivateResult.rowCount}건`);
             }
         }
 
@@ -182,49 +184,49 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
         for (const apiPolitician of politiciansFromAPI) {
             const mona_cd = apiPolitician.MONA_CD;
             // ensurePartyExistsAndTrackHistory 함수에서 이미 처리된 정당 ID를 다시 맵에서 가져옵니다.
-            const newPartyId = partyMap.get(apiPolitician.POLY_NM); 
+            const newPartyId = partyMap.get(apiPolitician.POLY_NM);
 
-            if (!newPartyId) continue; 
+            if (!newPartyId) continue;
 
             const existingPolitician = existingPoliticianMap.get(mona_cd);
-            
+
             // 기존 의원이고 정당이 변경되었을 경우 이력 업데이트
             if (existingPolitician && existingPolitician.party_id !== newPartyId) {
                 // 기존 활성 멤버십 종료
-                await connection.execute(
+                await client.query(
                     `UPDATE politician_party_memberships
-                     SET end_date = CURDATE(), updated_at = NOW()
-                     WHERE mona_cd = ? AND end_date IS NULL`,
+                     SET end_date = CURRENT_DATE, updated_at = NOW()
+                     WHERE mona_cd = $1 AND end_date IS NULL`,
                     [mona_cd]
                 );
                 // 새로운 멤버십 시작
-                await connection.execute(
+                await client.query(
                     `INSERT INTO politician_party_memberships (mona_cd, party_id, start_date)
-                     VALUES (?, ?, CURDATE())`,
+                     VALUES ($1, $2, CURRENT_DATE)`,
                     [mona_cd, newPartyId]
                 );
                 logger.info(`[Party History] 의원(${apiPolitician.HG_NM})의 정당 변경 이력 업데이트: ${existingPolitician.party_id} -> ${newPartyId}`);
-            } 
+            }
             // 새로운 의원 (DB에 아예 없던 새로운 의원)
-            else if (!existingPolitician) { 
-                 await connection.execute(
+            else if (!existingPolitician) {
+                 await client.query(
                      `INSERT INTO politician_party_memberships (mona_cd, party_id, start_date)
-                      VALUES (?, ?, CURDATE())`,
+                      VALUES ($1, $2, CURRENT_DATE)`,
                      [mona_cd, newPartyId]
                  );
                  logger.info(`[Party History] 새로운 의원(${apiPolitician.HG_NM})의 첫 정당 소속 이력 추가: ${newPartyId}`);
             }
             // 기존 의원이지만 이력 테이블에 end_date IS NULL인 활성 소속 레코드가 없는 경우
             else if (existingPolitician && newPartyId && existingPolitician.party_id === newPartyId) {
-                const [activeMembership] = await connection.execute(
+                const { rows: activeMembership } = await client.query(
                     `SELECT membership_id FROM politician_party_memberships
-                     WHERE mona_cd = ? AND end_date IS NULL`,
+                     WHERE mona_cd = $1 AND end_date IS NULL`,
                     [mona_cd]
                 );
                 if (activeMembership.length === 0) { // 현재 활성 멤버십이 없으면 추가
-                    await connection.execute(
+                    await client.query(
                         `INSERT INTO politician_party_memberships (mona_cd, party_id, start_date)
-                         VALUES (?, ?, CURDATE())`,
+                         VALUES ($1, $2, CURRENT_DATE)`,
                         [mona_cd, newPartyId]
                     );
                     logger.info(`[Party History] 의원(${apiPolitician.HG_NM})의 현재 정당 소속 이력 복구/추가: ${newPartyId}`);
@@ -233,24 +235,24 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
         }
 
 
-        await connection.commit(); // 트랜잭션 커밋
+        await client.query('COMMIT'); // 트랜잭션 커밋
         const duration = Date.now() - start;
         logger.info(`[배치 성공] 전체 의원 동기화 및 이력 관리 완료 /* ${duration}ms */`);
 
     } catch (error) {
-        await connection.rollback(); // 오류 발생 시 롤백
+        await client.query('ROLLBACK'); // 오류 발생 시 롤백
         logger.error('[배치 실패] DB 작업 중 오류 발생:', error);
     } finally {
-        connection.release();
+        client.release();
     }
 }
 
 async function runSync() {
     logger.info('[배치 시작] 국회의원 데이터 동기화를 시작');
-    const pool = mysql.createPool(dbConfig);
-    
+    const pool = new pg.Pool(dbConfig);
+
     const politiciansFromAPI = await fetchPoliticiansFromAPI();
-    
+
     if (politiciansFromAPI && politiciansFromAPI.length > 0) {
         await upsertPoliticiansToDB(pool, politiciansFromAPI);
     } else {
@@ -262,8 +264,8 @@ async function runSync() {
 }
 
 // 매일 새벽 4시 실행
-cron.schedule('0 4 * * *', () => { runSync(); }, { scheduled: true, timezone: "Asia/Seoul" });
-logger.info('국회의원 데이터 동기화 배치가 설정되었습니다. (매일 새벽 4시 실행)');
+// cron.schedule('0 4 * * *', () => { runSync(); }, { scheduled: true, timezone: "Asia/Seoul" });
+// logger.info('국회의원 데이터 동기화 배치가 설정되었습니다. (매일 새벽 4시 실행)');
 
 // 즉시 실행하려면 아래 코드의 주석을 해제하세요.
-// runSync();
+runSync();

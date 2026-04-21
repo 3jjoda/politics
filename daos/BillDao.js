@@ -17,19 +17,19 @@ export default (db) => {
     return {
         /* 법안 조회 */
         getList: async () => {
-            const [rows] = await db.query(queries.getList);
+            const { rows } = await db.query(queries.getList);
             return rows;
         },
 
         /* 법안 조회 - 정치인 */
         getListOne: async (id) => {
-            const [rows] = await db.query(queries.getListOne, id);
+            const { rows } = await db.query(queries.getListOne, [id]);
             return rows;
         },
 
         /* 법안 상세 조회 */
         getDetail: async (id) => {
-            const [rows] = await db.query(queries.getDetail, id);
+            const { rows } = await db.query(queries.getDetail, [id]);
             return rows;
         }
     };

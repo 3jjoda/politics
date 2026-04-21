@@ -79,20 +79,17 @@ export default (db) => {
                     message: '요청하신 정치인 정보를 찾을 수 없습니다.'
                 });
             }
-
             politician = politicianData[0];
             
             // 2. 법안 정보 조회
             const billData = await billService.getListOne(monaCd);
-
-            // 서비스 계층에서 각 데이터를 가져오는 함수를 호출
-            // 예: const billData = await billService.getList(monaCd);
-            // 예: const replyData = await replyService.getReplies(monaCd);
-            // 예: const scoreData = await scoreService.getScores(monaCd);
-
-            // 현재는 임시 데이터로 할당
             politician.bills = billData; 
-            politician.replys = []; 
+
+            // 3. 댓글 정보 조회
+            politician.replys = [];
+
+            // 4. 기타 집계 데이터 조회
+            const summary = await billService.getListOne(monaCd);
             politician.scores = []; 
 
             res.render('politician/politician_detail', {

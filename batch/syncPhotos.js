@@ -1,6 +1,6 @@
 // import axios from 'axios'; // axios 모듈 제거
 import * as cheerio from 'cheerio';
-import mysql from 'mysql2/promise';
+import pg from 'pg';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
 
@@ -18,7 +18,7 @@ async function fetchPoliticianPhoto(monaCd) {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36'
             }
         });
-        
+
         // HTTP 응답 상태 코드 확인
         if (!response.ok) {
             logger.error(`'${monaCd}' 의원 페이지 요청 실패: ${response.status} ${response.statusText}`);
@@ -31,7 +31,7 @@ async function fetchPoliticianPhoto(monaCd) {
 
         // CSS background-image에서 URL을 추출하는 로직
         const styleAttribute = $('.info-con.present .img-set .img').attr('style');
-        
+
         if (styleAttribute) {
             // 정규식을 사용해 url('...') 안의 경로만 추출
             const urlMatch = styleAttribute.match(/url\('([^']+)'\)/);
@@ -42,7 +42,7 @@ async function fetchPoliticianPhoto(monaCd) {
                 return `https://www.assembly.go.kr${photoPath}`;
             }
         }
-        
+
         logger.warn(`'${monaCd}' 의원 상세 페이지에서 사진을 찾을 수 없습니다.`);
         return null;
 
@@ -54,13 +54,13 @@ async function fetchPoliticianPhoto(monaCd) {
 
 
 /**
- * DB에 사진 URL을 업데이트하는 함수 (기존과 동일)
+ * DB에 사진 URL을 업데이트하는 함수
  */
-async function updatePhotoInDB(connection, mona_cd, photo_url) {
+async function updatePhotoInDB(client, mona_cd, photo_url) {
     try {
-        const sql = `UPDATE politicians SET photo_url = ?, updated_at = NOW() WHERE mona_cd = ?`; // updated_at 자동 업데이트 추가
-        const [result] = await connection.execute(sql, [photo_url, mona_cd]);
-        return result.affectedRows > 0;
+        const sql = `UPDATE politicians SET photo_url = $1, updated_at = NOW() WHERE mona_cd = $2`; // updated_at 자동 업데이트 추가
+        const result = await client.query(sql, [photo_url, mona_cd]);
+        return result.rowCount > 0;
     } catch (error) {
         logger.error(`'${mona_cd}' 의원 사진 URL 업데이트 중 DB 에러:`, error.message);
         return false;
@@ -69,39 +69,39 @@ async function updatePhotoInDB(connection, mona_cd, photo_url) {
 
 
 /**
- * 메인 실행 함수 (기존과 동일)
+ * 메인 실행 함수
  */
 async function runPhotoSync() {
     logger.info('[사진 배치 시작] 최종 방식으로 동기화를 시작');
-    const pool = mysql.createPool(dbConfig);
-    const connection = await pool.getConnection(); // 풀에서 커넥션 획득
+    const pool = new pg.Pool(dbConfig);
+    const client = await pool.connect(); // 풀에서 클라이언트 획득
     let updatedCount = 0;
     const CONCURRENCY_LEVEL = 5; // 동시성 레벨을 조금 낮추어 안정성 향상 (크롤링은 부하가 클 수 있음)
 
     try {
         // PHOTO_URL이 NULL이거나 빈 문자열인 의원만 가져옵니다.
         // 또는 특정 시간(예: 일주일)이 경과한 의원 사진을 재업데이트하는 로직을 추가할 수도 있습니다.
-        const [politiciansToUpdate] = await connection.execute(
-            "SELECT MONA_CD, NAME FROM politicians WHERE photo_url IS NULL OR photo_url = ''"
+        const { rows: politiciansToUpdate } = await client.query(
+            "SELECT mona_cd, name FROM politicians WHERE photo_url IS NULL OR photo_url = ''"
         );
 
         if (politiciansToUpdate.length === 0) {
             logger.info('[사진 배치] 업데이트할 의원이 없습니다.');
             return;
         }
-        
+
         logger.info(`총 ${politiciansToUpdate.length}명의 의원 사진을 업데이트`);
 
         for (let i = 0; i < politiciansToUpdate.length; i += CONCURRENCY_LEVEL) {
             const chunk = politiciansToUpdate.slice(i, i + CONCURRENCY_LEVEL);
-            
+
             const promises = chunk.map(async (politician) => {
-                const photoUrl = await fetchPoliticianPhoto(politician.MONA_CD);
+                const photoUrl = await fetchPoliticianPhoto(politician.mona_cd);
                 if (photoUrl) {
-                    const success = await updatePhotoInDB(connection, politician.MONA_CD, photoUrl);
+                    const success = await updatePhotoInDB(client, politician.mona_cd, photoUrl);
                     if (success) {
                         updatedCount++;
-                        logger.info(`'${politician.NAME}' 의원 사진 업데이트 성공: ${photoUrl}`);
+                        logger.info(`'${politician.name}' 의원 사진 업데이트 성공: ${photoUrl}`);
                     }
                 }
             });
@@ -115,9 +115,9 @@ async function runPhotoSync() {
     } catch (error) {
         logger.error('[사진 배치 실패] 메인 로직 실행 중 오류 발생:', error.message);
     } finally {
-        // 커넥션 반환
-        if (connection) {
-            connection.release();
+        // 클라이언트 반환
+        if (client) {
+            client.release();
         }
         // 풀 종료
         await pool.end();
@@ -125,4 +125,4 @@ async function runPhotoSync() {
     }
 }
 
-// runPhotoSync();
+runPhotoSync();

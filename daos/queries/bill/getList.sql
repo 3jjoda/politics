@@ -5,7 +5,7 @@ SELECT id
      , summary
      , mona_cd
      , proposer_name
-     , propose_date
+     , TO_CHAR(propose_dt, 'YYYY-MM-DD') AS propose_dt
      , committee_name
      , proc_result_cd
      , proc_result_text

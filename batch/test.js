@@ -1,5 +1,5 @@
 // testApiCall.js
-import mysql from 'mysql2/promise';
+import pg from 'pg';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
 import WebScraper from '../utils/webScraper.js'; // WebScraper 모듈 임포트
@@ -14,12 +14,12 @@ const scraper = new WebScraper();
 
 async function runTest() {
     logger.info('[API Test START] 단일 의원, 단일 API 호출 테스트를 시작합니다.');
-    const pool = mysql.createPool(dbConfig);
-    const connection = await pool.getConnection();
+    const pool = new pg.Pool(dbConfig);
+    const client = await pool.connect();
 
     try {
         // DB에서 첫 번째 의원 정보 가져오기
-        const [politicians] = await connection.execute('SELECT mona_cd, name FROM politicians WHERE active_yn = TRUE LIMIT 1');
+        const { rows: politicians } = await client.query('SELECT mona_cd, name FROM politicians WHERE active_yn = TRUE LIMIT 1');
 
         if (politicians.length === 0) {
             logger.warn('테스트할 정치인 정보가 없습니다. politicians 테이블을 먼저 채워주세요.');
@@ -94,8 +94,8 @@ async function runTest() {
     } catch (error) {
         logger.error('[API Test FAILED] 테스트 중 예상치 못한 오류 발생:', error);
     } finally {
-        if (connection) {
-            connection.release();
+        if (client) {
+            client.release();
         }
         await pool.end();
         logger.info('[API Test END] 테스트가 종료되었습니다.');

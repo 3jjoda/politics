@@ -4,4 +4,4 @@ SELECT code_id
      , code_name
      , description
   FROM codes
- WHERE use_yn = 1
+ WHERE use_yn = true

@@ -23,7 +23,7 @@ export default (db) => {
             try {
                 // mysql2/promise 라이브러리의 query 함수는 Promise를 반환
                 // await를 사용해 DB 조회가 끝날 때까지 기다린다
-                const [rows] = await db.query(queries.getList);
+                const { rows } = await db.query(queries.getList);
     
                 // 조회된 결과를 바로 반환
                 return rows;

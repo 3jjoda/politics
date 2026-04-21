@@ -14,8 +14,6 @@
         HP_URL: 'https://blog.naver.com/sh_yoon',
         IMG_URL: 'https://via.placeholder.com/200x250?text=Politician+Image', // 실제 정치인 이미지 URL
         
-        ACTIVE_SCORE: 78, // 활동성 점수 (가비지)
-        COMM_SCORE: 65, // 소통성 점수 (가비지)
         AVG_RATING: 3.8, // 사용자 평균 평점 (가비지)
         RATING_COUNT: 1250, // 평점 참여자 수 (가비지)
 
@@ -97,6 +95,17 @@
     };
 %>
 
+<%# 관심분야 가비지 데이터 (실제 데이터가 없을 때 사용) %>
+<% if (!politician.summary_분야 || politician.summary_분야.length === 0) { %>
+    <% politician.summary_분야 = [
+        { 분야: '보건/복지/의료', count: 12 },
+        { 분야: '교육/인재/학술', count: 8 },
+        { 분야: '조세/재정/금융', count: 6 },
+        { 분야: '국토/도시/주택', count: 5 },
+        { 분야: '노동/고용/자영업', count: 4 }
+    ]; %>
+<% } %>
+
 <main class="politician-detail-main">
     <section class="politician-profile">
         <div class="profile-info-section"> <div class="name-and-meta">
@@ -113,39 +122,183 @@
             </div>
         </div>
     
-        <div class="profile-details-section"> <div class="stats-grid">
+        <div class="profile-details-section">
+            <div class="interest-areas">
+                <h3 class="interest-areas-title">관심분야 TOP 5</h3>
+                <% if (politician.summary_분야 && politician.summary_분야.length > 0) { %>
+                    <% 
+                    // 최대값 계산 (레이더 차트 비율용)
+                    const maxCount = Math.max(...politician.summary_분야.map(a => a.count));
+                    const areas = politician.summary_분야.slice(0, 5); // 최대 5개만
+                    // 가장 많은 관심 분야 인덱스 찾기
+                    const topAreaIndex = areas.findIndex(a => a.count === maxCount);
+                    %>
+                    <div class="radar-chart-container">
+                        <svg class="radar-chart" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <linearGradient id="radarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:var(--color-primary-light);stop-opacity:0.8" />
+                                    <stop offset="100%" style="stop-color:var(--color-primary);stop-opacity:0.6" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <% 
+                            // 5각형 좌표 계산 (중심: 200, 200, 반지름: 100)
+                            const centerX = 200;
+                            const centerY = 200;
+                            const radius = 100;
+                            const points = [];
+                            const dataPoints = [];
+                            
+                            for (let i = 0; i < 5; i++) {
+                                const angle = (Math.PI / 2) - (i * 2 * Math.PI / 5); // 위쪽부터 시작
+                                const x = centerX + radius * Math.cos(angle);
+                                const y = centerY - radius * Math.sin(angle);
+                                points.push({ x, y });
+                                
+                                // 데이터 포인트 계산 (건수에 비례)
+                                const area = areas[i];
+                                if (area) {
+                                    const dataRadius = radius * (area.count / maxCount);
+                                    const dataX = centerX + dataRadius * Math.cos(angle);
+                                    const dataY = centerY - dataRadius * Math.sin(angle);
+                                    dataPoints.push({ x: dataX, y: dataY, area: area.분야, count: area.count });
+                                } else {
+                                    dataPoints.push({ x: centerX, y: centerY, area: '', count: 0 });
+                                }
+                            }
+                            %>
+                            
+                            <!-- 배경 그리드 (5각형) - 내부 레벨 -->
+                            <% for (let level = 1; level <= 4; level++) { %>
+                                <% 
+                                const scale = level / 5;
+                                const gridPoints = points.map(p => {
+                                    const offsetX = (p.x - centerX) * scale + centerX;
+                                    const offsetY = (p.y - centerY) * scale + centerY;
+                                    return `${offsetX},${offsetY}`;
+                                }).join(' ');
+                                %>
+                                <polygon 
+                                    points="<%= gridPoints %>" 
+                                    fill="none" 
+                                    stroke="var(--color-gray-300)" 
+                                    stroke-width="1" 
+                                    opacity="0.2"
+                                />
+                            <% } %>
+                            
+                            <!-- 외곽 정5각형 (명확한 기준선) -->
+                            <polygon 
+                                points="<%= points.map(p => `${p.x},${p.y}`).join(' ') %>" 
+                                fill="none" 
+                                stroke="var(--color-gray-400)" 
+                                stroke-width="2" 
+                                opacity="0.5"
+                                class="radar-outline"
+                            />
+                            
+                            <!-- 중심에서 각 꼭짓점으로 선 그리기 -->
+                            <% points.forEach(point => { %>
+                                <line 
+                                    x1="<%= centerX %>" 
+                                    y1="<%= centerY %>" 
+                                    x2="<%= point.x %>" 
+                                    y2="<%= point.y %>" 
+                                    stroke="var(--color-gray-300)" 
+                                    stroke-width="1" 
+                                    opacity="0.3"
+                                />
+                            <% }); %>
+                            
+                            <!-- 데이터 영역 (내부 다각형) -->
+                            <polygon 
+                                points="<%= dataPoints.map(p => `${p.x},${p.y}`).join(' ') %>" 
+                                fill="url(#radarGradient)" 
+                                stroke="var(--color-primary)" 
+                                stroke-width="2.5" 
+                                opacity="0.75"
+                                class="radar-data-polygon"
+                            />
+                            
+                            <!-- 각 꼭짓점에 분야명과 건수 표시 (원 밖에 배치) -->
+                            <% points.forEach((point, index) => { %>
+                                <% const data = dataPoints[index]; %>
+                                <% if (data && data.area) { %>
+                                    <% 
+                                    // 텍스트 위치 계산 (꼭짓점에서 밖으로)
+                                    const angle = (Math.PI / 2) - (index * 2 * Math.PI / 5);
+                                    const textOffset = 35; // 꼭짓점에서 밖으로 떨어진 거리
+                                    const textX = point.x + textOffset * Math.cos(angle);
+                                    const textY = point.y - textOffset * Math.sin(angle);
+                                    %>
+                                    <g class="radar-label <%= index === topAreaIndex ? 'top-area' : '' %>" data-index="<%= index %>">
+                                        <% if (index === topAreaIndex) { %>
+                                            <!-- 1위 배지 -->
+                                            <circle 
+                                                cx="<%= textX %>" 
+                                                cy="<%= textY - 25 %>" 
+                                                r="12" 
+                                                fill="#FFD700" 
+                                                stroke="#FFA500" 
+                                                stroke-width="2"
+                                                class="top-badge"
+                                            />
+                                            <text 
+                                                x="<%= textX %>" 
+                                                y="<%= textY - 22 %>" 
+                                                text-anchor="middle" 
+                                                font-size="10" 
+                                                font-weight="700" 
+                                                fill="#8B4513"
+                                            >
+                                                1위
+                                            </text>
+                                        <% } %>
+                                        <!-- 분야명 (전체 표시) -->
+                                        <text 
+                                            x="<%= textX %>" 
+                                            y="<%= textY - 8 %>" 
+                                            text-anchor="middle" 
+                                            font-size="<%= index === topAreaIndex ? '14' : '13' %>" 
+                                            font-weight="<%= index === topAreaIndex ? '700' : '600' %>" 
+                                            fill="<%= index === topAreaIndex ? 'var(--color-primary-dark)' : 'var(--color-dark-text)' %>"
+                                            class="radar-area-name <%= index === topAreaIndex ? 'top-area-name' : '' %>"
+                                        >
+                                            <%= data.area %>
+                                        </text>
+                                        <!-- 건수 -->
+                                        <text 
+                                            x="<%= textX %>" 
+                                            y="<%= textY + 10 %>" 
+                                            text-anchor="middle" 
+                                            font-size="<%= index === topAreaIndex ? '15' : '14' %>" 
+                                            font-weight="700" 
+                                            fill="<%= index === topAreaIndex ? '#FF6B35' : 'var(--color-primary)' %>"
+                                            class="radar-area-count <%= index === topAreaIndex ? 'top-area-count' : '' %>"
+                                        >
+                                            <%= data.count %>건
+                                        </text>
+                                    </g>
+                                <% } %>
+                            <% }); %>
+                        </svg>
+                    </div>
+                <% } else { %>
+                    <p class="no-interest-areas">관심분야 데이터가 없습니다.</p>
+                <% } %>
+            </div>
+        </div>
+    
+        <div class="profile-stats-section">
+            <div class="stats-grid">
                 <div class="stat-item">
                     <span class="stat-label">선거구</span>
-                    <span class="stat-value"><%= politician.elect_gbn_nm %></span>
+                    <span class="stat-value"><%= politician.electoral_district %></span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">생년월일</span>
-                    <span class="stat-value"><%= politician.birthday %> (<%= politician.birthday %>세)</span>
-                </div>
-            </div>
-    
-            <div class="barometer-scores">
-                <div class="score-item">
-                    <h4>활동성 점수</h4>
-                    <div class="score-gauge">
-                        <div class="gauge-fill" style="width: <%= politician.ACTIVE_SCORE %>%"></div>
-                        <span class="score-value"><%= politician.ACTIVE_SCORE %>점</span>
-                    </div>
-                </div>
-                <div class="score-item">
-                    <h4>소통성 점수</h4>
-                    <div class="score-gauge">
-                        <div class="gauge-fill" style="width: <%= politician.COMM_SCORE %>%"></div>
-                        <span class="score-value"><%= politician.COMM_SCORE %>점</span>
-                    </div>
-                </div>
-                <div class="score-item user-rating">
-                    <h4>국민 평점</h4>
-                    <div class="star-rating">
-                        <%- renderStars(politician.AVG_RATING) %>
-                    </div>
-                    <span class="rating-value"><%= politician.AVG_RATING %> / 5.0 (<%= politician.RATING_COUNT %>명 참여)</span>
-                    <button class="btn btn-primary btn-sm mt-2" id="ratePoliticianBtn">평점 주기</button>
+                    <span class="stat-value"><%= politician.birthday %> (<%= politician.age %>세)</span>
                 </div>
             </div>
         </div>
@@ -165,44 +318,251 @@
         </ul>
         <div class="tab-content" id="politicianTabsContent">
             <div class="tab-pane fade show active" id="bills" role="tabpanel" aria-labelledby="bills-tab">
-                <h3 class="tab-section-title mt-4">주요 발의 법안</h3>
                 <% if (politician.bills && politician.bills.length > 0) { %>
-                    <div class="bill-cards-container">
-                        <% politician.bills.forEach(bill => { %>
-                            <div class="bill-card">
-                                <h4>
-                                    <a href="<%= bill.detail_link %>" target="_blank" rel="noopener noreferrer">
-                                        <%= bill.bill_name %> <i class="fas fa-external-link-alt"></i>
-                                    </a>
-                                </h4>
-                                <p class="bill-meta">
-                                    <span class="badge badge-category"><%= bill.proposer_kind_cd %></span>
-                                    <span class="propose-date">제안일: <%= bill.propose_dt %></span>
-                                </p>
-                                <p class="bill-summary"><%= bill.bill_topic_nm %></p>
-                                <div class="bill-impact">
-                                    <strong>영향 분석:</strong> <%= bill.IMPACT_ANALYSIS %>
+                    <% 
+                    // 분야별 통계 계산
+                    const areaStats = {};
+                    politician.bills.forEach(bill => {
+                        const topic = bill.bill_topic_nm || '미지정';
+                        areaStats[topic] = (areaStats[topic] || 0) + 1;
+                    });
+                    
+                    // 관심분야 상위 5개 가져오기
+                    const topAreas = politician.summary_분야 ? politician.summary_분야.slice(0, 5).map(a => a.분야) : [];
+                    const topAreaSet = new Set(topAreas);
+                    const topAreaIndex = topAreas.length > 0 ? topAreas[0] : null;
+                    
+                    // 분야별로 법안 그룹핑
+                    const billsByArea = {};
+                    politician.bills.forEach(bill => {
+                        const topic = bill.bill_topic_nm || '미지정';
+                        if (!billsByArea[topic]) {
+                            billsByArea[topic] = [];
+                        }
+                        billsByArea[topic].push(bill);
+                    });
+                    
+                    // 관심분야 우선순위로 정렬
+                    const sortedAreas = Object.keys(billsByArea).sort((a, b) => {
+                        const aIndex = topAreas.indexOf(a);
+                        const bIndex = topAreas.indexOf(b);
+                        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+                        if (aIndex !== -1) return -1;
+                        if (bIndex !== -1) return 1;
+                        return billsByArea[b].length - billsByArea[a].length;
+                    });
+                    %>
+                    
+                    <!-- 통계 요약 섹션 -->
+                    <div class="bill-stats-summary">
+                        <div class="stats-summary-item">
+                            <span class="stats-label">총 법안 수</span>
+                            <span class="stats-value"><%= politician.bills.length %>건</span>
+                        </div>
+                        <% if (topAreas.length > 0) { %>
+                            <% topAreas.slice(0, 3).forEach((area, idx) => { %>
+                                <div class="stats-summary-item <%= idx === 0 ? 'top-area-stat' : '' %>">
+                                    <span class="stats-label"><%= area %></span>
+                                    <span class="stats-value"><%= areaStats[area] || 0 %>건</span>
                                 </div>
-                                <div class="bill-status">
-                                    <span class="status-label">처리 결과:</span>
-                                    <span class="status-value status-<%= bill.proc_result_cd === '가결' ? 'success' : (bill.proc_result_cd === '폐기' ? 'danger' : 'info') %>">
-                                        <%= bill.proc_result_cd %>
-                                    </span>
-                                    <% if (bill.proc_date) { %>
-                                        <span class="status-date">(<%= bill.proc_date %>)</span>
+                            <% }); %>
+                        <% } %>
+                    </div>
+                    
+                    <!-- 분야 필터 탭 -->
+                    <div class="area-filter-tabs">
+                        <button class="filter-tab active" data-area="all">
+                            전체 (<%= politician.bills.length %>)
+                        </button>
+                        <% if (topAreas.length > 0) { %>
+                            <% topAreas.forEach((area, idx) => { %>
+                                <button class="filter-tab <%= idx === 0 ? 'top-area-filter' : '' %>" data-area="<%= area %>">
+                                    <%= area %> (<%= areaStats[area] || 0 %>)
+                                </button>
+                            <% }); %>
+                        <% } %>
+                    </div>
+                    
+                    <!-- 정렬 옵션 -->
+                    <div class="bill-sort-options">
+                        <label>정렬:</label>
+                        <select id="billSortSelect" class="form-select form-select-sm">
+                            <option value="date-desc">최신순</option>
+                            <option value="area-priority">관심분야 우선순위</option>
+                            <option value="area-name">분야별</option>
+                        </select>
+                    </div>
+                    
+                    <!-- 분야별 그룹핑된 법안 카드 -->
+                    <div class="bill-cards-container" id="billCardsContainer">
+                        <% sortedAreas.forEach((area, areaIdx) => { %>
+                            <% 
+                            const isTopArea = topAreaSet.has(area);
+                            const isFirstArea = area === topAreaIndex;
+                            const areaBills = billsByArea[area];
+                            const isExpanded = areaIdx < 3; // 상위 3개 분야는 기본 펼침
+                            %>
+                            <div class="bill-area-group" data-area="<%= area %>" data-expanded="<%= isExpanded %>">
+                                <div class="area-group-header <%= isTopArea ? 'top-area-header' : '' %> <%= isFirstArea ? 'first-area-header' : '' %>">
+                                    <div class="area-header-left">
+                                        <% if (isFirstArea) { %>
+                                            <span class="top-badge-small">1위</span>
+                                        <% } %>
+                                        <h4 class="area-group-title"><%= area %></h4>
+                                        <span class="area-bill-count">(<%= areaBills.length %>건)</span>
+                                    </div>
+                                    <button class="area-toggle-btn" onclick="toggleAreaGroup(this)">
+                                        <i class="fas fa-chevron-<%= isExpanded ? 'up' : 'down' %>"></i>
+                                    </button>
+                                </div>
+                                <div class="area-bills-container" <% if (!isExpanded) { %>style="display: none;"<% } %>>
+                                    <% 
+                                    const BILLS_PER_PAGE = 5;
+                                    const totalBills = areaBills.length;
+                                    const initialBills = areaBills.slice(0, BILLS_PER_PAGE);
+                                    const remainingBills = totalBills - BILLS_PER_PAGE;
+                                    %>
+                                    
+                                    <!-- 초기 표시 법안 (최대 5개) -->
+                                    <div class="bills-displayed">
+                                        <% initialBills.forEach(bill => { %>
+                                            <div class="bill-card <%= isTopArea ? 'top-area-card' : '' %> <%= isFirstArea ? 'first-area-card' : '' %>" data-area="<%= area %>">
+                                                <!-- 상단: 처리 결과 배지 -->
+                                                <div class="bill-card-top">
+                                                    <% 
+                                                    // 처리결과에 따른 상태 및 아이콘 결정
+                                                    let statusClass = 'info';
+                                                    let statusIcon = 'clock';
+                                                    
+                                                    if (bill.proc_result_cd === '원안가결' || bill.proc_result_cd === '수정가결' || bill.proc_result_cd === '가결') {
+                                                        statusClass = 'success';
+                                                        statusIcon = 'check-circle';
+                                                    } else if (bill.proc_result_cd === '부결' || bill.proc_result_cd === '폐기' || bill.proc_result_cd === '대안반영폐기' || bill.proc_result_cd === '수정안반영폐기') {
+                                                        statusClass = 'danger';
+                                                        statusIcon = 'times-circle';
+                                                    } else if (bill.proc_result_cd === '계류' || bill.proc_result_cd === '철회') {
+                                                        statusClass = 'info';
+                                                        statusIcon = bill.proc_result_cd === '철회' ? 'ban' : 'clock';
+                                                    }
+                                                    %>
+                                                    <div class="bill-status-badge status-<%= statusClass %>">
+                                                        <i class="fas fa-<%= statusIcon %>"></i>
+                                                        <span class="status-text"><%= bill.proc_result_cd %></span>
+                                                        <% if (bill.proc_date) { %>
+                                                            <span class="status-date"><%= bill.proc_date %></span>
+                                                        <% } %>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- 법안 제목 -->
+                                                <h4 class="bill-title">
+                                                    <a href="<%= bill.link_url || bill.detail_link || '#' %>" target="_blank" rel="noopener noreferrer">
+                                                        <%= bill.bill_name %>
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                </h4>
+                                                
+                                                <!-- 메타 정보 -->
+                                                <div class="bill-meta-info">
+                                                    <span class="meta-item">
+                                                        <i class="far fa-calendar"></i>
+                                                        <span>제안일: <%= bill.propose_dt %></span>
+                                                    </span>
+                                                    <span class="meta-item">
+                                                        <i class="fas fa-user-tie"></i>
+                                                        <span><%= bill.proposer_kind_cd %></span>
+                                                    </span>
+                                                </div>
+                                                
+                                                <!-- 영향 분석 -->
+                                                <% if (bill.IMPACT_ANALYSIS) { %>
+                                                    <div class="bill-impact">
+                                                        <i class="fas fa-lightbulb"></i>
+                                                        <div class="impact-content">
+                                                            <strong>영향 분석</strong>
+                                                            <p><%= bill.IMPACT_ANALYSIS %></p>
+                                                        </div>
+                                                    </div>
+                                                <% } %>
+                                            </div>
+                                        <% }); %>
+                                    </div>
+                                    
+                                    <!-- 추가 법안 (숨김) -->
+                                    <% if (remainingBills > 0) { %>
+                                        <div class="bills-hidden" style="display: none;">
+                                            <% areaBills.slice(BILLS_PER_PAGE).forEach(bill => { %>
+                                                <div class="bill-card <%= isTopArea ? 'top-area-card' : '' %> <%= isFirstArea ? 'first-area-card' : '' %>" data-area="<%= area %>">
+                                                    <!-- 상단: 처리 결과 배지 -->
+                                                    <div class="bill-card-top">
+                                                        <% 
+                                                        // 처리결과에 따른 상태 및 아이콘 결정
+                                                        let statusClass = 'info';
+                                                        let statusIcon = 'clock';
+                                                        
+                                                        if (bill.proc_result_cd === '원안가결' || bill.proc_result_cd === '수정가결' || bill.proc_result_cd === '가결') {
+                                                            statusClass = 'success';
+                                                            statusIcon = 'check-circle';
+                                                        } else if (bill.proc_result_cd === '부결' || bill.proc_result_cd === '폐기' || bill.proc_result_cd === '대안반영폐기' || bill.proc_result_cd === '수정안반영폐기') {
+                                                            statusClass = 'danger';
+                                                            statusIcon = 'times-circle';
+                                                        } else if (bill.proc_result_cd === '계류' || bill.proc_result_cd === '철회') {
+                                                            statusClass = 'info';
+                                                            statusIcon = bill.proc_result_cd === '철회' ? 'ban' : 'clock';
+                                                        }
+                                                        %>
+                                                        <div class="bill-status-badge status-<%= statusClass %>">
+                                                            <i class="fas fa-<%= statusIcon %>"></i>
+                                                            <span class="status-text"><%= bill.proc_result_cd %></span>
+                                                            <% if (bill.proc_date) { %>
+                                                                <span class="status-date"><%= bill.proc_date %></span>
+                                                            <% } %>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- 법안 제목 -->
+                                                    <h4 class="bill-title">
+                                                        <a href="<%= bill.link_url || bill.detail_link || '#' %>" target="_blank" rel="noopener noreferrer">
+                                                            <%= bill.bill_name %>
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                    </h4>
+                                                    
+                                                    <!-- 메타 정보 -->
+                                                    <div class="bill-meta-info">
+                                                        <span class="meta-item">
+                                                            <i class="far fa-calendar"></i>
+                                                            <span>제안일: <%= bill.propose_dt %></span>
+                                                        </span>
+                                                        <span class="meta-item">
+                                                            <i class="fas fa-user-tie"></i>
+                                                            <span><%= bill.proposer_kind_cd %></span>
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    <!-- 영향 분석 -->
+                                                    <% if (bill.IMPACT_ANALYSIS) { %>
+                                                        <div class="bill-impact">
+                                                            <i class="fas fa-lightbulb"></i>
+                                                            <div class="impact-content">
+                                                                <strong>영향 분석</strong>
+                                                                <p><%= bill.IMPACT_ANALYSIS %></p>
+                                                            </div>
+                                                        </div>
+                                                    <% } %>
+                                                </div>
+                                            <% }); %>
+                                        </div>
+                                        
+                                        <!-- 더보기 버튼 -->
+                                        <div class="load-more-container">
+                                            <button class="load-more-btn" onclick="loadMoreBills(this, '<%= area %>')">
+                                                <i class="fas fa-chevron-down"></i>
+                                                더보기 (<%= remainingBills %>개 남음)
+                                            </button>
+                                        </div>
                                     <% } %>
                                 </div>
-                                <!-- <% if (politician.co_proposers && politician.co_proposers.length > 0) { %>
-                                <div class="co-proposers">
-                                    <strong>공동 발의:</strong>
-                                    <% politician.co_proposers.slice(0, 3).forEach((co, index) => { %>
-                                        <a href="/politician/<%= co.MONA_CD %>"><%= co.HG_NM %></a><%= index < 2 ? ', ' : '' %>
-                                    <% }); %>
-                                    <% if (politician.co_proposers.length > 3) { %>
-                                        ... 외 <%= politician.co_proposers.length - 3 %>명
-                                    <% } %>
-                                </div>
-                                <% } %> -->
                             </div>
                         <% }); %>
                     </div>
@@ -266,10 +626,169 @@
     </section>
 </main>
 
+<%# 페이징 동적으로 생성 %>
+<div class="pagination-container" id="pagination-container"></div>
+
 <script>
     // 평점 주기 버튼 클릭 이벤트 (간단한 예시)
     document.getElementById('ratePoliticianBtn')?.addEventListener('click', () => {
         alert('평점 주기 기능은 준비 중입니다! 로그인 후 이용 가능합니다.');
         // 실제로는 모달을 띄우고 평점 입력 폼을 보여줍니다.
     });
+    
+    // 분야 그룹 접기/펼치기
+    function toggleAreaGroup(btn) {
+        const group = btn.closest('.bill-area-group');
+        const container = group.querySelector('.area-bills-container');
+        const icon = btn.querySelector('i');
+        const isExpanded = container.style.display !== 'none';
+        
+        if (isExpanded) {
+            container.style.display = 'none';
+            icon.className = 'fas fa-chevron-down';
+            group.setAttribute('data-expanded', 'false');
+        } else {
+            container.style.display = 'grid';
+            icon.className = 'fas fa-chevron-up';
+            group.setAttribute('data-expanded', 'true');
+        }
+    }
+    
+    // 분야 필터 탭 클릭 이벤트
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            // 모든 탭에서 active 제거
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            // 클릭한 탭에 active 추가
+            this.classList.add('active');
+            
+            const selectedArea = this.getAttribute('data-area');
+            const allGroups = document.querySelectorAll('.bill-area-group');
+            
+            if (selectedArea === 'all') {
+                // 전체 표시
+                allGroups.forEach(group => {
+                    group.style.display = 'block';
+                });
+            } else {
+                // 선택한 분야만 표시
+                allGroups.forEach(group => {
+                    if (group.getAttribute('data-area') === selectedArea) {
+                        group.style.display = 'block';
+                        // 해당 그룹 자동 펼치기
+                        const container = group.querySelector('.area-bills-container');
+                        const toggleBtn = group.querySelector('.area-toggle-btn');
+                        if (container.style.display === 'none') {
+                            container.style.display = 'grid';
+                            toggleBtn.querySelector('i').className = 'fas fa-chevron-up';
+                            group.setAttribute('data-expanded', 'true');
+                        }
+                    } else {
+                        group.style.display = 'none';
+                    }
+                });
+            }
+        });
+    });
+    
+    // 정렬 옵션 변경 이벤트
+    const sortSelect = document.getElementById('billSortSelect');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', function() {
+            const sortType = this.value;
+            const container = document.getElementById('billCardsContainer');
+            const groups = Array.from(container.querySelectorAll('.bill-area-group'));
+            
+            if (sortType === 'date-desc') {
+                // 최신순: 각 그룹 내 법안을 날짜순으로 정렬
+                groups.forEach(group => {
+                    const displayedContainer = group.querySelector('.bills-displayed');
+                    const hiddenContainer = group.querySelector('.bills-hidden');
+                    
+                    // 표시된 법안과 숨겨진 법안 모두 가져오기
+                    const allBills = [];
+                    if (displayedContainer) {
+                        allBills.push(...Array.from(displayedContainer.querySelectorAll('.bill-card')));
+                    }
+                    if (hiddenContainer) {
+                        allBills.push(...Array.from(hiddenContainer.querySelectorAll('.bill-card')));
+                    }
+                    
+                    // 날짜순으로 정렬
+                    allBills.sort((a, b) => {
+                        const dateA = a.querySelector('.propose-date')?.textContent || '';
+                        const dateB = b.querySelector('.propose-date')?.textContent || '';
+                        return dateB.localeCompare(dateA);
+                    });
+                    
+                    // 정렬된 법안을 다시 배치 (초기 5개는 displayed, 나머지는 hidden)
+                    if (displayedContainer) {
+                        displayedContainer.innerHTML = '';
+                        hiddenContainer.innerHTML = '';
+                        
+                        allBills.forEach((bill, index) => {
+                            if (index < 5) {
+                                displayedContainer.appendChild(bill);
+                            } else {
+                                hiddenContainer.appendChild(bill);
+                            }
+                        });
+                        
+                        // 더보기 버튼 상태 업데이트
+                        const loadMoreContainer = group.querySelector('.load-more-container');
+                        if (loadMoreContainer && allBills.length > 5) {
+                            loadMoreContainer.style.display = 'block';
+                            const remaining = allBills.length - 5;
+                            const btn = loadMoreContainer.querySelector('.load-more-btn');
+                            if (btn) {
+                                btn.innerHTML = `<i class="fas fa-chevron-down"></i> 더보기 (${remaining}개 남음)`;
+                            }
+                        } else if (loadMoreContainer) {
+                            loadMoreContainer.style.display = 'none';
+                        }
+                    }
+                });
+            } else if (sortType === 'area-priority') {
+                // 관심분야 우선순위는 이미 서버에서 정렬됨
+                // 추가 정렬 불필요
+            } else if (sortType === 'area-name') {
+                // 분야명 순으로 그룹 정렬
+                groups.sort((a, b) => {
+                    const nameA = a.querySelector('.area-group-title')?.textContent || '';
+                    const nameB = b.querySelector('.area-group-title')?.textContent || '';
+                    return nameA.localeCompare(nameB);
+                });
+                groups.forEach(group => container.appendChild(group));
+            }
+        });
+    }
+    
+    // 분야별 더보기 버튼 기능
+    function loadMoreBills(btn, area) {
+        const group = btn.closest('.bill-area-group');
+        const hiddenContainer = group.querySelector('.bills-hidden');
+        const displayedContainer = group.querySelector('.bills-displayed');
+        const loadMoreContainer = btn.closest('.load-more-container');
+        
+        if (hiddenContainer && hiddenContainer.style.display === 'none') {
+            // 로딩 상태 표시
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 로딩 중...';
+            
+            // 약간의 딜레이로 부드러운 전환 효과
+            setTimeout(() => {
+                // 숨겨진 법안들을 표시 영역으로 이동
+                const hiddenBills = Array.from(hiddenContainer.querySelectorAll('.bill-card'));
+                hiddenBills.forEach(bill => {
+                    displayedContainer.appendChild(bill);
+                });
+                
+                // 숨겨진 컨테이너 제거
+                hiddenContainer.remove();
+                
+                // 더보기 버튼 숨기기
+                loadMoreContainer.style.display = 'none';
+            }, 300);
+        }
+    }
 </script>

@@ -1,7 +1,26 @@
 // politician_detail.js
 
+import { Pagination } from "../components/pagination.js";
+
 document.addEventListener('DOMContentLoaded', function() {
     const radarChartCanvas = document.getElementById('politicianRadarChart');
+    
+    // Pagination 인스턴스 생성
+    const pagination = new Pagination(
+        'pagination-container', // 페이징 컨트롤이 들어갈 컨테이너 ID
+        (paginatedData) => { // renderCallback 함수: 페이징된 데이터를 받아 그리드를 렌더링
+            if (!grid) return;
+            grid.innerHTML = paginatedData.length > 0
+                ? paginatedData.map(createPoliticianCard).join('')
+                : '<p class="no-results">검색 결과가 없습니다.</p>';
+        },
+        itemsPerPage, // 한 페이지당 항목 수 (itemsPerPage)
+        5,  // 표시할 페이지 버튼 수 (maxPageButtons)
+        'politician-grid', // 스크롤을 이동할 대상 요소의 ID
+        true, // showFirstLastButtons (맨 앞/맨 뒤 버튼 표시 여부)
+        true  // showGoToPageInput (페이지 입력 필드 표시 여부)
+    );
+
     if (radarChartCanvas) {
         // EJS에서 data-analysis 속성으로 JSON 데이터를 전달받아 파싱
         const analysisData = JSON.parse(radarChartCanvas.dataset.analysis || '{}');

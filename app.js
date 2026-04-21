@@ -1,5 +1,5 @@
 import express from 'express';
-import mysql_promise from 'mysql2/promise'; // 🚨 Promise 기반 모듈 임포트
+import pg from 'pg';
 import logger from './utils/logger.js';
 import dbConfig from './config/database.js';
 import setupRoutes from './routes/Index.js';
@@ -13,7 +13,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 /* 커넥션풀 생성 */
-const db = mysql_promise.createPool(dbConfig);
+const db = new pg.Pool(dbConfig);
 
 /* EJS 템플릿 엔진 설정 */
 app.set('view engine', 'ejs');
@@ -37,12 +37,7 @@ app.use(expressLayouts);    // 공통 layout 설정
 /* db.query 래핑: SQL + 결과 건수 자동 로깅 */
 const originalQuery = db.query.bind(db);
 
-db.query = function (sql, values, callback) {
-    if (typeof values === 'function') {
-        callback = values;
-        values = [];
-    }
-
+db.query = async function (sql, values) {
     // request 정보를 가진 context
     const context = getContext();
     const { route, action } = context;
@@ -56,12 +51,12 @@ db.query = function (sql, values, callback) {
                             .join(' ');
 
     const tag = [requestTag, otherTags].filter(Boolean).join(' ');
-    const formattedSql = mysql_promise.format(sql, values);
-    logger.info(`Executing query: /* ${tag} */\n${formattedSql}`);
-    const start = Date.now(); // 시작 시간 기록
+    logger.info(`Executing query: /* ${tag} */\n${sql}`);
+    const start = Date.now();
 
-    const wrappedCallback = function (err, results, fields) {
-        const duration = Date.now() - start; // 실행 시간 계산
+    try {
+        const result = await originalQuery(sql, values);
+        const duration = Date.now() - start;
 
         let speedTag = 'FAST';
         if (duration > 800) speedTag = 'CRITICAL';
@@ -70,19 +65,21 @@ db.query = function (sql, values, callback) {
         const timeTag = duration < 1000 ? `${duration}ms` : `${(duration / 1000).toFixed(2)}s`;
         const timeLog = timeTag + ': ' + speedTag;
 
-        if (err) {
-            logger.error(`Query error: ${err.message} /* ${timeLog} */`);
-        } else if (Array.isArray(results)) {
-            logger.info(`Query result: ${results.length}건 조회됨 /* ${timeLog} */`);
-        } else if (results && typeof results === 'object' && 'affectedRows' in results) {
-            logger.info(`Query result: ${results.affectedRows}건 영향받음 /* ${timeLog} */`);
+        if (Array.isArray(result.rows)) {
+            logger.info(`Query result: ${result.rows.length}건 조회됨 /* ${timeLog} */`);
+        } else if (result.rowCount != null) {
+            logger.info(`Query result: ${result.rowCount}건 영향받음 /* ${timeLog} */`);
         } else {
             logger.info(`Query result: 형식 확인 필요 /* ${timeLog} */`);
         }
-        callback(err, results, fields);
-    };
 
-    return originalQuery(sql, values, wrappedCallback);
+        return result;
+    } catch (err) {
+        const duration = Date.now() - start;
+        const timeTag = duration < 1000 ? `${duration}ms` : `${(duration / 1000).toFixed(2)}s`;
+        logger.error(`Query error: ${err.message} /* ${timeTag} */`);
+        throw err;
+    }
 };
 
 /* 서버 초기화 함수 */

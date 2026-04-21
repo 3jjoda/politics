@@ -21,13 +21,13 @@ export default (db) => {
     return {
         /* 정치인 조회 */
         getList: async () => {
-            const [rows] = await db.query(queries.getList);
+            const { rows } = await db.query(queries.getList);
             return rows;
         },
 
         /* 정치인 상세 조회 */
         getDetail: async (id) => {
-            const [rows] = await db.query(queries.getDetail, id);
+            const { rows } = await db.query(queries.getDetail, [id]);
             return rows;
         }
     };
