@@ -98,7 +98,7 @@ async function collectAndStageData(politician, assemblyAge, pool, politicianName
         await scraper.initialize(getPoliticianDetailPageUrl(monaCd, assemblyAge));
 
         // --- 법안 수집 로직 ---
-        const commonBillParams = { monaCd, age: '22', rowPerPage: ROWS_PER_PAGE, billName: '', procResultCd: '', pageLink: 'doActionRepBill.goPage' };
+        const commonBillParams = { monaCd, age: '', rowPerPage: ROWS_PER_PAGE, billName: '', procResultCd: '', pageLink: 'doActionRepBill.goPage' };
         const billSources = [
             { kind: BILL_KIND.LAW, type: 'law_rep', endpoint: 'findRepPrpsBill.json', params: { ...commonBillParams, represent: BILL_KIND.LAW.NAME } },
             { kind: BILL_KIND.LAW, type: 'law_co', endpoint: 'findCollaPrpsBill.json', params: { ...commonBillParams, represent: BILL_KIND.LAW.NAME } },
@@ -116,7 +116,7 @@ async function collectAndStageData(politician, assemblyAge, pool, politicianName
         collectedInfo.apiBillCount = currentApiBillCount;
 
         if (currentApiBillCount === lastApiBillCount && currentApiBillCount > 0) {
-             logger.info(`[${politicianName}] 법안: 변동 없음 (API: ${currentApiBillCount}건). 스킵합니다.`);
+            logger.info(`[${politicianName}] 법안: 변동 없음 (API: ${currentApiBillCount}건). 스킵합니다.`);
         } else {
             if(currentApiBillCount !== lastApiBillCount) logger.warn(`[${politicianName}] 법안: 변동 감지 (DB: ${lastApiBillCount} -> API: ${currentApiBillCount}). 전체 스캔 시작.`);
 
@@ -139,7 +139,7 @@ async function collectAndStageData(politician, assemblyAge, pool, politicianName
         }
 
         // --- 표결 데이터 수집 로직 ---
-        const voteParams = { monaCd, pageLink: 'doActionVote.goPage', age: '22', procResultCd: '', bgVoteendDt: '', edVoteendDt: '', resultVoteMod: '', billName: '', rowPerPage: ROWS_PER_PAGE };
+        const voteParams = { monaCd, pageLink: 'doActionVote.goPage', age: '', procResultCd: '', bgVoteendDt: '', edVoteendDt: '', resultVoteMod: '', billName: '', rowPerPage: ROWS_PER_PAGE };
         const firstVotePage = await scraper.postData('findAssmVoteResult.json', { ...voteParams, pageIndex: 1 }, getPoliticianDetailPageUrl(monaCd, assemblyAge));
 
         const apiVoteCount = firstVotePage?.paginationInfo?.totalRecordCount || 0;
@@ -333,6 +333,6 @@ async function runBillSync(assemblyAge, limitCount = 0) {
 const ASSEMBLY_AGE_TO_SYNC = process.env.ASSEMBLY_AGE || '22';
 const testLimit = parseInt(process.argv[2], 10) || 0;
 
-// cron.schedule('30 23 * * *', () => { runBillSync(ASSEMBLY_AGE_TO_SYNC, testLimit); });
+cron.schedule('30 23 * * *', () => { runBillSync(ASSEMBLY_AGE_TO_SYNC, testLimit); });
 logger.info(`법안 데이터 동기화 배치가 설정되었습니다.`);
 runBillSync(ASSEMBLY_AGE_TO_SYNC, testLimit);

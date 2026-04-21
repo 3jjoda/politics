@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "axios": "^1.12.2",
     "axios-cookiejar-support": "^6.0.4",
     "axios-retry": "^4.5.0",
