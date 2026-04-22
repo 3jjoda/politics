@@ -197,6 +197,510 @@ input, textarea, select { font-family: inherit; }
   padding: 4px 8px;
 }
 
+/* 사용자 메뉴 (로그인 상태) */
+.pb-user-menu {
+  position: relative;
+}
+.pb-user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.pb-user-btn:hover { border-color: var(--border2); }
+.pb-user-btn svg { color: var(--sub2); }
+
+.pb-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: block;
+}
+.pb-user-avatar svg,
+.pb-user-avatar img { width: 100%; height: 100%; display: block; }
+
+.pb-user-name {
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-user-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.15s, transform 0.15s;
+  overflow: hidden;
+}
+.pb-user-dropdown.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.pb-user-meta {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.pb-user-nick {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.pb-user-provider {
+  font-size: 11px;
+  color: var(--sub2);
+  font-family: 'JetBrains Mono', monospace;
+}
+.pb-user-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.pb-user-item:hover { background: var(--bg3); }
+.pb-user-logout { color: var(--red); border-top: 1px solid var(--border); }
+.pb-user-withdraw {
+    color: var(--red);
+    font-size: 11px;
+    padding: 8px 16px;
+    opacity: 0.7;
+    border-top: 1px dashed var(--border);
+}
+.pb-user-withdraw:hover { opacity: 1; background: rgba(208,58,58,0.05); }
+
+/* 공용 모달 */
+.pb-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.pb-modal[hidden] { display: none; }
+.pb-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(26,29,36,0.45);
+    backdrop-filter: blur(4px);
+}
+.pb-modal-card {
+    position: relative;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    max-width: 420px;
+    width: 100%;
+    padding: 28px 28px 22px;
+}
+.pb-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 14px;
+}
+.pb-modal-body {
+    font-size: 14px;
+    color: var(--sub);
+    line-height: 1.75;
+    margin-bottom: 22px;
+}
+.pb-modal-body strong { color: var(--text); font-weight: 600; }
+.pb-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.pb-modal-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.pb-modal-btn:hover { background: var(--bg3); border-color: var(--border2); }
+.pb-modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.pb-modal-btn-danger {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+}
+.pb-modal-btn-danger:hover {
+    background: #b03030;
+    border-color: #b03030;
+}
+
+/* ==============================================================
+   PB.* 상호작용 위젯 공용 스타일 (별점, 댓글, 시민 찬반)
+   ============================================================== */
+
+.pb-muted { color: var(--sub); font-size: 13px; padding: 16px; text-align: center; }
+
+/* 별점 */
+.pb-stars { display: inline-flex; gap: 2px; line-height: 1; }
+.pb-star { cursor: default; color: var(--sub2); user-select: none; transition: color 0.15s, transform 0.15s; }
+.pb-star.filled { color: var(--accent); }
+.pb-star[role="button"] { cursor: pointer; }
+.pb-star[role="button"]:hover { color: var(--accent); transform: scale(1.12); }
+
+/* 평가 요약 */
+.eval-summary {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 24px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+}
+.eval-score-wrap { text-align: center; flex-shrink: 0; }
+.eval-score {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 64px;
+  line-height: 1;
+  color: var(--accent);
+}
+.eval-score-wrap .pb-stars { margin-top: 6px; justify-content: center; }
+.eval-score-label { font-size: 12px; color: var(--sub2); margin-top: 6px; }
+
+.eval-dist { flex: 1; min-width: 240px; }
+.eval-dist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.eval-dist-label {
+  width: 40px;
+  font-size: 13px;
+  color: var(--sub);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.eval-dist-label span { color: var(--accent); }
+.eval-dist-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: var(--bg3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.eval-dist-bar { height: 100%; background: var(--accent); border-radius: 4px; }
+.eval-dist-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--sub);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* 내 별점 줄 */
+.my-rating {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+  flex-wrap: wrap;
+}
+.my-rating-label { font-size: 14px; color: var(--sub); }
+.my-rating-hint { font-size: 13px; color: var(--sub2); margin-left: auto; }
+
+/* 댓글 작성 */
+.comment-write {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.comment-write-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.write-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.write-avatar svg { width: 100%; height: 100%; display: block; }
+.write-hint { font-size: 13px; color: var(--sub); }
+
+.write-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+  min-height: 80px;
+  line-height: 1.65;
+}
+.write-input:focus { border-color: var(--accent); }
+.write-input::placeholder { color: var(--sub2); }
+
+.write-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.write-submit {
+  padding: 9px 20px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+  display: inline-flex;
+  align-items: center;
+}
+.write-submit:hover { background: var(--accent2); }
+.write-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.comment-login-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--sub);
+  flex-wrap: wrap;
+}
+
+/* 댓글 정렬 */
+.comment-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--sub2);
+}
+.sort-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--sub);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sort-btn.active, .sort-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.sort-count { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sub2); }
+
+/* 댓글 카드 */
+.comments { display: flex; flex-direction: column; gap: 10px; }
+.comment-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+.comment-card:hover { border-color: var(--border2); }
+.comment-card-deleted { opacity: 0.75; }
+.comment-card-deleted .comment-nickname { color: var(--sub2); font-weight: 500; }
+.comment-card-deleted .comment-body { color: var(--sub); font-style: italic; }
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.comment-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.comment-avatar svg { width: 100%; height: 100%; display: block; }
+.comment-meta { flex: 1; min-width: 0; }
+.comment-nickname {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.comment-date {
+  font-size: 11px;
+  color: var(--sub2);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 2px;
+}
+.comment-body {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.75;
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.comment-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.comment-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--sub);
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  user-select: none;
+}
+.comment-action:hover { color: var(--text); background: var(--bg3); }
+.comment-action.liked { color: var(--accent); background: var(--accent-10); }
+.comment-action.liked strong { color: var(--accent); }
+
+.comments-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--sub);
+  background: var(--bg2);
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+/* 시민 찬반 위젯 */
+.cv-bar {
+  display: flex;
+  height: 36px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.cv-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  transition: width 0.4s ease;
+  min-width: 0;
+  white-space: nowrap;
+}
+.cv-agree    { background: var(--green); }
+.cv-disagree { background: var(--red); }
+.cv-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--sub);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.cv-legend-item { display: flex; align-items: center; gap: 6px; }
+.cv-legend-item strong { color: var(--text); }
+.cv-dot { width: 10px; height: 10px; border-radius: 50%; }
+.cv-dot-agree    { background: var(--green); }
+.cv-dot-disagree { background: var(--red); }
+.cv-total { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sub2); }
+
+.cv-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cv-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cv-btn:hover { border-color: var(--border2); }
+.cv-btn-agree.active {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+}
+.cv-btn-disagree.active {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+.cv-my-hint { margin-left: auto; font-size: 12px; color: var(--sub2); }
+
 /* ===== MOBILE PANEL ===== */
 .pb-mobile-panel {
   position: fixed;

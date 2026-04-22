@@ -1,0 +1,325 @@
+<%
+  const providerLabel = pending.provider === 'google' ? 'Google'
+                      : pending.provider === 'kakao'  ? 'Kakao'
+                      : pending.provider;
+  const defaultNickname = (pending.displayName || '').trim().slice(0, 20);
+%>
+
+<style>
+  .setup-wrap {
+    min-height: calc(100vh - 60px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+  }
+  .setup-card {
+    width: 100%;
+    max-width: 440px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 32px;
+    box-shadow: var(--shadow);
+  }
+  .setup-head {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .setup-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 16px;
+    border: 2px solid var(--border);
+  }
+  .setup-avatar img,
+  .setup-avatar svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+
+  .setup-greeting {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .setup-sub {
+    font-size: 14px;
+    color: var(--sub);
+    line-height: 1.7;
+  }
+  .setup-provider {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 10px;
+    margin-top: 10px;
+  }
+
+  .setup-form { margin-top: 8px; }
+
+  .setup-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .setup-input-wrap {
+    position: relative;
+  }
+  .setup-input {
+    width: 100%;
+    padding: 14px 44px 14px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .setup-input:focus { border-color: var(--accent); }
+  .setup-input.ok    { border-color: var(--green); }
+  .setup-input.error { border-color: var(--red); }
+
+  .setup-input-icon {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    line-height: 1;
+  }
+  .setup-input-icon.ok    { color: var(--green); }
+  .setup-input-icon.error { color: var(--red); }
+  .setup-input-icon.loading {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: setup-spin 0.8s linear infinite;
+  }
+  @keyframes setup-spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+  .setup-feedback {
+    margin-top: 8px;
+    font-size: 12px;
+    min-height: 18px;
+    line-height: 1.5;
+  }
+  .setup-feedback.ok    { color: var(--green); }
+  .setup-feedback.error { color: var(--red); }
+  .setup-feedback.neutral { color: var(--sub2); }
+
+  .setup-rules {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--sub);
+    line-height: 1.7;
+  }
+  .setup-rules strong { color: var(--text); font-weight: 500; }
+
+  .setup-submit {
+    width: 100%;
+    margin-top: 20px;
+    padding: 14px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .setup-submit:hover:not(:disabled) { background: var(--accent2); }
+  .setup-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .setup-cancel {
+    display: block;
+    text-align: center;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .setup-cancel:hover { color: var(--text); }
+
+  .setup-error-banner {
+    background: rgba(208,58,58,0.08);
+    border: 1px solid rgba(208,58,58,0.2);
+    color: var(--red);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+</style>
+
+<div class="setup-wrap">
+  <div class="setup-card">
+    <div class="setup-head">
+      <div class="setup-avatar">
+        <% if (pending.profileImage) { %>
+          <img src="<%= pending.profileImage %>" alt="프로필">
+        <% } else { %>
+          <%- avatarHtml(pending.displayName || providerLabel, null, 72) %>
+        <% } %>
+      </div>
+      <div class="setup-greeting">안녕하세요!</div>
+      <div class="setup-sub">정치 바로미터에서 사용할 <strong style="color:var(--text)">닉네임</strong>을 설정해주세요.</div>
+      <div class="setup-provider">● <%= providerLabel %> 로 가입</div>
+    </div>
+
+    <% if (error) { %>
+      <div class="setup-error-banner"><%= error %></div>
+    <% } %>
+
+    <form method="post" action="/auth/setup" class="setup-form" id="setup-form" autocomplete="off">
+      <label class="setup-label" for="nickname">닉네임</label>
+      <div class="setup-input-wrap">
+        <input type="text" id="nickname" name="nickname"
+               class="setup-input"
+               value="<%= defaultNickname %>"
+               maxlength="20"
+               placeholder="2~20자, 한글/영문/숫자/_ 가능"
+               autofocus required>
+        <span class="setup-input-icon" id="nickname-icon"></span>
+      </div>
+      <div class="setup-feedback neutral" id="nickname-feedback" aria-live="polite">
+        예: 현명한시민, data_lover, 정치팬123
+      </div>
+
+      <div class="setup-rules">
+        <strong>닉네임 규칙</strong><br>
+        · 2~20자<br>
+        · 한글, 영문, 숫자, 언더스코어(_) 만 사용<br>
+        · 공백·특수문자 불가<br>
+        · 나중에 변경할 수 있습니다
+      </div>
+
+      <button type="submit" class="setup-submit" id="setup-submit" disabled>
+        시작하기
+      </button>
+      <a href="/auth/logout" class="setup-cancel">취소하고 로그아웃</a>
+    </form>
+  </div>
+</div>
+
+<script>
+(() => {
+  const NICKNAME_RE = /^[가-힣a-zA-Z0-9_]{2,20}$/;
+
+  const input     = document.getElementById('nickname');
+  const icon      = document.getElementById('nickname-icon');
+  const feedback  = document.getElementById('nickname-feedback');
+  const submitBtn = document.getElementById('setup-submit');
+
+  let debounceTimer = null;
+  let lastCheckedValue = null;
+  let lastResultAvailable = false;
+
+  const setState = (state, message) => {
+    input.classList.remove('ok', 'error');
+    icon.classList.remove('ok', 'error', 'loading');
+    icon.textContent = '';
+    feedback.classList.remove('ok', 'error', 'neutral');
+
+    if (state === 'loading') {
+      icon.classList.add('loading');
+      feedback.classList.add('neutral');
+      feedback.textContent = '확인 중...';
+      submitBtn.disabled = true;
+    } else if (state === 'ok') {
+      input.classList.add('ok');
+      icon.classList.add('ok');
+      icon.textContent = '✓';
+      feedback.classList.add('ok');
+      feedback.textContent = message || '사용 가능한 닉네임입니다.';
+      submitBtn.disabled = false;
+    } else if (state === 'error') {
+      input.classList.add('error');
+      icon.classList.add('error');
+      icon.textContent = '✕';
+      feedback.classList.add('error');
+      feedback.textContent = message || '사용할 수 없는 닉네임입니다.';
+      submitBtn.disabled = true;
+    } else {
+      feedback.classList.add('neutral');
+      feedback.textContent = message || '예: 현명한시민, data_lover, 정치팬123';
+      submitBtn.disabled = true;
+    }
+  };
+
+  const validate = (value) => {
+    const v = (value || '').trim();
+    if (!v) return { ok: false, reason: '닉네임을 입력해주세요.' };
+    if (v.length < 2)  return { ok: false, reason: '2자 이상 입력해주세요.' };
+    if (v.length > 20) return { ok: false, reason: '20자 이내로 입력해주세요.' };
+    if (/\s/.test(v))  return { ok: false, reason: '공백은 사용할 수 없습니다.' };
+    if (!NICKNAME_RE.test(v)) return { ok: false, reason: '한글·영문·숫자·언더스코어(_)만 사용할 수 있습니다.' };
+    return { ok: true, value: v };
+  };
+
+  const checkRemote = async (value) => {
+    try {
+      const res = await fetch(`/api/auth/check-nickname?nickname=${encodeURIComponent(value)}`, {
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+      });
+      if (!res.ok) throw new Error('네트워크 오류');
+      return await res.json();
+    } catch (err) {
+      return { available: false, reason: '확인 중 오류가 발생했습니다.' };
+    }
+  };
+
+  const onChange = () => {
+    const v = input.value.trim();
+    if (debounceTimer) clearTimeout(debounceTimer);
+
+    const local = validate(v);
+    if (!local.ok) {
+      setState('error', local.reason);
+      return;
+    }
+    if (v === lastCheckedValue) {
+      setState(lastResultAvailable ? 'ok' : 'error', lastResultAvailable ? '사용 가능한 닉네임입니다.' : '이미 사용 중인 닉네임입니다.');
+      return;
+    }
+    setState('loading');
+    debounceTimer = setTimeout(async () => {
+      const r = await checkRemote(local.value);
+      lastCheckedValue = local.value;
+      lastResultAvailable = !!r.available;
+      setState(r.available ? 'ok' : 'error', r.reason);
+    }, 500);
+  };
+
+  input.addEventListener('input', onChange);
+
+  // 초기값 있으면 즉시 체크
+  if (input.value.trim()) onChange();
+  else setState('neutral');
+
+  // 제출 시 최종 검증 (로컬만 — 서버에서 최종 판단)
+  document.getElementById('setup-form').addEventListener('submit', (e) => {
+    const local = validate(input.value);
+    if (!local.ok) {
+      e.preventDefault();
+      setState('error', local.reason);
+    }
+  });
+})();
+</script>

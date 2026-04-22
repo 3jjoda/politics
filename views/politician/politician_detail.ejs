@@ -905,7 +905,7 @@
   </div>
 </div>
 
-<!-- TABS — 개요분석/국민평가는 추후 오픈 예정이라 숨김 처리 -->
+<!-- TABS — 개요분석은 추후 오픈 -->
 <div class="tab-bar">
   <div class="tab-bar-inner">
     <button class="tab-btn active" data-tab="bills">
@@ -914,9 +914,9 @@
     <button class="tab-btn" data-tab="votes">
       표결 내역 <span class="tab-count"><%= nf(votesTabCount) %></span>
     </button>
+    <button class="tab-btn" data-tab="comments">국민 평가</button>
     <!-- 추후 오픈
     <button class="tab-btn" data-tab="overview">개요 분석</button>
-    <button class="tab-btn" data-tab="comments">국민 평가</button>
     -->
   </div>
 </div>
@@ -1219,45 +1219,11 @@
 
     <!-- ===== 국민 평가 탭 ===== -->
     <div class="tab-panel" id="tab-comments">
-      <div class="eval-summary">
-        <div class="eval-score-wrap">
-          <div class="eval-score">—</div>
-          <div class="eval-stars">
-            <span class="star-empty">☆</span>
-            <span class="star-empty">☆</span>
-            <span class="star-empty">☆</span>
-            <span class="star-empty">☆</span>
-            <span class="star-empty">☆</span>
-          </div>
-          <div class="eval-score-label">아직 평가 없음</div>
-        </div>
-        <div class="eval-empty-text">
-          국민 평가 기능은 <strong style="color:var(--text)">준비 중</strong>입니다.<br>
-          실제 의정 데이터를 기반으로 의원에 대한 별점/태그/의견을 남길 수 있는 공간입니다.
-        </div>
-      </div>
+      <!-- 별점 요약 + 나의 별점 (PB.mountRating 이 렌더) -->
+      <div id="rating-widget"></div>
 
-      <div class="comment-write">
-        <div class="comment-write-top">
-          <div class="write-avatar">😶</div>
-          <span style="font-size:13px;color:var(--sub)">평가 점수:</span>
-          <div class="write-stars">
-            <% for (let i = 1; i <= 5; i++) { %>
-              <span class="write-star" data-val="<%= i %>">★</span>
-            <% } %>
-          </div>
-        </div>
-        <textarea class="write-input"
-          placeholder="<%= politician.name %> 의원의 의정 활동에 대한 의견을 남겨주세요. 허위 사실, 욕설, 개인정보 포함 댓글은 삭제될 수 있습니다."></textarea>
-        <div class="write-footer">
-          <span class="write-hint">로그인 후 작성 가능합니다 (현재 준비 중)</span>
-          <button class="write-submit" onclick="alert('댓글 기능은 준비 중입니다.')">평가 남기기</button>
-        </div>
-      </div>
-
-      <div class="comments-empty">
-        아직 등록된 국민 평가가 없습니다. 첫 평가의 주인공이 되어보세요.
-      </div>
+      <!-- 댓글 작성 + 목록 (PB.mountComments 가 렌더) -->
+      <div id="comment-widget"></div>
     </div>
 
   </div>
@@ -1404,6 +1370,16 @@
 
 <script>
 (() => {
+  const MONA_CD = '<%= politician.mona_cd %>';
+  let commentsMounted = false;
+
+  const mountCommentsIfNeeded = () => {
+    if (commentsMounted || !window.PB) return;
+    commentsMounted = true;
+    PB.mountRating({ containerId: 'rating-widget', monaCd: MONA_CD });
+    PB.mountComments({ containerId: 'comment-widget', type: 'politician', targetId: MONA_CD });
+  };
+
   // Tab switching
   const tabs = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
@@ -1411,7 +1387,14 @@
     const key = t.dataset.tab;
     tabs.forEach(x => x.classList.toggle('active', x === t));
     panels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + key));
+    if (key === 'comments') mountCommentsIfNeeded();
   }));
+
+  // URL hash 로 국민 평가 바로 열기: /politician/XXX#comments
+  if (location.hash === '#comments') {
+    const btn = document.querySelector('[data-tab="comments"]');
+    if (btn) btn.click();
+  }
 
   // Bill filter tabs
   document.querySelectorAll('.bill-filter-tab').forEach(btn => {
@@ -1488,20 +1471,5 @@
     renderPage();
   }
 
-  // Star hover (UI only)
-  const stars = document.querySelectorAll('.write-star');
-  let selected = 0;
-  stars.forEach((star, idx) => {
-    star.addEventListener('mouseover', () => {
-      stars.forEach((s, i) => s.style.color = i <= idx ? 'var(--accent)' : 'var(--sub2)');
-    });
-    star.addEventListener('mouseout', () => {
-      stars.forEach((s, i) => s.style.color = i < selected ? 'var(--accent)' : 'var(--sub2)');
-    });
-    star.addEventListener('click', () => {
-      selected = idx + 1;
-      stars.forEach((s, i) => s.classList.toggle('active', i < selected));
-    });
-  });
 })();
 </script>

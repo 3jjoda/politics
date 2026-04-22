@@ -214,6 +214,17 @@
     </div>
   <% } %>
 
+  <!-- 시민 찬반 -->
+  <div class="bd-section">
+    <h2>// 시민 찬반
+      <a href="/glossary#vote-for" class="pb-help" title="로그인한 시민들의 찬반 — 국회의원 표결과는 별개">?</a>
+    </h2>
+    <div id="citizen-vote-widget"></div>
+    <div style="margin-top:12px;font-size:12px;color:var(--sub2);line-height:1.7">
+      국회의원의 본회의 표결과 별개로, 이 서비스에 로그인한 시민들의 찬반을 집계합니다.
+    </div>
+  </div>
+
   <div class="bd-section">
     <h2>// 본회의 표결 결과</h2>
     <% const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0; %>
@@ -287,4 +298,22 @@
       </div>
     </div>
   <% } %>
+
+  <!-- 시민 댓글 -->
+  <div class="bd-section">
+    <h2>// 시민 의견</h2>
+    <div id="comment-widget"></div>
+  </div>
 </div>
+
+<script>
+(() => {
+  const BILL_ID = '<%= bill.bill_id %>';
+  const mount = () => {
+    if (!window.PB) return setTimeout(mount, 30);
+    PB.mountCitizenVote({ containerId: 'citizen-vote-widget', billId: BILL_ID });
+    PB.mountComments({ containerId: 'comment-widget', type: 'bill', targetId: BILL_ID });
+  };
+  mount();
+})();
+</script>

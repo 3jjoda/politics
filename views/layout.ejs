@@ -31,7 +31,33 @@
         </ul>
         <div class="pb-nav-right">
             <span class="pb-nav-badge">● LIVE</span>
-            <button class="pb-nav-btn" onclick="alert('로그인 기능은 준비 중입니다.')">로그인</button>
+            <% if (locals.currentUser) { %>
+                <div class="pb-user-menu" id="pb-user-menu">
+                    <button class="pb-user-btn" id="pb-user-btn" aria-haspopup="true" aria-expanded="false">
+                        <span class="pb-user-avatar">
+                            <%- avatarHtml(currentUser.nickname, null, 28) %>
+                        </span>
+                        <span class="pb-user-name"><%= currentUser.nickname %></span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="pb-user-dropdown" id="pb-user-dropdown">
+                        <div class="pb-user-meta">
+                            <div class="pb-user-nick"><%= currentUser.nickname %></div>
+                            <div class="pb-user-provider">
+                                <%= currentUser.provider === 'google' ? 'Google' :
+                                    currentUser.provider === 'kakao'  ? 'Kakao'  : '로컬' %> 계정
+                            </div>
+                        </div>
+                        <a class="pb-user-item" href="/">내 활동 (준비 중)</a>
+                        <form method="post" action="/auth/logout" style="margin:0">
+                            <button type="submit" class="pb-user-item pb-user-logout">로그아웃</button>
+                        </form>
+                        <button type="button" class="pb-user-item pb-user-withdraw" id="pb-withdraw-trigger">회원 탈퇴</button>
+                    </div>
+                </div>
+            <% } else { %>
+                <a href="/auth/login" class="pb-nav-btn">로그인</a>
+            <% } %>
             <button class="pb-hamburger" id="pb-hamburger" aria-label="menu">☰</button>
         </div>
     </div>
@@ -51,6 +77,25 @@
     <%- body %>
 </main>
 
+<% if (locals.currentUser) { %>
+<!-- 회원 탈퇴 확인 모달 -->
+<div class="pb-modal" id="pb-withdraw-modal" hidden>
+    <div class="pb-modal-backdrop" data-withdraw-close></div>
+    <div class="pb-modal-card" role="dialog" aria-modal="true" aria-labelledby="pb-withdraw-title">
+        <h3 id="pb-withdraw-title" class="pb-modal-title">회원 탈퇴</h3>
+        <p class="pb-modal-body">
+            탈퇴해도 작성한 댓글과 게시글은 <strong>&lsquo;탈퇴한 사용자&rsquo;</strong>로
+            익명 처리되어 유지됩니다.<br>
+            정말 탈퇴하시겠습니까?
+        </p>
+        <div class="pb-modal-actions">
+            <button type="button" class="pb-modal-btn" data-withdraw-close>취소</button>
+            <button type="button" class="pb-modal-btn pb-modal-btn-danger" id="pb-withdraw-confirm">탈퇴</button>
+        </div>
+    </div>
+</div>
+<% } %>
+
 <footer class="pb-footer">
     <div class="pb-footer-inner">
         <div class="pb-footer-copy">
@@ -66,7 +111,11 @@
     </div>
 </footer>
 
+<script>
+    window.__USER__ = <%- JSON.stringify(locals.currentUser ? { id: currentUser.user_id, nickname: currentUser.nickname } : null) %>;
+</script>
 <script src="/scripts/globalStore.js"></script>
+<script src="/scripts/interactions.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const serverData = <%- JSON.stringify(locals.initialData || null) %>;
@@ -82,6 +131,64 @@
         if (btn && panel) {
             btn.addEventListener('click', () => panel.classList.add('open'));
             closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+        }
+
+        // User dropdown
+        const userBtn = document.getElementById('pb-user-btn');
+        const dropdown = document.getElementById('pb-user-dropdown');
+        if (userBtn && dropdown) {
+            userBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('open');
+                userBtn.setAttribute('aria-expanded', dropdown.classList.contains('open'));
+            });
+            document.addEventListener('click', (e) => {
+                if (!dropdown.contains(e.target) && !userBtn.contains(e.target)) {
+                    dropdown.classList.remove('open');
+                    userBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+
+        // 회원 탈퇴 모달
+        const wTrigger = document.getElementById('pb-withdraw-trigger');
+        const wModal   = document.getElementById('pb-withdraw-modal');
+        const wConfirm = document.getElementById('pb-withdraw-confirm');
+        const openWithdraw  = () => { wModal?.removeAttribute('hidden'); };
+        const closeWithdraw = () => { wModal?.setAttribute('hidden', ''); };
+        if (wTrigger && wModal) {
+            wTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdown?.classList.remove('open');
+                openWithdraw();
+            });
+            wModal.querySelectorAll('[data-withdraw-close]').forEach(el => {
+                el.addEventListener('click', closeWithdraw);
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !wModal.hasAttribute('hidden')) closeWithdraw();
+            });
+            wConfirm?.addEventListener('click', async () => {
+                wConfirm.disabled = true;
+                wConfirm.textContent = '처리 중...';
+                try {
+                    const res = await fetch('/api/auth/withdraw', {
+                        method: 'DELETE',
+                        credentials: 'include',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.error || `HTTP ${res.status}`);
+                    }
+                    const data = await res.json();
+                    location.href = data.redirectTo || '/';
+                } catch (err) {
+                    alert('탈퇴 처리 실패: ' + err.message);
+                    wConfirm.disabled = false;
+                    wConfirm.textContent = '탈퇴';
+                }
+            });
         }
     });
 </script>
