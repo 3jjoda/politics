@@ -3,13 +3,13 @@
 
   // 정당별 카드 색상
   const partyColorOf = (name) => {
-    if (!name) return '#9CA3AF';
-    if (name.indexOf('더불어민주') > -1) return '#60A5FA';
-    if (name.indexOf('국민의힘') > -1) return '#FC8181';
-    if (name.indexOf('조국혁신') > -1) return '#A78BFA';
-    if (name.indexOf('개혁') > -1) return '#FCD34D';
-    if (name.indexOf('진보') > -1) return '#F87171';
-    return '#9CA3AF';
+    if (!name) return '#4B5563';
+    if (name.indexOf('더불어민주') > -1) return '#1E40AF';
+    if (name.indexOf('국민의힘') > -1) return '#B91C1C';
+    if (name.indexOf('조국혁신') > -1) return '#6D28D9';
+    if (name.indexOf('개혁') > -1) return '#B45309';
+    if (name.indexOf('진보') > -1) return '#991B1B';
+    return '#4B5563';
   };
   const partyClassOf = (name) => {
     if (!name) return 'party-etc';
@@ -25,26 +25,26 @@
 <style>
   .page-header {
     padding: 40px 24px 32px;
-    border-top: 56px solid transparent;
+    border-top: 60px solid transparent;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(226,201,126,0.04) 0%, transparent 100%);
-    margin-top: -56px;
+    background: linear-gradient(180deg, rgba(184,116,12,0.04) 0%, transparent 100%);
+    margin-top: -60px;
   }
   .page-header-inner { max-width: 1280px; margin: 0 auto; }
   .breadcrumb {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
-  .breadcrumb a { color: var(--blue); }
+  .breadcrumb a { color: var(--accent); }
   .page-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 40px;
+    font-size: 44px;
     letter-spacing: 0.02em;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
-  .page-desc { font-size: 13px; color: var(--sub); }
+  .page-desc { font-size: 14px; color: var(--sub); }
 
   /* Party histogram */
   .party-histogram {
@@ -62,18 +62,18 @@
   }
   .ph-title-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
   .ph-title-label strong { color: var(--text); }
-  .ph-total { font-size: 12px; color: var(--sub); }
+  .ph-total { font-size: 13px; color: var(--sub); }
   .ph-total strong { color: var(--text); font-weight: 600; }
 
   .ph-bar {
     display: flex;
-    height: 24px;
+    height: 28px;
     background: var(--bg3);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -85,19 +85,19 @@
     align-items: center;
     justify-content: center;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
-    color: #0B0F17;
+    color: #fff;
     min-width: 1px;
     position: relative;
   }
   .ph-seg[data-small="true"] .ph-seg-text { display: none; }
   .ph-legend {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     flex-wrap: wrap;
-    margin-top: 10px;
-    font-size: 12px;
+    margin-top: 12px;
+    font-size: 13px;
     color: var(--sub);
   }
   .ph-legend-item {
@@ -118,7 +118,7 @@
   /* Filter */
   .filter-bar {
     position: sticky;
-    top: 56px;
+    top: 60px;
     z-index: 50;
   }
   .filter-bar-inner {
@@ -141,31 +141,31 @@
   }
   .search-input {
     width: 100%;
-    padding: 8px 12px 8px 36px;
+    padding: 10px 14px 10px 38px;
     background: var(--bg3);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 14px;
     outline: none;
     transition: border-color 0.2s;
   }
-  .search-input:focus { border-color: var(--blue); }
+  .search-input:focus { border-color: var(--accent); }
   .search-input::placeholder { color: var(--sub2); }
 
   .filter-select {
-    padding: 8px 28px 8px 12px;
+    padding: 10px 30px 10px 14px;
     background: var(--bg3);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 14px;
     outline: none;
     cursor: pointer;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237B8DAB' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 10px center;
+    background-position: right 12px center;
   }
 
   .filter-toggle {
@@ -176,11 +176,11 @@
     overflow: hidden;
   }
   .filter-toggle-btn {
-    padding: 8px 14px;
+    padding: 10px 16px;
     background: transparent;
     border: none;
     color: var(--sub);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
@@ -188,12 +188,12 @@
     align-items: center;
     gap: 6px;
   }
-  .filter-toggle-btn.active { background: var(--blue); color: #fff; }
+  .filter-toggle-btn.active { background: var(--accent); color: #fff; }
 
   .filter-count {
     margin-left: auto;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
   }
 
@@ -211,12 +211,12 @@
   .party-tabs-inner::-webkit-scrollbar { display: none; }
   .party-tab {
     flex-shrink: 0;
-    padding: 12px 20px;
+    padding: 14px 22px;
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
     color: var(--sub);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
@@ -225,16 +225,16 @@
     gap: 8px;
   }
   .party-tab:hover { color: var(--text); }
-  .party-tab.active { color: var(--text); border-bottom-color: var(--blue); }
+  .party-tab.active { color: var(--text); border-bottom-color: var(--accent); }
   .party-count {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: 11px;
     background: var(--bg3);
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 3px;
     color: var(--sub2);
   }
-  .party-tab.active .party-count { background: rgba(226,201,126,0.15); color: var(--blue); }
+  .party-tab.active .party-count { background: rgba(184,116,12,0.15); color: var(--accent); }
 
   /* Content layout */
   .content-wrap {
@@ -261,8 +261,8 @@
     overflow: hidden;
   }
   .sidebar-title {
-    padding: 12px 16px;
-    font-size: 11px;
+    padding: 14px 18px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--sub2);
     text-transform: uppercase;
@@ -270,27 +270,27 @@
     border-bottom: 1px solid var(--border);
     font-family: 'JetBrains Mono', monospace;
   }
-  .sidebar-list { padding: 8px 0; max-height: 320px; overflow-y: auto; }
+  .sidebar-list { padding: 8px 0; max-height: 360px; overflow-y: auto; }
   .sidebar-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 16px;
+    padding: 10px 18px;
     cursor: pointer;
     transition: background 0.15s;
-    font-size: 13px;
+    font-size: 14px;
   }
   .sidebar-item:hover { background: var(--bg3); }
-  .sidebar-item.active { background: rgba(226,201,126,0.08); color: var(--blue); }
+  .sidebar-item.active { background: rgba(184,116,12,0.08); color: var(--accent); }
   .sidebar-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sidebar-item-count {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--sub2);
+    font-size: 12px;
+    color: var(--sub);
     flex-shrink: 0;
     margin-left: 8px;
   }
-  .sidebar-item.active .sidebar-item-count { color: var(--blue); }
+  .sidebar-item.active .sidebar-item-count { color: var(--accent); }
 
   /* Stats row */
   .stats-row {
@@ -302,20 +302,20 @@
   .mini-stat {
     background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
+    border-radius: 12px;
+    padding: 18px 20px;
   }
   .mini-stat-val {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 28px;
+    font-size: 36px;
     line-height: 1;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
   }
-  .mini-stat:nth-child(1) .mini-stat-val { color: var(--blue); }
+  .mini-stat:nth-child(1) .mini-stat-val { color: var(--accent); }
   .mini-stat:nth-child(2) .mini-stat-val { color: var(--green); }
-  .mini-stat:nth-child(3) .mini-stat-val { color: var(--amber); }
+  .mini-stat:nth-child(3) .mini-stat-val { color: var(--accent); }
   .mini-stat:nth-child(4) .mini-stat-val { color: var(--purple); }
-  .mini-stat-label { font-size: 11px; color: var(--sub2); }
+  .mini-stat-label { font-size: 13px; color: var(--sub); }
 
   /* GRID */
   .politicians-grid {
@@ -327,7 +327,7 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 20px 16px;
+    padding: 24px 18px;
     text-align: center;
     transition: all 0.2s;
     display: block;
@@ -339,7 +339,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: var(--party-color, var(--blue));
+    background: var(--party-color, var(--accent));
     opacity: 0;
     transition: opacity 0.2s;
   }
@@ -351,9 +351,9 @@
   .pol-card:hover::before { opacity: 1; }
 
   .pol-avatar {
-    width: 60px; height: 60px;
+    width: 72px; height: 72px;
     border-radius: 50%;
-    margin: 0 auto 12px;
+    margin: 0 auto 14px;
     overflow: hidden;
     border: 2px solid var(--border);
   }
@@ -361,93 +361,94 @@
   .pol-avatar svg { width: 100%; height: 100%; display: block; }
 
   .pol-name {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text);
-    margin-bottom: 3px;
+    margin-bottom: 4px;
   }
   .pol-district {
-    font-size: 11px;
-    color: var(--sub2);
-    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--sub);
+    margin-bottom: 10px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .pol-party-badge {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: 3px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
-  .party-minjoo  { background: rgba(59,130,246,0.15); color: #60A5FA; }
-  .party-gukhim  { background: rgba(239,68,68,0.15); color: #FC8181; }
-  .party-jokuk   { background: rgba(139,92,246,0.15); color: #A78BFA; }
-  .party-gaehyuk { background: rgba(245,158,11,0.15); color: #FCD34D; }
-  .party-jinbo   { background: rgba(239,68,68,0.15); color: #F87171; }
-  .party-etc     { background: rgba(107,114,128,0.15); color: #9CA3AF; }
+  .party-minjoo  { background: rgba(59,130,246,0.15); color: #1E40AF; }
+  .party-gukhim  { background: rgba(208,58,58,0.15); color: #B91C1C; }
+  .party-jokuk   { background: rgba(139,92,246,0.15); color: #6D28D9; }
+  .party-gaehyuk { background: rgba(184,116,12,0.15); color: #B45309; }
+  .party-jinbo   { background: rgba(208,58,58,0.15); color: #991B1B; }
+  .party-etc     { background: rgba(107,114,128,0.15); color: #4B5563; }
 
   .pol-stats {
     display: flex;
     justify-content: center;
-    gap: 16px;
-    padding-top: 10px;
+    gap: 18px;
+    padding-top: 12px;
     border-top: 1px solid var(--border);
   }
   .pol-stat-item { text-align: center; }
   .pol-stat-val {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--blue);
-    font-weight: 500;
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 600;
   }
-  .pol-stat-label { font-size: 9px; color: var(--sub2); margin-top: 1px; }
+  .pol-stat-label { font-size: 11px; color: var(--sub); margin-top: 2px; }
 
   /* LIST */
   .politicians-list { display: flex; flex-direction: column; gap: 8px; }
   .pol-list-item {
     background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 20px;
+    border-radius: 12px;
+    padding: 16px 22px;
     display: grid;
-    grid-template-columns: 48px 1fr 140px 80px 80px 100px;
+    grid-template-columns: 48px 1fr 150px 80px 80px 110px;
     gap: 16px;
     align-items: center;
     transition: all 0.2s;
   }
   .pol-list-item:hover { border-color: var(--border2); background: var(--bg3); }
   .pol-list-avatar {
-    width: 40px; height: 40px;
+    width: 44px; height: 44px;
     border-radius: 50%;
     border: 1px solid var(--border);
     overflow: hidden;
   }
   .pol-list-avatar img,
   .pol-list-avatar svg { width: 100%; height: 100%; display: block; }
-  .pol-list-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-  .pol-list-sub { font-size: 11px; color: var(--sub2); }
-  .pol-list-party { font-size: 12px; color: var(--sub); }
+  .pol-list-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .pol-list-sub { font-size: 12px; color: var(--sub); }
+  .pol-list-party { font-size: 13px; color: var(--sub); }
   .pol-list-num {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--blue);
+    font-size: 15px;
+    color: var(--accent);
     text-align: center;
+    font-weight: 600;
   }
 
   .list-header {
     display: grid;
-    grid-template-columns: 48px 1fr 140px 80px 80px 100px;
+    grid-template-columns: 48px 1fr 150px 80px 80px 110px;
     gap: 16px;
-    padding: 8px 20px;
-    font-size: 10px;
+    padding: 10px 22px;
+    font-size: 11px;
     color: var(--sub2);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
 
   /* Empty */
@@ -470,9 +471,9 @@
     flex-wrap: wrap;
   }
   .page-btn {
-    min-width: 36px;
-    height: 36px;
-    padding: 0 8px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -480,13 +481,13 @@
     border: 1px solid var(--border);
     background: var(--bg2);
     color: var(--sub);
-    font-size: 13px;
+    font-size: 14px;
     cursor: pointer;
     font-family: 'JetBrains Mono', monospace;
     transition: all 0.15s;
   }
   .page-btn:hover { border-color: var(--border2); color: var(--text); }
-  .page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
   @media (max-width: 1024px) {
     .content-wrap { grid-template-columns: 1fr; }
@@ -705,7 +706,7 @@
             <div class="pol-list-party"><%= p.party_name || '무소속' %></div>
             <div class="pol-list-num"><%= p.propose_cnt %></div>
             <div class="pol-list-num"><%= p.co_propose_cnt %></div>
-            <div><span style="font-size:11px;color:var(--blue)">상세 →</span></div>
+            <div><span style="font-size:11px;color:var(--accent)">상세 →</span></div>
           </a>
         <% }); %>
       </div>

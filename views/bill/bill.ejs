@@ -59,26 +59,26 @@
 <style>
   .page-header {
     padding: 40px 24px 32px;
-    border-top: 56px solid transparent;
-    margin-top: -56px;
+    border-top: 60px solid transparent;
+    margin-top: -60px;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(226,201,126,0.04) 0%, transparent 100%);
+    background: linear-gradient(180deg, rgba(184,116,12,0.04) 0%, transparent 100%);
   }
   .page-header-inner { max-width: 1280px; margin: 0 auto; }
   .breadcrumb {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
-  .breadcrumb a { color: var(--blue); }
+  .breadcrumb a { color: var(--accent); }
   .page-title {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 40px;
+    font-size: 44px;
     letter-spacing: 0.02em;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
-  .page-desc { font-size: 13px; color: var(--sub); }
+  .page-desc { font-size: 14px; color: var(--sub); }
 
   /* Status stepper */
   .stepper-wrap {
@@ -100,7 +100,7 @@
     text-align: center;
   }
   .stepper-dot {
-    width: 32px; height: 32px;
+    width: 36px; height: 36px;
     border-radius: 50%;
     background: var(--bg2);
     border: 2px solid var(--dot);
@@ -109,18 +109,18 @@
     align-items: center;
     justify-content: center;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
   }
   .stepper-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub);
-    margin-top: 4px;
+    margin-top: 6px;
     white-space: nowrap;
   }
   .stepper-val {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     color: var(--text);
     line-height: 1;
   }
@@ -131,7 +131,7 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    padding-bottom: 32px;
+    padding-bottom: 36px;
   }
   .stepper-bar {
     width: 100%;
@@ -141,21 +141,21 @@
   }
   .stepper-arrow-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--sub2);
     white-space: nowrap;
   }
 
   @media (max-width: 768px) {
-    .stepper-label { font-size: 10px; }
+    .stepper-label { font-size: 11px; }
     .stepper-arrow-label { display: none; }
-    .stepper-val { font-size: 14px; }
+    .stepper-val { font-size: 16px; }
   }
 
   /* Filter */
   .filter-bar {
     position: sticky;
-    top: 56px;
+    top: 60px;
     z-index: 50;
   }
   .filter-bar-inner {
@@ -178,30 +178,31 @@
   }
   .search-input {
     width: 100%;
-    padding: 8px 12px 8px 36px;
+    padding: 10px 14px 10px 38px;
     background: var(--bg3);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 14px;
     outline: none;
     transition: border-color 0.2s;
   }
-  .search-input:focus { border-color: var(--blue); }
+  .search-input:focus { border-color: var(--accent); }
   .search-input::placeholder { color: var(--sub2); }
   .search-btn {
-    padding: 8px 16px;
-    background: var(--blue);
+    padding: 10px 20px;
+    background: var(--accent);
     color: #fff;
     border: none;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
   }
   .filter-count {
     margin-left: auto;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
   }
 
@@ -219,10 +220,10 @@
   .status-tabs-inner::-webkit-scrollbar { display: none; }
   .status-tab {
     flex-shrink: 0;
-    padding: 12px 20px;
+    padding: 14px 22px;
     border-bottom: 2px solid transparent;
     color: var(--sub);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     transition: all 0.15s;
     display: inline-flex;
@@ -232,16 +233,16 @@
     background: transparent;
   }
   .status-tab:hover { color: var(--text); }
-  .status-tab.active { color: var(--text); border-bottom-color: var(--blue); }
+  .status-tab.active { color: var(--text); border-bottom-color: var(--accent); }
   .tab-badge {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    padding: 2px 6px;
+    font-size: 11px;
+    padding: 3px 8px;
     border-radius: 3px;
     background: var(--bg3);
     color: var(--sub2);
   }
-  .status-tab.active .tab-badge { background: rgba(226,201,126,0.15); color: var(--blue); }
+  .status-tab.active .tab-badge { background: rgba(184,116,12,0.15); color: var(--accent); }
 
   /* Layout */
   .layout {
@@ -268,8 +269,8 @@
     overflow: hidden;
   }
   .side-title {
-    padding: 12px 16px;
-    font-size: 10px;
+    padding: 14px 18px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--sub2);
     text-transform: uppercase;
@@ -277,20 +278,20 @@
     border-bottom: 1px solid var(--border);
     font-family: 'JetBrains Mono', monospace;
   }
-  .side-list { padding: 6px 0; max-height: 360px; overflow-y: auto; }
+  .side-list { padding: 6px 0; max-height: 400px; overflow-y: auto; }
   .side-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 16px;
-    font-size: 12px;
+    padding: 10px 18px;
+    font-size: 14px;
     gap: 8px;
     color: inherit;
     transition: background 0.15s;
     text-decoration: none;
   }
   .side-item:hover { background: var(--bg3); }
-  .side-item.active { background: rgba(226,201,126,0.08); color: var(--blue); }
+  .side-item.active { background: rgba(184,116,12,0.08); color: var(--accent); }
   .side-item-left {
     display: flex;
     align-items: center;
@@ -304,25 +305,25 @@
     white-space: nowrap;
   }
   .side-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sub2); flex-shrink: 0; }
-  .side-item.active .side-dot { background: var(--blue); }
+  .side-item.active .side-dot { background: var(--accent); }
   .side-count {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--sub2);
+    font-size: 12px;
+    color: var(--sub);
     flex-shrink: 0;
   }
-  .side-item.active .side-count { color: var(--blue); }
+  .side-item.active .side-count { color: var(--accent); }
 
   /* Bill cards */
   .bill-cards { display: flex; flex-direction: column; gap: 8px; }
   .bill-card {
     background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 16px 20px;
+    border-radius: 12px;
+    padding: 20px 24px;
     display: grid;
     grid-template-columns: 1fr auto;
-    gap: 16px;
+    gap: 20px;
     align-items: start;
     text-decoration: none;
     color: inherit;
@@ -345,7 +346,7 @@
   }
   .bill-card:hover::before { opacity: 1; }
   .bill-card.status-passed    { --card-accent: var(--green); }
-  .bill-card.status-pending   { --card-accent: var(--amber); }
+  .bill-card.status-pending   { --card-accent: var(--accent); }
   .bill-card.status-alt       { --card-accent: var(--sub2); }
   .bill-card.status-withdrawn { --card-accent: var(--red); }
   .bill-card.status-rejected  { --card-accent: var(--red); }
@@ -354,22 +355,22 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
   }
   .bill-card-name {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
-    line-height: 1.5;
-    margin-bottom: 8px;
+    line-height: 1.55;
+    margin-bottom: 10px;
   }
   .bill-card-info {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 12px;
-    color: var(--sub2);
+    gap: 12px;
+    font-size: 13px;
+    color: var(--sub);
     flex-wrap: wrap;
   }
   .bill-card-right {
@@ -398,15 +399,15 @@
   .vb-abs     { background: var(--sub2); }
   .vote-mini-nums {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--sub2);
+    font-size: 11px;
+    color: var(--sub);
   }
   .vote-mini-nums .for { color: var(--green); }
   .vote-mini-nums .against { color: var(--red); }
 
   .bill-no {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--sub2);
   }
 
@@ -419,24 +420,24 @@
     flex-wrap: wrap;
   }
   .pg-btn {
-    min-width: 34px;
-    height: 34px;
-    padding: 0 8px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 5px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     background: var(--bg2);
     color: var(--sub);
-    font-size: 12px;
+    font-size: 13px;
     font-family: 'JetBrains Mono', monospace;
     text-decoration: none;
     transition: all 0.15s;
   }
   .pg-btn:hover { border-color: var(--border2); color: var(--text); }
-  .pg-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
-  .pg-ellipsis { color: var(--sub2); padding: 0 6px; font-size: 12px; }
+  .pg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pg-ellipsis { color: var(--sub2); padding: 0 6px; font-size: 13px; }
 
   .empty-state {
     padding: 60px 24px;
@@ -472,10 +473,10 @@
       <div class="stepper-val"><%= nf(totalBills) %></div>
     </div>
     <div class="stepper-arrow" style="flex: <%= pendingCount %>">
-      <div class="stepper-bar" style="background: var(--amber)"></div>
+      <div class="stepper-bar" style="background: var(--accent)"></div>
       <div class="stepper-arrow-label"><%= totalBills > 0 ? (pendingCount / totalBills * 100).toFixed(0) : 0 %>% 계류</div>
     </div>
-    <div class="stepper-node" style="--dot: var(--amber);">
+    <div class="stepper-node" style="--dot: var(--accent);">
       <div class="stepper-dot">2</div>
       <div class="stepper-label">계류 중</div>
       <div class="stepper-val"><%= nf(pendingCount) %></div>
@@ -484,7 +485,7 @@
       <div class="stepper-bar" style="background: var(--sub2)"></div>
       <div class="stepper-arrow-label">위원회 단계 <%= nf(committeeOnly) %></div>
     </div>
-    <div class="stepper-node" style="--dot: var(--blue);">
+    <div class="stepper-node" style="--dot: var(--accent);">
       <div class="stepper-dot">3</div>
       <div class="stepper-label">본회의 표결</div>
       <div class="stepper-val"><%= nf(plenaryVoted) %></div>
@@ -588,7 +589,7 @@
           <%
             const isPending = !b.proc_result_name;
             const d = Number(b.days_elapsed || 0);
-            const elapsedColor = d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--amber)' : 'var(--sub2)';
+            const elapsedColor = d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--accent)' : 'var(--sub2)';
             const termAnchor = !b.proc_result_name ? 'pending' :
                 b.proc_result_name === '원안가결' ? 'original' :
                 b.proc_result_name === '수정가결' ? 'modified' :
@@ -607,7 +608,7 @@
                   <a href="/glossary#<%= termAnchor %>" class="pb-help" onclick="event.stopPropagation()" title="용어 설명">?</a>
                 </span>
                 <% if (isPending && d > 0) { %>
-                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color: <%= elapsedColor %>">
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color: <%= elapsedColor %>">
                     발의 후 <%= d %>일 경과
                   </span>
                 <% } %>
@@ -701,7 +702,7 @@
     <% } else { %>
       <div class="empty-state">
         검색 조건에 해당하는 법안이 없습니다.<br>
-        <a href="/bill" style="color:var(--blue);margin-top:12px;display:inline-block">필터 초기화 →</a>
+        <a href="/bill" style="color:var(--accent);margin-top:12px;display:inline-block">필터 초기화 →</a>
       </div>
     <% } %>
   </div>

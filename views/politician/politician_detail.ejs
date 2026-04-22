@@ -4,13 +4,13 @@
 
   // 정당 색상
   const partyColorOf = (name) => {
-    if (!name) return '#9CA3AF';
-    if (name.indexOf('더불어민주') > -1) return '#60A5FA';
-    if (name.indexOf('국민의힘') > -1) return '#FC8181';
-    if (name.indexOf('조국혁신') > -1) return '#A78BFA';
-    if (name.indexOf('개혁') > -1) return '#FCD34D';
-    if (name.indexOf('진보') > -1) return '#F87171';
-    return '#9CA3AF';
+    if (!name) return '#4B5563';
+    if (name.indexOf('더불어민주') > -1) return '#1E40AF';
+    if (name.indexOf('국민의힘') > -1) return '#B91C1C';
+    if (name.indexOf('조국혁신') > -1) return '#6D28D9';
+    if (name.indexOf('개혁') > -1) return '#B45309';
+    if (name.indexOf('진보') > -1) return '#991B1B';
+    return '#4B5563';
   };
   const partyColor = partyColorOf(politician.party_name);
 
@@ -81,10 +81,10 @@
 <style>
   .profile-hero {
     padding: 40px 24px;
-    border-top: 56px solid transparent;
-    margin-top: -56px;
+    border-top: 60px solid transparent;
+    margin-top: -60px;
     border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(226,201,126,0.04) 0%, transparent 100%);
+    background: linear-gradient(180deg, rgba(184,116,12,0.04) 0%, transparent 100%);
     position: relative;
     overflow: hidden;
   }
@@ -109,11 +109,11 @@
   .breadcrumb {
     grid-column: 1 / -1;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
-  .breadcrumb a { color: var(--blue); }
+  .breadcrumb a { color: var(--accent); }
 
   .profile-identity {
     display: grid;
@@ -147,9 +147,9 @@
     letter-spacing: -0.01em;
   }
   .profile-party-badge {
-    padding: 4px 12px;
+    padding: 5px 14px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     background: <%= partyColor %>22;
     color: <%= partyColor %>;
@@ -158,8 +158,8 @@
   .profile-meta {
     display: flex;
     align-items: center;
-    gap: 16px;
-    font-size: 13px;
+    gap: 18px;
+    font-size: 14px;
     color: var(--sub);
     flex-wrap: wrap;
   }
@@ -176,37 +176,37 @@
     gap: 12px;
   }
   .profile-kpi {
-    padding: 14px 18px;
+    padding: 18px 22px;
     background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
   }
   .profile-kpi-val {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
+    font-size: 36px;
     line-height: 1;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
   .profile-kpi-val.em-dash {
     color: var(--sub2);
     font-family: 'Noto Sans KR', sans-serif;
-    font-size: 26px;
+    font-size: 30px;
   }
-  .kpi-blue { color: var(--blue); }
+  .kpi-blue { color: var(--accent); }
   .kpi-green { color: var(--green); }
-  .kpi-amber { color: var(--amber); }
+  .kpi-amber { color: var(--accent); }
   .kpi-purple { color: var(--purple); }
   .profile-kpi-label {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--sub);
     display: flex;
     align-items: center;
     gap: 4px;
   }
   .profile-kpi-sub {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
-    margin-top: 4px;
+    margin-top: 5px;
     font-family: 'JetBrains Mono', monospace;
   }
 
@@ -215,10 +215,10 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
   }
   .profile-radar-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
     font-family: 'JetBrains Mono', monospace;
     text-transform: uppercase;
@@ -228,7 +228,7 @@
   /* Tabs */
   .tab-bar {
     position: sticky;
-    top: 56px;
+    top: 60px;
     z-index: 50;
   }
   .tab-bar-inner {
@@ -244,12 +244,12 @@
   .tab-bar-inner::-webkit-scrollbar { display: none; }
   .tab-btn {
     flex-shrink: 0;
-    padding: 14px 20px;
+    padding: 16px 22px;
     border: none;
     border-bottom: 2px solid transparent;
     background: transparent;
     color: var(--sub);
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
@@ -258,16 +258,16 @@
     gap: 8px;
   }
   .tab-btn:hover { color: var(--text); }
-  .tab-btn.active { color: var(--text); border-bottom-color: var(--blue); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
   .tab-count {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: 11px;
     background: var(--bg3);
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: 3px;
     color: var(--sub2);
   }
-  .tab-btn.active .tab-count { background: rgba(226,201,126,0.15); color: var(--blue); }
+  .tab-btn.active .tab-count { background: rgba(184,116,12,0.15); color: var(--accent); }
 
   .content-wrap {
     max-width: 1280px;
@@ -282,11 +282,11 @@
   .tab-panel.active { display: block; }
 
   /* Bill filter tabs */
-  .bill-filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .bill-filter-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
   .bill-filter-tab {
-    padding: 6px 14px;
+    padding: 8px 16px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     border: 1px solid var(--border);
@@ -298,9 +298,9 @@
     gap: 6px;
   }
   .bill-filter-tab:hover, .bill-filter-tab.active {
-    background: rgba(226,201,126,0.1);
-    border-color: var(--blue);
-    color: var(--blue);
+    background: rgba(184,116,12,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
   }
   .bill-filter-tab .dot { width: 6px; height: 6px; border-radius: 50%; }
 
@@ -309,17 +309,17 @@
   .bill-table-header,
   .bill-table-row {
     display: grid;
-    grid-template-columns: 1fr 100px 100px 100px 80px;
+    grid-template-columns: 1fr 110px 110px 110px 90px;
     gap: 12px;
-    padding: 12px 16px;
+    padding: 14px 18px;
     align-items: center;
   }
   .bill-table-header {
-    padding: 8px 16px;
+    padding: 10px 18px;
     background: var(--bg3);
-    border-radius: 8px 8px 0 0;
-    font-size: 10px;
-    color: var(--sub2);
+    border-radius: 12px 12px 0 0;
+    font-size: 11px;
+    color: var(--sub);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: 'JetBrains Mono', monospace;
@@ -335,10 +335,10 @@
     color: inherit;
   }
   .bill-table-row:hover { background: var(--bg3); }
-  .bill-table-row:last-child { border-radius: 0 0 8px 8px; }
+  .bill-table-row:last-child { border-radius: 0 0 12px 12px; }
 
   .bill-row-name {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
     font-weight: 500;
     white-space: nowrap;
@@ -347,27 +347,27 @@
   }
   .bill-row-name small {
     display: block;
-    font-size: 11px;
-    color: var(--sub2);
+    font-size: 12px;
+    color: var(--sub);
     font-weight: 400;
-    margin-top: 2px;
+    margin-top: 3px;
   }
 
   .vote-result-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: 3px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
     font-weight: 500;
   }
-  .v-for     { background: rgba(16,185,129,0.1); color: var(--green); }
-  .v-against { background: rgba(239,68,68,0.1);  color: var(--red); }
-  .v-abstain { background: rgba(245,158,11,0.1); color: var(--amber); }
+  .v-for     { background: rgba(15,157,110,0.1); color: var(--green); }
+  .v-against { background: rgba(208,58,58,0.1);  color: var(--red); }
+  .v-abstain { background: rgba(184,116,12,0.1); color: var(--accent); }
   .v-absent  { background: rgba(107,114,128,0.1); color: var(--sub); }
-  .v-none    { color: var(--sub2); font-size: 11px; }
+  .v-none    { color: var(--sub2); font-size: 12px; }
 
   /* Sidebar */
   .sidebar { display: flex; flex-direction: column; gap: 16px; }
@@ -378,56 +378,56 @@
     overflow: hidden;
   }
   .side-card-header {
-    padding: 14px 16px;
+    padding: 16px 18px;
     border-bottom: 1px solid var(--border);
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--sub);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: 'JetBrains Mono', monospace;
   }
-  .side-card-body { padding: 16px; }
+  .side-card-body { padding: 18px; }
 
-  .vote-summary { display: flex; align-items: center; gap: 20px; }
-  .vote-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .vote-summary { display: flex; align-items: center; gap: 22px; }
+  .vote-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
   .vote-legend-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 12px;
+    font-size: 13px;
   }
   .vote-legend-left { display: flex; align-items: center; gap: 8px; color: var(--sub); }
-  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
   .vote-legend-val {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text);
   }
 
-  .category-bars { display: flex; flex-direction: column; gap: 10px; }
+  .category-bars { display: flex; flex-direction: column; gap: 12px; }
   .cat-bar-label {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 4px;
-    font-size: 12px;
+    margin-bottom: 5px;
+    font-size: 13px;
     color: var(--sub);
   }
   .cat-bar-val {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--blue);
+    font-size: 12px;
+    color: var(--accent);
   }
   .cat-bar-track { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
-  .cat-bar-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.8s ease-out; }
+  .cat-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.8s ease-out; }
 
-  .info-list { display: flex; flex-direction: column; gap: 10px; }
+  .info-list { display: flex; flex-direction: column; gap: 12px; }
   .info-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 12px;
-    padding-bottom: 10px;
+    font-size: 14px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--border);
     gap: 8px;
   }
@@ -443,16 +443,16 @@
     margin-top: 16px;
   }
   .pagination-inline .pg {
-    width: 32px; height: 32px;
-    border-radius: 5px;
+    width: 36px; height: 36px;
+    border-radius: 6px;
     border: 1px solid var(--border);
     background: var(--bg2);
     color: var(--sub);
-    font-size: 12px;
+    font-size: 13px;
     cursor: pointer;
     font-family: 'JetBrains Mono', monospace;
   }
-  .pagination-inline .pg.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .pagination-inline .pg.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .pagination-inline .pg:disabled { opacity: 0.3; cursor: not-allowed; }
 
   /* ===== 개요 분석 ===== */
@@ -470,14 +470,14 @@
     overflow: hidden;
   }
   .card-header {
-    padding: 14px 20px;
+    padding: 16px 22px;
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
   .card-title {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text);
     display: flex;
@@ -486,10 +486,10 @@
   }
   .card-title-mono {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
+    font-size: 11px;
     color: var(--sub2);
   }
-  .card-body { padding: 20px; }
+  .card-body { padding: 22px; }
 
   /* Monthly chart */
   .monthly-chart {
@@ -526,7 +526,7 @@
   }
   .month-bar {
     width: 100%;
-    background: var(--blue);
+    background: var(--accent);
     border-radius: 3px 3px 0 0;
     opacity: 0.7;
     cursor: pointer;
@@ -585,9 +585,9 @@
     z-index: 1;
     margin-left: 11px;
   }
-  .tl-dot.passed { background: var(--green); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+  .tl-dot.passed { background: var(--green); box-shadow: 0 0 8px rgba(15,157,110,0.4); }
   .tl-dot.alt    { background: var(--sub2); }
-  .tl-dot.pending { background: var(--amber); }
+  .tl-dot.pending { background: var(--accent); }
   .tl-dot.rejected { background: var(--red); }
   .tl-content { flex: 1; min-width: 0; }
   .tl-name {
@@ -665,7 +665,7 @@
     font-family: 'Bebas Neue', sans-serif;
     font-size: 64px;
     line-height: 1;
-    color: var(--amber);
+    color: var(--accent);
   }
   .eval-score-label { font-size: 11px; color: var(--sub2); margin-top: 4px; }
   .eval-stars {
@@ -710,7 +710,7 @@
     color: var(--sub2);
     transition: color 0.15s;
   }
-  .write-star:hover, .write-star.active { color: var(--amber); }
+  .write-star:hover, .write-star.active { color: var(--accent); }
   .write-input {
     width: 100%;
     background: var(--bg3);
@@ -724,7 +724,7 @@
     transition: border-color 0.2s;
     min-height: 72px;
   }
-  .write-input:focus { border-color: var(--blue); }
+  .write-input:focus { border-color: var(--accent); }
   .write-input::placeholder { color: var(--sub2); }
   .write-footer {
     display: flex;
@@ -735,7 +735,7 @@
   .write-hint { font-size: 11px; color: var(--sub2); }
   .write-submit {
     padding: 7px 18px;
-    background: var(--blue);
+    background: var(--accent);
     color: #fff;
     border: none;
     border-radius: 6px;
@@ -866,20 +866,20 @@
       %>
       <svg width="260" height="260" viewBox="-130 -130 260 260" overflow="visible">
         <!-- 배경 육각형 4겹 -->
-        <polygon points="<%= bgPt(1.0) %>"  fill="none" stroke="#1E2A3D" stroke-width="1"/>
-        <polygon points="<%= bgPt(0.75) %>" fill="none" stroke="#1E2A3D" stroke-width="1"/>
-        <polygon points="<%= bgPt(0.5) %>"  fill="none" stroke="#1E2A3D" stroke-width="1"/>
-        <polygon points="<%= bgPt(0.25) %>" fill="none" stroke="#1E2A3D" stroke-width="1"/>
+        <polygon points="<%= bgPt(1.0) %>"  fill="none" stroke="#E2DFD4" stroke-width="1"/>
+        <polygon points="<%= bgPt(0.75) %>" fill="none" stroke="#E2DFD4" stroke-width="1"/>
+        <polygon points="<%= bgPt(0.5) %>"  fill="none" stroke="#E2DFD4" stroke-width="1"/>
+        <polygon points="<%= bgPt(0.25) %>" fill="none" stroke="#E2DFD4" stroke-width="1"/>
         <!-- 축 -->
         <% [-90,-30,30,90,150,210].forEach(a => {
              const rad = a * Math.PI / 180;
              const ex = (HERO_R * Math.cos(rad)).toFixed(1);
              const ey = (HERO_R * Math.sin(rad)).toFixed(1);
         %>
-          <line x1="0" y1="0" x2="<%= ex %>" y2="<%= ey %>" stroke="#1E2A3D" stroke-width="1"/>
+          <line x1="0" y1="0" x2="<%= ex %>" y2="<%= ey %>" stroke="#E2DFD4" stroke-width="1"/>
         <% }); %>
         <!-- 데이터 -->
-        <polygon points="<%= heroRadarPts %>" fill="rgba(226,201,126,0.15)" stroke="#E2C97E" stroke-width="2"/>
+        <polygon points="<%= heroRadarPts %>" fill="rgba(184,116,12,0.15)" stroke="#B8740C" stroke-width="2"/>
         <!-- 데이터 점 -->
         <% [radarPropose, radarAttend, radarVote, radarCoPropose, radarCmit, radarComm].forEach((v, i) => {
              const angles = [-90, -30, 30, 90, 150, 210];
@@ -888,15 +888,15 @@
              const cx = (r * Math.cos(rad)).toFixed(1);
              const cy = (r * Math.sin(rad)).toFixed(1);
         %>
-          <circle cx="<%= cx %>" cy="<%= cy %>" r="3" fill="#E2C97E"/>
+          <circle cx="<%= cx %>" cy="<%= cy %>" r="3" fill="#B8740C"/>
         <% }); %>
         <!-- 축 라벨 (한글 12px) -->
-        <text x="0"    y="-120" text-anchor="middle" fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">법안발의</text>
-        <text x="108"  y="-52"  text-anchor="start"  fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">출석률</text>
-        <text x="108"  y="62"   text-anchor="start"  fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">표결참여</text>
-        <text x="0"    y="128"  text-anchor="middle" fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">공동발의</text>
-        <text x="-108" y="62"   text-anchor="end"    fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">위원회</text>
-        <text x="-108" y="-52"  text-anchor="end"    fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">소통</text>
+        <text x="0"    y="-120" text-anchor="middle" fill="#4B5362" font-size="12" font-family="Noto Sans KR">법안발의</text>
+        <text x="108"  y="-52"  text-anchor="start"  fill="#4B5362" font-size="12" font-family="Noto Sans KR">출석률</text>
+        <text x="108"  y="62"   text-anchor="start"  fill="#4B5362" font-size="12" font-family="Noto Sans KR">표결참여</text>
+        <text x="0"    y="128"  text-anchor="middle" fill="#4B5362" font-size="12" font-family="Noto Sans KR">공동발의</text>
+        <text x="-108" y="62"   text-anchor="end"    fill="#4B5362" font-size="12" font-family="Noto Sans KR">위원회</text>
+        <text x="-108" y="-52"  text-anchor="end"    fill="#4B5362" font-size="12" font-family="Noto Sans KR">소통</text>
       </svg>
       <div style="font-size:11px;color:var(--sub2);text-align:center;line-height:1.6;max-width:260px">
         일부 축(출석률·위원회·소통)은 데이터 수집 후 반영됩니다.
@@ -928,18 +928,18 @@
     <div class="tab-panel active" id="tab-bills">
       <div class="bill-filter-tabs">
         <button class="bill-filter-tab active" data-bf="all">
-          <span class="dot" style="background:var(--blue)"></span>
-          전체 <span style="font-family:'JetBrains Mono';font-size:10px;margin-left:2px"><%= nf(billsTabCount) %></span>
+          <span class="dot" style="background:var(--accent)"></span>
+          전체 <span style="font-family:'JetBrains Mono';font-size:12px;margin-left:2px"><%= nf(billsTabCount) %></span>
         </button>
         <% const repCnt = (bills || []).filter(b => b.proposer_yn).length;
            const coCnt  = (bills || []).filter(b => !b.proposer_yn).length; %>
         <button class="bill-filter-tab" data-bf="rep">
-          <span class="dot" style="background:var(--blue)"></span>
-          대표발의 <span style="font-family:'JetBrains Mono';font-size:10px;margin-left:2px"><%= nf(repCnt) %></span>
+          <span class="dot" style="background:var(--accent)"></span>
+          대표발의 <span style="font-family:'JetBrains Mono';font-size:12px;margin-left:2px"><%= nf(repCnt) %></span>
         </button>
         <button class="bill-filter-tab" data-bf="co">
           <span class="dot" style="background:var(--sub2)"></span>
-          공동발의 <span style="font-family:'JetBrains Mono';font-size:10px;margin-left:2px"><%= nf(coCnt) %></span>
+          공동발의 <span style="font-family:'JetBrains Mono';font-size:12px;margin-left:2px"><%= nf(coCnt) %></span>
         </button>
       </div>
 
@@ -968,7 +968,7 @@
                     <span class="pb-badge pb-badge-alt">공동발의</span>
                   <% } %>
                 </span>
-                <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--sub2)"><%= b.propose_dt || '—' %></div>
+                <div style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2)"><%= b.propose_dt || '—' %></div>
                 <span>
                   <% const statusLabel = b.proc_result_name || '계류';
                      const termAnchor = !b.proc_result_name ? 'pending' :
@@ -983,9 +983,9 @@
                   <span class="pb-badge <%= resultClass(b.proc_result_name) %>"><%= statusLabel %></span>
                   <% if (!b.proc_result_name && b.days_elapsed != null) {
                        const d = Number(b.days_elapsed);
-                       const color = d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--amber)' : 'var(--sub2)';
+                       const color = d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--accent)' : 'var(--sub2)';
                   %>
-                    <span style="display:block;font-size:10px;color: <%= color %>;font-family:'JetBrains Mono';margin-top:4px">+<%= d %>일</span>
+                    <span style="display:block;font-size:12px;color: <%= color %>;font-family:'JetBrains Mono';margin-top:4px">+<%= d %>일</span>
                   <% } %>
                 </span>
                 <div>
@@ -1026,7 +1026,7 @@
                   <%= v.vote_result %>
                 </span>
               </div>
-              <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--sub2)"><%= v.vote_date %></div>
+              <div style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2)"><%= v.vote_date %></div>
               <span><span class="pb-badge <%= resultClass(v.proc_result_name) %>"><%= v.proc_result_name || '—' %></span></span>
               <span><% if (v.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= v.bill_topic_nm %></span><% } %></span>
             </a>
@@ -1052,23 +1052,23 @@
           </div>
           <div class="card-body radar-big">
             <svg width="220" height="220" viewBox="-110 -110 220 220" overflow="visible">
-              <polygon points="0,-90 78,-45 78,45 0,90 -78,45 -78,-45" fill="none" stroke="#1E2A3D" stroke-width="1"/>
-              <polygon points="0,-68 59,-34 59,34 0,68 -59,34 -59,-34" fill="none" stroke="#1E2A3D" stroke-width="1"/>
-              <polygon points="0,-45 39,-23 39,23 0,45 -39,23 -39,-23" fill="none" stroke="#1E2A3D" stroke-width="1"/>
-              <polygon points="0,-23 20,-11 20,11 0,23 -20,11 -20,-11" fill="none" stroke="#1E2A3D" stroke-width="1"/>
-              <line x1="0" y1="0" x2="0"  y2="-90" stroke="#1E2A3D" stroke-width="1"/>
-              <line x1="0" y1="0" x2="78" y2="-45" stroke="#1E2A3D" stroke-width="1"/>
-              <line x1="0" y1="0" x2="78" y2="45"  stroke="#1E2A3D" stroke-width="1"/>
-              <line x1="0" y1="0" x2="0"  y2="90"  stroke="#1E2A3D" stroke-width="1"/>
-              <line x1="0" y1="0" x2="-78" y2="45" stroke="#1E2A3D" stroke-width="1"/>
-              <line x1="0" y1="0" x2="-78" y2="-45" stroke="#1E2A3D" stroke-width="1"/>
-              <polygon points="<%= radarPoints %>" fill="rgba(226,201,126,0.12)" stroke="#E2C97E" stroke-width="1.5"/>
-              <text x="0"    y="-98" text-anchor="middle" fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">법안발의</text>
-              <text x="90"   y="-42" text-anchor="start"  fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">출석률</text>
-              <text x="90"   y="52"  text-anchor="start"  fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">표결참여</text>
-              <text x="0"    y="106" text-anchor="middle" fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">공동발의</text>
-              <text x="-90"  y="52"  text-anchor="end"    fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">위원회활동</text>
-              <text x="-90"  y="-42" text-anchor="end"    fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">소통지수</text>
+              <polygon points="0,-90 78,-45 78,45 0,90 -78,45 -78,-45" fill="none" stroke="#E2DFD4" stroke-width="1"/>
+              <polygon points="0,-68 59,-34 59,34 0,68 -59,34 -59,-34" fill="none" stroke="#E2DFD4" stroke-width="1"/>
+              <polygon points="0,-45 39,-23 39,23 0,45 -39,23 -39,-23" fill="none" stroke="#E2DFD4" stroke-width="1"/>
+              <polygon points="0,-23 20,-11 20,11 0,23 -20,11 -20,-11" fill="none" stroke="#E2DFD4" stroke-width="1"/>
+              <line x1="0" y1="0" x2="0"  y2="-90" stroke="#E2DFD4" stroke-width="1"/>
+              <line x1="0" y1="0" x2="78" y2="-45" stroke="#E2DFD4" stroke-width="1"/>
+              <line x1="0" y1="0" x2="78" y2="45"  stroke="#E2DFD4" stroke-width="1"/>
+              <line x1="0" y1="0" x2="0"  y2="90"  stroke="#E2DFD4" stroke-width="1"/>
+              <line x1="0" y1="0" x2="-78" y2="45" stroke="#E2DFD4" stroke-width="1"/>
+              <line x1="0" y1="0" x2="-78" y2="-45" stroke="#E2DFD4" stroke-width="1"/>
+              <polygon points="<%= radarPoints %>" fill="rgba(184,116,12,0.12)" stroke="#B8740C" stroke-width="1.5"/>
+              <text x="0"    y="-98" text-anchor="middle" fill="#4B5362" font-size="11" font-family="Noto Sans KR">법안발의</text>
+              <text x="90"   y="-42" text-anchor="start"  fill="#4B5362" font-size="11" font-family="Noto Sans KR">출석률</text>
+              <text x="90"   y="52"  text-anchor="start"  fill="#4B5362" font-size="11" font-family="Noto Sans KR">표결참여</text>
+              <text x="0"    y="106" text-anchor="middle" fill="#4B5362" font-size="11" font-family="Noto Sans KR">공동발의</text>
+              <text x="-90"  y="52"  text-anchor="end"    fill="#4B5362" font-size="11" font-family="Noto Sans KR">위원회활동</text>
+              <text x="-90"  y="-42" text-anchor="end"    fill="#4B5362" font-size="11" font-family="Noto Sans KR">소통지수</text>
             </svg>
           </div>
         </div>
@@ -1090,8 +1090,8 @@
                   <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.against_cnt, vsAttended) %>%;background:var(--red)"></div></div>
                 </div>
                 <div>
-                  <div class="cat-bar-label">기권 비율<span class="cat-bar-val" style="color:var(--amber)"><%= pct(vs.abstain_cnt, vsAttended).toFixed(1) %>%</span></div>
-                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.abstain_cnt, vsAttended) %>%;background:var(--amber)"></div></div>
+                  <div class="cat-bar-label">기권 비율<span class="cat-bar-val" style="color:var(--accent)"><%= pct(vs.abstain_cnt, vsAttended).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.abstain_cnt, vsAttended) %>%;background:var(--accent)"></div></div>
                 </div>
                 <div>
                   <div class="cat-bar-label">불참 비율<span class="cat-bar-val"><%= pct(vs.absent_cnt, vsTotal).toFixed(1) %>%</span></div>
@@ -1195,7 +1195,7 @@
                      let lblColor = 'var(--sub2)';
                      if (r.indexOf('가결') > -1) lblColor = 'var(--green)';
                      else if (r === '부결' || r === '폐기' || r === '철회') lblColor = 'var(--red)';
-                     else if (!r) { lblColor = 'var(--amber)'; }
+                     else if (!r) { lblColor = 'var(--accent)'; }
                 %>
                   <div class="tl-item">
                     <div class="tl-dot <%= dotClass %>"></div>
@@ -1281,17 +1281,17 @@
         %>
           <div class="vote-summary" title="참여율 = (찬성+반대+기권) ÷ 전체 본회의 표결 법안 수">
             <svg width="90" height="90" viewBox="0 0 90 90">
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#1E2A3D" stroke-width="10"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#10B981" stroke-width="10"
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#E2DFD4" stroke-width="10"/>
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#0F9D6E" stroke-width="10"
                       stroke-dasharray="<%= s1.toFixed(1) %> <%= circ %>" stroke-dashoffset="0" transform="rotate(-90 45 45)"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#EF4444" stroke-width="10"
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#D03A3A" stroke-width="10"
                       stroke-dasharray="<%= s2.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-s1).toFixed(1) %>" transform="rotate(-90 45 45)"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#F59E0B" stroke-width="10"
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#B8740C" stroke-width="10"
                       stroke-dasharray="<%= s3.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2)).toFixed(1) %>" transform="rotate(-90 45 45)"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#4A5568" stroke-width="10"
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#7A8090" stroke-width="10"
                       stroke-dasharray="<%= s4.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2+s3)).toFixed(1) %>" transform="rotate(-90 45 45)"/>
-              <text x="45" y="42" text-anchor="middle" fill="#E2E8F5" font-size="14" font-weight="700" font-family="Bebas Neue"><%= partRate.toFixed(0) %>%</text>
-              <text x="45" y="54" text-anchor="middle" fill="#7B8DAB" font-size="7" font-family="JetBrains Mono">참여율</text>
+              <text x="45" y="42" text-anchor="middle" fill="#1A1D24" font-size="14" font-weight="700" font-family="Bebas Neue"><%= partRate.toFixed(0) %>%</text>
+              <text x="45" y="54" text-anchor="middle" fill="#4B5362" font-size="7" font-family="JetBrains Mono">참여율</text>
             </svg>
             <div class="vote-legend">
               <div class="vote-legend-item">
@@ -1303,7 +1303,7 @@
                 <span class="vote-legend-val"><%= nf(vs.against_cnt) %></span>
               </div>
               <div class="vote-legend-item">
-                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--amber)"></span>기권</span>
+                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--accent)"></span>기권</span>
                 <span class="vote-legend-val"><%= nf(vs.abstain_cnt) %></span>
               </div>
               <div class="vote-legend-item">
@@ -1379,13 +1379,13 @@
           <% if (politician.e_mail) { %>
           <div class="info-item">
             <span class="info-key">이메일</span>
-            <span class="info-val" style="font-family:'JetBrains Mono';font-size:11px"><%= politician.e_mail %></span>
+            <span class="info-val" style="font-family:'JetBrains Mono';font-size:12px"><%= politician.e_mail %></span>
           </div>
           <% } %>
           <% if (politician.homepage) { %>
           <div class="info-item">
             <span class="info-key">홈페이지</span>
-            <span class="info-val"><a href="<%= politician.homepage %>" target="_blank" rel="noopener" style="color:var(--blue);font-size:11px">바로가기 →</a></span>
+            <span class="info-val"><a href="<%= politician.homepage %>" target="_blank" rel="noopener" style="color:var(--accent);font-size:11px">바로가기 →</a></span>
           </div>
           <% } %>
           <div class="info-item">
@@ -1393,7 +1393,7 @@
             <span class="info-val">
               <a href="https://www.assembly.go.kr/portal/assm/search/memberIntro.do?monaCd=<%= politician.mona_cd %>"
                  target="_blank" rel="noopener"
-                 style="color:var(--blue);font-size:12px">국회 공식 프로필 →</a>
+                 style="color:var(--accent);font-size:12px">국회 공식 프로필 →</a>
             </span>
           </div>
         </div>
@@ -1493,10 +1493,10 @@
   let selected = 0;
   stars.forEach((star, idx) => {
     star.addEventListener('mouseover', () => {
-      stars.forEach((s, i) => s.style.color = i <= idx ? 'var(--amber)' : 'var(--sub2)');
+      stars.forEach((s, i) => s.style.color = i <= idx ? 'var(--accent)' : 'var(--sub2)');
     });
     star.addEventListener('mouseout', () => {
-      stars.forEach((s, i) => s.style.color = i < selected ? 'var(--amber)' : 'var(--sub2)');
+      stars.forEach((s, i) => s.style.color = i < selected ? 'var(--accent)' : 'var(--sub2)');
     });
     star.addEventListener('click', () => {
       selected = idx + 1;

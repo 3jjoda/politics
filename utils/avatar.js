@@ -3,16 +3,16 @@
  * EJS에서 <%- avatarSvg(name, url, size) %> 로 사용
  */
 
-// 같은 이름은 항상 같은 색이 나오도록 이름 해시 → 색상 인덱스
+// 같은 이름은 항상 같은 색이 나오도록 이름 해시 → 색상 인덱스 (라이트 테마: 파스텔 bg + 진한 fg)
 const PALETTE = [
-    { bg: '#2D3B52', fg: '#B4C7E7' }, // slate-blue
-    { bg: '#3B2D52', fg: '#C7B4E7' }, // slate-purple
-    { bg: '#2D523E', fg: '#B4E7CC' }, // slate-green
-    { bg: '#523B2D', fg: '#E7CCB4' }, // slate-brown
-    { bg: '#522D3B', fg: '#E7B4C7' }, // slate-rose
-    { bg: '#3B522D', fg: '#CCE7B4' }, // slate-olive
-    { bg: '#2D4C52', fg: '#B4D9E7' }, // slate-teal
-    { bg: '#4C3B52', fg: '#D9B4E7' }  // slate-mauve
+    { bg: '#DBE3F0', fg: '#1E3A5F' }, // pastel blue
+    { bg: '#E5DBF0', fg: '#4A2A6B' }, // pastel purple
+    { bg: '#D8EBE0', fg: '#2A5F42' }, // pastel green
+    { bg: '#F0E3D0', fg: '#6B4A1F' }, // pastel brown
+    { bg: '#F0D8DF', fg: '#6B2A40' }, // pastel rose
+    { bg: '#E6F0D4', fg: '#4F6B22' }, // pastel olive
+    { bg: '#D4EBEF', fg: '#1F5962' }, // pastel teal
+    { bg: '#E8DEF0', fg: '#5A2F6B' }  // pastel mauve
 ];
 
 function hashCode(str) {

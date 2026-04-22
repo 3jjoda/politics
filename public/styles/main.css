@@ -1,32 +1,46 @@
 /* =========================================================
-   정치 바로미터 — 공통 다크 테마 스타일
+   정치 바로미터 — 공통 라이트 테마 스타일
    ========================================================= */
 
 :root {
-  --bg: #080B12;
-  --bg2: #0F1520;
-  --bg3: #161E2E;
-  --border: #1E2A3D;
-  --border2: #2A3A52;
-  --text: #E2E8F5;
-  --sub: #7B8DAB;
-  --sub2: #4A5568;
+  /* 배경 */
+  --bg:  #F7F6F1;   /* 메인 배경 (베이지) */
+  --bg2: #FFFFFF;   /* 카드 배경 */
+  --bg3: #EFEDE4;   /* 서브 배경 */
 
-  /* 브랜드 액센트 — 중립 골드로 교체 (정치적 연상 회피) */
-  --blue:  #E2C97E;
-  --blue2: #B79E55;
+  /* 테두리 */
+  --border:  #E2DFD4;
+  --border2: #C9C5B6;
 
-  /* 골드 alpha 유틸 (이전 rgba(59,130,246,X) 대체) */
-  --accent-10: rgba(226,201,126,0.10);
-  --accent-15: rgba(226,201,126,0.15);
-  --accent-20: rgba(226,201,126,0.20);
-  --accent-30: rgba(226,201,126,0.30);
+  /* 텍스트 */
+  --text: #1A1D24;
+  --sub:  #4B5362;
+  --sub2: #7A8090;
 
-  --cyan: #06B6D4;
-  --green: #10B981;
-  --red: #EF4444;
-  --amber: #F59E0B;
-  --purple: #8B5CF6;
+  /* 액센트 (브랜드 골드) */
+  --accent:  #B8740C;
+  --accent2: #925C09;
+
+  /* 액센트 알파 유틸 (구 rgba(59,130,246,X) / rgba(226,201,126,X) 대체) */
+  --accent-10: rgba(184,116,12,0.10);
+  --accent-15: rgba(184,116,12,0.15);
+  --accent-20: rgba(184,116,12,0.20);
+  --accent-30: rgba(184,116,12,0.30);
+
+  /* 시맨틱 */
+  --green:  #0F9D6E;
+  --red:    #D03A3A;
+  --blue:   #2563EB;  /* 순수 링크/참조용 (브랜드 아님) */
+  --purple: #7C3AED;
+
+  /* 그림자 */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:    0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.06), 0 12px 24px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 16px rgba(0,0,0,0.08), 0 20px 40px rgba(0,0,0,0.08);
+
+  /* 공통 */
+  --nav-h: 60px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,7 +51,7 @@ body {
   color: var(--text);
   font-family: 'Noto Sans KR', sans-serif;
   font-size: 15px;
-  line-height: 1.7;
+  line-height: 1.75;
   word-break: keep-all;
   overflow-x: hidden;
   min-height: 100vh;
@@ -48,8 +62,8 @@ body::before {
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(226,201,126,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(226,201,126,0.025) 1px, transparent 1px);
+    linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px);
   background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
@@ -59,16 +73,30 @@ a { color: inherit; text-decoration: none; }
 button { font-family: inherit; }
 input, textarea, select { font-family: inherit; }
 
+/* 스크롤바 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 10px;
+  border: 2px solid var(--bg);
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--sub2); }
+
 /* ===== NAVBAR ===== */
 .pb-nav {
   position: fixed;
   top: 0; left: 0; right: 0;
   z-index: 100;
-  height: 56px;
+  height: var(--nav-h);
   display: flex;
   align-items: center;
   padding: 0 24px;
-  background: rgba(8, 11, 18, 0.85);
+  background: rgba(247,246,241,0.92);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
 }
@@ -90,21 +118,21 @@ input, textarea, select { font-family: inherit; }
 }
 
 .pb-logo-mark {
-  width: 28px;
-  height: 28px;
-  background: var(--blue);
+  width: 30px;
+  height: 30px;
+  background: var(--accent);
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
   flex-shrink: 0;
 }
 
 .pb-logo-text {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 20px;
+  font-size: 22px;
   letter-spacing: 0.05em;
   color: var(--text);
 }
 
-.pb-logo-text span { color: var(--blue); }
+.pb-logo-text span { color: var(--accent); }
 
 .pb-nav-links {
   display: flex;
@@ -114,9 +142,9 @@ input, textarea, select { font-family: inherit; }
 
 .pb-nav-links a {
   display: block;
-  padding: 6px 12px;
+  padding: 8px 14px;
   color: var(--sub);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   border-radius: 6px;
   transition: all 0.2s;
@@ -137,34 +165,34 @@ input, textarea, select { font-family: inherit; }
 
 .pb-nav-badge {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--green);
-  background: rgba(16,185,129,0.1);
-  border: 1px solid rgba(16,185,129,0.2);
-  padding: 3px 8px;
+  background: rgba(15,157,110,0.1);
+  border: 1px solid rgba(15,157,110,0.25);
+  padding: 4px 10px;
   border-radius: 4px;
 }
 
 .pb-nav-btn {
-  padding: 6px 16px;
-  background: var(--blue);
-  color: #0B0F17;
+  padding: 8px 18px;
+  background: var(--accent);
+  color: #fff;
   border: none;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.pb-nav-btn:hover { background: var(--blue2); }
+.pb-nav-btn:hover { background: var(--accent2); }
 
 .pb-hamburger {
   display: none;
   background: transparent;
   border: none;
   color: var(--text);
-  font-size: 22px;
+  font-size: 24px;
   cursor: pointer;
   padding: 4px 8px;
 }
@@ -173,12 +201,13 @@ input, textarea, select { font-family: inherit; }
 .pb-mobile-panel {
   position: fixed;
   top: 0; right: 0;
-  width: 260px;
+  width: 280px;
   height: 100vh;
   background: var(--bg2);
   border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
   z-index: 200;
-  padding: 64px 16px 20px;
+  padding: 72px 16px 20px;
   transform: translateX(100%);
   transition: transform 0.25s;
 }
@@ -189,9 +218,9 @@ input, textarea, select { font-family: inherit; }
 
 .pb-mobile-panel a {
   display: block;
-  padding: 14px 12px;
+  padding: 16px 14px;
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -202,7 +231,7 @@ input, textarea, select { font-family: inherit; }
   background: transparent;
   border: none;
   color: var(--text);
-  font-size: 28px;
+  font-size: 30px;
   cursor: pointer;
 }
 
@@ -210,13 +239,13 @@ input, textarea, select { font-family: inherit; }
 .pb-main {
   position: relative;
   z-index: 1;
-  min-height: calc(100vh - 56px);
+  min-height: calc(100vh - var(--nav-h));
 }
 
 /* ===== FOOTER ===== */
 .pb-footer {
   border-top: 1px solid var(--border);
-  padding: 32px 24px;
+  padding: 36px 24px;
   position: relative;
   z-index: 1;
   background: var(--bg);
@@ -233,29 +262,62 @@ input, textarea, select { font-family: inherit; }
 }
 
 .pb-footer-copy {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--sub2);
 }
 
 .pb-footer-links {
   display: flex;
-  gap: 20px;
+  gap: 22px;
   list-style: none;
   flex-wrap: wrap;
 }
 
 .pb-footer-links a {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--sub2);
   text-decoration: none;
   transition: color 0.15s;
 }
 
-.pb-footer-links a:hover { color: var(--sub); }
+.pb-footer-links a:hover { color: var(--accent); }
+
+/* 라이트 테마 카드 공통 그림자
+   EJS별로 다양하게 이름 지은 카드 컨테이너에 일괄 적용 */
+.kpi-card,
+.bill-card,
+.bill-card-main,
+.bill-item,
+.politician-card,
+.pol-card,
+.pol-list-item,
+.sidebar-card,
+.mini-stat,
+.profile-kpi,
+.side-card,
+.card,
+.bd-header,
+.bd-section,
+.vote-box,
+.vote-list-container,
+.proposer-chip,
+.gl-item {
+  box-shadow: var(--shadow-sm);
+}
+
+.pol-card:hover,
+.politician-card:hover,
+.bill-card:hover,
+.bill-card-main:hover,
+.kpi-card:hover,
+.mini-stat:hover,
+.bill-item:hover {
+  box-shadow: var(--shadow-md);
+}
 
 /* ===== 공통 컴포넌트 ===== */
 .pb-section {
-  padding: 64px 24px;
+  padding: 72px 24px;
   position: relative;
   z-index: 1;
 }
@@ -275,7 +337,7 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -283,21 +345,21 @@ input, textarea, select { font-family: inherit; }
 .pb-section-label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  color: var(--blue);
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .pb-section-title {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: var(--text);
 }
 
 .pb-section-link {
-  font-size: 13px;
-  color: var(--blue);
+  font-size: 14px;
+  color: var(--accent);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -308,7 +370,7 @@ input, textarea, select { font-family: inherit; }
 .pb-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
@@ -317,31 +379,31 @@ input, textarea, select { font-family: inherit; }
 
 .pb-badge-category {
   background: var(--accent-10);
-  color: var(--blue);
+  color: var(--accent);
   border: 1px solid var(--accent-20);
 }
 
 .pb-badge-passed {
-  background: rgba(16,185,129,0.1);
+  background: rgba(15,157,110,0.1);
   color: var(--green);
-  border: 1px solid rgba(16,185,129,0.2);
+  border: 1px solid rgba(15,157,110,0.25);
 }
 
 .pb-badge-pending {
-  background: rgba(245,158,11,0.1);
-  color: var(--amber);
-  border: 1px solid rgba(245,158,11,0.2);
+  background: var(--accent-10);
+  color: var(--accent);
+  border: 1px solid var(--accent-20);
 }
 
 .pb-badge-rejected,
 .pb-badge-withdrawn {
-  background: rgba(239,68,68,0.1);
+  background: rgba(208,58,58,0.1);
   color: var(--red);
-  border: 1px solid rgba(239,68,68,0.2);
+  border: 1px solid rgba(208,58,58,0.25);
 }
 
 .pb-badge-alt {
-  background: rgba(107,114,128,0.1);
+  background: rgba(122,128,144,0.1);
   color: var(--sub);
   border: 1px solid var(--border);
 }
@@ -351,20 +413,20 @@ input, textarea, select { font-family: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 1px solid var(--border2);
   color: var(--sub2);
-  font-size: 10px;
+  font-size: 11px;
   margin-left: 4px;
   cursor: help;
   transition: all 0.15s;
   text-decoration: none;
 }
 .pb-help:hover {
-  border-color: var(--blue);
-  color: var(--blue);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* 반응형 */

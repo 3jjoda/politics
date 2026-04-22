@@ -18,13 +18,13 @@
   }
   .bd-breadcrumb {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
-    margin-bottom: 16px;
+    margin-bottom: 18px;
   }
-  .bd-breadcrumb a { color: var(--blue); }
+  .bd-breadcrumb a { color: var(--accent); }
   .bd-header {
-    padding: 24px 28px;
+    padding: 28px 32px;
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -33,54 +33,54 @@
   .bd-meta-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: 10px;
+    margin-bottom: 14px;
     flex-wrap: wrap;
   }
   .bd-title {
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text);
-    line-height: 1.4;
-    margin-bottom: 12px;
+    line-height: 1.45;
+    margin-bottom: 14px;
   }
   .bd-meta {
     display: flex;
-    gap: 16px;
+    gap: 18px;
     flex-wrap: wrap;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--sub);
   }
   .bd-meta strong { color: var(--text); font-weight: 500; }
-  .bd-meta a { color: var(--blue); }
+  .bd-meta a { color: var(--accent); }
 
   .bd-section {
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 20px 24px;
-    margin-bottom: 16px;
+    padding: 24px 28px;
+    margin-bottom: 18px;
   }
   .bd-section h2 {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--sub);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
   }
   .bd-external {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 7px 14px;
+    padding: 9px 16px;
     border: 1px solid var(--border2);
     border-radius: 8px;
     color: var(--text);
-    font-size: 13px;
+    font-size: 14px;
   }
-  .bd-external:hover { border-color: var(--blue); color: var(--blue); }
+  .bd-external:hover { border-color: var(--accent); color: var(--accent); }
 
   .vote-dashboard {
     display: grid;
@@ -89,26 +89,26 @@
     margin-bottom: 20px;
   }
   .vote-box {
-    padding: 16px;
+    padding: 20px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 12px;
     background: var(--bg3);
     text-align: center;
   }
   .vote-box strong {
     display: block;
-    font-size: 11px;
-    color: var(--sub2);
-    margin-bottom: 6px;
+    font-size: 12px;
+    color: var(--sub);
+    margin-bottom: 8px;
   }
   .vote-box span {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
+    font-size: 36px;
     line-height: 1;
   }
   .vote-box.agree    span { color: var(--green); }
   .vote-box.disagree span { color: var(--red); }
-  .vote-box.abstain  span { color: var(--amber); }
+  .vote-box.abstain  span { color: var(--accent); }
   .vote-box.absent   span { color: var(--sub); }
 
   .vote-lists {
@@ -119,29 +119,29 @@
   .vote-list-container {
     background: var(--bg3);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
-    max-height: 260px;
+    border-radius: 12px;
+    padding: 16px 18px;
+    max-height: 280px;
     overflow-y: auto;
   }
   .vote-list-container h3 {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--sub);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
-  .voter-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .voter-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
   .voter-list li a {
     display: flex;
     justify-content: space-between;
-    padding: 4px 0;
-    font-size: 12px;
+    padding: 5px 0;
+    font-size: 13px;
     color: var(--text);
   }
-  .voter-list li a:hover { color: var(--blue); }
-  .voter-list .party { color: var(--sub2); font-size: 11px; }
+  .voter-list li a:hover { color: var(--accent); }
+  .voter-list .party { color: var(--sub); font-size: 12px; }
 
   .proposers-grid {
     display: grid;
@@ -151,17 +151,17 @@
   .proposer-chip {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 10px;
+    padding: 10px 14px;
     background: var(--bg3);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 12px;
+    border-radius: 12px;
+    font-size: 13px;
     color: var(--text);
   }
-  .proposer-chip.rep { border-color: var(--blue); background: rgba(226,201,126,0.08); }
+  .proposer-chip.rep { border-color: var(--accent); background: rgba(184,116,12,0.08); }
   .proposer-chip .avatar {
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     border-radius: 50%;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -169,11 +169,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11px;
+    font-size: 12px;
     flex-shrink: 0;
   }
-  .proposer-chip .avatar img { width: 100%; height: 100%; object-fit: cover; }
-  .proposer-chip .party-sm { color: var(--sub2); font-size: 10px; }
+  .proposer-chip .avatar img,
+  .proposer-chip .avatar svg { width: 100%; height: 100%; display: block; }
+  .proposer-chip .party-sm { color: var(--sub); font-size: 11px; }
 
   @media (max-width: 768px) {
     .vote-dashboard { grid-template-columns: repeat(2, 1fr); }
@@ -188,7 +189,7 @@
     <div class="bd-meta-row">
       <% if (bill.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= bill.bill_topic_nm %></span><% } %>
       <span class="pb-badge <%= resultClass(bill.proc_result_name) %>"><%= bill.proc_result_name || '계류' %></span>
-      <span style="font-family:'JetBrains Mono';font-size:11px;color:var(--sub2);margin-left:auto">#<%= bill.bill_no || bill.bill_id %></span>
+      <span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2);margin-left:auto">#<%= bill.bill_no || bill.bill_id %></span>
     </div>
     <h1 class="bd-title"><%= bill.bill_name %></h1>
     <div class="bd-meta">
@@ -275,10 +276,10 @@
         <% coProposers.forEach(cp => { %>
           <a href="/politician/<%= cp.mona_cd %>" class="proposer-chip <%= cp.proposer_yn ? 'rep' : '' %>" style="text-decoration:none">
             <div class="avatar">
-              <%- cp.photo_url ? `<img src="${cp.photo_url}" alt="${cp.name || ''}">` : '👤' %>
+              <%- avatarHtml(cp.name, cp.photo_url, 28) %>
             </div>
             <div style="min-width:0;overflow:hidden">
-              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cp.name || cp.mona_cd %><% if (cp.proposer_yn) { %> <span style="color:var(--blue);font-size:10px">(대표)</span><% } %></div>
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cp.name || cp.mona_cd %><% if (cp.proposer_yn) { %> <span style="color:var(--accent);font-size:11px">(대표)</span><% } %></div>
               <div class="party-sm"><%= cp.party_name || '' %></div>
             </div>
           </a>

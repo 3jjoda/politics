@@ -41,7 +41,7 @@
   /* ===== HOME HERO ===== */
   .home-hero {
     position: relative;
-    min-height: calc(100vh - 56px);
+    min-height: calc(100vh - 60px);
     display: flex;
     align-items: center;
     padding: 100px 24px 60px;
@@ -55,7 +55,7 @@
     transform: translateX(-50%);
     width: 800px;
     height: 400px;
-    background: radial-gradient(ellipse, rgba(226,201,126,0.08) 0%, transparent 70%);
+    background: radial-gradient(ellipse, rgba(184,116,12,0.08) 0%, transparent 70%);
     pointer-events: none;
   }
   .home-hero-inner {
@@ -74,8 +74,8 @@
     align-items: center;
     gap: 8px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--blue);
+    font-size: 12px;
+    color: var(--accent);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 24px;
@@ -83,7 +83,7 @@
   .home-hero-label::before {
     content: '';
     width: 6px; height: 6px;
-    background: var(--blue);
+    background: var(--accent);
     border-radius: 50%;
     animation: pbPulse 2s infinite;
   }
@@ -97,18 +97,18 @@
     line-height: 1;
     letter-spacing: 0.02em;
   }
-  .home-hero-title .accent { color: var(--blue); }
+  .home-hero-title .accent { color: var(--accent); }
   .home-hero-title .line2 {
     display: block;
     color: var(--sub);
     font-size: clamp(32px, 4vw, 56px);
   }
   .home-hero-desc {
-    font-size: 15px;
+    font-size: 16px;
     color: var(--sub);
-    line-height: 1.8;
+    line-height: 1.85;
     margin: 24px 0 40px;
-    max-width: 480px;
+    max-width: 520px;
   }
   .home-hero-desc strong { color: var(--text); }
   .home-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -117,35 +117,35 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 24px;
-    background: var(--blue);
+    padding: 14px 26px;
+    background: var(--accent);
     color: #fff;
     border: none;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
   }
   .btn-primary:hover {
-    background: var(--blue2);
+    background: var(--accent2);
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(226,201,126,0.3);
+    box-shadow: 0 8px 24px rgba(184,116,12,0.3);
   }
   .btn-secondary {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 24px;
+    padding: 14px 26px;
     background: transparent;
     color: var(--text);
     border: 1px solid var(--border2);
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     transition: all 0.2s;
   }
-  .btn-secondary:hover { border-color: var(--blue); color: var(--blue); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
   /* KPI */
   .home-kpi {
@@ -157,7 +157,7 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 20px;
+    padding: 24px;
     position: relative;
     overflow: hidden;
     transition: border-color 0.2s;
@@ -167,24 +167,24 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 2px;
-    background: var(--accent-color, var(--blue));
+    background: var(--accent-color, var(--accent));
     opacity: 0;
     transition: opacity 0.2s;
   }
   .kpi-card:hover { border-color: var(--border2); }
   .kpi-card:hover::before { opacity: 1; }
-  .kpi-card.blue { --accent-color: var(--blue); }
+  .kpi-card.blue { --accent-color: var(--accent); }
   .kpi-card.green { --accent-color: var(--green); }
-  .kpi-card.amber { --accent-color: var(--amber); }
+  .kpi-card.amber { --accent-color: var(--accent); }
   .kpi-card.purple { --accent-color: var(--purple); }
 
   .kpi-label {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--sub);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-weight: 500;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -192,30 +192,30 @@
   .kpi-dot {
     width: 6px; height: 6px;
     border-radius: 50%;
-    background: var(--accent-color, var(--blue));
+    background: var(--accent-color, var(--accent));
   }
   .kpi-value {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
+    font-size: 44px;
     line-height: 1;
     letter-spacing: 0.02em;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
-  .kpi-card.blue .kpi-value { color: var(--blue); }
+  .kpi-card.blue .kpi-value { color: var(--accent); }
   .kpi-card.green .kpi-value { color: var(--green); }
-  .kpi-card.amber .kpi-value { color: var(--amber); }
+  .kpi-card.amber .kpi-value { color: var(--accent); }
   .kpi-card.purple .kpi-value { color: var(--purple); }
 
   .kpi-sub {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
     font-family: 'JetBrains Mono', monospace;
   }
   .kpi-note {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--sub);
-    margin-top: 6px;
-    line-height: 1.6;
+    margin-top: 8px;
+    line-height: 1.7;
   }
   .kpi-note strong { color: var(--text); font-weight: 500; }
 
@@ -225,7 +225,7 @@
     align-items: center;
     gap: 24px;
   }
-  .kpi-card.large .kpi-value { font-size: 52px; }
+  .kpi-card.large .kpi-value { font-size: 60px; }
   .kpi-bar {
     flex: 1;
     height: 4px;
@@ -249,7 +249,7 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 20px;
+    padding: 24px;
     transition: all 0.2s;
     position: relative;
     overflow: hidden;
@@ -263,7 +263,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, rgba(226,201,126,0.05) 0%, transparent 60%);
+    background: linear-gradient(135deg, rgba(184,116,12,0.05) 0%, transparent 60%);
     pointer-events: none;
   }
   .bill-meta {
@@ -274,14 +274,14 @@
     flex-wrap: wrap;
   }
   .bill-name {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--text);
-    margin-bottom: 8px;
-    line-height: 1.5;
+    margin-bottom: 10px;
+    line-height: 1.55;
   }
   .bill-info {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--sub);
     display: flex;
     align-items: center;
@@ -299,7 +299,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
   }
   .vote-dot { width: 6px; height: 6px; border-radius: 50%; }
@@ -311,8 +311,8 @@
   .bill-item {
     background: var(--bg2);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 14px 16px;
+    border-radius: 12px;
+    padding: 16px 18px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -321,21 +321,21 @@
   .bill-item:hover { border-color: var(--border2); background: var(--bg3); }
   .bill-num {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--sub2);
     min-width: 32px;
   }
   .bill-item-content { flex: 1; min-width: 0; }
   .bill-item-name {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
   }
-  .bill-item-sub { font-size: 11px; color: var(--sub2); }
+  .bill-item-sub { font-size: 12px; color: var(--sub); }
 
   /* Votes table */
   .vote-section {
@@ -347,16 +347,16 @@
   .vote-table-header,
   .vote-row {
     display: grid;
-    grid-template-columns: 3fr 1fr 1fr 1fr 1fr 100px;
+    grid-template-columns: 3fr 1fr 1fr 1fr 1fr 110px;
     gap: 16px;
-    padding: 14px 24px;
+    padding: 16px 24px;
     align-items: center;
   }
   .vote-table-header {
-    padding: 10px 24px;
+    padding: 12px 24px;
     background: var(--bg3);
-    font-size: 11px;
-    color: var(--sub2);
+    font-size: 12px;
+    color: var(--sub);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-family: 'JetBrains Mono', monospace;
@@ -365,7 +365,7 @@
   .vote-row:hover { background: var(--bg3); }
   .vote-row:last-child { border-bottom: none; }
   .vote-bill-name {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text);
     font-weight: 500;
     white-space: nowrap;
@@ -374,7 +374,7 @@
   }
   .vote-count {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-size: 14px;
     text-align: center;
   }
   .count-for { color: var(--green); }
@@ -384,9 +384,9 @@
 
   .result-badge {
     display: inline-flex;
-    padding: 3px 10px;
+    padding: 4px 11px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     font-family: 'JetBrains Mono', monospace;
   }
@@ -401,78 +401,73 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 20px 16px;
+    padding: 24px 18px;
     text-align: center;
     transition: all 0.2s;
     display: block;
   }
   .politician-card:hover {
-    border-color: var(--blue);
+    border-color: var(--accent);
     transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(226,201,126,0.1);
+    box-shadow: 0 8px 32px rgba(184,116,12,0.1);
   }
   .politician-rank {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 13px;
     color: var(--sub2);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     display: inline-flex;
     align-items: baseline;
     gap: 2px;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border: 1px solid var(--border);
     border-radius: 4px;
     background: var(--bg3);
   }
   .politician-rank .rank-num {
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1;
     color: var(--text);
     letter-spacing: 0.02em;
   }
   .politician-rank .rank-sep { color: var(--sub2); }
-  .politician-rank .rank-of { color: var(--sub2); font-size: 11px; }
-  .politician-rank.rank-1 { border-color: var(--blue); background: var(--accent-10); }
-  .politician-rank.rank-1 .rank-num { color: var(--blue); }
+  .politician-rank .rank-of { color: var(--sub2); font-size: 12px; }
+  .politician-rank.rank-1 { border-color: var(--accent); background: var(--accent-10); }
+  .politician-rank.rank-1 .rank-num { color: var(--accent); }
   .politician-rank.rank-2 { border-color: #94A3B8; }
   .politician-rank.rank-3 { border-color: #CD7C39; }
 
   .ph-avatar {
-    width: 64px; height: 64px;
+    width: 72px; height: 72px;
     border-radius: 50%;
-    margin: 0 auto 12px;
-    background: var(--bg3);
+    margin: 0 auto 14px;
     border: 2px solid var(--border);
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
-  .ph-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-  .ph-avatar-ph { font-size: 24px; color: var(--sub2); }
+  .ph-avatar img, .ph-avatar svg { width: 100%; height: 100%; display: block; }
 
   .politician-name {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     color: var(--text);
-    margin-bottom: 4px;
+    margin-bottom: 5px;
   }
   .politician-party {
-    font-size: 11px;
+    font-size: 13px;
     color: var(--sub);
-    margin-bottom: 12px;
+    margin-bottom: 14px;
   }
   .politician-stat {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--blue);
-    font-weight: 500;
+    font-size: 16px;
+    color: var(--accent);
+    font-weight: 600;
   }
   .politician-stat-label {
-    font-size: 10px;
-    color: var(--sub2);
-    margin-top: 2px;
+    font-size: 11px;
+    color: var(--sub);
+    margin-top: 3px;
   }
 
   /* Category tabs */
@@ -487,9 +482,9 @@
   .category-tabs::-webkit-scrollbar { display: none; }
   .cat-tab {
     flex-shrink: 0;
-    padding: 6px 14px;
+    padding: 8px 16px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     border: 1px solid var(--border);
@@ -501,9 +496,9 @@
     align-items: center;
   }
   .cat-tab:hover, .cat-tab.active {
-    background: rgba(226,201,126,0.1);
-    border-color: var(--blue);
-    color: var(--blue);
+    background: rgba(184,116,12,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   @media (max-width: 1024px) {
@@ -781,7 +776,7 @@
         <div class="pb-section-title">월별 법안 처리 추이</div>
       </div>
       <div style="display:flex;gap:14px;align-items:center;font-size:12px;color:var(--sub);">
-        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:2px;background:var(--blue)"></span>발의</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:2px;background:var(--accent)"></span>발의</span>
         <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:2px;background:var(--green)"></span>처리</span>
       </div>
     </div>
@@ -809,23 +804,23 @@
           <% for (let gi = 0; gi <= 4; gi++) {
                const gv = Math.round(maxMt * (4 - gi) / 4);
                const gy = padT + plotH * gi / 4; %>
-            <line x1="<%= padL %>" y1="<%= gy %>" x2="<%= chartW - padR %>" y2="<%= gy %>" stroke="#1E2A3D" stroke-width="1"/>
-            <text x="<%= padL - 8 %>" y="<%= gy + 4 %>" text-anchor="end" fill="#4A5568" font-size="10" font-family="JetBrains Mono"><%= gv %></text>
+            <line x1="<%= padL %>" y1="<%= gy %>" x2="<%= chartW - padR %>" y2="<%= gy %>" stroke="#E2DFD4" stroke-width="1"/>
+            <text x="<%= padL - 8 %>" y="<%= gy + 4 %>" text-anchor="end" fill="#7A8090" font-size="10" font-family="JetBrains Mono"><%= gv %></text>
           <% } %>
 
           <!-- area fill (propose) -->
-          <path d="<%= areaPath('propose_cnt') %>" fill="rgba(226,201,126,0.08)" stroke="none"/>
+          <path d="<%= areaPath('propose_cnt') %>" fill="rgba(184,116,12,0.08)" stroke="none"/>
 
           <!-- propose line (gold) -->
-          <path d="<%= linePath('propose_cnt') %>" fill="none" stroke="#E2C97E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="<%= linePath('propose_cnt') %>" fill="none" stroke="#B8740C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <!-- processed line (green) -->
-          <path d="<%= linePath('processed_cnt') %>" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="<%= linePath('processed_cnt') %>" fill="none" stroke="#0F9D6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 
           <!-- data points + month labels -->
           <% mt.forEach((m, i) => { %>
-            <circle cx="<%= xOf(i).toFixed(1) %>" cy="<%= yOf(m.propose_cnt).toFixed(1) %>" r="3" fill="#E2C97E"/>
-            <circle cx="<%= xOf(i).toFixed(1) %>" cy="<%= yOf(m.processed_cnt).toFixed(1) %>" r="3" fill="#10B981"/>
-            <text x="<%= xOf(i).toFixed(1) %>" y="<%= chartH - padB/2 + 4 %>" text-anchor="middle" fill="#4A5568" font-size="11" font-family="JetBrains Mono"><%= parseInt(m.mm, 10) %>월</text>
+            <circle cx="<%= xOf(i).toFixed(1) %>" cy="<%= yOf(m.propose_cnt).toFixed(1) %>" r="3" fill="#B8740C"/>
+            <circle cx="<%= xOf(i).toFixed(1) %>" cy="<%= yOf(m.processed_cnt).toFixed(1) %>" r="3" fill="#0F9D6E"/>
+            <text x="<%= xOf(i).toFixed(1) %>" y="<%= chartH - padB/2 + 4 %>" text-anchor="middle" fill="#7A8090" font-size="11" font-family="JetBrains Mono"><%= parseInt(m.mm, 10) %>월</text>
           <% }); %>
         </svg>
         <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--sub)">
@@ -833,7 +828,7 @@
             총 발의 <strong style="color:var(--text)"><%= nf(mt.reduce((s, m) => s + Number(m.propose_cnt), 0)) %>건</strong>
             · 총 처리 <strong style="color:var(--text)"><%= nf(mt.reduce((s, m) => s + Number(m.processed_cnt), 0)) %>건</strong>
           </span>
-          <span style="font-family:'JetBrains Mono',monospace;color:var(--sub2);font-size:11px">
+          <span style="font-family:'JetBrains Mono',monospace;color:var(--sub2);font-size:12px">
             <%= mt[0].ym %> → <%= mt[mt.length - 1].ym %>
           </span>
         </div>
