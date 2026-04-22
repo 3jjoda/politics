@@ -1,140 +1,289 @@
 <%
-    /*
-     * 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bill` 객체)
-     * 실제 API 연동 시 백엔드에서 이 객체에 API 응답 데이터를 매핑하여 EJS에 전달
-     * 예시:
-     * router.get('/bill/:bill_id', async (req, res) => {
-     * const billId = req.params.bill_id;
-     * const billData = await fetchBillDetails(billId); // 의안정보 API
-     * const proposers = await fetchBillProposers(billId); // 공동발의의원정보 API
-     * const votes = await fetchBillVotes(billId); // 표결정보 API
-     *
-     * const bill = {
-     * id: billData.BILL_ID,
-     * name: billData.BILL_NAME,
-     * statusClass: billData.PROC_RESULT_CD === '90100' ? 'pass' : (billData.PROC_RESULT_CD === '90200' ? 'reject' : 'pending'),
-     * statusText: billData.PROC_RESULT_TEXT,
-     * proposerMonCode: billData.PROPOSER_MON_CODE,
-     * proposerName: billData.PROPOSER,
-     * proposeDate: billData.PROPOSE_DT,
-     * committeeName: billData.COMMITTEE_NAME,
-     * summary: billData.BILL_SUMMARY,
-     * originalLink: billData.DETAIL_URL,
-     * voteCounts: { // 백엔드에서 표결정보 집계
-     * agree: votes.filter(v => v.VOTE_RESULT_CD === '1').length,
-     * disagree: votes.filter(v => v.VOTE_RESULT_CD === '2').length,
-     * abstain: votes.filter(v => v.VOTE_RESULT_CD === '3').length
-     * },
-     * voters: { // 백엔드에서 표결정보와 의원정보 조합
-     * agree: votes.filter(v => v.VOTE_RESULT_CD === '1').map(v => ({ monCode: v.MON_CODE, name: v.MON_NAME, party: v.POLY_NAME })),
-     * disagree: votes.filter(v => v.VOTE_RESULT_CD === '2').map(v => ({ monCode: v.MON_CODE, name: v.MON_NAME, party: v.POLY_NAME })),
-     * abstain: votes.filter(v => v.VOTE_RESULT_CD === '3').map(v => ({ monCode: v.MON_CODE, name: v.MON_NAME, party: v.POLY_NAME }))
-     * }
-     * };
-     * res.render('bill_detail', { bill });
-     * });
-     */
-    const bill = {
-        id: '12345',
-        name: '미래산업 육성 특별법',
-        statusClass: 'pass',
-        statusText: '본회의 가결',
-        proposerMonCode: '9770330', // API: 대표발의 의원의 MON_CODE
-        proposerName: '강민국', // API: 대표발의 의원 이름
-        proposeDate: '2025-04-11', // API: PROPOSE_DT
-        committeeName: '정무위원회', // API: COMMITTEE_NAME
-        summary: '미래 신산업 분야의 규제 혁신 및 집중 지원을 통해 국가 경쟁력을 강화하고 새로운 성장 동력을 확보하기 위한 법안입니다. 인공지능, 바이오, 친환경 에너지 등 핵심 기술 개발 및 사업화를 촉진하며, 관련 기업에 대한 세제 혜택 및 연구 지원을 확대하는 내용을 포함', // API: BILL_SUMMARY
-        originalLink: '#', // API: DETAIL_URL
-        voteCounts: { // API: 표결정보를 집계하여 백엔드에서 계산
-            agree: 195,
-            disagree: 75,
-            abstain: 30
-        },
-        voters: { // API: 표결정보 및 국회의원정보를 조합하여 백엔드에서 생성
-            agree: [
-                { monCode: '9770330', name: '강민국', party: '국민의힘' },
-                { monCode: '9770123', name: '김민석', party: '더불어민주당' },
-                { monCode: '9770001', name: '박영선', party: '무소속' } // 더미 데이터
-            ],
-            disagree: [
-                { monCode: '9770456', name: '이준석', party: '개혁신당' },
-                { monCode: '9770002', name: '홍길동', party: '국민의힘' } // 더미 데이터
-            ],
-            abstain: [
-                { monCode: '9770789', name: '조국', party: '조국혁신당' }
-            ]
-        }
-    };
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const resultClass = (r) => {
+    if (!r) return 'pb-badge-pending';
+    if (r.indexOf('가결') > -1) return 'pb-badge-passed';
+    if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
+    if (r === '철회') return 'pb-badge-withdrawn';
+    if (r.indexOf('대안') > -1) return 'pb-badge-alt';
+    return 'pb-badge-pending';
+  };
 %>
 
-<div class="page-container">
-    <section class="bill-detail-header">
-        <% /* API: 의안정보 (BILL_ID로 조회) - 처리 결과, 법안명 */ %>
-        <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span>
-        <h1 class="bill-title"><%= bill.name %></h1>
-        <div class="bill-meta">
-            <span><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %></a></span> <% /* API: PROPOSER_MON_CODE로 링크, PROPOSER 이름 표시 */ %>
-            <span><strong>발의일:</strong> <%= bill.proposeDate %></span> <% /* API: PROPOSE_DT */ %>
-            <span><strong>소관위:</strong> <%= bill.committeeName %></span> <% /* API: COMMITTEE_NAME */ %>
-        </div>
-    </section>
+<style>
+  .bd-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 60px;
+  }
+  .bd-breadcrumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    margin-bottom: 16px;
+  }
+  .bd-breadcrumb a { color: var(--blue); }
+  .bd-header {
+    padding: 24px 28px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+  }
+  .bd-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .bd-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 12px;
+  }
+  .bd-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--sub);
+  }
+  .bd-meta strong { color: var(--text); font-weight: 500; }
+  .bd-meta a { color: var(--blue); }
 
-    <section class="bill-summary">
-        <h2>제안 이유 및 주요 내용</h2>
-        <% /* API: 의안정보 - BILL_SUMMARY (요약 정보) */ %>
-        <p><%= bill.summary %></p>
-        <a href="<%= bill.originalLink %>" target="_blank" class="external-link">국회 원문 보기 <i class="fas fa-external-link-alt"></i></a> <% /* API: DETAIL_URL */ %>
-    </section>
+  .bd-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .bd-section h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sub);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 16px;
+  }
+  .bd-external {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .bd-external:hover { border-color: var(--blue); color: var(--blue); }
 
-    <section class="vote-results">
-        <h2>본회의 표결 결과</h2>
-        <div class="vote-dashboard">
-            <% /* API: 표결정보 (BILL_ID로 조회)를 집계하여 백엔드에서 계산한 총 인원 */ %>
-            <div class="vote-box agree"><strong>찬성</strong><span><%= bill.voteCounts.agree %></span></div>
-            <div class="vote-box disagree"><strong>반대</strong><span><%= bill.voteCounts.disagree %></span></div>
-            <div class="vote-box abstain"><strong>기권</strong><span><%= bill.voteCounts.abstain %></span></div>
-        </div>
+  .vote-dashboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .vote-box {
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg3);
+    text-align: center;
+  }
+  .vote-box strong {
+    display: block;
+    font-size: 11px;
+    color: var(--sub2);
+    margin-bottom: 6px;
+  }
+  .vote-box span {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+  }
+  .vote-box.agree    span { color: var(--green); }
+  .vote-box.disagree span { color: var(--red); }
+  .vote-box.abstain  span { color: var(--amber); }
+  .vote-box.absent   span { color: var(--sub); }
 
-        <div class="vote-lists">
-            <% /* API: 표결정보 및 국회의원정보를 조합하여 백엔드에서 생성한 의원 목록 */ %>
-            <div class="vote-list-container">
-                <h3>찬성 의원 (<span id="agree-count"><%= bill.voteCounts.agree %></span>명)</h3>
-                <ul class="voter-list">
-                    <% if (bill.voters.agree && bill.voters.agree.length > 0) { %>
-                        <% bill.voters.agree.forEach(voter => { %>
-                            <li><a href="/politician/<%= voter.monCode %>"><%= voter.name %> (<%= voter.party %>)</a></li>
-                        <% }); %>
-                    <% } else { %>
-                        <li>찬성한 의원이 없습니다.</li>
-                    <% } %>
-                </ul>
-            </div>
-            
-            <div class="vote-list-container">
-                <h3>반대 의원 (<span id="disagree-count"><%= bill.voteCounts.disagree %></span>명)</h3>
-                <ul class="voter-list">
-                    <% if (bill.voters.disagree && bill.voters.disagree.length > 0) { %>
-                        <% bill.voters.disagree.forEach(voter => { %>
-                            <li><a href="/politician/<%= voter.monCode %>"><%= voter.name %> (<%= voter.party %>)</a></li>
-                        <% }); %>
-                    <% } else { %>
-                        <li>반대한 의원이 없습니다.</li>
-                    <% } %>
-                </ul>
-            </div>
-            
-            <div class="vote-list-container">
-                <h3>기권 의원 (<span id="abstain-count"><%= bill.voteCounts.abstain %></span>명)</h3>
-                <ul class="voter-list">
-                    <% if (bill.voters.abstain && bill.voters.abstain.length > 0) { %>
-                        <% bill.voters.abstain.forEach(voter => { %>
-                            <li><a href="/politician/<%= voter.monCode %>"><%= voter.name %> (<%= voter.party %>)</a></li>
-                        <% }); %>
-                    <% } else { %>
-                        <li>기권한 의원이 없습니다.</li>
-                    <% } %>
-                </ul>
-            </div>
+  .vote-lists {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .vote-list-container {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .vote-list-container h3 {
+    font-size: 12px;
+    color: var(--sub);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 10px;
+  }
+  .voter-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .voter-list li a {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .voter-list li a:hover { color: var(--blue); }
+  .voter-list .party { color: var(--sub2); font-size: 11px; }
+
+  .proposers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .proposer-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .proposer-chip.rep { border-color: var(--blue); background: rgba(226,201,126,0.08); }
+  .proposer-chip .avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+  .proposer-chip .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .proposer-chip .party-sm { color: var(--sub2); font-size: 10px; }
+
+  @media (max-width: 768px) {
+    .vote-dashboard { grid-template-columns: repeat(2, 1fr); }
+    .vote-lists { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="bd-wrap">
+  <div class="bd-breadcrumb"><a href="/">홈</a> / <a href="/bill">법안</a> / <%= bill.bill_no || bill.bill_id %></div>
+
+  <div class="bd-header">
+    <div class="bd-meta-row">
+      <% if (bill.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= bill.bill_topic_nm %></span><% } %>
+      <span class="pb-badge <%= resultClass(bill.proc_result_name) %>"><%= bill.proc_result_name || '계류' %></span>
+      <span style="font-family:'JetBrains Mono';font-size:11px;color:var(--sub2);margin-left:auto">#<%= bill.bill_no || bill.bill_id %></span>
+    </div>
+    <h1 class="bd-title"><%= bill.bill_name %></h1>
+    <div class="bd-meta">
+      <% if (bill.proposer_name) { %>
+        <span><strong>대표발의</strong>
+          <% if (bill.mona_cd) { %><a href="/politician/<%= bill.mona_cd %>"><%= bill.proposer_name %></a>
+          <% } else { %><%= bill.proposer_name %><% } %>
+        </span>
+      <% } %>
+      <span><strong>발의일</strong> <%= bill.propose_dt || '—' %></span>
+      <% if (bill.committee) { %><span><strong>소관위</strong> <%= bill.committee %></span><% } %>
+      <% if (bill.co_proposer_count) { %><span><strong>공동발의</strong> <%= bill.co_proposer_count %>인</span><% } %>
+    </div>
+  </div>
+
+  <% if (bill.link_url) { %>
+    <div style="margin-bottom:16px">
+      <a href="<%= bill.link_url %>" target="_blank" rel="noopener" class="bd-external">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        국회 원문 보기
+      </a>
+    </div>
+  <% } %>
+
+  <div class="bd-section">
+    <h2>// 본회의 표결 결과</h2>
+    <% const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0; %>
+    <% if (hasVotes) { %>
+      <div class="vote-dashboard">
+        <div class="vote-box agree"><strong>찬성</strong><span><%= nf(voteCounts.agree) %></span></div>
+        <div class="vote-box disagree"><strong>반대</strong><span><%= nf(voteCounts.disagree) %></span></div>
+        <div class="vote-box abstain"><strong>기권</strong><span><%= nf(voteCounts.abstain) %></span></div>
+        <div class="vote-box absent"><strong>불참</strong><span><%= nf(voteCounts.absent) %></span></div>
+      </div>
+
+      <div class="vote-lists">
+        <div class="vote-list-container">
+          <h3>찬성 의원 (<%= voteCounts.agree %>명)</h3>
+          <ul class="voter-list">
+            <% voters.agree.forEach(v => { %>
+              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+            <% }); %>
+          </ul>
         </div>
-    </section>
+        <div class="vote-list-container">
+          <h3>반대 의원 (<%= voteCounts.disagree %>명)</h3>
+          <ul class="voter-list">
+            <% voters.disagree.forEach(v => { %>
+              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+            <% }); %>
+            <% if (voters.disagree.length === 0) { %><li style="color:var(--sub2);font-size:12px">반대 의원이 없습니다.</li><% } %>
+          </ul>
+        </div>
+        <div class="vote-list-container">
+          <h3>기권 의원 (<%= voteCounts.abstain %>명)</h3>
+          <ul class="voter-list">
+            <% voters.abstain.forEach(v => { %>
+              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+            <% }); %>
+            <% if (voters.abstain.length === 0) { %><li style="color:var(--sub2);font-size:12px">기권 의원이 없습니다.</li><% } %>
+          </ul>
+        </div>
+        <div class="vote-list-container">
+          <h3>불참 의원 (<%= voteCounts.absent %>명)</h3>
+          <ul class="voter-list">
+            <% voters.absent.slice(0, 60).forEach(v => { %>
+              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+            <% }); %>
+            <% if (voters.absent.length > 60) { %><li style="color:var(--sub2);font-size:11px">... 외 <%= voters.absent.length - 60 %>명</li><% } %>
+          </ul>
+        </div>
+      </div>
+    <% } else { %>
+      <div style="padding:32px;text-align:center;color:var(--sub);background:var(--bg3);border:1px dashed var(--border);border-radius:8px">
+        본회의 표결 데이터가 아직 수집되지 않았습니다.
+      </div>
+    <% } %>
+  </div>
+
+  <% if (coProposers && coProposers.length > 0) { %>
+    <div class="bd-section">
+      <h2>// 발의자 (<%= coProposers.length %>명)</h2>
+      <div class="proposers-grid">
+        <% coProposers.forEach(cp => { %>
+          <a href="/politician/<%= cp.mona_cd %>" class="proposer-chip <%= cp.proposer_yn ? 'rep' : '' %>" style="text-decoration:none">
+            <div class="avatar">
+              <%- cp.photo_url ? `<img src="${cp.photo_url}" alt="${cp.name || ''}">` : '👤' %>
+            </div>
+            <div style="min-width:0;overflow:hidden">
+              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cp.name || cp.mona_cd %><% if (cp.proposer_yn) { %> <span style="color:var(--blue);font-size:10px">(대표)</span><% } %></div>
+              <div class="party-sm"><%= cp.party_name || '' %></div>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+  <% } %>
 </div>

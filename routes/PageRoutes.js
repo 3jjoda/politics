@@ -4,51 +4,48 @@ import express from 'express';
 import InitController from '../controllers/InitController.js';
 import PoliticianController from '../controllers/PoliticianController.js';
 import BillController from '../controllers/BillController.js';
-import CodeService from '../services/CodeService.js';
 
 export default (db) => {
     const router = express.Router();
     const initController = InitController(db);
     const politicianController = PoliticianController(db);
     const billController = BillController(db);
-    const codeService = CodeService(db);
 
-    // 메인 페이지 (세션 데이터 초기화)
-    router.get('/', async (req, res, next) => {
+    // 메인 페이지
+    router.get('/', initController.getHomePage);
+
+    // 소개 페이지
+    router.get('/about', async (req, res, next) => {
         try {
-            const codes = await codeService.getList();
-            res.render('index', {
-                pageTitle: '정치 바로미터',
-                pageStyles: null,
-                currentUrl: '/',
-                initialData: { CODES: codes }
+            res.render('about', {
+                pageTitle: '사이트 소개',
+                pageStyles: 'about',
+                currentUrl: '/about'
             });
         } catch (error) {
             next(error);
         }
     });
 
-    // 소개 페이지
-    router.get('/about', async (req, res, next) => {
+    // 용어 설명 페이지
+    router.get('/glossary', async (req, res, next) => {
         try {
-            res.render('about', { 
-                pageTitle: '사이트 소개',
-                pageStyles: 'about',
-                currentUrl: '/about'
-            }); 
+            res.render('glossary', {
+                pageTitle: '용어 설명 - 정치 바로미터',
+                pageStyles: null,
+                currentUrl: '/glossary'
+            });
         } catch (error) {
             next(error);
         }
     });
 
-    // 국회의원 목록 페이지
+    // 국회의원 목록 / 상세
     router.get('/politician', politicianController.getListPage);
-    // 국회의원 상세 페이지
     router.get('/politician/:id', politicianController.getDetailPage);
 
-    // 법안 목록 페이지
+    // 법안 목록 / 상세
     router.get('/bill', billController.getListPage);
-    // 법안 상세 페이지
     router.get('/bill/:id', billController.getDetailPage);
 
     return router;

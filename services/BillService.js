@@ -3,65 +3,19 @@ import logger from '../utils/logger.js';
 
 export default (db) => {
     const billDao = BillDao(db);
-    
+
     return {
-        /* 법안 목록 조회 (Promise 기반) */
-        getList: async () => {
-            try {
-                // DAO가 Promise를 반환하므로 await
-                const results = await billDao.getList();
-                return results;
-            } catch (error) {
-                logger.error('Error in billService.getList:', error);
-                throw error; // 에러를 다시 던져서 상위(컨트롤러)에서 catch하도록 함
-            }
-        },
-
-        /* 법안 목록 조회 - 정치인인 */
-        getListOne: async (id) => {
-            try {
-                // DAO가 Promise를 반환하므로 await
-                const results = await billDao.getListOne(id);
-                return results;
-            } catch (error) {
-                logger.error('Error in billService.getListOne:', error);
-                throw error; // 에러를 다시 던져서 상위(컨트롤러)에서 catch하도록 함
-            }
-        },
-
-        /* 법안 목록 조회 - 페이지 (Promise 기반) */
-        getListPage: async () => {
-            try {
-                // DAO가 Promise를 반환하므로 await
-                const results = await billDao.getList();
-                return results;
-            } catch (error) {
-                logger.error('Error in billService.getListPage:', error);
-                throw error;
-            }
-        },
-
-        /* 법안 상세 조회 (Promise 기반) */
-        getDetail: async (id) => {
-            try {
-                // DAO가 Promise를 반환하므로 await
-                const results = await billDao.getDetail(id);
-                return results;
-            } catch (error) {
-                logger.error(`Error in billService.getDetail for ID ${id}:`, error);
-                throw error;
-            }
-        },
-        
-        /* 법안 상세 조회 - 페이지 (async/await 기반) */
-        getDetailPage: async (id) => {
-            try {
-                const results = await billDao.getDetail(id);
-                return results; // 결과 배열 (단일 레코드가 담긴)
-            } catch (error) {
-                logger.error(`Error in billService.getDetailPage for ID ${id}:`, error);
-                throw error;
-            }
-        }
+        getList: async (params) => billDao.getList(params),
+        getListOne: async (monaCd) => billDao.getListOne(monaCd),
+        getDetail: async (billId) => billDao.getDetail(billId),
+        getHomeKpi: async () => billDao.getHomeKpi(),
+        getTrending: async () => billDao.getTrending(),
+        getRecentVotes: async () => billDao.getRecentVotes(),
+        getMonthlyTrend: async () => billDao.getMonthlyTrend(),
+        getStatusCounts: async () => billDao.getStatusCounts(),
+        getTopicCounts: async () => billDao.getTopicCounts(),
+        getPartyCounts: async () => billDao.getPartyCounts(),
+        getBillDetailVotes: async (billId) => billDao.getBillDetailVotes(billId),
+        getBillCoProposers: async (billId) => billDao.getBillCoProposers(billId)
     };
 };

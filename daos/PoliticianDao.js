@@ -15,19 +15,88 @@ fs.readdirSync(queriesPath).forEach(file => {
 });
 
 export default (db) => {
-    // promise db로 생성됨
-    // const promiseDb = db;
-
     return {
-        /* 정치인 조회 */
+        /* 정치인 기본 목록 */
         getList: async () => {
             const { rows } = await db.query(queries.getList);
             return rows;
         },
 
-        /* 정치인 상세 조회 */
-        getDetail: async (id) => {
-            const { rows } = await db.query(queries.getDetail, [id]);
+        /* 정치인 목록 + 발의 건수 집계 */
+        getListWithStats: async () => {
+            const { rows } = await db.query(queries.getListWithStats);
+            return rows;
+        },
+
+        /* 정치인 상세 */
+        getDetail: async (monaCd) => {
+            const { rows } = await db.query(queries.getDetail, [monaCd]);
+            return rows;
+        },
+
+        /* 홈 - 활발한 의원 TOP 5 */
+        getTopProposers: async () => {
+            const { rows } = await db.query(queries.getTopProposers);
+            return rows;
+        },
+
+        /* 정당별 카운트 */
+        getPartyCounts: async () => {
+            const { rows } = await db.query(queries.getPartyCounts);
+            return rows;
+        },
+
+        /* 위원회별 카운트 */
+        getCommitteeCounts: async () => {
+            const { rows } = await db.query(queries.getCommitteeCounts);
+            return rows;
+        },
+
+        /* 선출 방식별 카운트 */
+        getElectTypeCounts: async () => {
+            const { rows } = await db.query(queries.getElectTypeCounts);
+            return rows;
+        },
+
+        /* 의원별 법안 (대표/공동) */
+        getBillsByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getBillsByMonaCd, [monaCd]);
+            return rows;
+        },
+
+        /* 의원별 표결 내역 */
+        getVotesByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getVotesByMonaCd, [monaCd]);
+            return rows;
+        },
+
+        /* 의원별 관심분야 TOP5 */
+        getTopicsByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getTopicsByMonaCd, [monaCd]);
+            return rows;
+        },
+
+        /* 의원별 월별 발의 */
+        getMonthlyBillsByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getMonthlyBillsByMonaCd, [monaCd]);
+            return rows;
+        },
+
+        /* 의원별 주요 법안 타임라인 */
+        getTimelineByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getTimelineByMonaCd, [monaCd]);
+            return rows;
+        },
+
+        /* 의원별 표결 요약 */
+        getVoteSummaryByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getVoteSummaryByMonaCd, [monaCd]);
+            return rows[0];
+        },
+
+        /* 의원별 정당 공동발의 협력 */
+        getPartyCoopByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getPartyCoopByMonaCd, [monaCd]);
             return rows;
         }
     };

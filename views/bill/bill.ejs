@@ -1,121 +1,708 @@
 <%
-    /*
-     * 더미 데이터 (백엔드에서 EJS 템플릿으로 전달될 `bill` 배열과 `filterOptions`, `query` 객체)
-     * 실제 API 연동 시 백엔드에서 이 객체에 API 응답 데이터를 매핑하여 EJS에 전달
-     * 예시:
-     * router.get('/bill', async (req, res) => {
-     * const { search, status, committee } = req.query;
-     * const billApiData = await fetchbillList(search, status, committee); // API 호출 함수
-     * const bill = billApiData.map(item => ({
-     * id: item.BILL_ID,
-     * name: item.BILL_NAME,
-     * statusClass: item.PROC_RESULT_CD === '90100' ? 'pass' : (item.PROC_RESULT_CD === '90200' ? 'reject' : 'pending'),
-     * statusText: item.PROC_RESULT_TEXT,
-     * proposerMonCode: item.PROPOSER_MON_CODE,
-     * proposerName: item.PROPOSER,
-     * committeeName: item.COMMITTEE_NAME,
-     * processDate: item.PROC_DT || item.PROPOSE_DT
-     * }));
-     * const filterOptions = {
-     * statuses: await fetchbilltatuses(), // API에서 가져올 처리 결과 목록
-     * committees: await fetchCommittees() // API에서 가져올 위원회 목록
-     * };
-     * res.render('bill_list', { bill, filterOptions, query: req.query });
-     * });
-     
-    const bill = [
-        { id: '12345', name: '미래산업 육성 특별법', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '정무위원회', processDate: '2025-09-18' },
-        { id: '12346', name: '소상공인 지원에 관한 법률 개정안', statusClass: 'pass', statusText: '가결', proposerMonCode: '9770123', proposerName: '김민석', committeeName: '산업통상자원중소벤처기업위원회', processDate: '2025-08-01' },
-        { id: '12347', name: '국가재정법 일부개정법률안', statusClass: 'reject', statusText: '부결', proposerMonCode: '9770456', proposerName: '이준석', committeeName: '기획재정위원회', processDate: '2025-07-20' },
-        { id: '12348', name: '공공기관 채용 비리 방지법', statusClass: 'pending', statusText: '심사 중', proposerMonCode: '9770789', proposerName: '조국', committeeName: '법제사법위원회', processDate: '2025-06-05' },
-        { id: '12349', name: '탄소중립 산업 육성 특별조치법', statusClass: 'pending', statusText: '심사 중', proposerMonCode: '9770330', proposerName: '강민국', committeeName: '환경노동위원회', processDate: '2025-05-10' }
-    ];
-    */
-    const filterOptions = {
-        statuses: [
-            { value: 'pass', text: '가결' },
-            { value: 'reject', text: '부결' },
-            { value: 'pending', text: '심사 중' }
-        ],
-        committees: [
-            { value: '정무위원회', text: '정무위원회' },
-            { value: '산업통상자원중소벤처기업위원회', text: '산업통상자원중소벤처기업위원회' },
-            { value: '기획재정위원회', text: '기획재정위원회' },
-            { value: '법제사법위원회', text: '법제사법위원회' },
-            { value: '환경노동위원회', text: '환경노동위원회' }
-        ]
-    };
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
 
-    const query = {
-        search: '', // 실제 request.query.search 값
-        status: '', // 실제 request.query.status 값
-        committee: '' // 실제 request.query.committee 값
-    };
+  const resultClass = (r) => {
+    if (!r) return 'pb-badge-pending';
+    if (r.indexOf('가결') > -1) return 'pb-badge-passed';
+    if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
+    if (r === '철회') return 'pb-badge-withdrawn';
+    if (r.indexOf('대안') > -1) return 'pb-badge-alt';
+    return 'pb-badge-pending';
+  };
+  const statusCardClass = (r) => {
+    if (!r) return 'status-pending';
+    if (r.indexOf('가결') > -1) return 'status-passed';
+    if (r === '부결' || r === '폐기') return 'status-rejected';
+    if (r === '철회') return 'status-withdrawn';
+    if (r.indexOf('대안') > -1) return 'status-alt';
+    return 'status-pending';
+  };
+
+  const sc = statusCounts || {};
+  // 상태 스테퍼 단계 — 공식 DB에 "위원회 진행 중" 단계 플래그는 없어 계류/처리완료 2단계로 집계
+  const totalBills    = Number(sc.total        || 0);
+  const pendingCount  = Number(sc.pending      || 0);
+  const passedOrig    = Number(sc.passed_orig  || 0);
+  const passedMod     = Number(sc.passed_mod   || 0);
+  const altDropped    = Number(sc.alt_dropped  || 0);
+  const withdrawn     = Number(sc.withdrawn    || 0);
+  const dropped       = Number(sc.dropped      || 0);
+  const rejected      = Number(sc.rejected     || 0);
+  const plenaryVoted  = passedOrig + passedMod + rejected;  // 본회의 표결 완료
+  const committeeOnly = altDropped + withdrawn + dropped;    // 위원회 단계 처리
+  const processedAll  = totalBills - pendingCount;
+
+  const tabs = [
+    { key: '',           label: '전체',          count: sc.total },
+    { key: 'pending',    label: '계류',          count: sc.pending },
+    { key: '원안가결',    label: '원안가결',      count: sc.passed_orig },
+    { key: '수정가결',    label: '수정가결',      count: sc.passed_mod },
+    { key: '대안반영폐기', label: '대안반영폐기', count: sc.alt_dropped },
+    { key: '철회',        label: '철회',          count: sc.withdrawn },
+    { key: '폐기',        label: '폐기',          count: sc.dropped },
+    { key: '부결',        label: '부결',          count: sc.rejected }
+  ];
+
+  // 현재 선택된 status: 'pending' 특수 처리 (DB엔 NULL 로 저장됨 → 컨트롤러에서 null 로 매핑 필요)
+  const currentStatus = query.status || '';
+
+  const qsBuild = (override = {}) => {
+    const base = { search: query.search, status: query.status, topic: query.topic, page: pagination.page };
+    const merged = { ...base, ...override };
+    return Object.entries(merged)
+      .filter(([, v]) => v !== '' && v !== null && v !== undefined)
+      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+      .join('&');
+  };
 %>
 
-<div class="page-container">
-    <section class="controls">
-        <div class="search-container">
-            <i class="fas fa-search"></i>
-            <% /* API: 의안정보 - 검색 파라미터 (BILL_NAME, PROPOSER 등) */ %>
-            <input type="text" id="bill-search" placeholder="법안명, 의원 이름으로 검색..." value="<%= query.search %>">
-        </div>
-        <div class="filter-group">
-            <% /* API: 의안정보 - 필터 파라미터 (PROC_RESULT_CD, COMMITTEE_NAME 등) */ %>
-            <select id="status-filter" class="filter-select">
-                <option value="">전체 상태</option>
-                <% /* filterOptions.statuses는 백엔드에서 API 데이터를 파싱하여 생성 */ %>
-                <% if (filterOptions.statuses && filterOptions.statuses.length > 0) { %>
-                    <% filterOptions.statuses.forEach(status => { %>
-                        <option value="<%= status.value %>" <%= query.status === status.value ? 'selected' : '' %>>
-                            <%= status.text %>
-                        </option>
-                    <% }); %>
-                <% } %>
-            </select>
-            <select id="committee-filter" class="filter-select">
-                <option value="">전체 위원회</option>
-                <% /* filterOptions.committees는 백엔드에서 API 데이터를 파싱하여 생성 */ %>
-                <% if (filterOptions.committees && filterOptions.committees.length > 0) { %>
-                    <% filterOptions.committees.forEach(committee => { %>
-                        <option value="<%= committee.value %>" <%= query.committee === committee.value ? 'selected' : '' %>>
-                            <%= committee.text %>
-                        </option>
-                    <% }); %>
-                <% } %>
-            </select>
-            <% /* 정렬 버튼 추가 가능 (예: 최신순, 가결일자순, 공동발의자 수순) */ %>
-        </div>
-    </section>
+<style>
+  .page-header {
+    padding: 40px 24px 32px;
+    border-top: 56px solid transparent;
+    margin-top: -56px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(226,201,126,0.04) 0%, transparent 100%);
+  }
+  .page-header-inner { max-width: 1280px; margin: 0 auto; }
+  .breadcrumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    margin-bottom: 12px;
+  }
+  .breadcrumb a { color: var(--blue); }
+  .page-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 0.02em;
+    margin-bottom: 4px;
+  }
+  .page-desc { font-size: 13px; color: var(--sub); }
 
-    <section class="bill-grid">
-        <% if (bill && bill.length > 0) { %>
-            <% /* API: 의안정보 - 법안 목록 (필터/검색 결과에 따라) */ %>
-            <% /* bill 배열을 순회하여 각 <article> 태그 동적 생성 */ %>
-            <% bill.forEach(bill => { %>
-                <article class="bill-card">
-                    <a href="/bill/<%= bill.id %>"> <% /* href는 실제 BILL_ID를 포함해야 함 */ %>
-                        <div class="card-header">
-                            <span class="bill-status status-<%= bill.statusClass %>"><%= bill.statusText %></span> <% /* API: PROC_RESULT_CD */ %>
-                        </div>
-                        <div class="card-body">
-                            <h3 class="bill-title"><%= bill.name %></h3> <% /* API: BILL_NAME */ %>
-                            <p class="proposer"><strong>대표발의:</strong> <a href="/politician/<%= bill.proposerMonCode %>"><%= bill.proposerName %> 의원</a></p> <% /* API: PROPOSER_MON_CODE, PROPOSER */ %>
-                            <p class="committee"><strong>소관위:</strong> <%= bill.committeeName %></p> <% /* API: COMMITTEE_NAME */ %>
-                        </div>
-                        <div class="card-footer">
-                            <span class="date"><%= bill.processDate %> 처리</span> <% /* API: PROC_DT (처리일자) 또는 PROPOSE_DT (발의일자) */ %>
-                        </div>
-                    </a>
-                </article>
-            <% }); %>
-        <% } else { %>
-            <p class="no-results-message">검색 결과가 없습니다.</p>
-        <% } %>
-    </section>
-    
-    <% /* 페이지네이션 또는 무한 스크롤 구현 위치 (API 결과에 따라) */ %>
-    <% /* 예시: <div class="pagination"><a href="#">이전</a><span>1 / 10</span><a href="#">다음</a></div> */ %>
+  /* Status stepper */
+  .stepper-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 28px 24px 16px;
+  }
+  .stepper-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stepper-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    text-align: center;
+  }
+  .stepper-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--bg2);
+    border: 2px solid var(--dot);
+    color: var(--dot);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .stepper-label {
+    font-size: 11px;
+    color: var(--sub);
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+  .stepper-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    color: var(--text);
+    line-height: 1;
+  }
+  .stepper-arrow {
+    flex: 1;
+    min-width: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding-bottom: 32px;
+  }
+  .stepper-bar {
+    width: 100%;
+    height: 3px;
+    border-radius: 2px;
+    opacity: 0.4;
+  }
+  .stepper-arrow-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--sub2);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    .stepper-label { font-size: 10px; }
+    .stepper-arrow-label { display: none; }
+    .stepper-val { font-size: 14px; }
+  }
+
+  /* Filter */
+  .filter-bar {
+    position: sticky;
+    top: 56px;
+    z-index: 50;
+  }
+  .filter-bar-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 400px; }
+  .search-icon {
+    position: absolute;
+    left: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--sub2);
+  }
+  .search-input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--blue); }
+  .search-input::placeholder { color: var(--sub2); }
+  .search-btn {
+    padding: 8px 16px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .filter-count {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+  }
+
+  /* Status Tabs */
+  .status-tabs-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .status-tabs-inner::-webkit-scrollbar { display: none; }
+  .status-tab {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    border-bottom: 2px solid transparent;
+    color: var(--sub);
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    background: transparent;
+  }
+  .status-tab:hover { color: var(--text); }
+  .status-tab.active { color: var(--text); border-bottom-color: var(--blue); }
+  .tab-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--bg3);
+    color: var(--sub2);
+  }
+  .status-tab.active .tab-badge { background: rgba(226,201,126,0.15); color: var(--blue); }
+
+  /* Layout */
+  .layout {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 130px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .side-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .side-title {
+    padding: 12px 16px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--sub2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .side-list { padding: 6px 0; max-height: 360px; overflow-y: auto; }
+  .side-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    font-size: 12px;
+    gap: 8px;
+    color: inherit;
+    transition: background 0.15s;
+    text-decoration: none;
+  }
+  .side-item:hover { background: var(--bg3); }
+  .side-item.active { background: rgba(226,201,126,0.08); color: var(--blue); }
+  .side-item-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .side-item-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .side-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sub2); flex-shrink: 0; }
+  .side-item.active .side-dot { background: var(--blue); }
+  .side-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--sub2);
+    flex-shrink: 0;
+  }
+  .side-item.active .side-count { color: var(--blue); }
+
+  /* Bill cards */
+  .bill-cards { display: flex; flex-direction: column; gap: 8px; }
+  .bill-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 16px;
+    align-items: start;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .bill-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--card-accent, var(--sub2));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .bill-card:hover {
+    border-color: var(--border2);
+    transform: translateX(2px);
+  }
+  .bill-card:hover::before { opacity: 1; }
+  .bill-card.status-passed    { --card-accent: var(--green); }
+  .bill-card.status-pending   { --card-accent: var(--amber); }
+  .bill-card.status-alt       { --card-accent: var(--sub2); }
+  .bill-card.status-withdrawn { --card-accent: var(--red); }
+  .bill-card.status-rejected  { --card-accent: var(--red); }
+
+  .bill-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .bill-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .bill-card-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--sub2);
+    flex-wrap: wrap;
+  }
+  .bill-card-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    min-width: 100px;
+  }
+  .vote-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: flex-end;
+  }
+  .vote-mini-bar {
+    width: 80px;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+    display: flex;
+  }
+  .vb-for     { background: var(--green); }
+  .vb-against { background: var(--red); }
+  .vb-abs     { background: var(--sub2); }
+  .vote-mini-nums {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--sub2);
+  }
+  .vote-mini-nums .for { color: var(--green); }
+  .vote-mini-nums .against { color: var(--red); }
+
+  .bill-no {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--sub2);
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .pg-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--sub);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .pg-btn:hover { border-color: var(--border2); color: var(--text); }
+  .pg-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .pg-ellipsis { color: var(--sub2); padding: 0 6px; font-size: 12px; }
+
+  .empty-state {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--sub);
+    background: var(--bg2);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .bill-card { grid-template-columns: 1fr; }
+    .bill-card-right { flex-direction: row; align-items: center; }
+  }
+</style>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">홈</a> / 법안</div>
+    <h1 class="page-title">법안</h1>
+    <p class="page-desc">22대 국회 <%= nf(sc.total) %>개 법안의 발의부터 처리까지 모두 추적합니다</p>
+  </div>
 </div>
 
-<script src="/scripts/bill/bill.js"></script>
+<!-- 상태 스테퍼 -->
+<div class="stepper-wrap">
+  <div class="stepper-inner">
+    <div class="stepper-node" style="--dot: var(--sub);">
+      <div class="stepper-dot">1</div>
+      <div class="stepper-label">전체 발의</div>
+      <div class="stepper-val"><%= nf(totalBills) %></div>
+    </div>
+    <div class="stepper-arrow" style="flex: <%= pendingCount %>">
+      <div class="stepper-bar" style="background: var(--amber)"></div>
+      <div class="stepper-arrow-label"><%= totalBills > 0 ? (pendingCount / totalBills * 100).toFixed(0) : 0 %>% 계류</div>
+    </div>
+    <div class="stepper-node" style="--dot: var(--amber);">
+      <div class="stepper-dot">2</div>
+      <div class="stepper-label">계류 중</div>
+      <div class="stepper-val"><%= nf(pendingCount) %></div>
+    </div>
+    <div class="stepper-arrow" style="flex: <%= committeeOnly %>">
+      <div class="stepper-bar" style="background: var(--sub2)"></div>
+      <div class="stepper-arrow-label">위원회 단계 <%= nf(committeeOnly) %></div>
+    </div>
+    <div class="stepper-node" style="--dot: var(--blue);">
+      <div class="stepper-dot">3</div>
+      <div class="stepper-label">본회의 표결</div>
+      <div class="stepper-val"><%= nf(plenaryVoted) %></div>
+    </div>
+    <div class="stepper-arrow" style="flex: <%= (passedOrig + passedMod) %>">
+      <div class="stepper-bar" style="background: var(--green)"></div>
+      <div class="stepper-arrow-label">가결 <%= nf(passedOrig + passedMod) %></div>
+    </div>
+    <div class="stepper-node" style="--dot: var(--green);">
+      <div class="stepper-dot">4</div>
+      <div class="stepper-label">처리 완료</div>
+      <div class="stepper-val"><%= nf(processedAll) %></div>
+    </div>
+  </div>
+</div>
+
+<form class="filter-bar" method="get" action="/bill" id="bill-filter-form">
+  <div class="filter-bar-inner">
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" class="search-input" name="search" value="<%= query.search %>" placeholder="법안명, 발의자 이름, 법안번호 검색...">
+    </div>
+    <% if (query.status) { %><input type="hidden" name="status" value="<%= query.status %>"><% } %>
+    <% if (query.topic)  { %><input type="hidden" name="topic"  value="<%= query.topic %>"><% } %>
+    <button type="submit" class="search-btn">검색</button>
+    <span class="filter-count">총 <%= nf(pagination.totalCount) %>건</span>
+  </div>
+</form>
+
+<div class="status-tabs">
+  <div class="status-tabs-inner">
+    <% tabs.forEach(t => {
+         let href = '/bill';
+         const parts = [];
+         if (t.key) parts.push('status=' + encodeURIComponent(t.key));
+         if (query.search) parts.push('search=' + encodeURIComponent(query.search));
+         if (query.topic)  parts.push('topic=' + encodeURIComponent(query.topic));
+         if (parts.length) href += '?' + parts.join('&');
+         const active = (currentStatus === t.key) || (currentStatus === '' && t.key === '');
+    %>
+      <a href="<%= href %>" class="status-tab <%= active ? 'active' : '' %>">
+        <%= t.label %> <span class="tab-badge"><%= nf(t.count) %></span>
+      </a>
+    <% }); %>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="side-card">
+      <div class="side-title">// 카테고리</div>
+      <div class="side-list">
+        <%
+          const allTopicHref = (() => {
+            const parts = [];
+            if (query.search) parts.push('search=' + encodeURIComponent(query.search));
+            if (query.status) parts.push('status=' + encodeURIComponent(query.status));
+            return '/bill' + (parts.length ? '?' + parts.join('&') : '');
+          })();
+        %>
+        <a href="<%= allTopicHref %>" class="side-item <%= !query.topic ? 'active' : '' %>">
+          <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">전체</span></span>
+          <span class="side-count"><%= nf(sc.total) %></span>
+        </a>
+        <% topicCounts.forEach(tc => {
+             const parts = [];
+             if (tc.bill_topic_cd != null) parts.push('topic=' + tc.bill_topic_cd);
+             if (query.search) parts.push('search=' + encodeURIComponent(query.search));
+             if (query.status) parts.push('status=' + encodeURIComponent(query.status));
+             const href = '/bill' + (parts.length ? '?' + parts.join('&') : '');
+             const active = String(query.topic) === String(tc.bill_topic_cd);
+        %>
+          <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>">
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= tc.topic_name || '미지정' %></span></span>
+            <span class="side-count"><%= nf(tc.cnt) %></span>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-title">// 정당별 (대표발의)</div>
+      <div class="side-list">
+        <% partyCounts.forEach(pc => { %>
+          <div class="side-item">
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= pc.party_name %></span></span>
+            <span class="side-count"><%= nf(pc.cnt) %></span>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+  </aside>
+
+  <div>
+    <% if (bills && bills.length > 0) { %>
+      <div class="bill-cards">
+        <% bills.forEach(b => {
+             const scClass = statusCardClass(b.proc_result_name);
+             const vTotal = Number(b.vote_for || 0) + Number(b.vote_against || 0) + Number(b.vote_abstain || 0);
+        %>
+          <%
+            const isPending = !b.proc_result_name;
+            const d = Number(b.days_elapsed || 0);
+            const elapsedColor = d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--amber)' : 'var(--sub2)';
+            const termAnchor = !b.proc_result_name ? 'pending' :
+                b.proc_result_name === '원안가결' ? 'original' :
+                b.proc_result_name === '수정가결' ? 'modified' :
+                b.proc_result_name === '대안반영폐기' ? 'alt-dropped' :
+                b.proc_result_name === '수정안반영폐기' ? 'mod-dropped' :
+                b.proc_result_name === '철회' ? 'withdrawn' :
+                b.proc_result_name === '부결' ? 'rejected' :
+                b.proc_result_name === '폐기' ? 'dropped' : 'pending';
+          %>
+          <a href="/bill/<%= b.bill_id %>" class="bill-card <%= scClass %>">
+            <div>
+              <div class="bill-card-meta">
+                <% if (b.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= b.bill_topic_nm %></span><% } %>
+                <span class="pb-badge <%= resultClass(b.proc_result_name) %>">
+                  <%= b.proc_result_name || '계류' %>
+                  <a href="/glossary#<%= termAnchor %>" class="pb-help" onclick="event.stopPropagation()" title="용어 설명">?</a>
+                </span>
+                <% if (isPending && d > 0) { %>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color: <%= elapsedColor %>">
+                    발의 후 <%= d %>일 경과
+                  </span>
+                <% } %>
+              </div>
+              <div class="bill-card-name"><%= b.bill_name %></div>
+              <div class="bill-card-info">
+                <% if (b.proposer_name) { %><span>대표발의 <%= b.proposer_name %></span><span>·</span><% } %>
+                <% if (b.co_proposer_count) { %><span>공동발의 <%= b.co_proposer_count %>인</span><span>·</span><% } %>
+                <span><%= b.propose_dt || '—' %></span>
+                <% if (b.committee) { %><span>·</span><span><%= b.committee %></span><% } %>
+              </div>
+            </div>
+            <div class="bill-card-right">
+              <% if (vTotal > 0) {
+                   const fp = (b.vote_for / vTotal * 100);
+                   const ap = (b.vote_against / vTotal * 100);
+                   const bp = (b.vote_abstain / vTotal * 100);
+              %>
+                <div class="vote-mini">
+                  <div class="vote-mini-bar">
+                    <div class="vb-for"     style="width:<%= fp %>%"></div>
+                    <div class="vb-against" style="width:<%= ap %>%"></div>
+                    <div class="vb-abs"     style="width:<%= bp %>%"></div>
+                  </div>
+                  <span class="vote-mini-nums">
+                    <span class="for"><%= b.vote_for %></span> /
+                    <span class="against"><%= b.vote_against %></span> / <%= b.vote_abstain %>
+                  </span>
+                </div>
+              <% } %>
+              <span class="bill-no">#<%= b.bill_no || b.bill_id %></span>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+
+      <%
+        const { page, totalPages } = pagination;
+        const buildHref = (p) => {
+          const parts = [];
+          if (query.search) parts.push('search=' + encodeURIComponent(query.search));
+          if (query.status) parts.push('status=' + encodeURIComponent(query.status));
+          if (query.topic)  parts.push('topic='  + encodeURIComponent(query.topic));
+          parts.push('page=' + p);
+          return '/bill?' + parts.join('&');
+        };
+        const pagesAround = () => {
+          const maxBtns = 7;
+          let start = Math.max(1, page - 3);
+          let end = Math.min(totalPages, start + maxBtns - 1);
+          start = Math.max(1, end - maxBtns + 1);
+          const arr = [];
+          for (let p = start; p <= end; p++) arr.push(p);
+          return arr;
+        };
+        const pages = pagesAround();
+      %>
+      <% if (totalPages > 1) { %>
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="<%= buildHref(page - 1) %>" class="pg-btn">←</a>
+          <% } else { %>
+            <span class="pg-btn" style="opacity:0.3">←</span>
+          <% } %>
+
+          <% if (pages[0] > 1) { %>
+            <a href="<%= buildHref(1) %>" class="pg-btn">1</a>
+            <% if (pages[0] > 2) { %><span class="pg-ellipsis">...</span><% } %>
+          <% } %>
+
+          <% pages.forEach(p => { %>
+            <% if (p === page) { %>
+              <span class="pg-btn active"><%= p %></span>
+            <% } else { %>
+              <a href="<%= buildHref(p) %>" class="pg-btn"><%= p %></a>
+            <% } %>
+          <% }); %>
+
+          <% if (pages[pages.length - 1] < totalPages) { %>
+            <% if (pages[pages.length - 1] < totalPages - 1) { %><span class="pg-ellipsis">...</span><% } %>
+            <a href="<%= buildHref(totalPages) %>" class="pg-btn"><%= totalPages %></a>
+          <% } %>
+
+          <% if (page < totalPages) { %>
+            <a href="<%= buildHref(page + 1) %>" class="pg-btn">→</a>
+          <% } else { %>
+            <span class="pg-btn" style="opacity:0.3">→</span>
+          <% } %>
+        </div>
+      <% } %>
+    <% } else { %>
+      <div class="empty-state">
+        검색 조건에 해당하는 법안이 없습니다.<br>
+        <a href="/bill" style="color:var(--blue);margin-top:12px;display:inline-block">필터 초기화 →</a>
+      </div>
+    <% } %>
+  </div>
+</div>

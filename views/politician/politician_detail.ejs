@@ -1,794 +1,1507 @@
-<%#
-    // ==========================================================
-    // 가비지(더미) 데이터 정의
-    // 실제 데이터는 politician 객체를 통해 전달됩니다.
-    // ==========================================================
-    const politician = {
-        MONA_CD: 'T2T8225E',
-        HG_NM: '가비지 정치인', // 실제: 윤상현
-        DJY_NM: '국민의힘',
-        REELE_GBN_NM: '3선', // 3선 이상은 '다선'으로 표기할 수도 있음
-        AGE: 62,
-        BIRTH_DATE: '1962-09-01',
-        ELECT_GBN_NM: '지역구 (인천 동구·미추홀구을)',
-        HP_URL: 'https://blog.naver.com/sh_yoon',
-        IMG_URL: 'https://via.placeholder.com/200x250?text=Politician+Image', // 실제 정치인 이미지 URL
-        
-        AVG_RATING: 3.8, // 사용자 평균 평점 (가비지)
-        RATING_COUNT: 1250, // 평점 참여자 수 (가비지)
+<%
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const pct = (num, den) => den > 0 ? ((num / den) * 100) : 0;
 
-        bills: [ // 법안 목록 (가비지)
-            {
-                bill_id: 'PRC_A1234',
-                bill_name: '국민 건강 증진을 위한 법률 개정안',
-                proposer: '가비지 정치인',
-                propose_date: '2023-11-20',
-                proc_result_cd: '가결',
-                proc_date: '2024-02-15',
-                detail_link: 'https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_A1234',
-                BILL_SUMMARY: '모든 국민에게 연 1회 무료 건강 검진을 제공하고, 건강 증진 활동 참여 시 인센티브를 지급하는 내용을 담고 있습니다.',
-                IMPACT_ANALYSIS: '국민 건강 증진에 기여하며, 의료비 부담을 장기적으로 줄일 수 있습니다. 다만 초기 재정 투입이 필요할 수 있습니다.',
-                CATEGORY: '보건복지',
-            },
-            {
-                bill_id: 'PRC_B5678',
-                bill_name: '중소기업 육성 및 지원에 관한 특별법',
-                proposer: '가비지 정치인',
-                propose_date: '2024-01-05',
-                proc_result_cd: '계류',
-                proc_date: null,
-                detail_link: 'https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_B5678',
-                BILL_SUMMARY: '중소기업의 기술 개발 자금 지원을 확대하고, 판로 개척을 위한 국제 박람회 참여를 지원하는 내용의 법안입니다.',
-                IMPACT_ANALYSIS: '중소기업의 경쟁력 강화에 기여하고 일자리 창출 효과를 기대할 수 있습니다. 대기업과의 불균형 해소에도 도움이 될 것입니다.',
-                CATEGORY: '산업경제',
-            },
-            {
-                bill_id: 'PRC_C9012',
-                bill_name: '친환경 에너지 전환 가속화에 관한 법률안',
-                proposer: '가비지 정치인',
-                propose_date: '2023-09-10',
-                proc_result_cd: '폐기',
-                proc_date: '2024-01-20',
-                detail_link: 'https://likms.assembly.go.kr/bill/billDetail.do?billId=PRC_C9012',
-                BILL_SUMMARY: '재생에너지 발전 비중 확대를 위한 인프라 구축을 지원하고, 탄소 배출 저감 기술 개발을 장려하는 법안입니다.',
-                IMPACT_ANALYSIS: '기후 변화 대응에 긍정적이며, 미래 에너지 산업 육성에 기여합니다. 그러나 기존 화력 발전 관련 산업의 전환 과정에서 진통이 예상됩니다.',
-                CATEGORY: '환경에너지',
-            }
-        ],
-        
-        // 가비지 댓글 데이터
-        replys: [
-            { user_nickname: '현명한시민1', content: '항상 열심히 일해주셔서 감사합니다. 응원합니다!', created_at: '2024-05-20 14:30', like_count: 5, reply_id: 1 },
-            { user_nickname: '바른말투표자', content: '최근 법안 발의 방향이 저희 지역에는 좀 안 맞는 것 같아요. 조금 더 주민들의 의견을 들어주시면 좋겠습니다.', created_at: '2024-05-19 10:00', like_count: 3, reply_id: 2 },
-            { user_nickname: '정책관심러', content: '법안 요약이 정말 이해하기 쉬워서 좋네요! 감사합니다.', created_at: '2024-05-18 18:45', like_count: 8, reply_id: 3 }
-        ],
-        // 가비지 공동 발의 의원 (간단하게 이름만)
-        co_proposers: [
-            { MONA_CD: 'T2T8225F', HG_NM: '공동발의A' },
-            { MONA_CD: 'T2T8225G', HG_NM: '공동발의B' },
-            { MONA_CD: 'T2T8225H', HG_NM: '공동발의C' },
-        ],
-        // 가비지 투표 현황 (예시)
-        vote_summary: {
-            찬성: 70,
-            반대: 15,
-            기권: 5,
-            불참: 10
-        }
-    };
+  // 정당 색상
+  const partyColorOf = (name) => {
+    if (!name) return '#9CA3AF';
+    if (name.indexOf('더불어민주') > -1) return '#60A5FA';
+    if (name.indexOf('국민의힘') > -1) return '#FC8181';
+    if (name.indexOf('조국혁신') > -1) return '#A78BFA';
+    if (name.indexOf('개혁') > -1) return '#FCD34D';
+    if (name.indexOf('진보') > -1) return '#F87171';
+    return '#9CA3AF';
+  };
+  const partyColor = partyColorOf(politician.party_name);
 
-    // 현재 URL 설정 (실제 컨트롤러에서 전달)
-    const currentUrl = `/politician/${politician.MONA_CD}`;
-    const pageTitle = `정치인 정보 - ${politician.HG_NM}`;
-    const pageStyles = 'politician/politician_detail';
+  // 결과 배지 매핑
+  const resultClass = (r) => {
+    if (!r) return 'pb-badge-pending';
+    if (r.indexOf('가결') > -1) return 'pb-badge-passed';
+    if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
+    if (r === '철회') return 'pb-badge-withdrawn';
+    if (r.indexOf('대안') > -1) return 'pb-badge-alt';
+    return 'pb-badge-pending';
+  };
 
-    // Helper function for star rating display
-    const renderStars = (rating) => {
-        const fullStars = Math.floor(rating);
-        const halfStar = rating % 1 >= 0.5 ? 1 : 0;
-        const emptyStars = 5 - fullStars - halfStar;
-        let starsHtml = '';
-        for (let i = 0; i < fullStars; i++) starsHtml += '<i class="fas fa-star full"></i>';
-        if (halfStar) starsHtml += '<i class="fas fa-star-half-alt half"></i>';
-        for (let i = 0; i < emptyStars; i++) starsHtml += '<i class="far fa-star empty"></i>';
-        return starsHtml;
-    };
+  // KPI 계산
+  const proposeCnt = Number(politician.propose_cnt || 0);
+  const coProposeCnt = Number(politician.co_propose_cnt || 0);
+  const voteCnt = Number(politician.vote_cnt || 0);
+  const passedCnt = Number(politician.passed_cnt || 0);
+
+  // 가결율 = 대표발의 법안 중 가결된 비율
+  const passRate = proposeCnt > 0 ? (passedCnt / proposeCnt * 100) : null;
+
+  // 표결 참여율 = (찬성+반대+기권) / 전체 본회의 표결 법안 수
+  const vs = voteSummary || { for_cnt: 0, against_cnt: 0, abstain_cnt: 0, absent_cnt: 0, total_cnt: 0 };
+  const vsTotal = Number(vs.total_cnt || 0);
+  const vsAttended = Number(vs.for_cnt || 0) + Number(vs.against_cnt || 0) + Number(vs.abstain_cnt || 0);
+  const voteParticipateRate = vsTotal > 0 ? (vsAttended / vsTotal * 100) : null;
+
+  // 관심분야 TOP5 - 5개 미만이어도 그대로 출력
+  const topics5 = (topics || []).slice(0, 5);
+  const maxTopicCnt = topics5.length > 0 ? Math.max(...topics5.map(t => Number(t.cnt))) : 0;
+
+  // 월별 발의 (12개)
+  const monthlyMax = monthly && monthly.length > 0 ? Math.max(1, ...monthly.map(m => Number(m.cnt))) : 1;
+
+  // 탭 카운트
+  const billsTabCount = (bills || []).length;
+  const votesTabCount = (votes || []).length;
+
+  // 레이더 데이터 (0~100) — 발의/출석/표결/공동/위원회/소통
+  // 출석/위원회/소통 데이터 없음 → 0
+  const maxPropose = 100; // 기준: 100건 = 100%
+  const maxCoPropose = 500;
+  const radarPropose = Math.min(100, (proposeCnt / maxPropose) * 100);
+  const radarCoPropose = Math.min(100, (coProposeCnt / maxCoPropose) * 100);
+  const radarVote = voteParticipateRate == null ? 0 : voteParticipateRate;
+  const radarAttend = 0;  // 데이터 없음
+  const radarCmit = 0;    // 데이터 없음
+  const radarComm = 0;    // 데이터 없음
+
+  // 레이더 좌표 (육각형 반지름 90)
+  const radarPt = (val, idx) => {
+    const r = (val / 100) * 90;
+    // idx 0: 위(발의), 1: 우상(출석), 2: 우하(표결), 3: 아래(공동), 4: 좌하(위원회), 5: 좌상(소통)
+    const angles = [-90, -30, 30, 90, 150, 210];
+    const rad = angles[idx] * Math.PI / 180;
+    return `${(r * Math.cos(rad)).toFixed(1)},${(r * Math.sin(rad)).toFixed(1)}`;
+  };
+  const radarPoints = [radarPropose, radarAttend, radarVote, radarCoPropose, radarCmit, radarComm]
+    .map((v, i) => radarPt(v, i))
+    .join(' ');
+
+  // 정당 공동발의 협력 top 3
+  const partyCoopTop = (partyCoop || []).slice(0, 4);
+  const partyCoopTotal = partyCoopTop.reduce((s, p) => s + Number(p.cnt || 0), 0);
 %>
 
-<%# 관심분야 가비지 데이터 (실제 데이터가 없을 때 사용) %>
-<% if (!politician.summary_분야 || politician.summary_분야.length === 0) { %>
-    <% politician.summary_분야 = [
-        { 분야: '보건/복지/의료', count: 12 },
-        { 분야: '교육/인재/학술', count: 8 },
-        { 분야: '조세/재정/금융', count: 6 },
-        { 분야: '국토/도시/주택', count: 5 },
-        { 분야: '노동/고용/자영업', count: 4 }
-    ]; %>
-<% } %>
+<style>
+  .profile-hero {
+    padding: 40px 24px;
+    border-top: 56px solid transparent;
+    margin-top: -56px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(226,201,126,0.04) 0%, transparent 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .profile-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, <%= partyColor %>22 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .profile-hero-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 48px;
+    align-items: center;
+    position: relative;
+  }
+  .breadcrumb {
+    grid-column: 1 / -1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    margin-bottom: 4px;
+  }
+  .breadcrumb a { color: var(--blue); }
 
-<main class="politician-detail-main">
-    <section class="politician-profile">
-        <div class="profile-info-section"> <div class="name-and-meta">
-                <h2><%= politician.name %></h2>
-                <p class="party-reele-group">
-                    <span class="badge party-<%= politician.party_name.replace(/\s/g, '').toLowerCase() %>"><%= politician.party_name %></span>
-                    <span class="reele-status <%= politician.reeleClass || '' %>"><%= politician.reele_gbn_nm %></span>
-                </p>
-            </div>
+  .profile-identity {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .profile-avatar {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    border: 3px solid <%= partyColor %>;
+    overflow: hidden;
+    box-shadow: 0 0 0 6px <%= partyColor %>22;
+  }
+  .profile-avatar img,
+  .profile-avatar svg { width: 100%; height: 100%; display: block; }
+
+  .profile-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .profile-name {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .profile-party-badge {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    background: <%= partyColor %>22;
+    color: <%= partyColor %>;
+    border: 1px solid <%= partyColor %>44;
+  }
+  .profile-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--sub);
+    flex-wrap: wrap;
+  }
+  .profile-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .profile-meta svg { opacity: 0.5; }
+
+  .profile-kpis-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .profile-kpi {
+    padding: 14px 18px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .profile-kpi-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .profile-kpi-val.em-dash {
+    color: var(--sub2);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 26px;
+  }
+  .kpi-blue { color: var(--blue); }
+  .kpi-green { color: var(--green); }
+  .kpi-amber { color: var(--amber); }
+  .kpi-purple { color: var(--purple); }
+  .profile-kpi-label {
+    font-size: 12px;
+    color: var(--sub);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .profile-kpi-sub {
+    font-size: 11px;
+    color: var(--sub2);
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* 히어로 레이더 */
+  .profile-radar-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .profile-radar-label {
+    font-size: 11px;
+    color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* Tabs */
+  .tab-bar {
+    position: sticky;
+    top: 56px;
+    z-index: 50;
+  }
+  .tab-bar-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar-inner::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 14px 20px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--sub);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--blue); }
+  .tab-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--bg3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--sub2);
+  }
+  .tab-btn.active .tab-count { background: rgba(226,201,126,0.15); color: var(--blue); }
+
+  .content-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 24px;
+    align-items: start;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Bill filter tabs */
+  .bill-filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .bill-filter-tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--sub);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .bill-filter-tab:hover, .bill-filter-tab.active {
+    background: rgba(226,201,126,0.1);
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+  .bill-filter-tab .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Bill table */
+  .bill-table { width: 100%; }
+  .bill-table-header,
+  .bill-table-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px 100px 80px;
+    gap: 12px;
+    padding: 12px 16px;
+    align-items: center;
+  }
+  .bill-table-header {
+    padding: 8px 16px;
+    background: var(--bg3);
+    border-radius: 8px 8px 0 0;
+    font-size: 10px;
+    color: var(--sub2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--border);
+    border-bottom: none;
+  }
+  .bill-table-row {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-top: none;
+    transition: background 0.15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .bill-table-row:hover { background: var(--bg3); }
+  .bill-table-row:last-child { border-radius: 0 0 8px 8px; }
+
+  .bill-row-name {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bill-row-name small {
+    display: block;
+    font-size: 11px;
+    color: var(--sub2);
+    font-weight: 400;
+    margin-top: 2px;
+  }
+
+  .vote-result-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+  .v-for     { background: rgba(16,185,129,0.1); color: var(--green); }
+  .v-against { background: rgba(239,68,68,0.1);  color: var(--red); }
+  .v-abstain { background: rgba(245,158,11,0.1); color: var(--amber); }
+  .v-absent  { background: rgba(107,114,128,0.1); color: var(--sub); }
+  .v-none    { color: var(--sub2); font-size: 11px; }
+
+  /* Sidebar */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+  .side-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .side-card-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sub);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .side-card-body { padding: 16px; }
+
+  .vote-summary { display: flex; align-items: center; gap: 20px; }
+  .vote-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .vote-legend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  .vote-legend-left { display: flex; align-items: center; gap: 8px; color: var(--sub); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .vote-legend-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .category-bars { display: flex; flex-direction: column; gap: 10px; }
+  .cat-bar-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .cat-bar-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--blue);
+  }
+  .cat-bar-track { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; background: var(--blue); border-radius: 2px; transition: width 0.8s ease-out; }
+
+  .info-list { display: flex; flex-direction: column; gap: 10px; }
+  .info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .info-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .info-key { color: var(--sub2); flex-shrink: 0; }
+  .info-val { color: var(--text); font-weight: 500; text-align: right; word-break: break-all; }
+
+  /* Pagination (client side) */
+  .pagination-inline {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 16px;
+  }
+  .pagination-inline .pg {
+    width: 32px; height: 32px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--sub);
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pagination-inline .pg.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .pagination-inline .pg:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ===== 개요 분석 ===== */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .overview-grid.two { grid-template-columns: 2fr 1fr; }
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--sub2);
+  }
+  .card-body { padding: 20px; }
+
+  /* Monthly chart */
+  .monthly-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 120px;
+    padding-bottom: 24px;
+    position: relative;
+  }
+  .monthly-chart::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 24px;
+    height: 1px;
+    background: var(--border);
+  }
+  .month-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+  .month-bar-wrap {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+  }
+  .month-bar {
+    width: 100%;
+    background: var(--blue);
+    border-radius: 3px 3px 0 0;
+    opacity: 0.7;
+    cursor: pointer;
+    min-height: 2px;
+    transition: opacity 0.2s;
+  }
+  .month-bar:hover { opacity: 1; }
+  .month-bar.highlight { background: var(--cyan); opacity: 1; }
+  .month-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--sub2);
+    text-align: center;
+  }
+  .month-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--sub2);
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .month-col:hover .month-val { opacity: 1; }
+
+  /* Timeline */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: var(--border);
+  }
+  .tl-item {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 12px 0;
+    position: relative;
+  }
+  .tl-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    margin-left: 11px;
+  }
+  .tl-dot.passed { background: var(--green); box-shadow: 0 0 8px rgba(16,185,129,0.4); }
+  .tl-dot.alt    { background: var(--sub2); }
+  .tl-dot.pending { background: var(--amber); }
+  .tl-dot.rejected { background: var(--red); }
+  .tl-content { flex: 1; min-width: 0; }
+  .tl-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tl-meta { font-size: 11px; color: var(--sub2); display: flex; gap: 8px; }
+  .tl-date { font-family: 'JetBrains Mono', monospace; }
+
+  /* 정당 협력 */
+  .party-coop { display: flex; flex-direction: column; gap: 10px; }
+  .party-coop-item { display: flex; align-items: center; gap: 12px; }
+  .party-coop-name {
+    font-size: 12px;
+    color: var(--sub);
+    width: 90px;
+    flex-shrink: 0;
+  }
+  .party-coop-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .party-coop-bar { height: 100%; border-radius: 3px; }
+  .party-coop-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    width: 44px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .radar-big { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
+
+  .notice-block {
+    padding: 14px 18px;
+    font-size: 12px;
+    color: var(--sub2);
+    background: var(--bg3);
+    border: 1px dashed var(--border2);
+    border-radius: 8px;
+    line-height: 1.8;
+  }
+  .notice-block strong { color: var(--text); }
+
+  /* ===== 국민 평가 ===== */
+  .eval-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .eval-summary {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    padding: 24px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .eval-score-wrap { text-align: center; flex-shrink: 0; }
+  .eval-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--amber);
+  }
+  .eval-score-label { font-size: 11px; color: var(--sub2); margin-top: 4px; }
+  .eval-stars {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-top: 6px;
+    font-size: 16px;
+  }
+  .star-empty { color: var(--sub2); }
+
+  .eval-empty-text { flex: 1; color: var(--sub); font-size: 13px; line-height: 1.8; }
+
+  .comment-write {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  .comment-write-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .write-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .write-stars { display: flex; gap: 4px; }
+  .write-star {
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--sub2);
+    transition: color 0.15s;
+  }
+  .write-star:hover, .write-star.active { color: var(--amber); }
+  .write-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 13px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+    min-height: 72px;
+  }
+  .write-input:focus { border-color: var(--blue); }
+  .write-input::placeholder { color: var(--sub2); }
+  .write-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+  .write-hint { font-size: 11px; color: var(--sub2); }
+  .write-submit {
+    padding: 7px 18px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .comments-empty {
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--sub);
+    background: var(--bg2);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+
+  @media (max-width: 1024px) {
+    .content-wrap { grid-template-columns: 1fr; }
+    .profile-hero-inner { grid-template-columns: auto 1fr; }
+    .profile-actions { display: none; }
+    .overview-grid { grid-template-columns: 1fr; }
+    .overview-grid.two { grid-template-columns: 1fr; }
+    .eval-layout { grid-template-columns: 1fr; }
+    .bill-table-header, .bill-table-row {
+      grid-template-columns: 1fr 80px 80px;
+    }
+    .bill-table-header span:nth-child(3),
+    .bill-table-header span:nth-child(5),
+    .bill-table-row > *:nth-child(3),
+    .bill-table-row > *:nth-child(5) { display: none; }
+  }
+</style>
+
+<!-- PROFILE HERO -->
+<div class="profile-hero">
+  <div class="profile-hero-inner">
+    <div class="breadcrumb">
+      <a href="/">홈</a> / <a href="/politician">의원</a> / <%= politician.name %>
+    </div>
+
+    <div>
+      <div class="profile-identity">
+        <div class="profile-avatar">
+          <%- avatarHtml(politician.name, politician.photo_url, 96) %>
         </div>
-    
-        <div class="profile-image-section"> <div class="profile-image-container">
-                <img src="<%= politician.photo_url %>" alt="<%= politician.name %>">
-            </div>
+        <div>
+          <div class="profile-top">
+            <h1 class="profile-name"><%= politician.name %></h1>
+            <span class="profile-party-badge"><%= politician.party_name || '무소속' %></span>
+          </div>
+          <div class="profile-meta">
+            <span class="profile-meta-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <%= politician.electoral_district || '—' %>
+            </span>
+            <% if (politician.elect_gbn_nm) { %>
+              <span class="profile-meta-item">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <%= politician.elect_gbn_nm %><% if (politician.reele_gbn_nm) { %> · <%= politician.reele_gbn_nm %><% } %>
+              </span>
+            <% } %>
+            <% if (politician.cmit_nm) { %>
+              <span class="profile-meta-item">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                <%= politician.cmit_nm %>
+              </span>
+            <% } %>
+          </div>
         </div>
-    
-        <div class="profile-details-section">
-            <div class="interest-areas">
-                <h3 class="interest-areas-title">관심분야 TOP 5</h3>
-                <% if (politician.summary_분야 && politician.summary_분야.length > 0) { %>
-                    <% 
-                    // 최대값 계산 (레이더 차트 비율용)
-                    const maxCount = Math.max(...politician.summary_분야.map(a => a.count));
-                    const areas = politician.summary_분야.slice(0, 5); // 최대 5개만
-                    // 가장 많은 관심 분야 인덱스 찾기
-                    const topAreaIndex = areas.findIndex(a => a.count === maxCount);
-                    %>
-                    <div class="radar-chart-container">
-                        <svg class="radar-chart" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
-                            <defs>
-                                <linearGradient id="radarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" style="stop-color:var(--color-primary-light);stop-opacity:0.8" />
-                                    <stop offset="100%" style="stop-color:var(--color-primary);stop-opacity:0.6" />
-                                </linearGradient>
-                            </defs>
-                            
-                            <% 
-                            // 5각형 좌표 계산 (중심: 200, 200, 반지름: 100)
-                            const centerX = 200;
-                            const centerY = 200;
-                            const radius = 100;
-                            const points = [];
-                            const dataPoints = [];
-                            
-                            for (let i = 0; i < 5; i++) {
-                                const angle = (Math.PI / 2) - (i * 2 * Math.PI / 5); // 위쪽부터 시작
-                                const x = centerX + radius * Math.cos(angle);
-                                const y = centerY - radius * Math.sin(angle);
-                                points.push({ x, y });
-                                
-                                // 데이터 포인트 계산 (건수에 비례)
-                                const area = areas[i];
-                                if (area) {
-                                    const dataRadius = radius * (area.count / maxCount);
-                                    const dataX = centerX + dataRadius * Math.cos(angle);
-                                    const dataY = centerY - dataRadius * Math.sin(angle);
-                                    dataPoints.push({ x: dataX, y: dataY, area: area.분야, count: area.count });
-                                } else {
-                                    dataPoints.push({ x: centerX, y: centerY, area: '', count: 0 });
-                                }
-                            }
-                            %>
-                            
-                            <!-- 배경 그리드 (5각형) - 내부 레벨 -->
-                            <% for (let level = 1; level <= 4; level++) { %>
-                                <% 
-                                const scale = level / 5;
-                                const gridPoints = points.map(p => {
-                                    const offsetX = (p.x - centerX) * scale + centerX;
-                                    const offsetY = (p.y - centerY) * scale + centerY;
-                                    return `${offsetX},${offsetY}`;
-                                }).join(' ');
-                                %>
-                                <polygon 
-                                    points="<%= gridPoints %>" 
-                                    fill="none" 
-                                    stroke="var(--color-gray-300)" 
-                                    stroke-width="1" 
-                                    opacity="0.2"
-                                />
-                            <% } %>
-                            
-                            <!-- 외곽 정5각형 (명확한 기준선) -->
-                            <polygon 
-                                points="<%= points.map(p => `${p.x},${p.y}`).join(' ') %>" 
-                                fill="none" 
-                                stroke="var(--color-gray-400)" 
-                                stroke-width="2" 
-                                opacity="0.5"
-                                class="radar-outline"
-                            />
-                            
-                            <!-- 중심에서 각 꼭짓점으로 선 그리기 -->
-                            <% points.forEach(point => { %>
-                                <line 
-                                    x1="<%= centerX %>" 
-                                    y1="<%= centerY %>" 
-                                    x2="<%= point.x %>" 
-                                    y2="<%= point.y %>" 
-                                    stroke="var(--color-gray-300)" 
-                                    stroke-width="1" 
-                                    opacity="0.3"
-                                />
-                            <% }); %>
-                            
-                            <!-- 데이터 영역 (내부 다각형) -->
-                            <polygon 
-                                points="<%= dataPoints.map(p => `${p.x},${p.y}`).join(' ') %>" 
-                                fill="url(#radarGradient)" 
-                                stroke="var(--color-primary)" 
-                                stroke-width="2.5" 
-                                opacity="0.75"
-                                class="radar-data-polygon"
-                            />
-                            
-                            <!-- 각 꼭짓점에 분야명과 건수 표시 (원 밖에 배치) -->
-                            <% points.forEach((point, index) => { %>
-                                <% const data = dataPoints[index]; %>
-                                <% if (data && data.area) { %>
-                                    <% 
-                                    // 텍스트 위치 계산 (꼭짓점에서 밖으로)
-                                    const angle = (Math.PI / 2) - (index * 2 * Math.PI / 5);
-                                    const textOffset = 35; // 꼭짓점에서 밖으로 떨어진 거리
-                                    const textX = point.x + textOffset * Math.cos(angle);
-                                    const textY = point.y - textOffset * Math.sin(angle);
-                                    %>
-                                    <g class="radar-label <%= index === topAreaIndex ? 'top-area' : '' %>" data-index="<%= index %>">
-                                        <% if (index === topAreaIndex) { %>
-                                            <!-- 1위 배지 -->
-                                            <circle 
-                                                cx="<%= textX %>" 
-                                                cy="<%= textY - 25 %>" 
-                                                r="12" 
-                                                fill="#FFD700" 
-                                                stroke="#FFA500" 
-                                                stroke-width="2"
-                                                class="top-badge"
-                                            />
-                                            <text 
-                                                x="<%= textX %>" 
-                                                y="<%= textY - 22 %>" 
-                                                text-anchor="middle" 
-                                                font-size="10" 
-                                                font-weight="700" 
-                                                fill="#8B4513"
-                                            >
-                                                1위
-                                            </text>
-                                        <% } %>
-                                        <!-- 분야명 (전체 표시) -->
-                                        <text 
-                                            x="<%= textX %>" 
-                                            y="<%= textY - 8 %>" 
-                                            text-anchor="middle" 
-                                            font-size="<%= index === topAreaIndex ? '14' : '13' %>" 
-                                            font-weight="<%= index === topAreaIndex ? '700' : '600' %>" 
-                                            fill="<%= index === topAreaIndex ? 'var(--color-primary-dark)' : 'var(--color-dark-text)' %>"
-                                            class="radar-area-name <%= index === topAreaIndex ? 'top-area-name' : '' %>"
-                                        >
-                                            <%= data.area %>
-                                        </text>
-                                        <!-- 건수 -->
-                                        <text 
-                                            x="<%= textX %>" 
-                                            y="<%= textY + 10 %>" 
-                                            text-anchor="middle" 
-                                            font-size="<%= index === topAreaIndex ? '15' : '14' %>" 
-                                            font-weight="700" 
-                                            fill="<%= index === topAreaIndex ? '#FF6B35' : 'var(--color-primary)' %>"
-                                            class="radar-area-count <%= index === topAreaIndex ? 'top-area-count' : '' %>"
-                                        >
-                                            <%= data.count %>건
-                                        </text>
-                                    </g>
-                                <% } %>
-                            <% }); %>
-                        </svg>
-                    </div>
-                <% } else { %>
-                    <p class="no-interest-areas">관심분야 데이터가 없습니다.</p>
-                <% } %>
-            </div>
+      </div>
+
+      <div class="profile-kpis-row">
+        <div class="profile-kpi">
+          <div class="profile-kpi-val kpi-blue"><%= nf(proposeCnt) %></div>
+          <div class="profile-kpi-label">법안 발의 <a href="/glossary#rep-proposer" class="pb-help" title="대표발의 설명">?</a></div>
+          <div class="profile-kpi-sub">공동발의 <%= nf(coProposeCnt) %>건</div>
         </div>
-    
-        <div class="profile-stats-section">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-label">선거구</span>
-                    <span class="stat-value"><%= politician.electoral_district %></span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">생년월일</span>
-                    <span class="stat-value"><%= politician.birthday %> (<%= politician.age %>세)</span>
-                </div>
-            </div>
+        <div class="profile-kpi">
+          <% if (voteParticipateRate == null) { %>
+            <div class="profile-kpi-val em-dash" title="추후 제공 예정">—</div>
+          <% } else { %>
+            <div class="profile-kpi-val kpi-amber"><%= voteParticipateRate.toFixed(0) %>%</div>
+          <% } %>
+          <div class="profile-kpi-label">표결 참여율 <a href="/glossary#vote-absent" class="pb-help" title="(찬성+반대+기권) / 전체 표결">?</a></div>
+          <% if (vsTotal > 0) { %>
+            <div class="profile-kpi-sub"><%= nf(vsAttended) %> / <%= nf(vsTotal) %></div>
+          <% } else { %>
+            <div class="profile-kpi-sub">표결 데이터 수집 전</div>
+          <% } %>
         </div>
-    </section>
-
-    <section class="politician-tabs mt-4">
-        <ul class="nav nav-tabs" id="politicianTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="bills-tab" data-bs-toggle="tab" data-bs-target="#bills" type="button" role="tab" aria-controls="bills" aria-selected="true">법안 활동</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="replies-tab" data-bs-toggle="tab" data-bs-target="#replies" type="button" role="tab" aria-controls="replies" aria-selected="false">국민 평가 (<%= politician.replys.length %>)</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics" type="button" role="tab" aria-controls="analytics" aria-selected="false">활동 분석</button>
-            </li>
-        </ul>
-        <div class="tab-content" id="politicianTabsContent">
-            <div class="tab-pane fade show active" id="bills" role="tabpanel" aria-labelledby="bills-tab">
-                <% if (politician.bills && politician.bills.length > 0) { %>
-                    <% 
-                    // 분야별 통계 계산
-                    const areaStats = {};
-                    politician.bills.forEach(bill => {
-                        const topic = bill.bill_topic_nm || '미지정';
-                        areaStats[topic] = (areaStats[topic] || 0) + 1;
-                    });
-                    
-                    // 관심분야 상위 5개 가져오기
-                    const topAreas = politician.summary_분야 ? politician.summary_분야.slice(0, 5).map(a => a.분야) : [];
-                    const topAreaSet = new Set(topAreas);
-                    const topAreaIndex = topAreas.length > 0 ? topAreas[0] : null;
-                    
-                    // 분야별로 법안 그룹핑
-                    const billsByArea = {};
-                    politician.bills.forEach(bill => {
-                        const topic = bill.bill_topic_nm || '미지정';
-                        if (!billsByArea[topic]) {
-                            billsByArea[topic] = [];
-                        }
-                        billsByArea[topic].push(bill);
-                    });
-                    
-                    // 관심분야 우선순위로 정렬
-                    const sortedAreas = Object.keys(billsByArea).sort((a, b) => {
-                        const aIndex = topAreas.indexOf(a);
-                        const bIndex = topAreas.indexOf(b);
-                        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                        if (aIndex !== -1) return -1;
-                        if (bIndex !== -1) return 1;
-                        return billsByArea[b].length - billsByArea[a].length;
-                    });
-                    %>
-                    
-                    <!-- 통계 요약 섹션 -->
-                    <div class="bill-stats-summary">
-                        <div class="stats-summary-item">
-                            <span class="stats-label">총 법안 수</span>
-                            <span class="stats-value"><%= politician.bills.length %>건</span>
-                        </div>
-                        <% if (topAreas.length > 0) { %>
-                            <% topAreas.slice(0, 3).forEach((area, idx) => { %>
-                                <div class="stats-summary-item <%= idx === 0 ? 'top-area-stat' : '' %>">
-                                    <span class="stats-label"><%= area %></span>
-                                    <span class="stats-value"><%= areaStats[area] || 0 %>건</span>
-                                </div>
-                            <% }); %>
-                        <% } %>
-                    </div>
-                    
-                    <!-- 분야 필터 탭 -->
-                    <div class="area-filter-tabs">
-                        <button class="filter-tab active" data-area="all">
-                            전체 (<%= politician.bills.length %>)
-                        </button>
-                        <% if (topAreas.length > 0) { %>
-                            <% topAreas.forEach((area, idx) => { %>
-                                <button class="filter-tab <%= idx === 0 ? 'top-area-filter' : '' %>" data-area="<%= area %>">
-                                    <%= area %> (<%= areaStats[area] || 0 %>)
-                                </button>
-                            <% }); %>
-                        <% } %>
-                    </div>
-                    
-                    <!-- 정렬 옵션 -->
-                    <div class="bill-sort-options">
-                        <label>정렬:</label>
-                        <select id="billSortSelect" class="form-select form-select-sm">
-                            <option value="date-desc">최신순</option>
-                            <option value="area-priority">관심분야 우선순위</option>
-                            <option value="area-name">분야별</option>
-                        </select>
-                    </div>
-                    
-                    <!-- 분야별 그룹핑된 법안 카드 -->
-                    <div class="bill-cards-container" id="billCardsContainer">
-                        <% sortedAreas.forEach((area, areaIdx) => { %>
-                            <% 
-                            const isTopArea = topAreaSet.has(area);
-                            const isFirstArea = area === topAreaIndex;
-                            const areaBills = billsByArea[area];
-                            const isExpanded = areaIdx < 3; // 상위 3개 분야는 기본 펼침
-                            %>
-                            <div class="bill-area-group" data-area="<%= area %>" data-expanded="<%= isExpanded %>">
-                                <div class="area-group-header <%= isTopArea ? 'top-area-header' : '' %> <%= isFirstArea ? 'first-area-header' : '' %>">
-                                    <div class="area-header-left">
-                                        <% if (isFirstArea) { %>
-                                            <span class="top-badge-small">1위</span>
-                                        <% } %>
-                                        <h4 class="area-group-title"><%= area %></h4>
-                                        <span class="area-bill-count">(<%= areaBills.length %>건)</span>
-                                    </div>
-                                    <button class="area-toggle-btn" onclick="toggleAreaGroup(this)">
-                                        <i class="fas fa-chevron-<%= isExpanded ? 'up' : 'down' %>"></i>
-                                    </button>
-                                </div>
-                                <div class="area-bills-container" <% if (!isExpanded) { %>style="display: none;"<% } %>>
-                                    <% 
-                                    const BILLS_PER_PAGE = 5;
-                                    const totalBills = areaBills.length;
-                                    const initialBills = areaBills.slice(0, BILLS_PER_PAGE);
-                                    const remainingBills = totalBills - BILLS_PER_PAGE;
-                                    %>
-                                    
-                                    <!-- 초기 표시 법안 (최대 5개) -->
-                                    <div class="bills-displayed">
-                                        <% initialBills.forEach(bill => { %>
-                                            <div class="bill-card <%= isTopArea ? 'top-area-card' : '' %> <%= isFirstArea ? 'first-area-card' : '' %>" data-area="<%= area %>">
-                                                <!-- 상단: 처리 결과 배지 -->
-                                                <div class="bill-card-top">
-                                                    <% 
-                                                    // 처리결과에 따른 상태 및 아이콘 결정
-                                                    let statusClass = 'info';
-                                                    let statusIcon = 'clock';
-                                                    
-                                                    if (bill.proc_result_cd === '원안가결' || bill.proc_result_cd === '수정가결' || bill.proc_result_cd === '가결') {
-                                                        statusClass = 'success';
-                                                        statusIcon = 'check-circle';
-                                                    } else if (bill.proc_result_cd === '부결' || bill.proc_result_cd === '폐기' || bill.proc_result_cd === '대안반영폐기' || bill.proc_result_cd === '수정안반영폐기') {
-                                                        statusClass = 'danger';
-                                                        statusIcon = 'times-circle';
-                                                    } else if (bill.proc_result_cd === '계류' || bill.proc_result_cd === '철회') {
-                                                        statusClass = 'info';
-                                                        statusIcon = bill.proc_result_cd === '철회' ? 'ban' : 'clock';
-                                                    }
-                                                    %>
-                                                    <div class="bill-status-badge status-<%= statusClass %>">
-                                                        <i class="fas fa-<%= statusIcon %>"></i>
-                                                        <span class="status-text"><%= bill.proc_result_cd %></span>
-                                                        <% if (bill.proc_date) { %>
-                                                            <span class="status-date"><%= bill.proc_date %></span>
-                                                        <% } %>
-                                                    </div>
-                                                </div>
-                                                
-                                                <!-- 법안 제목 -->
-                                                <h4 class="bill-title">
-                                                    <a href="<%= bill.link_url || bill.detail_link || '#' %>" target="_blank" rel="noopener noreferrer">
-                                                        <%= bill.bill_name %>
-                                                        <i class="fas fa-external-link-alt"></i>
-                                                    </a>
-                                                </h4>
-                                                
-                                                <!-- 메타 정보 -->
-                                                <div class="bill-meta-info">
-                                                    <span class="meta-item">
-                                                        <i class="far fa-calendar"></i>
-                                                        <span>제안일: <%= bill.propose_dt %></span>
-                                                    </span>
-                                                    <span class="meta-item">
-                                                        <i class="fas fa-user-tie"></i>
-                                                        <span><%= bill.proposer_kind_cd %></span>
-                                                    </span>
-                                                </div>
-                                                
-                                                <!-- 영향 분석 -->
-                                                <% if (bill.IMPACT_ANALYSIS) { %>
-                                                    <div class="bill-impact">
-                                                        <i class="fas fa-lightbulb"></i>
-                                                        <div class="impact-content">
-                                                            <strong>영향 분석</strong>
-                                                            <p><%= bill.IMPACT_ANALYSIS %></p>
-                                                        </div>
-                                                    </div>
-                                                <% } %>
-                                            </div>
-                                        <% }); %>
-                                    </div>
-                                    
-                                    <!-- 추가 법안 (숨김) -->
-                                    <% if (remainingBills > 0) { %>
-                                        <div class="bills-hidden" style="display: none;">
-                                            <% areaBills.slice(BILLS_PER_PAGE).forEach(bill => { %>
-                                                <div class="bill-card <%= isTopArea ? 'top-area-card' : '' %> <%= isFirstArea ? 'first-area-card' : '' %>" data-area="<%= area %>">
-                                                    <!-- 상단: 처리 결과 배지 -->
-                                                    <div class="bill-card-top">
-                                                        <% 
-                                                        // 처리결과에 따른 상태 및 아이콘 결정
-                                                        let statusClass = 'info';
-                                                        let statusIcon = 'clock';
-                                                        
-                                                        if (bill.proc_result_cd === '원안가결' || bill.proc_result_cd === '수정가결' || bill.proc_result_cd === '가결') {
-                                                            statusClass = 'success';
-                                                            statusIcon = 'check-circle';
-                                                        } else if (bill.proc_result_cd === '부결' || bill.proc_result_cd === '폐기' || bill.proc_result_cd === '대안반영폐기' || bill.proc_result_cd === '수정안반영폐기') {
-                                                            statusClass = 'danger';
-                                                            statusIcon = 'times-circle';
-                                                        } else if (bill.proc_result_cd === '계류' || bill.proc_result_cd === '철회') {
-                                                            statusClass = 'info';
-                                                            statusIcon = bill.proc_result_cd === '철회' ? 'ban' : 'clock';
-                                                        }
-                                                        %>
-                                                        <div class="bill-status-badge status-<%= statusClass %>">
-                                                            <i class="fas fa-<%= statusIcon %>"></i>
-                                                            <span class="status-text"><%= bill.proc_result_cd %></span>
-                                                            <% if (bill.proc_date) { %>
-                                                                <span class="status-date"><%= bill.proc_date %></span>
-                                                            <% } %>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <!-- 법안 제목 -->
-                                                    <h4 class="bill-title">
-                                                        <a href="<%= bill.link_url || bill.detail_link || '#' %>" target="_blank" rel="noopener noreferrer">
-                                                            <%= bill.bill_name %>
-                                                            <i class="fas fa-external-link-alt"></i>
-                                                        </a>
-                                                    </h4>
-                                                    
-                                                    <!-- 메타 정보 -->
-                                                    <div class="bill-meta-info">
-                                                        <span class="meta-item">
-                                                            <i class="far fa-calendar"></i>
-                                                            <span>제안일: <%= bill.propose_dt %></span>
-                                                        </span>
-                                                        <span class="meta-item">
-                                                            <i class="fas fa-user-tie"></i>
-                                                            <span><%= bill.proposer_kind_cd %></span>
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    <!-- 영향 분석 -->
-                                                    <% if (bill.IMPACT_ANALYSIS) { %>
-                                                        <div class="bill-impact">
-                                                            <i class="fas fa-lightbulb"></i>
-                                                            <div class="impact-content">
-                                                                <strong>영향 분석</strong>
-                                                                <p><%= bill.IMPACT_ANALYSIS %></p>
-                                                            </div>
-                                                        </div>
-                                                    <% } %>
-                                                </div>
-                                            <% }); %>
-                                        </div>
-                                        
-                                        <!-- 더보기 버튼 -->
-                                        <div class="load-more-container">
-                                            <button class="load-more-btn" onclick="loadMoreBills(this, '<%= area %>')">
-                                                <i class="fas fa-chevron-down"></i>
-                                                더보기 (<%= remainingBills %>개 남음)
-                                            </button>
-                                        </div>
-                                    <% } %>
-                                </div>
-                            </div>
-                        <% }); %>
-                    </div>
-                <% } else { %>
-                    <p class="mt-3">아직 등록된 주요 발의 법안 정보가 없습니다.</p>
-                <% } %>
-            </div>
-
-            <div class="tab-pane fade" id="replies" role="tabpanel" aria-labelledby="replies-tab">
-                <h3 class="tab-section-title mt-4">국민 평가 및 댓글</h3>
-                <div class="reply-form-section">
-                    <h4>의견 남기기</h4>
-                    <textarea class="form-control" rows="3" placeholder="의원에게 바라는 점이나 평가를 남겨주세요 (로그인 필요)"></textarea>
-                    <button class="btn btn-secondary mt-2">댓글 작성</button>
-                </div>
-                <div class="reply-list mt-4">
-                    <% if (politician.replys && politician.replys.length > 0) { %>
-                        <% politician.replys.forEach(reply => { %>
-                            <div class="reply-item">
-                                <p class="reply-meta">
-                                    <strong><%= reply.user_nickname %></strong>
-                                    <span class="text-muted ms-2"><%= reply.created_at %></span>
-                                </p>
-                                <p class="reply-content"><%= reply.content %></p>
-                                <div class="reply-actions">
-                                    <button class="btn btn-sm btn-light"><i class="far fa-thumbs-up"></i> 좋아요 (<%= reply.like_count %>)</button>
-                                    <button class="btn btn-sm btn-light ms-2"><i class="far fa-flag"></i> 신고</button>
-                                </div>
-                            </div>
-                        <% }); %>
-                    <% } else { %>
-                        <p class="mt-3">아직 등록된 국민 평가 및 댓글이 없습니다.</p>
-                    <% } %>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="analytics" role="tabpanel" aria-labelledby="analytics-tab">
-                <h3 class="tab-section-title mt-4">의정 활동 상세 분석</h3>
-                <div class="analytics-content">
-                    <h4>법안 발의 분야 분석</h4>
-                    <div class="chart-container" style="height: 200px; width: 100%;">
-                        <p class="placeholder-text">이곳에 법안 발의 분야 파이 차트가 표시됩니다.</p>
-                    </div>
-
-                    <h4 class="mt-4">주요 공약 이행률</h4>
-                    <div class="progress mt-2">
-                        <div class="progress-bar bg-success" role="progressbar" style="width: 70%;" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100">70%</div>
-                    </div>
-                    <p class="placeholder-text">이곳에 공약 목록과 이행률 추적 정보가 표시됩니다.</p>
-
-                    <h4 class="mt-4">법안 투표 성향 분석 (예시)</h4>
-                    <div class="chart-container" style="height: 150px; width: 100%;">
-                        <p class="placeholder-text">이곳에 의원의 법안 투표 성향 차트가 표시됩니다.</p>
-                        <% if (politician.vote_summary) { %>
-                            <p>찬성: <%= politician.vote_summary.찬성 %>%, 반대: <%= politician.vote_summary.반대 %>%, 기권: <%= politician.vote_summary.기권 %>%, 불참: <%= politician.vote_summary.불참 %>%</p>
-                        <% } %>
-                    </div>
-                </div>
-            </div>
+        <div class="profile-kpi">
+          <% if (passRate == null) { %>
+            <div class="profile-kpi-val em-dash">—</div>
+          <% } else { %>
+            <div class="profile-kpi-val kpi-green"><%= passRate.toFixed(0) %>%</div>
+          <% } %>
+          <div class="profile-kpi-label">가결율 <a href="/glossary#original" class="pb-help" title="가결 법안 수 / 대표발의 법안 수">?</a></div>
+          <div class="profile-kpi-sub">
+            <% if (proposeCnt === 0) { %>
+              대표발의 없음
+            <% } else { %>
+              <%= nf(passedCnt) %> / <%= nf(proposeCnt) %>
+            <% } %>
+          </div>
         </div>
-    </section>
-</main>
+      </div>
+    </div>
 
-<%# 페이징 동적으로 생성 %>
-<div class="pagination-container" id="pagination-container"></div>
+    <!-- 히어로 레이더 (주인공) -->
+    <div class="profile-radar-wrap">
+      <div class="profile-radar-label">// 활동 레이더</div>
+      <%
+        const HERO_R = 110;  // 반지름
+        const heroPt = (val, idx) => {
+          const r = (val / 100) * HERO_R;
+          const angles = [-90, -30, 30, 90, 150, 210];
+          const rad = angles[idx] * Math.PI / 180;
+          return `${(r * Math.cos(rad)).toFixed(1)},${(r * Math.sin(rad)).toFixed(1)}`;
+        };
+        const heroRadarPts = [radarPropose, radarAttend, radarVote, radarCoPropose, radarCmit, radarComm]
+          .map((v, i) => heroPt(v, i)).join(' ');
+        const bgPt = (scale) => [-90,-30,30,90,150,210].map(a => {
+          const rad = a * Math.PI / 180;
+          const r = HERO_R * scale;
+          return `${(r * Math.cos(rad)).toFixed(1)},${(r * Math.sin(rad)).toFixed(1)}`;
+        }).join(' ');
+      %>
+      <svg width="260" height="260" viewBox="-130 -130 260 260" overflow="visible">
+        <!-- 배경 육각형 4겹 -->
+        <polygon points="<%= bgPt(1.0) %>"  fill="none" stroke="#1E2A3D" stroke-width="1"/>
+        <polygon points="<%= bgPt(0.75) %>" fill="none" stroke="#1E2A3D" stroke-width="1"/>
+        <polygon points="<%= bgPt(0.5) %>"  fill="none" stroke="#1E2A3D" stroke-width="1"/>
+        <polygon points="<%= bgPt(0.25) %>" fill="none" stroke="#1E2A3D" stroke-width="1"/>
+        <!-- 축 -->
+        <% [-90,-30,30,90,150,210].forEach(a => {
+             const rad = a * Math.PI / 180;
+             const ex = (HERO_R * Math.cos(rad)).toFixed(1);
+             const ey = (HERO_R * Math.sin(rad)).toFixed(1);
+        %>
+          <line x1="0" y1="0" x2="<%= ex %>" y2="<%= ey %>" stroke="#1E2A3D" stroke-width="1"/>
+        <% }); %>
+        <!-- 데이터 -->
+        <polygon points="<%= heroRadarPts %>" fill="rgba(226,201,126,0.15)" stroke="#E2C97E" stroke-width="2"/>
+        <!-- 데이터 점 -->
+        <% [radarPropose, radarAttend, radarVote, radarCoPropose, radarCmit, radarComm].forEach((v, i) => {
+             const angles = [-90, -30, 30, 90, 150, 210];
+             const rad = angles[i] * Math.PI / 180;
+             const r = (v / 100) * HERO_R;
+             const cx = (r * Math.cos(rad)).toFixed(1);
+             const cy = (r * Math.sin(rad)).toFixed(1);
+        %>
+          <circle cx="<%= cx %>" cy="<%= cy %>" r="3" fill="#E2C97E"/>
+        <% }); %>
+        <!-- 축 라벨 (한글 12px) -->
+        <text x="0"    y="-120" text-anchor="middle" fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">법안발의</text>
+        <text x="108"  y="-52"  text-anchor="start"  fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">출석률</text>
+        <text x="108"  y="62"   text-anchor="start"  fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">표결참여</text>
+        <text x="0"    y="128"  text-anchor="middle" fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">공동발의</text>
+        <text x="-108" y="62"   text-anchor="end"    fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">위원회</text>
+        <text x="-108" y="-52"  text-anchor="end"    fill="#7B8DAB" font-size="12" font-family="Noto Sans KR">소통</text>
+      </svg>
+      <div style="font-size:11px;color:var(--sub2);text-align:center;line-height:1.6;max-width:260px">
+        일부 축(출석률·위원회·소통)은 데이터 수집 후 반영됩니다.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS — 개요분석/국민평가는 추후 오픈 예정이라 숨김 처리 -->
+<div class="tab-bar">
+  <div class="tab-bar-inner">
+    <button class="tab-btn active" data-tab="bills">
+      법안 활동 <span class="tab-count"><%= nf(billsTabCount) %></span>
+    </button>
+    <button class="tab-btn" data-tab="votes">
+      표결 내역 <span class="tab-count"><%= nf(votesTabCount) %></span>
+    </button>
+    <!-- 추후 오픈
+    <button class="tab-btn" data-tab="overview">개요 분석</button>
+    <button class="tab-btn" data-tab="comments">국민 평가</button>
+    -->
+  </div>
+</div>
+
+<div class="content-wrap">
+  <div>
+
+    <!-- ===== 법안 활동 탭 ===== -->
+    <div class="tab-panel active" id="tab-bills">
+      <div class="bill-filter-tabs">
+        <button class="bill-filter-tab active" data-bf="all">
+          <span class="dot" style="background:var(--blue)"></span>
+          전체 <span style="font-family:'JetBrains Mono';font-size:10px;margin-left:2px"><%= nf(billsTabCount) %></span>
+        </button>
+        <% const repCnt = (bills || []).filter(b => b.proposer_yn).length;
+           const coCnt  = (bills || []).filter(b => !b.proposer_yn).length; %>
+        <button class="bill-filter-tab" data-bf="rep">
+          <span class="dot" style="background:var(--blue)"></span>
+          대표발의 <span style="font-family:'JetBrains Mono';font-size:10px;margin-left:2px"><%= nf(repCnt) %></span>
+        </button>
+        <button class="bill-filter-tab" data-bf="co">
+          <span class="dot" style="background:var(--sub2)"></span>
+          공동발의 <span style="font-family:'JetBrains Mono';font-size:10px;margin-left:2px"><%= nf(coCnt) %></span>
+        </button>
+      </div>
+
+      <% if (bills && bills.length > 0) { %>
+        <div class="bill-table">
+          <div class="bill-table-header">
+            <span>법안명</span>
+            <span>구분</span>
+            <span>제안일</span>
+            <span>처리결과</span>
+            <span>표결</span>
+          </div>
+          <div id="bills-container">
+            <% bills.forEach(b => { %>
+              <a href="<%= b.link_url || '#' %>" target="_blank" rel="noopener"
+                 class="bill-table-row bills-row"
+                 data-kind="<%= b.proposer_yn ? 'rep' : 'co' %>">
+                <div class="bill-row-name">
+                  <%= b.bill_name %>
+                  <% if (b.committee) { %><small><%= b.committee %></small><% } %>
+                </div>
+                <span>
+                  <% if (b.proposer_yn) { %>
+                    <span class="pb-badge pb-badge-category">대표발의</span>
+                  <% } else { %>
+                    <span class="pb-badge pb-badge-alt">공동발의</span>
+                  <% } %>
+                </span>
+                <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--sub2)"><%= b.propose_dt || '—' %></div>
+                <span>
+                  <% const statusLabel = b.proc_result_name || '계류';
+                     const termAnchor = !b.proc_result_name ? 'pending' :
+                         b.proc_result_name === '원안가결' ? 'original' :
+                         b.proc_result_name === '수정가결' ? 'modified' :
+                         b.proc_result_name === '대안반영폐기' ? 'alt-dropped' :
+                         b.proc_result_name === '수정안반영폐기' ? 'mod-dropped' :
+                         b.proc_result_name === '철회' ? 'withdrawn' :
+                         b.proc_result_name === '부결' ? 'rejected' :
+                         b.proc_result_name === '폐기' ? 'dropped' : 'pending';
+                  %>
+                  <span class="pb-badge <%= resultClass(b.proc_result_name) %>"><%= statusLabel %></span>
+                  <% if (!b.proc_result_name && b.days_elapsed != null) {
+                       const d = Number(b.days_elapsed);
+                       const color = d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--amber)' : 'var(--sub2)';
+                  %>
+                    <span style="display:block;font-size:10px;color: <%= color %>;font-family:'JetBrains Mono';margin-top:4px">+<%= d %>일</span>
+                  <% } %>
+                </span>
+                <div>
+                  <% if (b.my_vote_result) { %>
+                    <span class="vote-result-chip v-<%= b.my_vote_result === '찬성' ? 'for' : b.my_vote_result === '반대' ? 'against' : b.my_vote_result === '기권' ? 'abstain' : 'absent' %>">
+                      <%= b.my_vote_result %>
+                    </span>
+                  <% } else { %>
+                    <span class="v-none">—</span>
+                  <% } %>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        </div>
+        <div class="pagination-inline" id="bills-pagination"></div>
+      <% } else { %>
+        <div class="comments-empty">해당 의원의 법안 활동 데이터가 없습니다.</div>
+      <% } %>
+    </div>
+
+    <!-- ===== 표결 내역 탭 ===== -->
+    <div class="tab-panel" id="tab-votes">
+      <% if (votes && votes.length > 0) { %>
+        <div class="bill-table">
+          <div class="bill-table-header">
+            <span>법안명</span>
+            <span>표결결과</span>
+            <span>표결일</span>
+            <span>처리결과</span>
+            <span>카테고리</span>
+          </div>
+          <% votes.slice(0, 50).forEach(v => { %>
+            <a href="/bill/<%= v.bill_id %>" class="bill-table-row">
+              <div class="bill-row-name"><%= v.bill_name || v.bill_id %></div>
+              <div>
+                <span class="vote-result-chip v-<%= v.vote_result === '찬성' ? 'for' : v.vote_result === '반대' ? 'against' : v.vote_result === '기권' ? 'abstain' : 'absent' %>">
+                  <%= v.vote_result %>
+                </span>
+              </div>
+              <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--sub2)"><%= v.vote_date %></div>
+              <span><span class="pb-badge <%= resultClass(v.proc_result_name) %>"><%= v.proc_result_name || '—' %></span></span>
+              <span><% if (v.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= v.bill_topic_nm %></span><% } %></span>
+            </a>
+          <% }); %>
+        </div>
+        <% if (votes.length > 50) { %>
+          <div style="text-align:center;padding:16px;color:var(--sub2);font-size:12px">
+            최근 50건만 표시. 전체 <%= nf(votes.length) %>건.
+          </div>
+        <% } %>
+      <% } else { %>
+        <div class="comments-empty">해당 의원의 표결 내역이 없습니다.</div>
+      <% } %>
+    </div>
+
+    <!-- ===== 개요 분석 탭 ===== -->
+    <div class="tab-panel" id="tab-overview">
+      <div class="overview-grid">
+        <!-- 레이더 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">활동 레이더 <span class="card-title-mono">// 6개 지표</span></span>
+          </div>
+          <div class="card-body radar-big">
+            <svg width="220" height="220" viewBox="-110 -110 220 220" overflow="visible">
+              <polygon points="0,-90 78,-45 78,45 0,90 -78,45 -78,-45" fill="none" stroke="#1E2A3D" stroke-width="1"/>
+              <polygon points="0,-68 59,-34 59,34 0,68 -59,34 -59,-34" fill="none" stroke="#1E2A3D" stroke-width="1"/>
+              <polygon points="0,-45 39,-23 39,23 0,45 -39,23 -39,-23" fill="none" stroke="#1E2A3D" stroke-width="1"/>
+              <polygon points="0,-23 20,-11 20,11 0,23 -20,11 -20,-11" fill="none" stroke="#1E2A3D" stroke-width="1"/>
+              <line x1="0" y1="0" x2="0"  y2="-90" stroke="#1E2A3D" stroke-width="1"/>
+              <line x1="0" y1="0" x2="78" y2="-45" stroke="#1E2A3D" stroke-width="1"/>
+              <line x1="0" y1="0" x2="78" y2="45"  stroke="#1E2A3D" stroke-width="1"/>
+              <line x1="0" y1="0" x2="0"  y2="90"  stroke="#1E2A3D" stroke-width="1"/>
+              <line x1="0" y1="0" x2="-78" y2="45" stroke="#1E2A3D" stroke-width="1"/>
+              <line x1="0" y1="0" x2="-78" y2="-45" stroke="#1E2A3D" stroke-width="1"/>
+              <polygon points="<%= radarPoints %>" fill="rgba(226,201,126,0.12)" stroke="#E2C97E" stroke-width="1.5"/>
+              <text x="0"    y="-98" text-anchor="middle" fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">법안발의</text>
+              <text x="90"   y="-42" text-anchor="start"  fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">출석률</text>
+              <text x="90"   y="52"  text-anchor="start"  fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">표결참여</text>
+              <text x="0"    y="106" text-anchor="middle" fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">공동발의</text>
+              <text x="-90"  y="52"  text-anchor="end"    fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">위원회활동</text>
+              <text x="-90"  y="-42" text-anchor="end"    fill="#7B8DAB" font-size="11" font-family="Noto Sans KR">소통지수</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 표결 성향 (요약) -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">표결 성향 <span class="card-title-mono">// 데이터 기반</span></span>
+          </div>
+          <div class="card-body">
+            <% if (vsTotal > 0) { %>
+              <div class="category-bars">
+                <div>
+                  <div class="cat-bar-label">찬성 비율<span class="cat-bar-val" style="color:var(--green)"><%= pct(vs.for_cnt, vsAttended).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.for_cnt, vsAttended) %>%;background:var(--green)"></div></div>
+                </div>
+                <div>
+                  <div class="cat-bar-label">반대 비율<span class="cat-bar-val" style="color:var(--red)"><%= pct(vs.against_cnt, vsAttended).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.against_cnt, vsAttended) %>%;background:var(--red)"></div></div>
+                </div>
+                <div>
+                  <div class="cat-bar-label">기권 비율<span class="cat-bar-val" style="color:var(--amber)"><%= pct(vs.abstain_cnt, vsAttended).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.abstain_cnt, vsAttended) %>%;background:var(--amber)"></div></div>
+                </div>
+                <div>
+                  <div class="cat-bar-label">불참 비율<span class="cat-bar-val"><%= pct(vs.absent_cnt, vsTotal).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.absent_cnt, vsTotal) %>%;background:var(--sub2)"></div></div>
+                </div>
+              </div>
+              <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--sub2);line-height:1.7">
+                총 <strong style="color:var(--text)"><%= nf(vsTotal) %>건</strong>의 본회의 표결 기록 분석.
+              </div>
+            <% } else { %>
+              <div class="notice-block">
+                표결 기록이 아직 수집되지 않았습니다. 데이터 배치 완료 후 표시됩니다.
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- 관심분야 -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">대표발의 관심분야 <span class="card-title-mono">// TOP 5</span></span>
+          </div>
+          <div class="card-body">
+            <% if (topics5.length > 0) { %>
+              <div class="category-bars">
+                <% topics5.forEach(t => {
+                     const w = maxTopicCnt > 0 ? (Number(t.cnt) / maxTopicCnt * 100) : 0;
+                %>
+                  <div>
+                    <div class="cat-bar-label"><%= t.topic_name %><span class="cat-bar-val"><%= t.cnt %>건</span></div>
+                    <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= w %>%"></div></div>
+                  </div>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="notice-block">아직 대표발의 법안이 없습니다.</div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- 월별 발의 + 타임라인 -->
+      <div class="overview-grid two">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">월별 발의 현황 <span class="card-title-mono">// 최근 12개월</span></span>
+          </div>
+          <div class="card-body">
+            <% if (monthly && monthly.length > 0) { %>
+              <div class="monthly-chart">
+                <% monthly.forEach(m => {
+                     const h = (Number(m.cnt) / monthlyMax) * 100;
+                     const isHigh = Number(m.cnt) >= monthlyMax * 0.8 && Number(m.cnt) > 0;
+                %>
+                  <div class="month-col">
+                    <div class="month-bar-wrap">
+                      <span class="month-val"><%= m.cnt %></span>
+                      <div class="month-bar <%= isHigh ? 'highlight' : '' %>" style="height:<%= h %>%"></div>
+                    </div>
+                    <div class="month-label"><%= parseInt(m.mm, 10) %>월</div>
+                  </div>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="notice-block">월별 발의 데이터가 없습니다.</div>
+            <% } %>
+
+            <% if (partyCoopTop.length > 0) { %>
+              <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+                <div class="party-coop">
+                  <div style="font-size:11px;color:var(--sub2);margin-bottom:4px">정당별 공동발의 협력 (대표발의 법안 기준)</div>
+                  <% partyCoopTop.forEach(pc => {
+                       const w = partyCoopTotal > 0 ? (Number(pc.cnt) / partyCoopTotal * 100) : 0;
+                       const color = partyColorOf(pc.party_name);
+                  %>
+                    <div class="party-coop-item">
+                      <span class="party-coop-name" style="color: <%= color %>"><%= pc.party_name %></span>
+                      <div class="party-coop-bar-wrap"><div class="party-coop-bar" style="width:<%= w %>%;background:<%= color %>;opacity:0.7"></div></div>
+                      <span class="party-coop-val"><%= nf(pc.cnt) %>건</span>
+                    </div>
+                  <% }); %>
+                </div>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">주요 법안 이력 <span class="card-title-mono">// 타임라인</span></span>
+          </div>
+          <div class="card-body">
+            <% if (timeline && timeline.length > 0) { %>
+              <div class="timeline">
+                <% timeline.forEach(t => {
+                     const r = t.proc_result_name || '';
+                     let dotClass = 'pending';
+                     if (r.indexOf('가결') > -1) dotClass = 'passed';
+                     else if (r.indexOf('대안') > -1 || r === '폐기') dotClass = 'alt';
+                     else if (r === '부결' || r === '철회') dotClass = 'rejected';
+                     let lblColor = 'var(--sub2)';
+                     if (r.indexOf('가결') > -1) lblColor = 'var(--green)';
+                     else if (r === '부결' || r === '폐기' || r === '철회') lblColor = 'var(--red)';
+                     else if (!r) { lblColor = 'var(--amber)'; }
+                %>
+                  <div class="tl-item">
+                    <div class="tl-dot <%= dotClass %>"></div>
+                    <div class="tl-content">
+                      <div class="tl-name"><%= t.bill_name %></div>
+                      <div class="tl-meta">
+                        <span class="tl-date"><%= t.propose_dt %></span>
+                        <span style="color: <%= lblColor %>"><%= r || '계류중' %></span>
+                      </div>
+                    </div>
+                  </div>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="notice-block">대표발의 법안이 없습니다.</div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 국민 평가 탭 ===== -->
+    <div class="tab-panel" id="tab-comments">
+      <div class="eval-summary">
+        <div class="eval-score-wrap">
+          <div class="eval-score">—</div>
+          <div class="eval-stars">
+            <span class="star-empty">☆</span>
+            <span class="star-empty">☆</span>
+            <span class="star-empty">☆</span>
+            <span class="star-empty">☆</span>
+            <span class="star-empty">☆</span>
+          </div>
+          <div class="eval-score-label">아직 평가 없음</div>
+        </div>
+        <div class="eval-empty-text">
+          국민 평가 기능은 <strong style="color:var(--text)">준비 중</strong>입니다.<br>
+          실제 의정 데이터를 기반으로 의원에 대한 별점/태그/의견을 남길 수 있는 공간입니다.
+        </div>
+      </div>
+
+      <div class="comment-write">
+        <div class="comment-write-top">
+          <div class="write-avatar">😶</div>
+          <span style="font-size:13px;color:var(--sub)">평가 점수:</span>
+          <div class="write-stars">
+            <% for (let i = 1; i <= 5; i++) { %>
+              <span class="write-star" data-val="<%= i %>">★</span>
+            <% } %>
+          </div>
+        </div>
+        <textarea class="write-input"
+          placeholder="<%= politician.name %> 의원의 의정 활동에 대한 의견을 남겨주세요. 허위 사실, 욕설, 개인정보 포함 댓글은 삭제될 수 있습니다."></textarea>
+        <div class="write-footer">
+          <span class="write-hint">로그인 후 작성 가능합니다 (현재 준비 중)</span>
+          <button class="write-submit" onclick="alert('댓글 기능은 준비 중입니다.')">평가 남기기</button>
+        </div>
+      </div>
+
+      <div class="comments-empty">
+        아직 등록된 국민 평가가 없습니다. 첫 평가의 주인공이 되어보세요.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="side-card">
+      <div class="side-card-header">// 표결 요약</div>
+      <div class="side-card-body">
+        <% if (vsTotal > 0) {
+             const partRate = voteParticipateRate;
+             const cForDeg = pct(vs.for_cnt, vsTotal);
+             const cAgainstDeg = pct(vs.against_cnt, vsTotal);
+             const cAbsDeg = pct(vs.abstain_cnt, vsTotal);
+             const cMissDeg = pct(vs.absent_cnt, vsTotal);
+             const circ = 219.9;
+             const s1 = (cForDeg / 100) * circ;
+             const s2 = (cAgainstDeg / 100) * circ;
+             const s3 = (cAbsDeg / 100) * circ;
+             const s4 = (cMissDeg / 100) * circ;
+        %>
+          <div class="vote-summary" title="참여율 = (찬성+반대+기권) ÷ 전체 본회의 표결 법안 수">
+            <svg width="90" height="90" viewBox="0 0 90 90">
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#1E2A3D" stroke-width="10"/>
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#10B981" stroke-width="10"
+                      stroke-dasharray="<%= s1.toFixed(1) %> <%= circ %>" stroke-dashoffset="0" transform="rotate(-90 45 45)"/>
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#EF4444" stroke-width="10"
+                      stroke-dasharray="<%= s2.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-s1).toFixed(1) %>" transform="rotate(-90 45 45)"/>
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#F59E0B" stroke-width="10"
+                      stroke-dasharray="<%= s3.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2)).toFixed(1) %>" transform="rotate(-90 45 45)"/>
+              <circle cx="45" cy="45" r="35" fill="none" stroke="#4A5568" stroke-width="10"
+                      stroke-dasharray="<%= s4.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2+s3)).toFixed(1) %>" transform="rotate(-90 45 45)"/>
+              <text x="45" y="42" text-anchor="middle" fill="#E2E8F5" font-size="14" font-weight="700" font-family="Bebas Neue"><%= partRate.toFixed(0) %>%</text>
+              <text x="45" y="54" text-anchor="middle" fill="#7B8DAB" font-size="7" font-family="JetBrains Mono">참여율</text>
+            </svg>
+            <div class="vote-legend">
+              <div class="vote-legend-item">
+                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--green)"></span>찬성</span>
+                <span class="vote-legend-val"><%= nf(vs.for_cnt) %></span>
+              </div>
+              <div class="vote-legend-item">
+                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--red)"></span>반대</span>
+                <span class="vote-legend-val"><%= nf(vs.against_cnt) %></span>
+              </div>
+              <div class="vote-legend-item">
+                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--amber)"></span>기권</span>
+                <span class="vote-legend-val"><%= nf(vs.abstain_cnt) %></span>
+              </div>
+              <div class="vote-legend-item">
+                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--sub2)"></span>불참</span>
+                <span class="vote-legend-val"><%= nf(vs.absent_cnt) %></span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--sub2);line-height:1.6">
+            참여율 = <span style="color:var(--sub)">(찬성+반대+기권)</span> ÷ 전체
+            <a href="/glossary#vote-absent" class="pb-help" title="용어 설명">?</a>
+          </div>
+        <% } else { %>
+          <div class="notice-block">표결 기록이 아직 수집되지 않았습니다.</div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-card-header">// 관심 분야 Top 5</div>
+      <div class="side-card-body">
+        <% if (topics5.length > 0) { %>
+          <div class="category-bars">
+            <% topics5.forEach(t => {
+                 const w = maxTopicCnt > 0 ? (Number(t.cnt) / maxTopicCnt * 100) : 0;
+            %>
+              <div>
+                <div class="cat-bar-label"><%= t.topic_name %><span class="cat-bar-val"><%= t.cnt %>건</span></div>
+                <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= w %>%"></div></div>
+              </div>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <div style="font-size:12px;color:var(--sub2)">대표발의 법안이 없습니다.</div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="side-card">
+      <div class="side-card-header">// 기본 정보</div>
+      <div class="side-card-body">
+        <div class="info-list">
+          <% if (politician.reele_gbn_nm) { %>
+          <div class="info-item">
+            <span class="info-key">당선 횟수</span>
+            <span class="info-val"><%= politician.reele_gbn_nm %></span>
+          </div>
+          <% } %>
+          <% if (politician.elect_gbn_nm) { %>
+          <div class="info-item">
+            <span class="info-key">선출 방식</span>
+            <span class="info-val"><%= politician.elect_gbn_nm %></span>
+          </div>
+          <% } %>
+          <% if (politician.cmit_nm) { %>
+          <div class="info-item">
+            <span class="info-key">소속 위원회</span>
+            <span class="info-val"><%= politician.cmit_nm %></span>
+          </div>
+          <% } %>
+          <% if (politician.birthday) { %>
+          <div class="info-item">
+            <span class="info-key">생년월일</span>
+            <span class="info-val"><%= politician.birthday %> (<%= politician.age %>세)</span>
+          </div>
+          <% } %>
+          <% if (politician.sex_gbn_nm) { %>
+          <div class="info-item">
+            <span class="info-key">성별</span>
+            <span class="info-val"><%= politician.sex_gbn_nm %></span>
+          </div>
+          <% } %>
+          <% if (politician.e_mail) { %>
+          <div class="info-item">
+            <span class="info-key">이메일</span>
+            <span class="info-val" style="font-family:'JetBrains Mono';font-size:11px"><%= politician.e_mail %></span>
+          </div>
+          <% } %>
+          <% if (politician.homepage) { %>
+          <div class="info-item">
+            <span class="info-key">홈페이지</span>
+            <span class="info-val"><a href="<%= politician.homepage %>" target="_blank" rel="noopener" style="color:var(--blue);font-size:11px">바로가기 →</a></span>
+          </div>
+          <% } %>
+          <div class="info-item">
+            <span class="info-key">국회 프로필</span>
+            <span class="info-val">
+              <a href="https://www.assembly.go.kr/portal/assm/search/memberIntro.do?monaCd=<%= politician.mona_cd %>"
+                 target="_blank" rel="noopener"
+                 style="color:var(--blue);font-size:12px">국회 공식 프로필 →</a>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
 
 <script>
-    // 평점 주기 버튼 클릭 이벤트 (간단한 예시)
-    document.getElementById('ratePoliticianBtn')?.addEventListener('click', () => {
-        alert('평점 주기 기능은 준비 중입니다! 로그인 후 이용 가능합니다.');
-        // 실제로는 모달을 띄우고 평점 입력 폼을 보여줍니다.
+(() => {
+  // Tab switching
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    const key = t.dataset.tab;
+    tabs.forEach(x => x.classList.toggle('active', x === t));
+    panels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + key));
+  }));
+
+  // Bill filter tabs
+  document.querySelectorAll('.bill-filter-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.bill-filter-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const kind = btn.dataset.bf;
+      document.querySelectorAll('.bills-row').forEach(row => {
+        if (kind === 'all') row.style.display = '';
+        else row.style.display = row.dataset.kind === kind ? '' : 'none';
+      });
+      resetBillsPaging();
     });
-    
-    // 분야 그룹 접기/펼치기
-    function toggleAreaGroup(btn) {
-        const group = btn.closest('.bill-area-group');
-        const container = group.querySelector('.area-bills-container');
-        const icon = btn.querySelector('i');
-        const isExpanded = container.style.display !== 'none';
-        
-        if (isExpanded) {
-            container.style.display = 'none';
-            icon.className = 'fas fa-chevron-down';
-            group.setAttribute('data-expanded', 'false');
-        } else {
-            container.style.display = 'grid';
-            icon.className = 'fas fa-chevron-up';
-            group.setAttribute('data-expanded', 'true');
-        }
-    }
-    
-    // 분야 필터 탭 클릭 이벤트
-    document.querySelectorAll('.filter-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            // 모든 탭에서 active 제거
-            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-            // 클릭한 탭에 active 추가
-            this.classList.add('active');
-            
-            const selectedArea = this.getAttribute('data-area');
-            const allGroups = document.querySelectorAll('.bill-area-group');
-            
-            if (selectedArea === 'all') {
-                // 전체 표시
-                allGroups.forEach(group => {
-                    group.style.display = 'block';
-                });
-            } else {
-                // 선택한 분야만 표시
-                allGroups.forEach(group => {
-                    if (group.getAttribute('data-area') === selectedArea) {
-                        group.style.display = 'block';
-                        // 해당 그룹 자동 펼치기
-                        const container = group.querySelector('.area-bills-container');
-                        const toggleBtn = group.querySelector('.area-toggle-btn');
-                        if (container.style.display === 'none') {
-                            container.style.display = 'grid';
-                            toggleBtn.querySelector('i').className = 'fas fa-chevron-up';
-                            group.setAttribute('data-expanded', 'true');
-                        }
-                    } else {
-                        group.style.display = 'none';
-                    }
-                });
-            }
-        });
+  });
+
+  // 클라이언트 페이지네이션 (법안 탭)
+  const PER = 20;
+  let currentPage = 1;
+  const billsContainer = document.getElementById('bills-container');
+  const pagerEl = document.getElementById('bills-pagination');
+
+  function visibleRows() {
+    return Array.from(document.querySelectorAll('.bills-row'))
+      .filter(r => r.dataset.filtered !== 'true');
+  }
+
+  function resetBillsPaging() {
+    if (!billsContainer || !pagerEl) return;
+    currentPage = 1;
+    renderPage();
+  }
+
+  function renderPage() {
+    const allRows = Array.from(document.querySelectorAll('.bills-row'));
+    // 현재 display 속성 기준으로 보임/숨김 판정
+    const visible = allRows.filter(r => r.style.display !== 'none');
+    const total = visible.length;
+    const pages = Math.max(1, Math.ceil(total / PER));
+    if (currentPage > pages) currentPage = pages;
+
+    // 전부 한 번 숨기고
+    visible.forEach(r => r.dataset._hide = '1');
+    // 현재 페이지만 보이기
+    const start = (currentPage - 1) * PER;
+    visible.slice(start, start + PER).forEach(r => r.dataset._hide = '');
+    visible.forEach(r => {
+      if (r.dataset._hide === '1') r.style.display = 'none';
+      else r.style.display = '';
+      delete r.dataset._hide;
     });
-    
-    // 정렬 옵션 변경 이벤트
-    const sortSelect = document.getElementById('billSortSelect');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', function() {
-            const sortType = this.value;
-            const container = document.getElementById('billCardsContainer');
-            const groups = Array.from(container.querySelectorAll('.bill-area-group'));
-            
-            if (sortType === 'date-desc') {
-                // 최신순: 각 그룹 내 법안을 날짜순으로 정렬
-                groups.forEach(group => {
-                    const displayedContainer = group.querySelector('.bills-displayed');
-                    const hiddenContainer = group.querySelector('.bills-hidden');
-                    
-                    // 표시된 법안과 숨겨진 법안 모두 가져오기
-                    const allBills = [];
-                    if (displayedContainer) {
-                        allBills.push(...Array.from(displayedContainer.querySelectorAll('.bill-card')));
-                    }
-                    if (hiddenContainer) {
-                        allBills.push(...Array.from(hiddenContainer.querySelectorAll('.bill-card')));
-                    }
-                    
-                    // 날짜순으로 정렬
-                    allBills.sort((a, b) => {
-                        const dateA = a.querySelector('.propose-date')?.textContent || '';
-                        const dateB = b.querySelector('.propose-date')?.textContent || '';
-                        return dateB.localeCompare(dateA);
-                    });
-                    
-                    // 정렬된 법안을 다시 배치 (초기 5개는 displayed, 나머지는 hidden)
-                    if (displayedContainer) {
-                        displayedContainer.innerHTML = '';
-                        hiddenContainer.innerHTML = '';
-                        
-                        allBills.forEach((bill, index) => {
-                            if (index < 5) {
-                                displayedContainer.appendChild(bill);
-                            } else {
-                                hiddenContainer.appendChild(bill);
-                            }
-                        });
-                        
-                        // 더보기 버튼 상태 업데이트
-                        const loadMoreContainer = group.querySelector('.load-more-container');
-                        if (loadMoreContainer && allBills.length > 5) {
-                            loadMoreContainer.style.display = 'block';
-                            const remaining = allBills.length - 5;
-                            const btn = loadMoreContainer.querySelector('.load-more-btn');
-                            if (btn) {
-                                btn.innerHTML = `<i class="fas fa-chevron-down"></i> 더보기 (${remaining}개 남음)`;
-                            }
-                        } else if (loadMoreContainer) {
-                            loadMoreContainer.style.display = 'none';
-                        }
-                    }
-                });
-            } else if (sortType === 'area-priority') {
-                // 관심분야 우선순위는 이미 서버에서 정렬됨
-                // 추가 정렬 불필요
-            } else if (sortType === 'area-name') {
-                // 분야명 순으로 그룹 정렬
-                groups.sort((a, b) => {
-                    const nameA = a.querySelector('.area-group-title')?.textContent || '';
-                    const nameB = b.querySelector('.area-group-title')?.textContent || '';
-                    return nameA.localeCompare(nameB);
-                });
-                groups.forEach(group => container.appendChild(group));
-            }
-        });
-    }
-    
-    // 분야별 더보기 버튼 기능
-    function loadMoreBills(btn, area) {
-        const group = btn.closest('.bill-area-group');
-        const hiddenContainer = group.querySelector('.bills-hidden');
-        const displayedContainer = group.querySelector('.bills-displayed');
-        const loadMoreContainer = btn.closest('.load-more-container');
-        
-        if (hiddenContainer && hiddenContainer.style.display === 'none') {
-            // 로딩 상태 표시
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 로딩 중...';
-            
-            // 약간의 딜레이로 부드러운 전환 효과
-            setTimeout(() => {
-                // 숨겨진 법안들을 표시 영역으로 이동
-                const hiddenBills = Array.from(hiddenContainer.querySelectorAll('.bill-card'));
-                hiddenBills.forEach(bill => {
-                    displayedContainer.appendChild(bill);
-                });
-                
-                // 숨겨진 컨테이너 제거
-                hiddenContainer.remove();
-                
-                // 더보기 버튼 숨기기
-                loadMoreContainer.style.display = 'none';
-            }, 300);
-        }
-    }
+
+    // pager
+    pagerEl.innerHTML = '';
+    if (pages <= 1) return;
+    const mk = (label, page, opts = {}) => {
+      const b = document.createElement('button');
+      b.className = 'pg' + (opts.active ? ' active' : '');
+      b.textContent = label;
+      b.disabled = !!opts.disabled;
+      b.onclick = () => { currentPage = page; renderPage(); };
+      pagerEl.appendChild(b);
+    };
+    mk('←', Math.max(1, currentPage - 1), { disabled: currentPage === 1 });
+    const maxBtns = 7;
+    const startPage = Math.max(1, currentPage - 3);
+    const endPage = Math.min(pages, startPage + maxBtns - 1);
+    for (let p = startPage; p <= endPage; p++) mk(String(p), p, { active: p === currentPage });
+    mk('→', Math.min(pages, currentPage + 1), { disabled: currentPage === pages });
+  }
+
+  // Hook: when filter changes we re-render. We already reset in filter handler.
+  // On first load: ensure filter didn't hide anything, then render page.
+  if (billsContainer && pagerEl) {
+    renderPage();
+  }
+
+  // Star hover (UI only)
+  const stars = document.querySelectorAll('.write-star');
+  let selected = 0;
+  stars.forEach((star, idx) => {
+    star.addEventListener('mouseover', () => {
+      stars.forEach((s, i) => s.style.color = i <= idx ? 'var(--amber)' : 'var(--sub2)');
+    });
+    star.addEventListener('mouseout', () => {
+      stars.forEach((s, i) => s.style.color = i < selected ? 'var(--amber)' : 'var(--sub2)');
+    });
+    star.addEventListener('click', () => {
+      selected = idx + 1;
+      stars.forEach((s, i) => s.classList.toggle('active', i < selected));
+    });
+  });
+})();
 </script>

@@ -1,38 +1,820 @@
-<%# 1. 페이지에서 사용할 데이터 글로벌 변수로 셋팅 (서버에서 politician로 넘김) %>
-<script>
-    window.politicianData = <%- JSON.stringify(politician) %>;
-</script>
+<%
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
 
-<%# 2. 페이지 고유의 콘텐츠 %>
-<section class="controls">
-    <div class="filter-container">
-        <div class="custom-select-wrapper">
-            <select id="type-filter" class="filter-select">
-                </select>
+  // 정당별 카드 색상
+  const partyColorOf = (name) => {
+    if (!name) return '#9CA3AF';
+    if (name.indexOf('더불어민주') > -1) return '#60A5FA';
+    if (name.indexOf('국민의힘') > -1) return '#FC8181';
+    if (name.indexOf('조국혁신') > -1) return '#A78BFA';
+    if (name.indexOf('개혁') > -1) return '#FCD34D';
+    if (name.indexOf('진보') > -1) return '#F87171';
+    return '#9CA3AF';
+  };
+  const partyClassOf = (name) => {
+    if (!name) return 'party-etc';
+    if (name.indexOf('더불어민주') > -1) return 'party-minjoo';
+    if (name.indexOf('국민의힘') > -1) return 'party-gukhim';
+    if (name.indexOf('조국혁신') > -1) return 'party-jokuk';
+    if (name.indexOf('개혁') > -1) return 'party-gaehyuk';
+    if (name.indexOf('진보') > -1) return 'party-jinbo';
+    return 'party-etc';
+  };
+%>
+
+<style>
+  .page-header {
+    padding: 40px 24px 32px;
+    border-top: 56px solid transparent;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(226,201,126,0.04) 0%, transparent 100%);
+    margin-top: -56px;
+  }
+  .page-header-inner { max-width: 1280px; margin: 0 auto; }
+  .breadcrumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    margin-bottom: 12px;
+  }
+  .breadcrumb a { color: var(--blue); }
+  .page-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px;
+    letter-spacing: 0.02em;
+    margin-bottom: 4px;
+  }
+  .page-desc { font-size: 13px; color: var(--sub); }
+
+  /* Party histogram */
+  .party-histogram {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .ph-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .ph-title-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .ph-title-label strong { color: var(--text); }
+  .ph-total { font-size: 12px; color: var(--sub); }
+  .ph-total strong { color: var(--text); font-weight: 600; }
+
+  .ph-bar {
+    display: flex;
+    height: 24px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .ph-seg {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: #0B0F17;
+    min-width: 1px;
+    position: relative;
+  }
+  .ph-seg[data-small="true"] .ph-seg-text { display: none; }
+  .ph-legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .ph-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ph-legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+  .ph-legend strong { color: var(--text); font-weight: 500; }
+  .ph-legend-count {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--sub2);
+  }
+
+  /* Filter */
+  .filter-bar {
+    position: sticky;
+    top: 56px;
+    z-index: 50;
+  }
+  .filter-bar-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 16px 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 320px; }
+  .search-icon {
+    position: absolute;
+    left: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--sub2);
+  }
+  .search-input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--blue); }
+  .search-input::placeholder { color: var(--sub2); }
+
+  .filter-select {
+    padding: 8px 28px 8px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237B8DAB' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
+  .filter-toggle {
+    display: flex;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .filter-toggle-btn {
+    padding: 8px 14px;
+    background: transparent;
+    border: none;
+    color: var(--sub);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-toggle-btn.active { background: var(--blue); color: #fff; }
+
+  .filter-count {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+  }
+
+  /* Party tabs */
+  .party-tabs-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .party-tabs-inner::-webkit-scrollbar { display: none; }
+  .party-tab {
+    flex-shrink: 0;
+    padding: 12px 20px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--sub);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .party-tab:hover { color: var(--text); }
+  .party-tab.active { color: var(--text); border-bottom-color: var(--blue); }
+  .party-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    background: var(--bg3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--sub2);
+  }
+  .party-tab.active .party-count { background: rgba(226,201,126,0.15); color: var(--blue); }
+
+  /* Content layout */
+  .content-wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 130px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .sidebar-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sidebar-title {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--sub2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .sidebar-list { padding: 8px 0; max-height: 320px; overflow-y: auto; }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 13px;
+  }
+  .sidebar-item:hover { background: var(--bg3); }
+  .sidebar-item.active { background: rgba(226,201,126,0.08); color: var(--blue); }
+  .sidebar-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-item-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .sidebar-item.active .sidebar-item-count { color: var(--blue); }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .mini-stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .mini-stat-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .mini-stat:nth-child(1) .mini-stat-val { color: var(--blue); }
+  .mini-stat:nth-child(2) .mini-stat-val { color: var(--green); }
+  .mini-stat:nth-child(3) .mini-stat-val { color: var(--amber); }
+  .mini-stat:nth-child(4) .mini-stat-val { color: var(--purple); }
+  .mini-stat-label { font-size: 11px; color: var(--sub2); }
+
+  /* GRID */
+  .politicians-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .pol-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 16px;
+    text-align: center;
+    transition: all 0.2s;
+    display: block;
+    position: relative;
+    overflow: hidden;
+  }
+  .pol-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--party-color, var(--blue));
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .pol-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .pol-card:hover::before { opacity: 1; }
+
+  .pol-avatar {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+  }
+  .pol-avatar img,
+  .pol-avatar svg { width: 100%; height: 100%; display: block; }
+
+  .pol-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .pol-district {
+    font-size: 11px;
+    color: var(--sub2);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pol-party-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .party-minjoo  { background: rgba(59,130,246,0.15); color: #60A5FA; }
+  .party-gukhim  { background: rgba(239,68,68,0.15); color: #FC8181; }
+  .party-jokuk   { background: rgba(139,92,246,0.15); color: #A78BFA; }
+  .party-gaehyuk { background: rgba(245,158,11,0.15); color: #FCD34D; }
+  .party-jinbo   { background: rgba(239,68,68,0.15); color: #F87171; }
+  .party-etc     { background: rgba(107,114,128,0.15); color: #9CA3AF; }
+
+  .pol-stats {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .pol-stat-item { text-align: center; }
+  .pol-stat-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--blue);
+    font-weight: 500;
+  }
+  .pol-stat-label { font-size: 9px; color: var(--sub2); margin-top: 1px; }
+
+  /* LIST */
+  .politicians-list { display: flex; flex-direction: column; gap: 8px; }
+  .pol-list-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 20px;
+    display: grid;
+    grid-template-columns: 48px 1fr 140px 80px 80px 100px;
+    gap: 16px;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .pol-list-item:hover { border-color: var(--border2); background: var(--bg3); }
+  .pol-list-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .pol-list-avatar img,
+  .pol-list-avatar svg { width: 100%; height: 100%; display: block; }
+  .pol-list-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .pol-list-sub { font-size: 11px; color: var(--sub2); }
+  .pol-list-party { font-size: 12px; color: var(--sub); }
+  .pol-list-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--blue);
+    text-align: center;
+  }
+
+  .list-header {
+    display: grid;
+    grid-template-columns: 48px 1fr 140px 80px 80px 100px;
+    gap: 16px;
+    padding: 8px 20px;
+    font-size: 10px;
+    color: var(--sub2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 6px;
+  }
+
+  /* Empty */
+  .empty-state {
+    grid-column: 1/-1;
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--sub);
+    background: var(--bg2);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .page-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--sub);
+    font-size: 13px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.15s;
+  }
+  .page-btn:hover { border-color: var(--border2); color: var(--text); }
+  .page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  @media (max-width: 1024px) {
+    .content-wrap { grid-template-columns: 1fr; }
+    .sidebar { position: static; }
+    .sidebar-list { max-height: 200px; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .list-header { display: none; }
+    .pol-list-item { grid-template-columns: 48px 1fr 80px; }
+    .pol-list-item > div:nth-child(3),
+    .pol-list-item > div:nth-child(5),
+    .pol-list-item > div:nth-child(6) { display: none; }
+  }
+</style>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <div class="breadcrumb"><a href="/">홈</a> / 국회의원</div>
+    <h1 class="page-title">국회의원</h1>
+    <p class="page-desc">22대 국회 <%= nf(politicians.length) %>명의 의정 활동을 모두 추적합니다</p>
+  </div>
+</div>
+
+<%
+  const histoTotal = partyCounts.reduce((s, p) => s + Number(p.cnt), 0);
+%>
+<div class="party-histogram">
+  <div class="ph-title">
+    <div>
+      <div class="ph-title-label">// SEAT DISTRIBUTION · <strong>정당별 의석 분포</strong></div>
+    </div>
+    <div class="ph-total">총 <strong><%= nf(histoTotal) %>석</strong></div>
+  </div>
+  <div class="ph-bar">
+    <% partyCounts.forEach(pc => {
+         const w = histoTotal > 0 ? (Number(pc.cnt) / histoTotal * 100) : 0;
+         const color = partyColorOf(pc.party_name);
+         const small = w < 5;
+    %>
+      <div class="ph-seg" style="background: <%= color %>; width: <%= w.toFixed(2) %>%" data-small="<%= small %>" title="<%= pc.party_name %> · <%= pc.cnt %>석">
+        <% if (!small) { %><span class="ph-seg-text"><%= pc.cnt %></span><% } %>
+      </div>
+    <% }); %>
+  </div>
+  <div class="ph-legend">
+    <% partyCounts.forEach(pc => {
+         const w = histoTotal > 0 ? (Number(pc.cnt) / histoTotal * 100) : 0;
+         const color = partyColorOf(pc.party_name);
+    %>
+      <div class="ph-legend-item">
+        <span class="ph-legend-dot" style="background: <%= color %>"></span>
+        <strong><%= pc.party_name %></strong>
+        <span class="ph-legend-count"><%= nf(pc.cnt) %>석 (<%= w.toFixed(1) %>%)</span>
+      </div>
+    <% }); %>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <div class="filter-bar-inner">
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="pol-search" class="search-input" placeholder="의원 이름, 지역구 검색...">
+    </div>
+    <select id="pol-sort" class="filter-select">
+      <option value="propose">정렬: 발의 많은순</option>
+      <option value="name">정렬: 이름순</option>
+      <option value="party">정렬: 정당순</option>
+    </select>
+    <div class="filter-toggle">
+      <button class="filter-toggle-btn active" id="btn-grid">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        그리드
+      </button>
+      <button class="filter-toggle-btn" id="btn-list">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        리스트
+      </button>
+    </div>
+    <span class="filter-count" id="filter-count">총 <%= nf(politicians.length) %>명</span>
+  </div>
+</div>
+
+<div class="party-tabs">
+  <div class="party-tabs-inner">
+    <button class="party-tab active" data-party="">전체 <span class="party-count"><%= nf(politicians.length) %></span></button>
+    <% partyCounts.forEach(pc => { %>
+      <button class="party-tab" data-party="<%= pc.party_name %>">
+        <%= pc.party_name %> <span class="party-count"><%= nf(pc.cnt) %></span>
+      </button>
+    <% }); %>
+  </div>
+</div>
+
+<div class="content-wrap">
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <div class="sidebar-title">// 상임위원회</div>
+      <div class="sidebar-list" id="committee-list">
+        <div class="sidebar-item active" data-cmit="">
+          <span class="sidebar-item-name">전체</span>
+          <span class="sidebar-item-count"><%= nf(politicians.length) %></span>
         </div>
+        <% committeeCounts.forEach(cc => { %>
+          <div class="sidebar-item" data-cmit="<%= cc.cmit_nm %>">
+            <span class="sidebar-item-name"><%= cc.cmit_nm %></span>
+            <span class="sidebar-item-count"><%= nf(cc.cnt) %></span>
+          </div>
+        <% }); %>
+      </div>
     </div>
-    <div class="politician-count" id="politician-count"></div>
-    <div class="search-container">
-        <i class="fas fa-search"></i>
-        <input type="text" id="name-search" placeholder="이름으로 검색...">
+
+    <div class="sidebar-card">
+      <div class="sidebar-title">// 선출 방식</div>
+      <div class="sidebar-list" id="elect-list">
+        <div class="sidebar-item active" data-elect="">
+          <span class="sidebar-item-name">전체</span>
+          <span class="sidebar-item-count"><%= nf(politicians.length) %></span>
+        </div>
+        <% electCounts.forEach(ec => { %>
+          <div class="sidebar-item" data-elect="<%= ec.elect_gbn_nm %>">
+            <span class="sidebar-item-name"><%= ec.elect_gbn_nm %></span>
+            <span class="sidebar-item-count"><%= nf(ec.cnt) %></span>
+          </div>
+        <% }); %>
+      </div>
     </div>
-    <div class="sort-buttons">
-        <button class="sort-btn active" data-sort="name">이름순 <span class="sort-indicator"></span></button>
-        <button class="sort-btn" data-sort="party">정당순 <span class="sort-indicator"></span></button>
-        <button class="sort-btn" data-sort="reele">재선순 <span class="sort-indicator"></span></button>
-        <button class="sort-btn" data-sort="age">나이순 <span class="sort-indicator"></span></button>
+  </aside>
+
+  <div>
+    <div class="stats-row">
+      <div class="mini-stat">
+        <div class="mini-stat-val"><%= nf(politicians.length) %></div>
+        <div class="mini-stat-label">전체 의원</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-val"><%= nf(politicians.reduce((s, p) => s + Number(p.propose_cnt || 0), 0)) %></div>
+        <div class="mini-stat-label">총 발의 법안</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-val"><%
+          const total = politicians.length || 1;
+          const totalProp = politicians.reduce((s, p) => s + Number(p.propose_cnt || 0), 0);
+          %><%= (totalProp / total).toFixed(0) %>건</div>
+        <div class="mini-stat-label">의원당 평균 발의</div>
+      </div>
+      <div class="mini-stat">
+        <div class="mini-stat-val"><%= partyCounts.length %></div>
+        <div class="mini-stat-label">정당 수</div>
+      </div>
     </div>
-</section>
 
-<section class="summary-section" id="politician-summary">
-    </section>
+    <!-- GRID VIEW -->
+    <div id="grid-view">
+      <div class="politicians-grid" id="grid-container">
+        <% politicians.forEach(p => {
+             const color = partyColorOf(p.party_name);
+             const pClass = partyClassOf(p.party_name);
+        %>
+          <a href="/politician/<%= p.mona_cd %>"
+             class="pol-card pol-item"
+             style="--party-color: <%= color %>; text-decoration:none"
+             data-name="<%= p.name %>"
+             data-district="<%= p.electoral_district || '' %>"
+             data-party="<%= p.party_name || '' %>"
+             data-cmit="<%= p.cmit_nm || '' %>"
+             data-elect="<%= p.elect_gbn_nm || '' %>"
+             data-propose="<%= p.propose_cnt || 0 %>">
+            <div class="pol-avatar">
+              <%- avatarHtml(p.name, p.photo_url, 60) %>
+            </div>
+            <div class="pol-name"><%= p.name %></div>
+            <div class="pol-district"><%= p.electoral_district || '—' %></div>
+            <span class="pol-party-badge <%= pClass %>"><%= p.party_name || '무소속' %></span>
+            <div class="pol-stats">
+              <div class="pol-stat-item"><div class="pol-stat-val"><%= p.propose_cnt %></div><div class="pol-stat-label">발의</div></div>
+              <div class="pol-stat-item"><div class="pol-stat-val"><%= p.co_propose_cnt %></div><div class="pol-stat-label">공동</div></div>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+      <div class="empty-state" id="grid-empty" style="display:none">조건에 맞는 의원이 없습니다.</div>
+    </div>
 
-<section id="politician-grid" class="politician-grid">
-    <p class="loading-message">의원 목록을 불러오는 중입니다...</p>
-</section>
+    <!-- LIST VIEW -->
+    <div id="list-view" style="display:none">
+      <div class="list-header">
+        <span></span>
+        <span>의원</span>
+        <span>정당</span>
+        <span style="text-align:center">발의</span>
+        <span style="text-align:center">공동</span>
+        <span></span>
+      </div>
+      <div class="politicians-list" id="list-container">
+        <% politicians.forEach(p => {
+             const pClass = partyClassOf(p.party_name);
+        %>
+          <a href="/politician/<%= p.mona_cd %>"
+             class="pol-list-item pol-item-list"
+             style="text-decoration:none"
+             data-name="<%= p.name %>"
+             data-district="<%= p.electoral_district || '' %>"
+             data-party="<%= p.party_name || '' %>"
+             data-cmit="<%= p.cmit_nm || '' %>"
+             data-elect="<%= p.elect_gbn_nm || '' %>"
+             data-propose="<%= p.propose_cnt || 0 %>">
+            <div class="pol-list-avatar">
+              <%- avatarHtml(p.name, p.photo_url, 40) %>
+            </div>
+            <div>
+              <div class="pol-list-name"><%= p.name %></div>
+              <div class="pol-list-sub"><%= p.electoral_district || '—' %></div>
+            </div>
+            <div class="pol-list-party"><%= p.party_name || '무소속' %></div>
+            <div class="pol-list-num"><%= p.propose_cnt %></div>
+            <div class="pol-list-num"><%= p.co_propose_cnt %></div>
+            <div><span style="font-size:11px;color:var(--blue)">상세 →</span></div>
+          </a>
+        <% }); %>
+      </div>
+      <div class="empty-state" id="list-empty" style="display:none">조건에 맞는 의원이 없습니다.</div>
+    </div>
+  </div>
+</div>
 
-<%# 페이징 동적으로 생성 %>
-<div class="pagination-container" id="pagination-container"></div>
+<script>
+(() => {
+  const state = { party: '', cmit: '', elect: '', q: '', sort: 'propose' };
 
-<%# 3. 이 페이지에서만 사용하는 스크립트를 가장 마지막에 추가 %>
-<script src="/scripts/politician/politician.js" type="module"></script>
+  const gridContainer = document.getElementById('grid-container');
+  const listContainer = document.getElementById('list-container');
+  const countEl = document.getElementById('filter-count');
+
+  const applyFilter = () => {
+    const q = state.q.trim().toLowerCase();
+    let visibleCount = 0;
+
+    const filterCard = (el) => {
+      const name = (el.dataset.name || '').toLowerCase();
+      const district = (el.dataset.district || '').toLowerCase();
+      const party = el.dataset.party || '';
+      const cmit = el.dataset.cmit || '';
+      const elect = el.dataset.elect || '';
+
+      const matches =
+        (!q || name.includes(q) || district.includes(q)) &&
+        (!state.party || party === state.party) &&
+        (!state.cmit  || cmit  === state.cmit) &&
+        (!state.elect || elect === state.elect);
+
+      el.style.display = matches ? '' : 'none';
+      return matches;
+    };
+
+    const gridItems = Array.from(document.querySelectorAll('.pol-item'));
+    const listItems = Array.from(document.querySelectorAll('.pol-item-list'));
+
+    gridItems.forEach(filterCard);
+    listItems.forEach(filterCard);
+
+    // Sort
+    const sortFn = (a, b) => {
+      if (state.sort === 'name')  return (a.dataset.name || '').localeCompare(b.dataset.name || '', 'ko');
+      if (state.sort === 'party') return (a.dataset.party || '').localeCompare(b.dataset.party || '', 'ko');
+      return (parseInt(b.dataset.propose, 10) || 0) - (parseInt(a.dataset.propose, 10) || 0);
+    };
+    gridItems.sort(sortFn).forEach(el => gridContainer.appendChild(el));
+    listItems.sort(sortFn).forEach(el => listContainer.appendChild(el));
+
+    visibleCount = gridItems.filter(el => el.style.display !== 'none').length;
+    countEl.textContent = `총 ${visibleCount.toLocaleString('ko-KR')}명`;
+    document.getElementById('grid-empty').style.display = visibleCount === 0 ? '' : 'none';
+    document.getElementById('list-empty').style.display = visibleCount === 0 ? '' : 'none';
+  };
+
+  // Search
+  document.getElementById('pol-search').addEventListener('input', (e) => {
+    state.q = e.target.value;
+    applyFilter();
+  });
+  // Sort
+  document.getElementById('pol-sort').addEventListener('change', (e) => {
+    state.sort = e.target.value;
+    applyFilter();
+  });
+  // Party tabs
+  document.querySelectorAll('.party-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.party-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      state.party = tab.dataset.party || '';
+      applyFilter();
+    });
+  });
+  // Sidebar committee
+  document.querySelectorAll('#committee-list .sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('#committee-list .sidebar-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      state.cmit = item.dataset.cmit || '';
+      applyFilter();
+    });
+  });
+  // Sidebar elect
+  document.querySelectorAll('#elect-list .sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('#elect-list .sidebar-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      state.elect = item.dataset.elect || '';
+      applyFilter();
+    });
+  });
+  // Grid/List toggle
+  const btnGrid = document.getElementById('btn-grid');
+  const btnList = document.getElementById('btn-list');
+  const gridView = document.getElementById('grid-view');
+  const listView = document.getElementById('list-view');
+  btnGrid.addEventListener('click', () => {
+    btnGrid.classList.add('active'); btnList.classList.remove('active');
+    gridView.style.display = ''; listView.style.display = 'none';
+  });
+  btnList.addEventListener('click', () => {
+    btnList.classList.add('active'); btnGrid.classList.remove('active');
+    gridView.style.display = 'none'; listView.style.display = '';
+  });
+
+  applyFilter();
+})();
+</script>
