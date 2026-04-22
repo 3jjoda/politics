@@ -29,8 +29,10 @@ export default (db) => ({
         const { rows } = await db.query(queries.nicknameExists, [nickname]);
         return rows.length > 0;
     },
-    insertOAuth: async ({ email, nickname, provider, providerId }) => {
-        const { rows } = await db.query(queries.insertOAuth, [email, nickname, provider, providerId]);
+    insertOAuth: async ({ email, nickname, provider, providerId, gender = null, ageGroup = null }) => {
+        const { rows } = await db.query(queries.insertOAuth, [
+            email, nickname, provider, providerId, gender, ageGroup
+        ]);
         return rows[0];
     },
     withdraw: async (userId) => {

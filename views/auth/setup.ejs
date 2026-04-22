@@ -165,6 +165,62 @@
     font-size: 13px;
     margin-bottom: 16px;
   }
+
+  /* 선택 블록 공통 */
+  .setup-section {
+    margin-top: 20px;
+  }
+  .setup-section-label {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .setup-section-label small {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--sub2);
+  }
+
+  /* 버튼형 토글 (라디오 그룹) */
+  .choice-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .choice-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--sub);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .choice-btn:hover { border-color: var(--border2); color: var(--text); }
+  .choice-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .choice-group.age .choice-btn {
+    flex: 0 0 calc(33.333% - 4px);
+  }
+
+  .privacy-note {
+    margin-top: 14px;
+    font-size: 11px;
+    color: var(--sub2);
+    line-height: 1.7;
+  }
 </style>
 
 <div class="setup-wrap">
@@ -209,6 +265,34 @@
         · 나중에 변경할 수 있습니다
       </div>
 
+      <!-- 성별 -->
+      <div class="setup-section">
+        <div class="setup-section-label">성별</div>
+        <div class="choice-group" data-choice="gender">
+          <button type="button" class="choice-btn" data-value="male">남성</button>
+          <button type="button" class="choice-btn" data-value="female">여성</button>
+        </div>
+        <input type="hidden" name="gender" id="gender-input" value="">
+      </div>
+
+      <!-- 연령대 -->
+      <div class="setup-section">
+        <div class="setup-section-label">연령대</div>
+        <div class="choice-group age" data-choice="ageGroup">
+          <button type="button" class="choice-btn" data-value="10s">10대</button>
+          <button type="button" class="choice-btn" data-value="20s">20대</button>
+          <button type="button" class="choice-btn" data-value="30s">30대</button>
+          <button type="button" class="choice-btn" data-value="40s">40대</button>
+          <button type="button" class="choice-btn" data-value="50s">50대</button>
+          <button type="button" class="choice-btn" data-value="60s">60대 이상</button>
+        </div>
+        <input type="hidden" name="ageGroup" id="ageGroup-input" value="">
+      </div>
+
+      <div class="privacy-note">
+        성별과 연령대는 통계 목적으로만 사용되며 개인 식별에 활용되지 않습니다.
+      </div>
+
       <button type="submit" class="setup-submit" id="setup-submit" disabled>
         시작하기
       </button>
@@ -230,6 +314,12 @@
   let lastCheckedValue = null;
   let lastResultAvailable = false;
 
+  // 3개 섹션 완료 여부를 모아서 제출 버튼 활성화
+  const completion = { nickname: false, gender: false, ageGroup: false };
+  const refreshSubmit = () => {
+    submitBtn.disabled = !(completion.nickname && completion.gender && completion.ageGroup);
+  };
+
   const setState = (state, message) => {
     input.classList.remove('ok', 'error');
     icon.classList.remove('ok', 'error', 'loading');
@@ -240,26 +330,27 @@
       icon.classList.add('loading');
       feedback.classList.add('neutral');
       feedback.textContent = '확인 중...';
-      submitBtn.disabled = true;
+      completion.nickname = false;
     } else if (state === 'ok') {
       input.classList.add('ok');
       icon.classList.add('ok');
       icon.textContent = '✓';
       feedback.classList.add('ok');
       feedback.textContent = message || '사용 가능한 닉네임입니다.';
-      submitBtn.disabled = false;
+      completion.nickname = true;
     } else if (state === 'error') {
       input.classList.add('error');
       icon.classList.add('error');
       icon.textContent = '✕';
       feedback.classList.add('error');
       feedback.textContent = message || '사용할 수 없는 닉네임입니다.';
-      submitBtn.disabled = true;
+      completion.nickname = false;
     } else {
       feedback.classList.add('neutral');
       feedback.textContent = message || '예: 현명한시민, data_lover, 정치팬123';
-      submitBtn.disabled = true;
+      completion.nickname = false;
     }
+    refreshSubmit();
   };
 
   const validate = (value) => {
@@ -319,7 +410,35 @@
     if (!local.ok) {
       e.preventDefault();
       setState('error', local.reason);
+      return;
     }
+    if (!document.getElementById('gender-input').value) {
+      e.preventDefault();
+      alert('성별을 선택해주세요.');
+      return;
+    }
+    if (!document.getElementById('ageGroup-input').value) {
+      e.preventDefault();
+      alert('연령대를 선택해주세요.');
+      return;
+    }
+  });
+
+  // ===== 버튼형 토글 (성별 / 연령대) — 필수, 반드시 하나 선택 =====
+  document.querySelectorAll('.choice-group').forEach(group => {
+    const targetName = group.dataset.choice; // 'gender' or 'ageGroup'
+    const hidden = document.getElementById(`${targetName}-input`);
+    group.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value;
+        // 단일 선택 (선택 해제 없음 — 필수 필드)
+        group.querySelectorAll('.choice-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        hidden.value = val;
+        completion[targetName] = !!val;
+        refreshSubmit();
+      });
+    });
   });
 })();
 </script>

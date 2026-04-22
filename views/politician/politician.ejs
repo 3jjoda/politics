@@ -132,26 +132,45 @@
     gap: 12px;
     flex-wrap: wrap;
   }
-  .search-wrap { position: relative; flex: 1; min-width: 200px; max-width: 320px; }
+
+  /* 오른쪽 그룹 (정렬 + 검색) — margin-left:auto 로 우측 정렬 */
+  .filter-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* 검색창 — 진한 테두리 강조 스타일 */
+  .search-wrap {
+    position: relative;
+    width: 240px;
+    flex-shrink: 0;
+  }
   .search-icon {
     position: absolute;
     left: 12px; top: 50%;
     transform: translateY(-50%);
-    color: var(--sub2);
+    color: #1A1D24;
+    transition: color 0.15s;
   }
   .search-input {
-    width: 100%;
+    width: 240px;
     padding: 10px 14px 10px 38px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
+    background: #FFFFFF;
+    border: 1.5px solid #1A1D24;
     border-radius: 8px;
-    color: var(--text);
+    color: #1A1D24;
     font-size: 14px;
     outline: none;
-    transition: border-color 0.2s;
+    box-shadow: none;
+    transition: border-color 0.15s;
   }
   .search-input:focus { border-color: var(--accent); }
-  .search-input::placeholder { color: var(--sub2); }
+  .search-input:focus + .search-icon,
+  .search-wrap:focus-within .search-icon { color: var(--accent); }
+  .search-input::placeholder { color: #7A8090; }
 
   .filter-select {
     padding: 10px 30px 10px 14px;
@@ -191,10 +210,10 @@
   .filter-toggle-btn.active { background: var(--accent); color: #fff; }
 
   .filter-count {
-    margin-left: auto;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     color: var(--sub2);
+    padding-left: 4px;
   }
 
   /* Party tabs */
@@ -518,7 +537,7 @@
 <div class="party-histogram">
   <div class="ph-title">
     <div>
-      <div class="ph-title-label">// SEAT DISTRIBUTION · <strong>정당별 의석 분포</strong></div>
+      <div class="ph-title-label">SEAT DISTRIBUTION · <strong>정당별 의석 분포</strong></div>
     </div>
     <div class="ph-total">총 <strong><%= nf(histoTotal) %>석</strong></div>
   </div>
@@ -549,26 +568,33 @@
 
 <div class="filter-bar">
   <div class="filter-bar-inner">
-    <div class="search-wrap">
-      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="pol-search" class="search-input" placeholder="의원 이름, 지역구 검색...">
-    </div>
-    <select id="pol-sort" class="filter-select">
-      <option value="propose">정렬: 발의 많은순</option>
-      <option value="name">정렬: 이름순</option>
-      <option value="party">정렬: 정당순</option>
-    </select>
+    <!-- LEFT: 뷰 형태 토글 -->
     <div class="filter-toggle">
-      <button class="filter-toggle-btn active" id="btn-grid">
+      <button class="filter-toggle-btn active" id="btn-grid" aria-label="그리드 보기">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         그리드
       </button>
-      <button class="filter-toggle-btn" id="btn-list">
+      <button class="filter-toggle-btn" id="btn-list" aria-label="리스트 보기">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
         리스트
       </button>
     </div>
+
+    <!-- 좌우 분리 여백 + 총원 -->
     <span class="filter-count" id="filter-count">총 <%= nf(politicians.length) %>명</span>
+
+    <!-- RIGHT: 정렬 + 검색 (검색이 더 눈에 띄도록) -->
+    <div class="filter-right">
+      <select id="pol-sort" class="filter-select">
+        <option value="propose">정렬: 발의 많은순</option>
+        <option value="name">정렬: 이름순</option>
+        <option value="party">정렬: 정당순</option>
+      </select>
+      <div class="search-wrap">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="pol-search" class="search-input" placeholder="의원 이름, 지역구 검색...">
+      </div>
+    </div>
   </div>
 </div>
 
@@ -586,7 +612,7 @@
 <div class="content-wrap">
   <aside class="sidebar">
     <div class="sidebar-card">
-      <div class="sidebar-title">// 상임위원회</div>
+      <div class="sidebar-title">상임위원회</div>
       <div class="sidebar-list" id="committee-list">
         <div class="sidebar-item active" data-cmit="">
           <span class="sidebar-item-name">전체</span>
@@ -602,7 +628,7 @@
     </div>
 
     <div class="sidebar-card">
-      <div class="sidebar-title">// 선출 방식</div>
+      <div class="sidebar-title">선출 방식</div>
       <div class="sidebar-list" id="elect-list">
         <div class="sidebar-item active" data-elect="">
           <span class="sidebar-item-name">전체</span>

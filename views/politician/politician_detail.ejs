@@ -847,7 +847,7 @@
 
     <!-- 히어로 레이더 (주인공) -->
     <div class="profile-radar-wrap">
-      <div class="profile-radar-label">// 활동 레이더</div>
+      <div class="profile-radar-label">활동 레이더</div>
       <%
         const HERO_R = 110;  // 반지름
         const heroPt = (val, idx) => {
@@ -1048,7 +1048,7 @@
         <!-- 레이더 -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">활동 레이더 <span class="card-title-mono">// 6개 지표</span></span>
+            <span class="card-title">활동 레이더 <span class="card-title-mono">6개 지표</span></span>
           </div>
           <div class="card-body radar-big">
             <svg width="220" height="220" viewBox="-110 -110 220 220" overflow="visible">
@@ -1076,7 +1076,7 @@
         <!-- 표결 성향 (요약) -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">표결 성향 <span class="card-title-mono">// 데이터 기반</span></span>
+            <span class="card-title">표결 성향 <span class="card-title-mono">데이터 기반</span></span>
           </div>
           <div class="card-body">
             <% if (vsTotal > 0) { %>
@@ -1112,7 +1112,7 @@
         <!-- 관심분야 -->
         <div class="card">
           <div class="card-header">
-            <span class="card-title">대표발의 관심분야 <span class="card-title-mono">// TOP 5</span></span>
+            <span class="card-title">대표발의 관심분야 <span class="card-title-mono">TOP 5</span></span>
           </div>
           <div class="card-body">
             <% if (topics5.length > 0) { %>
@@ -1137,7 +1137,7 @@
       <div class="overview-grid two">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">월별 발의 현황 <span class="card-title-mono">// 최근 12개월</span></span>
+            <span class="card-title">월별 발의 현황 <span class="card-title-mono">최근 12개월</span></span>
           </div>
           <div class="card-body">
             <% if (monthly && monthly.length > 0) { %>
@@ -1181,7 +1181,7 @@
 
         <div class="card">
           <div class="card-header">
-            <span class="card-title">주요 법안 이력 <span class="card-title-mono">// 타임라인</span></span>
+            <span class="card-title">주요 법안 이력 <span class="card-title-mono">타임라인</span></span>
           </div>
           <div class="card-body">
             <% if (timeline && timeline.length > 0) { %>
@@ -1231,7 +1231,7 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="side-card">
-      <div class="side-card-header">// 표결 요약</div>
+      <div class="side-card-header">표결 요약</div>
       <div class="side-card-body">
         <% if (vsTotal > 0) {
              const partRate = voteParticipateRate;
@@ -1289,7 +1289,7 @@
     </div>
 
     <div class="side-card">
-      <div class="side-card-header">// 관심 분야 Top 5</div>
+      <div class="side-card-header">관심 분야 Top 5</div>
       <div class="side-card-body">
         <% if (topics5.length > 0) { %>
           <div class="category-bars">
@@ -1309,7 +1309,7 @@
     </div>
 
     <div class="side-card">
-      <div class="side-card-header">// 기본 정보</div>
+      <div class="side-card-header">기본 정보</div>
       <div class="side-card-body">
         <div class="info-list">
           <% if (politician.reele_gbn_nm) { %>

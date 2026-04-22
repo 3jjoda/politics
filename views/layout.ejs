@@ -27,6 +27,7 @@
             <li><a href="/" class="<%= (locals.currentUrl === '/') ? 'active' : '' %>">홈</a></li>
             <li><a href="/politician" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/politician') === 0) ? 'active' : '' %>">의원</a></li>
             <li><a href="/bill" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/bill') === 0) ? 'active' : '' %>">법안</a></li>
+            <li><a href="/glossary" class="<%= (locals.currentUrl === '/glossary') ? 'active' : '' %>">용어 설명</a></li>
             <li><a href="/about" class="<%= (locals.currentUrl === '/about') ? 'active' : '' %>">사이트 소개</a></li>
         </ul>
         <div class="pb-nav-right">
@@ -69,6 +70,7 @@
         <li><a href="/">홈</a></li>
         <li><a href="/politician">의원</a></li>
         <li><a href="/bill">법안</a></li>
+        <li><a href="/glossary">용어 설명</a></li>
         <li><a href="/about">사이트 소개</a></li>
     </ul>
 </div>

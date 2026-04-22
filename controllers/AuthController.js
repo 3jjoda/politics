@@ -73,7 +73,7 @@ export default (db) => {
                 const pending = req.session.oauthPending;
                 if (!pending) return res.redirect('/');
 
-                const { nickname } = req.body || {};
+                const { nickname, gender, ageGroup } = req.body || {};
                 const v = authService.validateNickname(nickname);
                 if (!v.ok) {
                     return res.status(400).render('auth/setup', {
@@ -95,11 +95,35 @@ export default (db) => {
                     });
                 }
 
+                // 성별/연령대 필수 검증
+                const genderValue   = authService.validateGender(gender);
+                const ageGroupValue = authService.validateAgeGroup(ageGroup);
+                if (!genderValue) {
+                    return res.status(400).render('auth/setup', {
+                        pageTitle: '닉네임 설정 - 정치 바로미터',
+                        pageStyles: null,
+                        currentUrl: '/auth/setup',
+                        pending,
+                        error: '성별을 선택해주세요.'
+                    });
+                }
+                if (!ageGroupValue) {
+                    return res.status(400).render('auth/setup', {
+                        pageTitle: '닉네임 설정 - 정치 바로미터',
+                        pageStyles: null,
+                        currentUrl: '/auth/setup',
+                        pending,
+                        error: '연령대를 선택해주세요.'
+                    });
+                }
+
                 const user = await authService.createOAuthUser({
                     provider:   pending.provider,
                     providerId: pending.providerId,
                     email:      pending.email,
-                    nickname:   v.value
+                    nickname:   v.value,
+                    gender:     genderValue,
+                    ageGroup:   ageGroupValue
                 });
 
                 // 세션에서 pending 제거 후 로그인

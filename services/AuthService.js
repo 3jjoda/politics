@@ -32,16 +32,30 @@ export default (db) => {
             return !exists;
         },
 
-        /* 신규 OAuth 사용자 생성 — 닉네임 사용자 지정 */
-        createOAuthUser: async ({ provider, providerId, email, nickname }) => {
+        /* 신규 OAuth 사용자 생성 — 닉네임 + 선택 프로필 */
+        createOAuthUser: async ({ provider, providerId, email, nickname, gender = null, ageGroup = null }) => {
             const user = await userDao.insertOAuth({
                 email: email || null,
                 nickname,
                 provider,
-                providerId
+                providerId,
+                gender,
+                ageGroup
             });
-            logger.info(`Auth: new OAuth user created (provider=${provider}, user_id=${user.user_id}, email=${email ? 'yes' : 'no'})`);
+            logger.info(`Auth: new OAuth user created (provider=${provider}, user_id=${user.user_id}, gender=${gender || '-'}, age=${ageGroup || '-'})`);
             return user;
+        },
+
+        /* 성별/연령대 값 검증 */
+        GENDER_VALUES:    ['male', 'female', 'other'],
+        AGE_GROUP_VALUES: ['10s', '20s', '30s', '40s', '50s', '60s'],
+        validateGender: (v) => {
+            if (v === undefined || v === null || v === '') return null;
+            return ['male','female','other'].includes(v) ? v : null;
+        },
+        validateAgeGroup: (v) => {
+            if (v === undefined || v === null || v === '') return null;
+            return ['10s','20s','30s','40s','50s','60s'].includes(v) ? v : null;
         },
 
         findById: (userId) => userDao.findById(userId),

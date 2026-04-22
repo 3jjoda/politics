@@ -11,6 +11,16 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
+# OAuth / 크리덴셜 / 시크릿
+google_OAuth.json
+google_oauth.json
+*OAuth*.json
+*oauth*.json
+*secret*.json
+*credential*.json
+credentials/
+service-account*.json
+
 # Logs
 logs
 *.log

@@ -8,13 +8,24 @@
     if (r.indexOf('대안') > -1) return 'pb-badge-alt';
     return 'pb-badge-pending';
   };
+  const termAnchor = (r) => {
+    if (!r) return 'pending';
+    if (r === '원안가결')      return 'original';
+    if (r === '수정가결')      return 'modified';
+    if (r === '대안반영폐기')  return 'alt-dropped';
+    if (r === '수정안반영폐기') return 'mod-dropped';
+    if (r === '철회')          return 'withdrawn';
+    if (r === '부결')          return 'rejected';
+    if (r === '폐기')          return 'dropped';
+    return 'pending';
+  };
 %>
 
 <style>
   .bd-wrap {
     max-width: 960px;
     margin: 0 auto;
-    padding: 40px 24px 60px;
+    padding: calc(var(--nav-h) + 28px) 24px 60px;
   }
   .bd-breadcrumb {
     font-family: 'JetBrains Mono', monospace;
@@ -188,7 +199,10 @@
   <div class="bd-header">
     <div class="bd-meta-row">
       <% if (bill.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= bill.bill_topic_nm %></span><% } %>
-      <span class="pb-badge <%= resultClass(bill.proc_result_name) %>"><%= bill.proc_result_name || '계류' %></span>
+      <span class="pb-badge <%= resultClass(bill.proc_result_name) %>">
+        <%= bill.proc_result_name || '계류' %>
+        <a href="/glossary#<%= termAnchor(bill.proc_result_name) %>" class="pb-help" title="용어 설명 보기">?</a>
+      </span>
       <span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2);margin-left:auto">#<%= bill.bill_no || bill.bill_id %></span>
     </div>
     <h1 class="bd-title"><%= bill.bill_name %></h1>
@@ -216,7 +230,7 @@
 
   <!-- 시민 찬반 -->
   <div class="bd-section">
-    <h2>// 시민 찬반
+    <h2>시민 찬반
       <a href="/glossary#vote-for" class="pb-help" title="로그인한 시민들의 찬반 — 국회의원 표결과는 별개">?</a>
     </h2>
     <div id="citizen-vote-widget"></div>
@@ -226,7 +240,7 @@
   </div>
 
   <div class="bd-section">
-    <h2>// 본회의 표결 결과</h2>
+    <h2>본회의 표결 결과</h2>
     <% const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0; %>
     <% if (hasVotes) { %>
       <div class="vote-dashboard">
@@ -282,7 +296,7 @@
 
   <% if (coProposers && coProposers.length > 0) { %>
     <div class="bd-section">
-      <h2>// 발의자 (<%= coProposers.length %>명)</h2>
+      <h2>발의자 (<%= coProposers.length %>명)</h2>
       <div class="proposers-grid">
         <% coProposers.forEach(cp => { %>
           <a href="/politician/<%= cp.mona_cd %>" class="proposer-chip <%= cp.proposer_yn ? 'rep' : '' %>" style="text-decoration:none">
@@ -301,7 +315,7 @@
 
   <!-- 시민 댓글 -->
   <div class="bd-section">
-    <h2>// 시민 의견</h2>
+    <h2>시민 의견</h2>
     <div id="comment-widget"></div>
   </div>
 </div>
