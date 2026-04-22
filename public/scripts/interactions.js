@@ -190,7 +190,7 @@
   };
 
   /* ===================================================================
-     댓글 위젯 — type/targetId 기반
+     댓글 위젯 — type/targetId 기반 (대댓글 1-레벨 중첩 지원)
      옵션: { containerId, type, targetId, title? }
   =================================================================== */
   PB.mountComments = async (opts) => {
@@ -200,7 +200,6 @@
     const state = { items: [], sort: 'new', likes: {} };
 
     const refreshLikes = async (items) => {
-      // 각 댓글의 좋아요 count 와 내 상태
       const results = await Promise.all(items.map(c =>
         PB.fetch(`/api/likes?type=comment&targetId=${c.id}`).catch(() => ({ count: 0, liked: false }))
       ));
@@ -209,8 +208,27 @@
       state.likes = map;
     };
 
-    const sortItems = (items) => {
-      const copy = [...items];
+    // 1-레벨 트리 — 답글에 대한 답글도 최상위 parent 아래로 플랫화
+    const buildTree = (items) => {
+      const byId = new Map(items.map(c => [c.id, { ...c, replies: [] }]));
+      const roots = [];
+      byId.forEach(c => {
+        if (c.parent_id == null) {
+          roots.push(c);
+        } else {
+          // parent_id 가 답글이면 그 답글의 root 로 올라간다
+          let p = byId.get(c.parent_id);
+          while (p && p.parent_id != null) p = byId.get(p.parent_id);
+          if (p) p.replies.push(c);
+          else roots.push(c); // 부모 없음 (edge case) — 루트로
+        }
+      });
+      byId.forEach(c => c.replies.sort((a, b) => a.id - b.id));
+      return roots;
+    };
+
+    const sortRoots = (roots) => {
+      const copy = [...roots];
       if (state.sort === 'new') copy.sort((a, b) => b.id - a.id);
       else if (state.sort === 'like') copy.sort((a, b) => (state.likes[b.id]?.count || 0) - (state.likes[a.id]?.count || 0));
       return copy;
@@ -219,8 +237,15 @@
     const render = () => {
       const user = PB.currentUser();
       const myId = user ? user.id : null;
-      const sorted = sortItems(state.items.filter(c => !c.is_deleted || c.parent_id == null));
-      const visible = state.items.filter(c => !c.is_deleted); // 최종 표시
+      const tree = buildTree(state.items);
+
+      // 삭제된 최상위 — 살아있는 답글이 있으면 tombstone 유지, 없으면 숨김
+      const visibleRoots = tree
+        .map(c => ({ ...c, replies: c.replies.filter(r => !r.is_deleted) }))
+        .filter(c => !c.is_deleted || c.replies.length > 0);
+
+      const sorted = sortRoots(visibleRoots);
+      const totalCount = visibleRoots.reduce((s, c) => s + (c.is_deleted ? 0 : 1) + c.replies.length, 0);
 
       root.innerHTML = `
         <div class="comment-write">
@@ -247,31 +272,47 @@
           <span>정렬:</span>
           <button class="sort-btn ${state.sort === 'like' ? 'active' : ''}" data-sort-key="like">추천순</button>
           <button class="sort-btn ${state.sort === 'new' ? 'active' : ''}" data-sort-key="new">최신순</button>
-          <span class="sort-count">총 ${sorted.length}개</span>
+          <span class="sort-count">총 ${totalCount}개</span>
         </div>
 
         <div class="comments">
           ${sorted.length === 0
             ? `<div class="comments-empty">아직 등록된 댓글이 없습니다. 첫 댓글을 남겨보세요.</div>`
-            : sorted.map(c => renderCard(c, myId)).join('')}
+            : sorted.map(c => renderThread(c, myId)).join('')}
         </div>
       `;
 
       bindEvents();
     };
 
-    const renderCard = (c, myId) => {
+    const renderThread = (c, myId) => `
+      <div class="comments-thread">
+        ${renderCard(c, myId, false)}
+        ${c.replies.length ? `
+          <div class="comment-replies">
+            ${c.replies.map(r => renderCard(r, myId, true)).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+
+    const renderCard = (c, myId, isReply) => {
+      if (c.is_deleted) {
+        return `
+          <div class="comment-card comment-card-tombstone" data-cid="${c.id}">
+            <div class="comment-body">삭제된 댓글입니다.</div>
+          </div>`;
+      }
       const liked = state.likes[c.id]?.liked;
       const likeCnt = state.likes[c.id]?.count || 0;
       const mine = myId && c.user_id === myId;
-      // nickname NULL == 탈퇴 유저 (provider='deleted')
       const isDeletedUser = !c.nickname;
-      const displayName   = isDeletedUser ? '탈퇴한 사용자' : c.nickname;
-      const avatarSeed    = isDeletedUser ? '탈퇴' : c.nickname;
+      const displayName = isDeletedUser ? '탈퇴한 사용자' : c.nickname;
+      const avatarSeed  = isDeletedUser ? '탈퇴' : c.nickname;
       return `
         <div class="comment-card ${isDeletedUser ? 'comment-card-deleted' : ''}" data-cid="${c.id}">
           <div class="comment-header">
-            <div class="comment-avatar">${PB.avatarSvg(avatarSeed, 32)}</div>
+            <div class="comment-avatar">${PB.avatarSvg(avatarSeed, isReply ? 28 : 32)}</div>
             <div class="comment-meta">
               <div class="comment-nickname">${PB.escapeHtml(displayName)}</div>
               <div class="comment-date">${PB.escapeHtml(c.created_at)}${c.updated_at && c.updated_at !== c.created_at ? ' · 수정됨' : ''}</div>
@@ -282,11 +323,13 @@
             <span class="comment-action ${liked ? 'liked' : ''}" data-like>
               👍 도움돼요 <strong data-like-count>${likeCnt}</strong>
             </span>
+            ${!isReply ? `<span class="comment-action" data-reply>↩ 답글</span>` : ''}
             ${mine && !isDeletedUser ? `
               <span class="comment-action" data-edit>✎ 수정</span>
               <span class="comment-action" data-delete>🗑 삭제</span>
             ` : ''}
           </div>
+          ${!isReply ? `<div class="comment-reply-form" data-reply-form style="display:none"></div>` : ''}
         </div>`;
     };
 
@@ -298,7 +341,7 @@
         input.addEventListener('input', () => { cnt.textContent = input.value.length; });
       }
 
-      // 작성
+      // 작성 (최상위)
       const submitBtn = root.querySelector('[data-submit]');
       if (submitBtn) {
         submitBtn.addEventListener('click', async () => {
@@ -332,6 +375,7 @@
       // 카드 이벤트
       root.querySelectorAll('.comment-card').forEach(card => {
         const cid = Number(card.dataset.cid);
+        if (!cid) return;
 
         card.querySelector('[data-like]')?.addEventListener('click', async () => {
           if (!isLoggedIn()) return PB.redirectToLogin();
@@ -346,6 +390,44 @@
             if (err.status === 401) return PB.redirectToLogin();
             alert('좋아요 실패: ' + err.message);
           }
+        });
+
+        // 답글 토글 (최상위 댓글만)
+        card.querySelector('[data-reply]')?.addEventListener('click', () => {
+          if (!isLoggedIn()) return PB.redirectToLogin();
+          const formEl = card.querySelector('[data-reply-form]');
+          if (!formEl) return;
+          if (formEl.style.display !== 'none') {
+            formEl.style.display = 'none';
+            formEl.innerHTML = '';
+            return;
+          }
+          formEl.style.display = '';
+          formEl.innerHTML = `
+            <textarea class="write-input" data-reply-input placeholder="답글을 남겨주세요"></textarea>
+            <div class="comment-reply-actions">
+              <button class="sort-btn" data-reply-cancel>취소</button>
+              <button class="write-submit" data-reply-save style="padding:6px 14px;font-size:13px">답글 등록</button>
+            </div>`;
+          formEl.querySelector('[data-reply-input]').focus();
+          formEl.querySelector('[data-reply-cancel]').addEventListener('click', () => {
+            formEl.style.display = 'none';
+            formEl.innerHTML = '';
+          });
+          formEl.querySelector('[data-reply-save]').addEventListener('click', async () => {
+            const content = formEl.querySelector('[data-reply-input]').value.trim();
+            if (!content) return alert('내용을 입력하세요.');
+            try {
+              await PB.fetch('/api/comments', {
+                method: 'POST',
+                body: JSON.stringify({ type, targetId, parentId: cid, content })
+              });
+              await load();
+            } catch (err) {
+              if (err.status === 401) return PB.redirectToLogin();
+              alert('답글 실패: ' + err.message);
+            }
+          });
         });
 
         card.querySelector('[data-edit]')?.addEventListener('click', () => {
@@ -389,8 +471,9 @@
     const load = async () => {
       try {
         const { items } = await PB.fetch(`/api/comments?type=${encodeURIComponent(type)}&targetId=${encodeURIComponent(targetId)}`);
-        state.items = items.filter(c => !c.is_deleted);
-        await refreshLikes(state.items);
+        // 삭제된 댓글도 보관 (tombstone 처리용). 좋아요는 살아있는 것만.
+        state.items = items;
+        await refreshLikes(items.filter(c => !c.is_deleted));
         render();
       } catch (err) {
         root.innerHTML = `<div class="pb-muted">댓글을 불러올 수 없습니다: ${PB.escapeHtml(err.message)}</div>`;

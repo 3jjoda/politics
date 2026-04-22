@@ -22,6 +22,7 @@ export default (db) => {
         getMonthlyBillsByMonaCd: async (monaCd) => politicianDao.getMonthlyBillsByMonaCd(monaCd),
         getTimelineByMonaCd: async (monaCd) => politicianDao.getTimelineByMonaCd(monaCd),
         getVoteSummaryByMonaCd: async (monaCd) => politicianDao.getVoteSummaryByMonaCd(monaCd),
-        getPartyCoopByMonaCd: async (monaCd) => politicianDao.getPartyCoopByMonaCd(monaCd)
+        getPartyCoopByMonaCd: async (monaCd) => politicianDao.getPartyCoopByMonaCd(monaCd),
+        getRadarScale: async () => politicianDao.getRadarScale()
     };
 };

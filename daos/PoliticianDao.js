@@ -110,6 +110,12 @@ export default (db) => {
         getPartyCoopByMonaCd: async (monaCd) => {
             const { rows } = await db.query(queries.getPartyCoopByMonaCd, [monaCd]);
             return rows;
+        },
+
+        /* 레이더 스케일 기준값 (현역 의원 중 최대치) */
+        getRadarScale: async () => {
+            const { rows } = await db.query(queries.getRadarScale);
+            return rows[0];
         }
     };
 };

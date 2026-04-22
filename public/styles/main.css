@@ -628,6 +628,43 @@ input, textarea, select { font-family: inherit; }
   border-radius: 12px;
 }
 
+/* 대댓글 (1-레벨 중첩) */
+.comments { display: flex; flex-direction: column; gap: 12px; }
+.comments-thread { display: flex; flex-direction: column; gap: 10px; }
+.comment-replies {
+  margin-left: 32px;
+  padding-left: 16px;
+  border-left: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comment-replies .comment-card { background: var(--bg); }
+.comment-card-tombstone {
+  background: var(--bg3);
+  border: 1px dashed var(--border);
+  box-shadow: none;
+  padding: 12px 18px;
+}
+.comment-card-tombstone .comment-body {
+  color: var(--sub2);
+  font-style: italic;
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.comment-reply-form {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.comment-reply-form .write-input { min-height: 70px; font-size: 13px; }
+.comment-reply-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+
 /* 시민 찬반 위젯 */
 .cv-bar {
   display: flex;
