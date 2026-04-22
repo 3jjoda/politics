@@ -21,11 +21,13 @@ export default (db) => {
     /* 정치인 목록 페이지 */
     controller.getListPage = wrapWithContext(async function getListPage(req, res, next) {
         try {
-            const [politicians, partyCounts, committeeCounts, electCounts] = await Promise.all([
+            const [politicians, partyCounts, committeeCounts, electCounts, genderStats, ageGroupStats] = await Promise.all([
                 politicianService.getListWithStats(),
                 politicianService.getPartyCounts(),
                 politicianService.getCommitteeCounts(),
-                politicianService.getElectTypeCounts()
+                politicianService.getElectTypeCounts(),
+                politicianService.getGenderStats(),
+                politicianService.getAgeGroupStats()
             ]);
 
             res.render('politician/politician', {
@@ -35,7 +37,9 @@ export default (db) => {
                 politicians,
                 partyCounts,
                 committeeCounts,
-                electCounts
+                electCounts,
+                genderStats,
+                ageGroupStats
             });
         } catch (error) {
             logger.error('웹 컨트롤러에서 정치인 목록 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);

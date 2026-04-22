@@ -26,15 +26,21 @@
   }
   .pd-breadcrumb a { color: var(--accent); }
 
-  .pd-header {
-    padding: 28px 32px;
+  /* 통합 카드 */
+  .post-card {
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    margin-bottom: 18px;
     box-shadow: var(--shadow-sm);
+    margin-bottom: 32px;
+    overflow: hidden;
   }
-  .pd-title {
+  .post-card > * { border-bottom: 1px solid var(--border); }
+  .post-card > *:last-child { border-bottom: none; }
+
+  /* 헤더 */
+  .post-header { padding: 28px 32px; }
+  .post-title {
     font-size: 24px;
     font-weight: 700;
     color: var(--text);
@@ -42,7 +48,7 @@
     margin-bottom: 14px;
     word-break: break-all;
   }
-  .pd-meta {
+  .post-meta {
     display: flex;
     align-items: center;
     gap: 14px;
@@ -50,16 +56,23 @@
     color: var(--sub);
     flex-wrap: wrap;
   }
-  .pd-meta .date { font-family: 'JetBrains Mono', monospace; color: var(--sub2); }
-  .pd-meta .nick { font-weight: 600; color: var(--text); }
-  .pd-meta .nick.deleted { color: var(--sub2); font-weight: 500; }
-  .pd-meta .views { color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
-  .pd-actions {
+  .post-meta .date { font-family: 'JetBrains Mono', monospace; color: var(--sub2); }
+  .post-meta .nick { font-weight: 600; color: var(--text); }
+  .post-meta .nick.deleted { color: var(--sub2); font-weight: 500; }
+  .post-meta .views {
+    color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .post-meta .views svg { width: 14px; height: 14px; }
+  .post-actions {
     margin-left: auto;
     display: flex;
     gap: 6px;
   }
-  .pd-act-btn {
+  .post-act-btn {
     padding: 5px 12px;
     border: 1px solid var(--border);
     background: var(--bg2);
@@ -70,30 +83,23 @@
     text-decoration: none;
     transition: all 0.15s;
   }
-  .pd-act-btn:hover { border-color: var(--border2); color: var(--text); }
-  .pd-act-btn.danger:hover { border-color: var(--red); color: var(--red); }
+  .post-act-btn:hover { border-color: var(--border2); color: var(--text); }
+  .post-act-btn.danger:hover { border-color: var(--red); color: var(--red); }
 
-  /* 법안 첨부 카드 */
-  .pd-bill {
+  /* 법안 첨부 */
+  .post-bill {
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 16px 20px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
+    padding: 20px 32px;
+    background: var(--bg3);
     border-left: 4px solid var(--accent);
-    border-radius: 12px;
-    margin-bottom: 18px;
     text-decoration: none;
     color: inherit;
-    transition: all 0.15s;
-    box-shadow: var(--shadow-sm);
+    transition: background 0.15s;
   }
-  .pd-bill:hover {
-    border-color: var(--accent);
-    transform: translateX(2px);
-  }
-  .pd-bill-icon {
+  .post-bill:hover { background: var(--bg); }
+  .post-bill-icon {
     width: 36px; height: 36px;
     background: var(--accent-10);
     border-radius: 8px;
@@ -103,16 +109,17 @@
     color: var(--accent);
     flex-shrink: 0;
   }
-  .pd-bill-body { flex: 1; min-width: 0; }
-  .pd-bill-label {
+  .post-bill-body { flex: 1; min-width: 0; }
+  .post-bill-label {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--sub2);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
   }
-  .pd-bill-name {
+  .post-bill-name {
     font-size: 15px;
     font-weight: 600;
     color: var(--text);
@@ -121,7 +128,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .pd-bill-meta {
+  .post-bill-meta {
     display: flex;
     gap: 8px;
     font-size: 12px;
@@ -129,16 +136,11 @@
     flex-wrap: wrap;
     align-items: center;
   }
-  .pd-bill-arrow { color: var(--sub2); flex-shrink: 0; }
+  .post-bill-arrow { color: var(--sub2); flex-shrink: 0; }
 
   /* 본문 */
-  .pd-body {
-    padding: 32px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 24px;
-    box-shadow: var(--shadow-sm);
+  .post-body {
+    padding: 40px 32px;
     font-size: 15px;
     line-height: 1.9;
     color: var(--text);
@@ -146,13 +148,13 @@
     word-wrap: break-word;
   }
 
-  /* 좋아요 */
-  .pd-like-row {
+  /* 푸터 (좋아요) */
+  .post-footer {
+    padding: 20px 32px;
     display: flex;
     justify-content: center;
-    margin-bottom: 32px;
   }
-  .pd-like-btn {
+  .post-like-btn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -165,20 +167,15 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s;
-    box-shadow: var(--shadow-sm);
   }
-  .pd-like-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .pd-like-btn.liked {
+  .post-like-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .post-like-btn.liked {
     background: var(--accent-10);
     border-color: var(--accent);
     color: var(--accent);
   }
 
-  .pd-divider {
-    height: 1px;
-    background: var(--border);
-    margin: 24px 0;
-  }
+  /* 댓글 */
   .pd-comment-title {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
@@ -203,61 +200,68 @@
     <a href="/">홈</a> / <a href="/community">커뮤니티</a> / <%= post.id %>번 글
   </div>
 
-  <div class="pd-header">
-    <h1 class="pd-title"><%= post.title %></h1>
-    <div class="pd-meta">
-      <% if (isDeletedUser) { %>
-        <span class="nick deleted">탈퇴한 사용자</span>
-      <% } else { %>
-        <span class="nick"><%= post.nickname %></span>
-      <% } %>
-      <span class="date"><%= post.created_at %></span>
-      <% if (post.updated_at && post.updated_at !== post.created_at) { %>
-        <span class="date">· 수정됨</span>
-      <% } %>
-      <span class="views">👁 <%= nf(post.view_count) %></span>
+  <article class="post-card">
+    <!-- 헤더 -->
+    <section class="post-header">
+      <h1 class="post-title"><%= post.title %></h1>
+      <div class="post-meta">
+        <% if (isDeletedUser) { %>
+          <span class="nick deleted">탈퇴한 사용자</span>
+        <% } else { %>
+          <span class="nick"><%= post.nickname %></span>
+        <% } %>
+        <span class="date"><%= post.created_at %></span>
+        <% if (post.updated_at && post.updated_at !== post.created_at) { %>
+          <span class="date">· 수정됨</span>
+        <% } %>
+        <span class="views">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <%= nf(post.view_count) %>
+        </span>
 
-      <% if (isAuthor) { %>
-        <div class="pd-actions">
-          <a href="/community/<%= post.id %>/edit" class="pd-act-btn">수정</a>
-          <button type="button" class="pd-act-btn danger" id="pd-delete">삭제</button>
+        <% if (isAuthor) { %>
+          <div class="post-actions">
+            <a href="/community/<%= post.id %>/edit" class="post-act-btn">수정</a>
+            <button type="button" class="post-act-btn danger" id="pd-delete">삭제</button>
+          </div>
+        <% } %>
+      </div>
+    </section>
+
+    <!-- 법안 첨부 (있을 때만) -->
+    <% if (post.linked_bill_id && post.linked_bill_name) { %>
+      <a href="/bill/<%= post.linked_bill_id %>" class="post-bill">
+        <div class="post-bill-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </div>
-      <% } %>
-    </div>
-  </div>
-
-  <% if (post.linked_bill_id && post.linked_bill_name) { %>
-    <a href="/bill/<%= post.linked_bill_id %>" class="pd-bill">
-      <div class="pd-bill-icon">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      </div>
-      <div class="pd-bill-body">
-        <div class="pd-bill-label">첨부된 법안</div>
-        <div class="pd-bill-name"><%= post.linked_bill_name %></div>
-        <div class="pd-bill-meta">
-          <% if (post.linked_bill_result) { %>
-            <span class="pb-badge <%= resultClass(post.linked_bill_result) %>"><%= post.linked_bill_result %></span>
-          <% } %>
-          <% if (post.linked_bill_committee) { %><span><%= post.linked_bill_committee %></span><% } %>
-          <% if (post.linked_bill_propose_dt) { %><span>· 발의 <%= post.linked_bill_propose_dt %></span><% } %>
+        <div class="post-bill-body">
+          <div class="post-bill-label">첨부된 법안</div>
+          <div class="post-bill-name"><%= post.linked_bill_name %></div>
+          <div class="post-bill-meta">
+            <% if (post.linked_bill_result) { %>
+              <span class="pb-badge <%= resultClass(post.linked_bill_result) %>"><%= post.linked_bill_result %></span>
+            <% } %>
+            <% if (post.linked_bill_committee) { %><span><%= post.linked_bill_committee %></span><% } %>
+            <% if (post.linked_bill_propose_dt) { %><span>· 발의 <%= post.linked_bill_propose_dt %></span><% } %>
+          </div>
         </div>
-      </div>
-      <div class="pd-bill-arrow">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    </a>
-  <% } %>
+        <div class="post-bill-arrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </a>
+    <% } %>
 
-  <div class="pd-body"><%= post.content %></div>
+    <!-- 본문 -->
+    <section class="post-body"><%= post.content %></section>
 
-  <div class="pd-like-row">
-    <button type="button" class="pd-like-btn" id="pd-like-btn" data-post-id="<%= post.id %>">
-      👍 <span id="pd-like-label">도움돼요</span>
-      <strong id="pd-like-count" style="margin-left:4px">0</strong>
-    </button>
-  </div>
-
-  <div class="pd-divider"></div>
+    <!-- 푸터 -->
+    <section class="post-footer">
+      <button type="button" class="post-like-btn" id="pd-like-btn" data-post-id="<%= post.id %>">
+        🔥 <span id="pd-like-label">도움돼요</span>
+        <strong id="pd-like-count" style="margin-left:4px">0</strong>
+      </button>
+    </section>
+  </article>
 
   <!-- 댓글 -->
   <div class="pd-comment-title"><strong>의견</strong> 댓글</div>

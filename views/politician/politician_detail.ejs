@@ -123,11 +123,12 @@
     margin-bottom: 24px;
   }
   .profile-avatar {
-    width: 96px; height: 96px;
+    width: 240px; height: 240px;
     border-radius: 50%;
-    border: 3px solid <%= partyColor %>;
+    border: 4px solid <%= partyColor %>;
     overflow: hidden;
-    box-shadow: 0 0 0 6px <%= partyColor %>22;
+    box-shadow: 0 0 0 10px <%= partyColor %>22;
+    flex-shrink: 0;
   }
   .profile-avatar img,
   .profile-avatar svg { width: 100%; height: 100%; display: block; }
@@ -390,6 +391,20 @@
   .side-card-body { padding: 18px; }
 
   .vote-summary { display: flex; align-items: center; gap: 22px; }
+  .vote-donut {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .vote-donut-label {
+    font-size: 12px;
+    color: var(--sub);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
   .vote-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
   .vote-legend-item {
     display: flex;
@@ -756,6 +771,7 @@
   @media (max-width: 1024px) {
     .content-wrap { grid-template-columns: 1fr; }
     .profile-hero-inner { grid-template-columns: auto 1fr; }
+    .profile-avatar { width: 180px; height: 180px; box-shadow: 0 0 0 8px <%= partyColor %>22; }
     .profile-actions { display: none; }
     .overview-grid { grid-template-columns: 1fr; }
     .overview-grid.two { grid-template-columns: 1fr; }
@@ -780,7 +796,7 @@
     <div>
       <div class="profile-identity">
         <div class="profile-avatar">
-          <%- avatarHtml(politician.name, politician.photo_url, 96) %>
+          <%- avatarHtml(politician.name, politician.photo_url, 240) %>
         </div>
         <div>
           <div class="profile-top">
@@ -1239,26 +1255,28 @@
              const cAgainstDeg = pct(vs.against_cnt, vsTotal);
              const cAbsDeg = pct(vs.abstain_cnt, vsTotal);
              const cMissDeg = pct(vs.absent_cnt, vsTotal);
-             const circ = 219.9;
+             const circ = 282.7;  // 2π × 45
              const s1 = (cForDeg / 100) * circ;
              const s2 = (cAgainstDeg / 100) * circ;
              const s3 = (cAbsDeg / 100) * circ;
              const s4 = (cMissDeg / 100) * circ;
         %>
           <div class="vote-summary" title="참여율 = (찬성+반대+기권) ÷ 전체 본회의 표결 법안 수">
-            <svg width="90" height="90" viewBox="0 0 90 90">
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#E2DFD4" stroke-width="10"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#0F9D6E" stroke-width="10"
-                      stroke-dasharray="<%= s1.toFixed(1) %> <%= circ %>" stroke-dashoffset="0" transform="rotate(-90 45 45)"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#D03A3A" stroke-width="10"
-                      stroke-dasharray="<%= s2.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-s1).toFixed(1) %>" transform="rotate(-90 45 45)"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#B8740C" stroke-width="10"
-                      stroke-dasharray="<%= s3.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2)).toFixed(1) %>" transform="rotate(-90 45 45)"/>
-              <circle cx="45" cy="45" r="35" fill="none" stroke="#7A8090" stroke-width="10"
-                      stroke-dasharray="<%= s4.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2+s3)).toFixed(1) %>" transform="rotate(-90 45 45)"/>
-              <text x="45" y="42" text-anchor="middle" fill="#1A1D24" font-size="14" font-weight="700" font-family="Bebas Neue"><%= partRate.toFixed(0) %>%</text>
-              <text x="45" y="54" text-anchor="middle" fill="#4B5362" font-size="7" font-family="JetBrains Mono">참여율</text>
-            </svg>
+            <div class="vote-donut">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="45" fill="none" stroke="#E2DFD4" stroke-width="12"/>
+                <circle cx="60" cy="60" r="45" fill="none" stroke="#0F9D6E" stroke-width="12"
+                        stroke-dasharray="<%= s1.toFixed(1) %> <%= circ %>" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="45" fill="none" stroke="#D03A3A" stroke-width="12"
+                        stroke-dasharray="<%= s2.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-s1).toFixed(1) %>" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="45" fill="none" stroke="#B8740C" stroke-width="12"
+                        stroke-dasharray="<%= s3.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2)).toFixed(1) %>" transform="rotate(-90 60 60)"/>
+                <circle cx="60" cy="60" r="45" fill="none" stroke="#7A8090" stroke-width="12"
+                        stroke-dasharray="<%= s4.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2+s3)).toFixed(1) %>" transform="rotate(-90 60 60)"/>
+                <text x="60" y="68" text-anchor="middle" fill="#1A1D24" font-size="30" font-weight="700" font-family="Bebas Neue"><%= partRate.toFixed(0) %>%</text>
+              </svg>
+              <div class="vote-donut-label">참여율</div>
+            </div>
             <div class="vote-legend">
               <div class="vote-legend-item">
                 <span class="vote-legend-left"><span class="legend-dot" style="background:var(--green)"></span>찬성</span>
@@ -1354,14 +1372,17 @@
             <span class="info-val"><a href="<%= politician.homepage %>" target="_blank" rel="noopener" style="color:var(--accent);font-size:11px">바로가기 →</a></span>
           </div>
           <% } %>
+          <% const engSlug = (politician.eng_nm || '').toUpperCase().replace(/\s+/g, ''); %>
+          <% if (engSlug) { %>
           <div class="info-item">
             <span class="info-key">국회 프로필</span>
             <span class="info-val">
-              <a href="https://www.assembly.go.kr/portal/assm/search/memberIntro.do?monaCd=<%= politician.mona_cd %>"
+              <a href="https://www.assembly.go.kr/members/22nd/<%= engSlug %>"
                  target="_blank" rel="noopener"
                  style="color:var(--accent);font-size:12px">국회 공식 프로필 →</a>
             </span>
           </div>
+          <% } %>
         </div>
       </div>
     </div>
@@ -1396,15 +1417,15 @@
     if (btn) btn.click();
   }
 
-  // Bill filter tabs
+  // Bill filter tabs — 필터 상태는 dataset.filtered 로만 추적 (display 와 분리)
   document.querySelectorAll('.bill-filter-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.bill-filter-tab').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const kind = btn.dataset.bf;
       document.querySelectorAll('.bills-row').forEach(row => {
-        if (kind === 'all') row.style.display = '';
-        else row.style.display = row.dataset.kind === kind ? '' : 'none';
+        const matches = (kind === 'all') || (row.dataset.kind === kind);
+        row.dataset.filtered = matches ? '' : 'true';
       });
       resetBillsPaging();
     });
@@ -1416,11 +1437,6 @@
   const billsContainer = document.getElementById('bills-container');
   const pagerEl = document.getElementById('bills-pagination');
 
-  function visibleRows() {
-    return Array.from(document.querySelectorAll('.bills-row'))
-      .filter(r => r.dataset.filtered !== 'true');
-  }
-
   function resetBillsPaging() {
     if (!billsContainer || !pagerEl) return;
     currentPage = 1;
@@ -1429,21 +1445,17 @@
 
   function renderPage() {
     const allRows = Array.from(document.querySelectorAll('.bills-row'));
-    // 현재 display 속성 기준으로 보임/숨김 판정
-    const visible = allRows.filter(r => r.style.display !== 'none');
-    const total = visible.length;
+    // 필터 통과 행만 후보 (dataset.filtered === 'true' 는 필터 제외)
+    const filtered = allRows.filter(r => r.dataset.filtered !== 'true');
+    const total = filtered.length;
     const pages = Math.max(1, Math.ceil(total / PER));
     if (currentPage > pages) currentPage = pages;
 
-    // 전부 한 번 숨기고
-    visible.forEach(r => r.dataset._hide = '1');
-    // 현재 페이지만 보이기
+    // 필터에서 빠진 행 + 현재 페이지 밖 행 → 숨김
     const start = (currentPage - 1) * PER;
-    visible.slice(start, start + PER).forEach(r => r.dataset._hide = '');
-    visible.forEach(r => {
-      if (r.dataset._hide === '1') r.style.display = 'none';
-      else r.style.display = '';
-      delete r.dataset._hide;
+    const pageSet = new Set(filtered.slice(start, start + PER));
+    allRows.forEach(r => {
+      r.style.display = pageSet.has(r) ? '' : 'none';
     });
 
     // pager

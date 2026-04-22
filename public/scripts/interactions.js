@@ -230,7 +230,7 @@
               <span class="write-hint">${PB.escapeHtml(user.nickname)} · 평가 댓글</span>
             </div>
             <textarea class="write-input" data-comment-input
-              placeholder="의정 활동에 대한 의견을 남겨주세요. 허위 사실·욕설·개인정보는 삭제될 수 있습니다."></textarea>
+              placeholder="자유롭게 의견을 남겨주세요. 허위 사실·욕설·개인정보는 삭제될 수 있습니다."></textarea>
             <div class="write-footer">
               <span class="write-hint"><span data-count>0</span> / 2000</span>
               <button class="write-submit" data-submit>댓글 작성</button>

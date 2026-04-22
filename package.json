@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
-    "dev": "nodemon --ignore 'visitor_count.json' app.js"
+    "dev": "nodemon --ignore 'visitor_count.json' --ext 'js,mjs,cjs,json,sql,ejs' app.js"
   },
   "keywords": [],
   "author": "",

@@ -272,12 +272,26 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    /* 전체 사이드바 높이가 뷰포트를 넘어가면 내부에서 스크롤 */
+    max-height: calc(100vh - 130px - 24px);
+    overflow-y: auto;
+    scrollbar-width: thin;              /* Firefox */
+    scrollbar-color: var(--border2) transparent;
   }
+  /* 스크롤바 얇게 + 오버레이처럼 동작 (가용 폭 침범 최소화) */
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: var(--border2);
+    border-radius: 6px;
+  }
+  .sidebar::-webkit-scrollbar-thumb:hover { background: var(--sub2); }
   .sidebar-card {
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
+    flex-shrink: 0;
   }
   .sidebar-title {
     padding: 14px 18px;
@@ -311,6 +325,69 @@
   }
   .sidebar-item.active .sidebar-item-count { color: var(--accent); }
 
+  /* 분포 카드 (성별/연령대) — 클릭 필터 지원 */
+  .dist-body { padding: 10px 8px 14px; }
+  .dist-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .dist-row + .dist-row { margin-top: 2px; }
+  .dist-row:hover { background: var(--bg3); }
+  .dist-row.active {
+    background: var(--accent-10);
+  }
+  .dist-row.active .dist-label { color: var(--accent); font-weight: 600; }
+  .dist-row.active .dist-val strong { color: var(--accent); }
+  .dist-label {
+    width: 52px;
+    font-size: 12px;
+    color: var(--sub);
+    flex-shrink: 0;
+    transition: color 0.12s;
+  }
+  .dist-bar-wrap {
+    flex: 1;
+    height: 8px;
+    background: var(--bg3);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .dist-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease-out;
+  }
+  .dist-bar.male   { background: var(--blue); }
+  .dist-bar.female { background: var(--accent); }
+  .dist-bar.age-0  { background: var(--accent); opacity: 1.00; }
+  .dist-bar.age-1  { background: var(--accent); opacity: 0.85; }
+  .dist-bar.age-2  { background: var(--accent); opacity: 0.70; }
+  .dist-bar.age-3  { background: var(--accent); opacity: 0.55; }
+  .dist-bar.age-4  { background: var(--accent); opacity: 0.40; }
+  .dist-bar.age-5  { background: var(--accent); opacity: 0.25; }
+  .dist-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    min-width: 72px;
+    text-align: right;
+    flex-shrink: 0;
+    transition: color 0.12s;
+  }
+  .dist-val strong { color: var(--text); font-weight: 600; transition: color 0.12s; }
+  .dist-hint {
+    font-size: 11px;
+    color: var(--sub2);
+    padding: 4px 10px 0;
+    line-height: 1.5;
+  }
+
   /* Stats row */
   .stats-row {
     display: grid;
@@ -336,93 +413,149 @@
   .mini-stat:nth-child(4) .mini-stat-val { color: var(--purple); }
   .mini-stat-label { font-size: 13px; color: var(--sub); }
 
-  /* GRID */
+  /* GRID — 리퀴드 오버레이 카드 (사진이 카드 전체) */
   .politicians-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
   }
   .pol-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px 18px;
-    text-align: center;
-    transition: all 0.2s;
-    display: block;
     position: relative;
+    height: 280px;
+    border-radius: 12px;
     overflow: hidden;
-  }
-  .pol-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: var(--party-color, var(--accent));
-    opacity: 0;
-    transition: opacity 0.2s;
+    display: block;
+    text-decoration: none;
+    background: var(--bg3);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s, box-shadow 0.2s;
   }
   .pol-card:hover {
-    border-color: var(--border2);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    box-shadow: var(--shadow-md);
   }
-  .pol-card:hover::before { opacity: 1; }
 
-  .pol-avatar {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    margin: 0 auto 14px;
-    overflow: hidden;
-    border: 2px solid var(--border);
+  /* 사진 — 카드 100% 채움 */
+  .pol-photo-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
+    transition: transform 0.3s ease;
   }
-  .pol-avatar img,
-  .pol-avatar svg { width: 100%; height: 100%; display: block; }
+  .pol-card:hover .pol-photo-img { transform: scale(1.04); }
 
-  .pol-name {
-    font-size: 16px;
+  /* 사진 없을 때 — 이니셜 중앙 */
+  .pol-photo-fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 84px;
     font-weight: 700;
-    color: var(--text);
-    margin-bottom: 4px;
+    color: var(--sub2);
+    background: var(--bg3);
+    letter-spacing: -0.02em;
+    transition: transform 0.3s ease;
   }
-  .pol-district {
-    font-size: 13px;
-    color: var(--sub);
-    margin-bottom: 10px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .pol-card:hover .pol-photo-fallback { transform: scale(1.04); }
+
+  /* 상단 오버레이 — 뱃지 */
+  .pol-badges {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+    flex-wrap: wrap;
   }
   .pol-party-badge {
     display: inline-block;
-    padding: 3px 10px;
-    border-radius: 3px;
+    padding: 3px 9px;
+    border-radius: 4px;
     font-size: 11px;
     font-weight: 600;
-    margin-bottom: 14px;
+    backdrop-filter: blur(4px);
   }
-  .party-minjoo  { background: rgba(59,130,246,0.15); color: #1E40AF; }
-  .party-gukhim  { background: rgba(208,58,58,0.15); color: #B91C1C; }
-  .party-jokuk   { background: rgba(139,92,246,0.15); color: #6D28D9; }
-  .party-gaehyuk { background: rgba(184,116,12,0.15); color: #B45309; }
-  .party-jinbo   { background: rgba(208,58,58,0.15); color: #991B1B; }
-  .party-etc     { background: rgba(107,114,128,0.15); color: #4B5563; }
+  .party-minjoo  { background: rgba(30,64,175,0.9);  color: #fff; }
+  .party-gukhim  { background: rgba(185,28,28,0.9);  color: #fff; }
+  .party-jokuk   { background: rgba(109,40,217,0.9); color: #fff; }
+  .party-gaehyuk { background: rgba(180,83,9,0.9);   color: #fff; }
+  .party-jinbo   { background: rgba(153,27,27,0.9);  color: #fff; }
+  .party-etc     { background: rgba(75,85,99,0.9);   color: #fff; }
 
-  .pol-stats {
-    display: flex;
-    justify-content: center;
-    gap: 18px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
+  .pol-elect-badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #fff;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px);
   }
-  .pol-stat-item { text-align: center; }
-  .pol-stat-val {
-    font-family: 'JetBrains Mono', monospace;
+
+  /* 하단 그라데이션 오버레이 */
+  .pol-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    z-index: 2;
+    background: linear-gradient(
+      to top,
+      rgba(0,0,0,0.80) 0%,
+      rgba(0,0,0,0.30) 40%,
+      transparent 65%
+    );
+    color: #fff;
+  }
+  .pol-name {
     font-size: 16px;
-    color: var(--accent);
-    font-weight: 600;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8), 0 2px 8px rgba(0,0,0,0.6);
   }
-  .pol-stat-label { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .pol-district {
+    font-size: 12px;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  .pol-stats-line {
+    display: flex;
+    gap: 14px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    color: rgba(255,255,255,0.9);
+  }
+  .pol-stats-line .num {
+    color: #FFD77A;
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  .pol-stats-line .label {
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.75);
+    margin-left: 3px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
 
   /* LIST */
   .politicians-list { display: flex; flex-direction: column; gap: 8px; }
@@ -609,8 +742,75 @@
   </div>
 </div>
 
+<%
+  // 성별 분포
+  const gs         = genderStats || { male_cnt: 0, female_cnt: 0, total_cnt: 0 };
+  const maleCnt    = Number(gs.male_cnt || 0);
+  const femaleCnt  = Number(gs.female_cnt || 0);
+  const genderTot  = maleCnt + femaleCnt;
+  const pct        = (n, t) => t > 0 ? (n / t * 100) : 0;
+
+  // 연령대 분포
+  const as = ageGroupStats || { age_20s: 0, age_30s: 0, age_40s: 0, age_50s: 0, age_60s: 0, age_70plus: 0, total_cnt: 0 };
+  const age20  = Number(as.age_20s     || 0);
+  const age30  = Number(as.age_30s     || 0);
+  const age40  = Number(as.age_40s     || 0);
+  const age50  = Number(as.age_50s     || 0);
+  const age60  = Number(as.age_60s     || 0);
+  const age70  = Number(as.age_70plus  || 0);
+  const ageTot = age20 + age30 + age40 + age50 + age60 + age70;
+  // 막대 기준: 제일 큰 그룹을 100% 로
+  const ageMax = Math.max(1, age20, age30, age40, age50, age60, age70);
+%>
+
 <div class="content-wrap">
   <aside class="sidebar">
+    <!-- 성별 분포 (클릭 필터) -->
+    <div class="sidebar-card">
+      <div class="sidebar-title">성별 분포</div>
+      <div class="dist-body">
+        <div class="dist-row" data-dist="sex" data-dist-value="남">
+          <span class="dist-label">남성</span>
+          <div class="dist-bar-wrap">
+            <div class="dist-bar male" style="width: <%= pct(maleCnt, genderTot).toFixed(1) %>%"></div>
+          </div>
+          <span class="dist-val"><strong><%= pct(maleCnt, genderTot).toFixed(1) %>%</strong> · <%= nf(maleCnt) %>명</span>
+        </div>
+        <div class="dist-row" data-dist="sex" data-dist-value="여">
+          <span class="dist-label">여성</span>
+          <div class="dist-bar-wrap">
+            <div class="dist-bar female" style="width: <%= pct(femaleCnt, genderTot).toFixed(1) %>%"></div>
+          </div>
+          <span class="dist-val"><strong><%= pct(femaleCnt, genderTot).toFixed(1) %>%</strong> · <%= nf(femaleCnt) %>명</span>
+        </div>
+        <div class="dist-hint">행을 클릭하면 필터가 적용됩니다 · 같은 행 재클릭 시 해제</div>
+      </div>
+    </div>
+
+    <!-- 연령대 분포 (클릭 필터) -->
+    <div class="sidebar-card">
+      <div class="sidebar-title">연령대 분포</div>
+      <div class="dist-body">
+        <% const ageItems = [
+             { label: '20대',      cnt: age20, bucket: '20s',    cls: 'age-0' },
+             { label: '30대',      cnt: age30, bucket: '30s',    cls: 'age-1' },
+             { label: '40대',      cnt: age40, bucket: '40s',    cls: 'age-2' },
+             { label: '50대',      cnt: age50, bucket: '50s',    cls: 'age-3' },
+             { label: '60대',      cnt: age60, bucket: '60s',    cls: 'age-4' },
+             { label: '70대 이상', cnt: age70, bucket: '70plus', cls: 'age-5' }
+           ]; %>
+        <% ageItems.forEach(it => { %>
+          <div class="dist-row" data-dist="ageBucket" data-dist-value="<%= it.bucket %>">
+            <span class="dist-label"><%= it.label %></span>
+            <div class="dist-bar-wrap">
+              <div class="dist-bar <%= it.cls %>" style="width: <%= (it.cnt / ageMax * 100).toFixed(1) %>%"></div>
+            </div>
+            <span class="dist-val"><strong><%= pct(it.cnt, ageTot).toFixed(1) %>%</strong> · <%= nf(it.cnt) %>명</span>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
     <div class="sidebar-card">
       <div class="sidebar-title">상임위원회</div>
       <div class="sidebar-list" id="committee-list">
@@ -676,22 +876,34 @@
         %>
           <a href="/politician/<%= p.mona_cd %>"
              class="pol-card pol-item"
-             style="--party-color: <%= color %>; text-decoration:none"
              data-name="<%= p.name %>"
              data-district="<%= p.electoral_district || '' %>"
              data-party="<%= p.party_name || '' %>"
              data-cmit="<%= p.cmit_nm || '' %>"
              data-elect="<%= p.elect_gbn_nm || '' %>"
+             data-sex="<%= p.sex_gbn_nm || '' %>"
+             data-age-bucket="<%= p.age_bucket || '' %>"
              data-propose="<%= p.propose_cnt || 0 %>">
-            <div class="pol-avatar">
-              <%- avatarHtml(p.name, p.photo_url, 60) %>
+            <% if (p.photo_url) { %>
+              <img src="<%= p.photo_url %>" alt="<%= p.name %>" class="pol-photo-img" loading="lazy">
+            <% } else { %>
+              <div class="pol-photo-fallback"><%= (p.name || '?').trim().charAt(0) %></div>
+            <% } %>
+
+            <div class="pol-badges">
+              <span class="pol-party-badge <%= pClass %>"><%= p.party_name || '무소속' %></span>
+              <% if (p.elect_gbn_nm) { %>
+                <span class="pol-elect-badge"><%= p.elect_gbn_nm %></span>
+              <% } %>
             </div>
-            <div class="pol-name"><%= p.name %></div>
-            <div class="pol-district"><%= p.electoral_district || '—' %></div>
-            <span class="pol-party-badge <%= pClass %>"><%= p.party_name || '무소속' %></span>
-            <div class="pol-stats">
-              <div class="pol-stat-item"><div class="pol-stat-val"><%= p.propose_cnt %></div><div class="pol-stat-label">발의</div></div>
-              <div class="pol-stat-item"><div class="pol-stat-val"><%= p.co_propose_cnt %></div><div class="pol-stat-label">공동</div></div>
+
+            <div class="pol-overlay">
+              <div class="pol-name"><%= p.name %></div>
+              <div class="pol-district"><%= p.electoral_district || '—' %></div>
+              <div class="pol-stats-line">
+                <span><span class="num"><%= p.propose_cnt %></span><span class="label">발의</span></span>
+                <span><span class="num"><%= p.co_propose_cnt %></span><span class="label">공동</span></span>
+              </div>
             </div>
           </a>
         <% }); %>
@@ -721,6 +933,8 @@
              data-party="<%= p.party_name || '' %>"
              data-cmit="<%= p.cmit_nm || '' %>"
              data-elect="<%= p.elect_gbn_nm || '' %>"
+             data-sex="<%= p.sex_gbn_nm || '' %>"
+             data-age-bucket="<%= p.age_bucket || '' %>"
              data-propose="<%= p.propose_cnt || 0 %>">
             <div class="pol-list-avatar">
               <%- avatarHtml(p.name, p.photo_url, 40) %>
@@ -743,7 +957,7 @@
 
 <script>
 (() => {
-  const state = { party: '', cmit: '', elect: '', q: '', sort: 'propose' };
+  const state = { party: '', cmit: '', elect: '', sex: '', ageBucket: '', q: '', sort: 'propose' };
 
   const gridContainer = document.getElementById('grid-container');
   const listContainer = document.getElementById('list-container');
@@ -759,12 +973,16 @@
       const party = el.dataset.party || '';
       const cmit = el.dataset.cmit || '';
       const elect = el.dataset.elect || '';
+      const sex   = el.dataset.sex || '';
+      const age   = el.dataset.ageBucket || '';
 
       const matches =
         (!q || name.includes(q) || district.includes(q)) &&
         (!state.party || party === state.party) &&
         (!state.cmit  || cmit  === state.cmit) &&
-        (!state.elect || elect === state.elect);
+        (!state.elect || elect === state.elect) &&
+        (!state.sex       || sex === state.sex) &&
+        (!state.ageBucket || age === state.ageBucket);
 
       el.style.display = matches ? '' : 'none';
       return matches;
@@ -825,6 +1043,24 @@
       document.querySelectorAll('#elect-list .sidebar-item').forEach(i => i.classList.remove('active'));
       item.classList.add('active');
       state.elect = item.dataset.elect || '';
+      applyFilter();
+    });
+  });
+
+  // 성별·연령대 분포 행 클릭 → 필터 토글
+  document.querySelectorAll('.dist-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const kind  = row.dataset.dist;       // 'sex' 또는 'ageBucket'
+      const value = row.dataset.distValue;
+      const siblings = document.querySelectorAll(`.dist-row[data-dist="${kind}"]`);
+      const wasActive = row.classList.contains('active');
+      siblings.forEach(s => s.classList.remove('active'));
+      if (wasActive) {
+        state[kind] = '';
+      } else {
+        row.classList.add('active');
+        state[kind] = value;
+      }
       applyFilter();
     });
   });

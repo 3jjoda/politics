@@ -75,7 +75,7 @@
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 18px 22px;
+    padding: 26px 22px;
     display: block;
     text-decoration: none;
     color: inherit;
@@ -92,7 +92,7 @@
     font-weight: 600;
     color: var(--text);
     line-height: 1.5;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
   }
   .cm-bill-chip {
     display: inline-flex;
@@ -135,7 +135,8 @@
     margin-left: auto;
     font-family: 'JetBrains Mono', monospace;
   }
-  .cm-card-stats span { display: inline-flex; align-items: center; gap: 3px; }
+  .cm-card-stats span { display: inline-flex; align-items: center; gap: 5px; }
+  .cm-stat-ic { width: 14px; height: 14px; color: var(--sub2); flex-shrink: 0; }
   .cm-empty {
     padding: 60px 24px;
     text-align: center;
@@ -176,7 +177,7 @@
   <div class="cm-head">
     <div>
       <div class="cm-title">커뮤니티</div>
-      <div class="cm-sub">법안·정치 이슈에 대한 의견을 나눠보세요. 총 <%= nf(totalCount) %>개의 글</div>
+      <div class="cm-sub">자유롭게 의견을 나눠보세요. 총 <%= nf(totalCount) %>개의 글</div>
     </div>
     <% if (locals.currentUser) { %>
       <a href="/community/write" class="cm-write-btn">
@@ -209,9 +210,18 @@
             <span class="nick"><%= p.nickname || '탈퇴한 사용자' %></span>
             <span class="date"><%= p.created_at %></span>
             <span class="cm-card-stats">
-              <span>👁 <%= nf(p.view_count) %></span>
-              <span>👍 <%= nf(p.like_count) %></span>
-              <span>💬 <%= nf(p.comment_count) %></span>
+              <span>
+                <svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <%= nf(p.view_count) %>
+              </span>
+              <span>
+                <svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                <%= nf(p.like_count) %>
+              </span>
+              <span>
+                <svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <%= nf(p.comment_count) %>
+              </span>
             </span>
           </div>
         </a>

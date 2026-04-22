@@ -58,6 +58,18 @@ export default (db) => {
             return rows;
         },
 
+        /* 성별 분포 */
+        getGenderStats: async () => {
+            const { rows } = await db.query(queries.getGenderStats);
+            return rows[0];
+        },
+
+        /* 연령대 분포 */
+        getAgeGroupStats: async () => {
+            const { rows } = await db.query(queries.getAgeGroupStats);
+            return rows[0];
+        },
+
         /* 의원별 법안 (대표/공동) */
         getBillsByMonaCd: async (monaCd) => {
             const { rows } = await db.query(queries.getBillsByMonaCd, [monaCd]);

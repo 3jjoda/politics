@@ -31,7 +31,7 @@
     padding: 28px;
     box-shadow: var(--shadow-sm);
   }
-  .wr-field { margin-bottom: 20px; }
+  .wr-field { margin-bottom: 32px; }
   .wr-field:last-child { margin-bottom: 0; }
   .wr-label {
     display: block;
@@ -72,32 +72,14 @@
     border: 1px solid var(--border);
     border-radius: 10px;
   }
-  .wr-bill-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
   .wr-bill-header-label {
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: 13px;
     color: var(--sub);
+    margin-bottom: 10px;
   }
-  .wr-bill-btn {
-    padding: 6px 14px;
-    border-radius: 6px;
-    border: 1px solid var(--border2);
-    background: var(--bg2);
-    color: var(--text);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .wr-bill-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .wr-bill-search {
     position: relative;
@@ -251,6 +233,11 @@
     font-size: 13px;
     margin-bottom: 16px;
   }
+
+  @media (max-width: 640px) {
+    .wr-wrap { padding-left: 20px; padding-right: 20px; }
+    .wr-card { padding: 22px 18px; }
+  }
 </style>
 
 <div class="wr-wrap">
@@ -285,18 +272,13 @@
       <div class="wr-bill-block">
         <!-- 첨부 전 상태 -->
         <div id="wr-bill-idle" style="<%= attachedBill ? 'display:none' : '' %>">
-          <div class="wr-bill-header">
-            <div class="wr-bill-header-label">
-              📋 관련 법안을 검색해서 첨부할 수 있습니다
-            </div>
-            <button type="button" class="wr-bill-btn" id="wr-bill-search-btn">법안 검색</button>
+          <div class="wr-bill-header-label">
+            관련 법안을 검색해서 첨부할 수 있습니다
           </div>
-          <div id="wr-bill-search-box" style="display:none">
-            <div class="wr-bill-search">
-              <input type="text" id="wr-bill-search-input" placeholder="법안명으로 검색 (2자 이상)">
-            </div>
-            <div class="wr-bill-results" id="wr-bill-results" style="display:none"></div>
+          <div class="wr-bill-search">
+            <input type="text" id="wr-bill-search-input" placeholder="법안명으로 검색 (2자 이상)">
           </div>
+          <div class="wr-bill-results" id="wr-bill-results" style="display:none"></div>
         </div>
 
         <!-- 첨부 완료 상태 -->
@@ -344,8 +326,6 @@
   // 법안 첨부 관련 요소
   const idleBox     = document.getElementById('wr-bill-idle');
   const attachedBox = document.getElementById('wr-bill-attached');
-  const searchBtn   = document.getElementById('wr-bill-search-btn');
-  const searchBox   = document.getElementById('wr-bill-search-box');
   const searchInput = document.getElementById('wr-bill-search-input');
   const resultsBox  = document.getElementById('wr-bill-results');
   const billName    = document.getElementById('wr-bill-name');
@@ -377,11 +357,6 @@
   };
 
   /* ===== 법안 검색 ===== */
-  searchBtn.addEventListener('click', () => {
-    searchBox.style.display = searchBox.style.display === 'none' ? '' : 'none';
-    if (searchBox.style.display !== 'none') searchInput.focus();
-  });
-
   let debounceTimer = null;
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.trim();
@@ -439,7 +414,6 @@
     billMeta.innerHTML = parts.map(p => `<span>${p}</span>`).join(' · ');
     idleBox.style.display = 'none';
     attachedBox.style.display = '';
-    searchBox.style.display = 'none';
     searchInput.value = '';
     resultsBox.innerHTML = '';
     resultsBox.style.display = 'none';
