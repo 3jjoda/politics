@@ -1,7 +1,7 @@
-/* 법안 목록 (검색/필터/페이징)
+/* 법안 목록 (검색/필터/페이징) — committee 기준 카테고리
    $1: search (text, nullable)
    $2: proc_result_name (text, nullable)  -- 상태 탭
-   $3: bill_topic_cd (int, nullable)       -- 카테고리
+   $3: committee (text, nullable)          -- 카테고리 (쉼표 분리 복수 지원, 예: "A,B")
    $4: limit (int)
    $5: offset (int)
 */
@@ -21,8 +21,6 @@ SELECT b.bill_id
      , b.proc_result_cd
      , b.proc_result_name
      , b.link_url
-     , b.bill_topic_cd
-     , c1.code_name  AS bill_topic_nm
      , COALESCE(v.for_cnt, 0)     AS vote_for
      , COALESCE(v.against_cnt, 0) AS vote_against
      , COALESCE(v.abstain_cnt, 0) AS vote_abstain
@@ -30,9 +28,6 @@ SELECT b.bill_id
      , COUNT(*) OVER() AS total_count
      , (CURRENT_DATE - b.propose_dt)::int AS days_elapsed
   FROM bills b
-  LEFT JOIN codes c1
-    ON c1.group_code = 'BILL_TOPIC'
-   AND c1.code_id = b.bill_topic_cd
   LEFT JOIN (
       SELECT bill_id
            , COUNT(*) FILTER (WHERE vote_result = '찬성') AS for_cnt
@@ -46,6 +41,6 @@ SELECT b.bill_id
    AND ($2::text IS NULL
         OR ($2 = 'pending' AND (b.proc_result_name IS NULL OR b.proc_result_name = ''))
         OR b.proc_result_name = $2)
-   AND ($3::int  IS NULL OR b.bill_topic_cd = $3)
+   AND ($3::text IS NULL OR b.committee = ANY(string_to_array($3, ',')))
  ORDER BY b.propose_dt DESC NULLS LAST, b.bill_id DESC
  LIMIT $4 OFFSET $5

@@ -501,6 +501,34 @@
     color: var(--accent);
   }
 
+  /* Trending sort tabs */
+  .trending-sort {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .trend-sort-btn {
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--sub);
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .trend-sort-btn:hover { border-color: var(--border2); color: var(--text); }
+  .trend-sort-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .trend-sort-btn:disabled { opacity: 0.6; cursor: wait; }
+  .trending-grid.is-loading { opacity: 0.5; pointer-events: none; transition: opacity 0.15s; }
+
   @media (max-width: 1024px) {
     .politicians-grid { grid-template-columns: repeat(3, 1fr); }
     .trending-grid { grid-template-columns: 1fr; }
@@ -595,7 +623,7 @@
           <% if (Number(k.total_votes || 0) === 0) { %>
             <div class="kpi-note" style="color:var(--sub2)">데이터 수집 중</div>
           <% } else { %>
-            <div class="kpi-note">찬성·반대·기권·불참 <a href="/glossary#vote-for" class="pb-help" title="표결 용어">?</a></div>
+            <div class="kpi-note">찬성·반대·기권·불참 <span class="pb-help" data-help-href="/glossary#vote-for" title="표결 용어">?</span></div>
           <% } %>
         </div>
       </div>
@@ -617,54 +645,75 @@
     </div>
 
     <div class="category-tabs">
-      <a href="/bill" class="cat-tab active">전체</a>
-      <%
-         const billTopics = (locals.initialData && initialData.CODES && initialData.CODES.BILL_TOPIC) || [];
-         billTopics.filter(c => c.code_id < 100).forEach(c => { %>
-        <a href="/bill?topic=<%= c.code_id %>" class="cat-tab"><%= c.code_name %></a>
+      <% const homeCatTabs = [
+           { label: '전체',      committee: '' },
+           { label: '보건/복지', committee: '보건복지위원회' },
+           { label: '조세/재정', committee: '기획재정위원회,재정경제기획위원회' },
+           { label: '산업/기술', committee: '산업통상자원중소벤처기업위원회' },
+           { label: '노동/환경', committee: '기후에너지환경노동위원회' },
+           { label: '국토/주택', committee: '국토교통위원회' },
+           { label: '과학/ICT',  committee: '과학기술정보방송통신위원회' },
+           { label: '교육',      committee: '교육위원회' },
+           { label: '사법/행정', committee: '법제사법위원회' }
+         ]; %>
+      <% homeCatTabs.forEach((t, i) => {
+           const href = t.committee ? `/bill?committee=${encodeURIComponent(t.committee)}` : '/bill';
+      %>
+        <a href="<%= href %>" class="cat-tab<%= i === 0 ? ' active' : '' %>"><%= t.label %></a>
       <% }); %>
     </div>
 
-    <% if (trending && trending.length > 0) { %>
+    <div class="trending-sort" id="trending-sort">
+      <button type="button" class="trend-sort-btn active" data-sort="recent">최근 가결</button>
+      <button type="button" class="trend-sort-btn" data-sort="close">박빙 표결</button>
+      <button type="button" class="trend-sort-btn" data-sort="popular">많은 동참</button>
+      <button type="button" class="trend-sort-btn" data-sort="bipartisan">여야 협력</button>
+    </div>
+
+    <div id="trending-root">
+    <% const hero = (trending || []).find(t => t && t.bill_id && t.bill_name); %>
+    <% if (hero) { %>
       <div class="trending-grid">
-        <a href="/bill/<%= trending[0].bill_id %>" class="bill-card-main" style="text-decoration:none;display:block">
+        <a href="/bill/<%= hero.bill_id %>" class="bill-card-main" style="text-decoration:none;display:block">
           <div class="bill-meta">
-            <% if (trending[0].bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= trending[0].bill_topic_nm %></span><% } %>
-            <span class="pb-badge <%= resultClass(trending[0].proc_result_name) %>">
-              <%= trending[0].proc_result_name || '계류' %>
-              <a href="/glossary#<%= termHash(trending[0].proc_result_name) %>" class="pb-help" onclick="event.stopPropagation()" title="용어 설명">?</a>
+            <% if (hero.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= hero.bill_topic_nm %></span><% } %>
+            <span class="pb-badge <%= resultClass(hero.proc_result_name) %>">
+              <%= hero.proc_result_name || '계류' %>
+              <span class="pb-help" data-help-href="/glossary#<%= termHash(hero.proc_result_name) %>" title="용어 설명">?</span>
             </span>
           </div>
-          <div class="bill-name"><%= trending[0].bill_name %></div>
+          <div class="bill-name"><%= hero.bill_name %></div>
           <div class="bill-info">
-            <span>대표발의 <%= trending[0].proposer_name || '—' %></span>
+            <span>대표발의 <%= hero.proposer_name || '—' %></span>
             <span>·</span>
-            <span><%= trending[0].propose_dt %></span>
-            <% if (trending[0].co_proposer_count) { %>
-              <span>·</span><span>공동발의 <%= trending[0].co_proposer_count %>인</span>
+            <span><%= hero.propose_dt || '—' %></span>
+            <% if (hero.co_proposer_count) { %>
+              <span>·</span><span>공동발의 <%= hero.co_proposer_count %>인</span>
             <% } %>
           </div>
-          <% const v0 = trending[0];
-             const vTotal = (v0.vote_for || 0) + (v0.vote_against || 0) + (v0.vote_abstain || 0);
+          <% const vFor     = Number(hero.vote_for || 0);
+             const vAgainst = Number(hero.vote_against || 0);
+             const vAbs     = Number(hero.vote_abstain || 0);
+             const vTotal   = Number(hero.vote_total || 0) || (vFor + vAgainst + vAbs);
              if (vTotal > 0) {
-               const fp = v0.vote_for / vTotal * 100;
-               const ap = v0.vote_against / vTotal * 100;
-               const bp = v0.vote_abstain / vTotal * 100; %>
+               const fp = vFor / vTotal * 100;
+               const ap = vAgainst / vTotal * 100;
+               const bp = vAbs / vTotal * 100; %>
             <div class="bill-vote-bar">
               <div class="vote-seg" style="background:var(--green);width:<%= fp %>%"></div>
               <div class="vote-seg" style="background:var(--red);width:<%= ap %>%"></div>
               <div class="vote-seg" style="background:var(--sub2);width:<%= bp %>%"></div>
             </div>
             <div class="bill-vote-stats">
-              <span class="vote-stat"><span class="vote-dot dot-green"></span>찬성 <%= v0.vote_for %></span>
-              <span class="vote-stat"><span class="vote-dot dot-red"></span>반대 <%= v0.vote_against %></span>
-              <span class="vote-stat"><span class="vote-dot dot-gray"></span>기권/불참 <%= v0.vote_abstain %></span>
+              <span class="vote-stat"><span class="vote-dot dot-green"></span>찬성 <%= vFor %></span>
+              <span class="vote-stat"><span class="vote-dot dot-red"></span>반대 <%= vAgainst %></span>
+              <span class="vote-stat"><span class="vote-dot dot-gray"></span>기권/불참 <%= vAbs %></span>
             </div>
           <% } %>
         </a>
 
         <div class="bill-list">
-          <% trending.slice(1).forEach((b, idx) => { %>
+          <% trending.filter(t => t && t.bill_id !== hero.bill_id).slice(0, 5).forEach((b, idx) => { %>
             <a href="/bill/<%= b.bill_id %>" class="bill-item" style="text-decoration:none">
               <span class="bill-num"><%= String(idx + 1).padStart(2, '0') %></span>
               <div class="bill-item-content">
@@ -679,6 +728,7 @@
     <% } else { %>
       <div style="color:var(--sub);text-align:center;padding:40px 0">표시할 법안이 없습니다.</div>
     <% } %>
+    </div>
   </div>
 </section>
 
@@ -862,4 +912,130 @@
     });
   }, { threshold: 0.3 });
   document.querySelectorAll('[data-count]').forEach(el => pbObs.observe(el));
+
+  /* ===== 주목할 법안 정렬 탭 — 동적 재렌더 ===== */
+  (() => {
+    const sortBar = document.getElementById('trending-sort');
+    const root = document.getElementById('trending-root');
+    if (!sortBar || !root) return;
+
+    const esc = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    const resultClass = (r) => {
+      if (!r) return 'pb-badge-pending';
+      if (r.indexOf('가결') > -1) return 'pb-badge-passed';
+      if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
+      if (r === '철회') return 'pb-badge-withdrawn';
+      if (r.indexOf('대안') > -1) return 'pb-badge-alt';
+      return 'pb-badge-pending';
+    };
+
+    const termHash = (r) => {
+      if (!r) return 'pending';
+      if (r === '원안가결') return 'original';
+      if (r === '수정가결') return 'modified';
+      if (r === '대안반영폐기') return 'alt-dropped';
+      if (r === '수정안반영폐기') return 'mod-dropped';
+      if (r === '철회') return 'withdrawn';
+      if (r === '부결') return 'rejected';
+      if (r === '폐기') return 'dropped';
+      return 'pending';
+    };
+
+    const renderHero = (h) => {
+      const vFor = Number(h.vote_for || 0);
+      const vAgainst = Number(h.vote_against || 0);
+      const vAbs = Number(h.vote_abstain || 0);
+      const vTotal = Number(h.vote_total || 0) || (vFor + vAgainst + vAbs);
+      const voteBar = vTotal > 0 ? `
+        <div class="bill-vote-bar">
+          <div class="vote-seg" style="background:var(--green);width:${vFor / vTotal * 100}%"></div>
+          <div class="vote-seg" style="background:var(--red);width:${vAgainst / vTotal * 100}%"></div>
+          <div class="vote-seg" style="background:var(--sub2);width:${vAbs / vTotal * 100}%"></div>
+        </div>
+        <div class="bill-vote-stats">
+          <span class="vote-stat"><span class="vote-dot dot-green"></span>찬성 ${vFor}</span>
+          <span class="vote-stat"><span class="vote-dot dot-red"></span>반대 ${vAgainst}</span>
+          <span class="vote-stat"><span class="vote-dot dot-gray"></span>기권/불참 ${vAbs}</span>
+        </div>` : '';
+      const coPart = h.co_proposer_count
+        ? `<span>·</span><span>공동발의 ${esc(h.co_proposer_count)}인</span>` : '';
+      const topicBadge = h.bill_topic_nm
+        ? `<span class="pb-badge pb-badge-category">${esc(h.bill_topic_nm)}</span>` : '';
+      return `
+        <a href="/bill/${esc(h.bill_id)}" class="bill-card-main" style="text-decoration:none;display:block">
+          <div class="bill-meta">
+            ${topicBadge}
+            <span class="pb-badge ${resultClass(h.proc_result_name)}">
+              ${esc(h.proc_result_name || '계류')}
+              <span class="pb-help" data-help-href="/glossary#${termHash(h.proc_result_name)}" title="용어 설명">?</span>
+            </span>
+          </div>
+          <div class="bill-name">${esc(h.bill_name)}</div>
+          <div class="bill-info">
+            <span>대표발의 ${esc(h.proposer_name || '—')}</span>
+            <span>·</span>
+            <span>${esc(h.propose_dt || '—')}</span>
+            ${coPart}
+          </div>
+          ${voteBar}
+        </a>`;
+    };
+
+    const renderItem = (b, idx) => {
+      const num = String(idx + 1).padStart(2, '0');
+      return `
+        <a href="/bill/${esc(b.bill_id)}" class="bill-item" style="text-decoration:none">
+          <span class="bill-num">${num}</span>
+          <div class="bill-item-content">
+            <div class="bill-item-name">${esc(b.bill_name)}</div>
+            <div class="bill-item-sub">${esc(b.proc_result_name || '계류')} · ${esc(b.bill_topic_nm || '미지정')}</div>
+          </div>
+          <span class="pb-badge ${resultClass(b.proc_result_name)}">${esc(b.proc_result_name || '계류')}</span>
+        </a>`;
+    };
+
+    const renderGrid = (items) => {
+      const hero = (items || []).find(t => t && t.bill_id && t.bill_name);
+      if (!hero) {
+        root.innerHTML = '<div style="color:var(--sub);text-align:center;padding:40px 0">표시할 법안이 없습니다.</div>';
+        return;
+      }
+      const rest = items.filter(t => t && t.bill_id !== hero.bill_id).slice(0, 5);
+      root.innerHTML = `
+        <div class="trending-grid">
+          ${renderHero(hero)}
+          <div class="bill-list">
+            ${rest.map((b, i) => renderItem(b, i)).join('')}
+          </div>
+        </div>`;
+    };
+
+    let currentSort = 'recent';
+    const buttons = sortBar.querySelectorAll('.trend-sort-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const sort = btn.dataset.sort;
+        if (sort === currentSort) return;
+        buttons.forEach(b => { b.classList.toggle('active', b === btn); b.disabled = true; });
+        const grid = root.querySelector('.trending-grid');
+        if (grid) grid.classList.add('is-loading');
+        try {
+          const res = await fetch(`/api/bills/trending?sort=${encodeURIComponent(sort)}`, {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+          });
+          const data = await res.json();
+          renderGrid(data.items || []);
+          currentSort = sort;
+        } catch (err) {
+          console.error('trending fetch failed', err);
+        } finally {
+          buttons.forEach(b => { b.disabled = false; });
+        }
+      });
+    });
+  })();
 </script>

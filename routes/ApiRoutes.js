@@ -21,9 +21,10 @@ export default (db) => {
     router.get('/politician:id', politicianController.getDetail);   // 국회의원 상세
 
     /* 법안 */
-    router.get('/bill', billController.getList);        // 법안 목록
-    router.get('/bill:id', billController.getDetail);   // 법안 상세
-    router.get('/bills/search', billController.search); // 법안 검색 (커뮤니티 첨부용)
+    router.get('/bill', billController.getList);            // 법안 목록
+    router.get('/bill:id', billController.getDetail);       // 법안 상세
+    router.get('/bills/trending', billController.getTrending); // 홈 주목할 법안 (sort)
+    router.get('/bills/search', billController.search);     // 법안 검색 (커뮤니티 첨부용)
 
     return router;
 };

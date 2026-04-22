@@ -16,6 +16,20 @@ export default (db) => {
         }
     });
 
+    /* 주목할 법안 (sort 파라미터 지원) — 홈 탭 동적 교체용 */
+    controller.getTrending = wrapWithContext(async function getTrending(req, res, next) {
+        try {
+            const VALID_SORTS = new Set(['recent', 'close', 'popular', 'bipartisan']);
+            const raw = req.query.sort ? String(req.query.sort) : 'recent';
+            const sort = VALID_SORTS.has(raw) ? raw : 'recent';
+            const items = await billService.getTrending(sort);
+            res.status(200).json({ sort, items });
+        } catch (error) {
+            logger.error('주목할 법안 조회 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
     /* 법안 검색 API (커뮤니티 첨부용) */
     controller.search = wrapWithContext(async function search(req, res, next) {
         try {
@@ -38,12 +52,13 @@ export default (db) => {
 
             const search = req.query.search ? String(req.query.search).trim() : null;
             const status = req.query.status ? String(req.query.status) : null;
-            const topicRaw = req.query.topic ? parseInt(req.query.topic) : null;
-            const topic = Number.isFinite(topicRaw) ? topicRaw : null;
+            // committee 파라미터 — 쉼표 분리 지원 (예: 기획재정위원회,재정경제기획위원회)
+            const committeeRaw = req.query.committee ? String(req.query.committee).trim() : null;
+            const committee = committeeRaw || null;
 
             const [bills, statusCounts, topicCounts, partyCounts] = await Promise.all([
-                billService.getList({ search, status, topic, limit: pageSize, offset }),
-                billService.getStatusCounts(),
+                billService.getList({ search, status, committee, limit: pageSize, offset }),
+                billService.getStatusCounts(committee),
                 billService.getTopicCounts(),
                 billService.getPartyCounts()
             ]);
@@ -59,7 +74,7 @@ export default (db) => {
                 statusCounts,
                 topicCounts,
                 partyCounts,
-                query: { search: search || '', status: status || '', topic: topic || '' },
+                query: { search: search || '', status: status || '', committee: committee || '' },
                 pagination: { page, pageSize, totalCount, totalPages }
             });
         } catch (error) {

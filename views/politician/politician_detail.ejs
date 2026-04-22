@@ -823,7 +823,7 @@
       <div class="profile-kpis-row">
         <div class="profile-kpi">
           <div class="profile-kpi-val kpi-blue"><%= nf(proposeCnt) %></div>
-          <div class="profile-kpi-label">법안 발의 <a href="/glossary#rep-proposer" class="pb-help" title="대표발의 설명">?</a></div>
+          <div class="profile-kpi-label">법안 발의 <span class="pb-help" data-help-href="/glossary#rep-proposer" title="대표발의 설명">?</span></div>
           <div class="profile-kpi-sub">공동발의 <%= nf(coProposeCnt) %>건</div>
         </div>
         <div class="profile-kpi">
@@ -832,7 +832,7 @@
           <% } else { %>
             <div class="profile-kpi-val kpi-amber"><%= voteParticipateRate.toFixed(0) %>%</div>
           <% } %>
-          <div class="profile-kpi-label">표결 참여율 <a href="/glossary#vote-absent" class="pb-help" title="(찬성+반대+기권) / 전체 표결">?</a></div>
+          <div class="profile-kpi-label">표결 참여율 <span class="pb-help" data-help-href="/glossary#vote-absent" title="(찬성+반대+기권) / 전체 표결">?</span></div>
           <% if (vsTotal > 0) { %>
             <div class="profile-kpi-sub"><%= nf(vsAttended) %> / <%= nf(vsTotal) %></div>
           <% } else { %>
@@ -845,7 +845,7 @@
           <% } else { %>
             <div class="profile-kpi-val kpi-green"><%= passRate.toFixed(0) %>%</div>
           <% } %>
-          <div class="profile-kpi-label">가결율 <a href="/glossary#original" class="pb-help" title="가결 법안 수 / 대표발의 법안 수">?</a></div>
+          <div class="profile-kpi-label">가결율 <span class="pb-help" data-help-href="/glossary#original" title="가결 법안 수 / 대표발의 법안 수">?</span></div>
           <div class="profile-kpi-sub">
             <% if (proposeCnt === 0) { %>
               대표발의 없음
@@ -1307,7 +1307,7 @@
           </div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--sub2);line-height:1.6">
             참여율 = <span style="color:var(--sub)">(찬성+반대+기권)</span> ÷ 전체
-            <a href="/glossary#vote-absent" class="pb-help" title="용어 설명">?</a>
+            <span class="pb-help" data-help-href="/glossary#vote-absent" title="용어 설명">?</span>
           </div>
         <% } else { %>
           <div class="notice-block">표결 기록이 아직 수집되지 않았습니다.</div>

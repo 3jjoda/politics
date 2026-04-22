@@ -94,8 +94,8 @@ async function fetchAllBills(age) {
 }
 
 // --- Bulk Upsert ---
-const BILL_COLUMNS = '(bill_id, bill_no, bill_name, propose_dt, proc_result_name, age_cd, link_url, mona_cd, proposer_name, committee_id, co_proposer_count)';
-const BILL_COL_COUNT = 11;
+const BILL_COLUMNS = '(bill_id, bill_no, bill_name, propose_dt, proc_result_name, age_cd, link_url, mona_cd, proposer_name, committee, committee_id, co_proposer_count)';
+const BILL_COL_COUNT = 12;
 
 const CO_PROPOSER_COLUMNS = '(bill_id, bill_no, mona_cd, proposer_yn)';
 const CO_PROPOSER_COL_COUNT = 4;
@@ -109,6 +109,8 @@ async function bulkUpsertBills(pool, rows) {
              ON CONFLICT (bill_id) DO UPDATE SET
                 bill_name = EXCLUDED.bill_name,
                 proc_result_name = EXCLUDED.proc_result_name,
+                committee = EXCLUDED.committee,
+                committee_id = EXCLUDED.committee_id,
                 updated_at = NOW()`,
             params
         );
@@ -120,10 +122,12 @@ async function bulkUpsertBills(pool, rows) {
         for (const row of rows) {
             try {
                 await pool.query(
-                    `INSERT INTO bills ${BILL_COLUMNS} VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                    `INSERT INTO bills ${BILL_COLUMNS} VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                      ON CONFLICT (bill_id) DO UPDATE SET
                         bill_name = EXCLUDED.bill_name,
                         proc_result_name = EXCLUDED.proc_result_name,
+                        committee = EXCLUDED.committee,
+                        committee_id = EXCLUDED.committee_id,
                         updated_at = NOW()`,
                     row
                 );
@@ -203,6 +207,7 @@ async function runBillSync(assemblyAge) {
                 bill.DETAIL_LINK || null,
                 rstMonaCd,
                 bill.RST_PROPOSER || null,
+                bill.COMMITTEE || null,
                 bill.COMMITTEE_ID || null,
                 coProposerList.length,
             ]);

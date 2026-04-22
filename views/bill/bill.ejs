@@ -47,7 +47,7 @@
   const currentStatus = query.status || '';
 
   const qsBuild = (override = {}) => {
-    const base = { search: query.search, status: query.status, topic: query.topic, page: pagination.page };
+    const base = { search: query.search, status: query.status, committee: query.committee, page: pagination.page };
     const merged = { ...base, ...override };
     return Object.entries(merged)
       .filter(([, v]) => v !== '' && v !== null && v !== undefined)
@@ -261,12 +261,25 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    /* 뷰포트 넘어가면 사이드바 내부에서 스크롤 */
+    max-height: calc(100vh - 130px - 24px);
+    overflow-y: auto;
+    scrollbar-width: thin;              /* Firefox */
+    scrollbar-color: var(--border2) transparent;
   }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb {
+    background: var(--border2);
+    border-radius: 6px;
+  }
+  .sidebar::-webkit-scrollbar-thumb:hover { background: var(--sub2); }
   .side-card {
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
+    flex-shrink: 0;
   }
   .side-title {
     padding: 14px 18px;
@@ -281,7 +294,7 @@
   .side-list { padding: 6px 0; max-height: 400px; overflow-y: auto; }
   .side-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     padding: 10px 18px;
     font-size: 14px;
@@ -294,23 +307,26 @@
   .side-item.active { background: rgba(184,116,12,0.08); color: var(--accent); }
   .side-item-left {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     min-width: 0;
-    overflow: hidden;
+    flex: 1;
   }
   .side-item-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    word-break: keep-all;
+    white-space: normal;
+    line-height: 1.35;
   }
-  .side-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sub2); flex-shrink: 0; }
+  .side-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sub2); flex-shrink: 0; margin-top: 6px; }
   .side-item.active .side-dot { background: var(--accent); }
   .side-count {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     color: var(--sub);
     flex-shrink: 0;
+    margin-left: 8px;
   }
   .side-item.active .side-count { color: var(--accent); }
 
@@ -407,8 +423,9 @@
 
   .bill-no {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 10px;
     color: var(--sub2);
+    opacity: 0.7;
   }
 
   /* Pagination */
@@ -508,8 +525,8 @@
       <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" class="search-input" name="search" value="<%= query.search %>" placeholder="법안명, 발의자 이름, 법안번호 검색...">
     </div>
-    <% if (query.status) { %><input type="hidden" name="status" value="<%= query.status %>"><% } %>
-    <% if (query.topic)  { %><input type="hidden" name="topic"  value="<%= query.topic %>"><% } %>
+    <% if (query.status)    { %><input type="hidden" name="status"    value="<%= query.status %>"><% } %>
+    <% if (query.committee) { %><input type="hidden" name="committee" value="<%= query.committee %>"><% } %>
     <button type="submit" class="search-btn">검색</button>
     <span class="filter-count">총 <%= nf(pagination.totalCount) %>건</span>
   </div>
@@ -522,7 +539,7 @@
          const parts = [];
          if (t.key) parts.push('status=' + encodeURIComponent(t.key));
          if (query.search) parts.push('search=' + encodeURIComponent(query.search));
-         if (query.topic)  parts.push('topic=' + encodeURIComponent(query.topic));
+         if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
          if (parts.length) href += '?' + parts.join('&');
          const active = (currentStatus === t.key) || (currentStatus === '' && t.key === '');
     %>
@@ -546,23 +563,48 @@
             return '/bill' + (parts.length ? '?' + parts.join('&') : '');
           })();
         %>
-        <a href="<%= allTopicHref %>" class="side-item <%= !query.topic ? 'active' : '' %>">
+        <%
+          // "전체" 링크는 필터와 무관하게 전체 법안 수 (topicCounts 합계)
+          const grandTotal = (topicCounts || []).reduce((s, tc) => s + Number(tc.cnt || 0), 0);
+        %>
+        <a href="<%= allTopicHref %>" class="side-item <%= !query.committee ? 'active' : '' %>">
           <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">전체</span></span>
-          <span class="side-count"><%= nf(sc.total) %></span>
+          <span class="side-count"><%= nf(grandTotal) %></span>
         </a>
-        <% topicCounts.forEach(tc => {
+        <%
+          // 100건 이상 위원회는 개별 노출, 미만은 "기타/특별위원회"로 합산
+          const MAJOR_THRESHOLD = 100;
+          const majors = (topicCounts || []).filter(tc => Number(tc.cnt || 0) >= MAJOR_THRESHOLD);
+          const minors = (topicCounts || []).filter(tc => Number(tc.cnt || 0) <  MAJOR_THRESHOLD);
+          const minorNames  = minors.map(tc => tc.committee).filter(Boolean);
+          const minorTotal  = minors.reduce((s, tc) => s + Number(tc.cnt || 0), 0);
+          const minorValue  = minorNames.join(',');  // 쉼표 분리 → SQL string_to_array 로 IN 매칭
+          const isMinorActive = minorValue && String(query.committee) === minorValue;
+        %>
+        <% majors.forEach(tc => {
              const parts = [];
-             if (tc.bill_topic_cd != null) parts.push('topic=' + tc.bill_topic_cd);
+             if (tc.committee) parts.push('committee=' + encodeURIComponent(tc.committee));
              if (query.search) parts.push('search=' + encodeURIComponent(query.search));
              if (query.status) parts.push('status=' + encodeURIComponent(query.status));
              const href = '/bill' + (parts.length ? '?' + parts.join('&') : '');
-             const active = String(query.topic) === String(tc.bill_topic_cd);
+             const active = String(query.committee) === String(tc.committee);
         %>
           <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>">
-            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= tc.topic_name || '미지정' %></span></span>
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= tc.committee || '미지정' %></span></span>
             <span class="side-count"><%= nf(tc.cnt) %></span>
           </a>
         <% }); %>
+        <% if (minorNames.length > 0) {
+             const parts = ['committee=' + encodeURIComponent(minorValue)];
+             if (query.search) parts.push('search=' + encodeURIComponent(query.search));
+             if (query.status) parts.push('status=' + encodeURIComponent(query.status));
+             const href = '/bill?' + parts.join('&');
+        %>
+          <a href="<%= href %>" class="side-item <%= isMinorActive ? 'active' : '' %>" title="<%= minorNames.join(', ') %>">
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">기타/특별위원회</span></span>
+            <span class="side-count"><%= nf(minorTotal) %></span>
+          </a>
+        <% } %>
       </div>
     </div>
 
@@ -584,7 +626,11 @@
       <div class="bill-cards">
         <% bills.forEach(b => {
              const scClass = statusCardClass(b.proc_result_name);
-             const vTotal = Number(b.vote_for || 0) + Number(b.vote_against || 0) + Number(b.vote_abstain || 0);
+             const vFor     = Number(b.vote_for || 0);
+             const vAgainst = Number(b.vote_against || 0);
+             const vAbs     = Number(b.vote_abstain || 0);
+             const vTotal   = vFor + vAgainst + vAbs;
+             const hasVotes = vFor > 0 || vAgainst > 0;
         %>
           <%
             const isPending = !b.proc_result_name;
@@ -602,10 +648,10 @@
           <a href="/bill/<%= b.bill_id %>" class="bill-card <%= scClass %>">
             <div>
               <div class="bill-card-meta">
-                <% if (b.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= b.bill_topic_nm %></span><% } %>
+                <% if (b.committee) { %><span class="pb-badge pb-badge-category"><%= b.committee %></span><% } %>
                 <span class="pb-badge <%= resultClass(b.proc_result_name) %>">
                   <%= b.proc_result_name || '계류' %>
-                  <a href="/glossary#<%= termAnchor %>" class="pb-help" onclick="event.stopPropagation()" title="용어 설명">?</a>
+                  <span class="pb-help" data-help-href="/glossary#<%= termAnchor %>" title="용어 설명">?</span>
                 </span>
                 <% if (isPending && d > 0) { %>
                   <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color: <%= elapsedColor %>">
@@ -622,10 +668,10 @@
               </div>
             </div>
             <div class="bill-card-right">
-              <% if (vTotal > 0) {
-                   const fp = (b.vote_for / vTotal * 100);
-                   const ap = (b.vote_against / vTotal * 100);
-                   const bp = (b.vote_abstain / vTotal * 100);
+              <% if (hasVotes) {
+                   const fp = (vFor / vTotal * 100);
+                   const ap = (vAgainst / vTotal * 100);
+                   const bp = (vAbs / vTotal * 100);
               %>
                 <div class="vote-mini">
                   <div class="vote-mini-bar">
@@ -634,8 +680,8 @@
                     <div class="vb-abs"     style="width:<%= bp %>%"></div>
                   </div>
                   <span class="vote-mini-nums">
-                    <span class="for"><%= b.vote_for %></span> /
-                    <span class="against"><%= b.vote_against %></span> / <%= b.vote_abstain %>
+                    <span class="for"><%= vFor %></span> /
+                    <span class="against"><%= vAgainst %></span> / <%= vAbs %>
                   </span>
                 </div>
               <% } %>
@@ -651,7 +697,7 @@
           const parts = [];
           if (query.search) parts.push('search=' + encodeURIComponent(query.search));
           if (query.status) parts.push('status=' + encodeURIComponent(query.status));
-          if (query.topic)  parts.push('topic='  + encodeURIComponent(query.topic));
+          if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
           parts.push('page=' + p);
           return '/bill?' + parts.join('&');
         };

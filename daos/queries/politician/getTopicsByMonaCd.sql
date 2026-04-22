@@ -1,12 +1,10 @@
-/* 정치인 상세 - 관심분야 TOP 5 (대표발의만) */
-SELECT c.code_id
-     , c.code_name AS topic_name
-     , COUNT(*) AS cnt
+/* 정치인 상세 - 관심분야 TOP 5 (대표발의 위원회 기준) */
+SELECT b.committee AS topic_name
+     , COUNT(*)   AS cnt
   FROM bills b
-  JOIN codes c
-    ON c.group_code = 'BILL_TOPIC'
-   AND c.code_id = b.bill_topic_cd
  WHERE b.mona_cd = $1
- GROUP BY c.code_id, c.code_name
+   AND b.committee IS NOT NULL
+   AND b.committee <> ''
+ GROUP BY b.committee
  ORDER BY cnt DESC
  LIMIT 5

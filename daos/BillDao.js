@@ -15,8 +15,8 @@ fs.readdirSync(queriesPath).forEach(file => {
 export default (db) => {
     return {
         /* 법안 목록 (검색/필터/페이징) */
-        getList: async ({ search = null, status = null, topic = null, limit = 50, offset = 0 } = {}) => {
-            const { rows } = await db.query(queries.getList, [search, status, topic, limit, offset]);
+        getList: async ({ search = null, status = null, committee = null, limit = 50, offset = 0 } = {}) => {
+            const { rows } = await db.query(queries.getList, [search, status, committee, limit, offset]);
             return rows;
         },
 
@@ -38,9 +38,9 @@ export default (db) => {
             return rows[0];
         },
 
-        /* 홈 - 주목할 법안 */
-        getTrending: async () => {
-            const { rows } = await db.query(queries.getTrending);
+        /* 홈 - 주목할 법안 (sort: 'recent' | 'close' | 'popular' | 'bipartisan') */
+        getTrending: async (sort = 'recent') => {
+            const { rows } = await db.query(queries.getTrending, [sort]);
             return rows;
         },
 
@@ -56,9 +56,9 @@ export default (db) => {
             return rows;
         },
 
-        /* 법안 상태별 카운트 */
-        getStatusCounts: async () => {
-            const { rows } = await db.query(queries.getStatusCounts);
+        /* 법안 상태별 카운트 (committee 필터 지원) */
+        getStatusCounts: async (committee = null) => {
+            const { rows } = await db.query(queries.getStatusCounts, [committee]);
             return rows[0];
         },
 

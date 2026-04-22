@@ -551,4 +551,16 @@
   };
 
   window.PB = PB;
+
+  /* ===================================================================
+     pb-help 용어 설명 링크 — <a> 중첩 방지용 <span> + 클릭 위임
+     대상: <span class="pb-help" data-help-href="/glossary#...">?</span>
+  =================================================================== */
+  document.addEventListener('click', (e) => {
+    const help = e.target.closest('.pb-help[data-help-href]');
+    if (!help) return;
+    e.preventDefault();
+    e.stopPropagation();
+    location.href = help.dataset.helpHref;
+  });
 })();
