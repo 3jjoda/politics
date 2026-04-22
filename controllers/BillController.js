@@ -16,6 +16,19 @@ export default (db) => {
         }
     });
 
+    /* 법안 검색 API (커뮤니티 첨부용) */
+    controller.search = wrapWithContext(async function search(req, res, next) {
+        try {
+            const q = (req.query.q || '').trim();
+            if (!q || q.length < 2) return res.status(200).json({ items: [] });
+            const items = await billService.search(q);
+            res.status(200).json({ items });
+        } catch (error) {
+            logger.error('법안 검색 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
     /* 법안 목록 페이지 (검색/필터/페이징) */
     controller.getListPage = wrapWithContext(async function getListPage(req, res, next) {
         try {

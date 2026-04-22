@@ -84,6 +84,14 @@ export default (db) => {
         getBillCoProposers: async (billId) => {
             const { rows } = await db.query(queries.getBillCoProposers, [billId]);
             return rows;
+        },
+
+        /* 법안 검색 (커뮤니티 첨부용) */
+        search: async (q) => {
+            const term = String(q || '').trim();
+            if (!term) return [];
+            const { rows } = await db.query(queries.search, [term]);
+            return rows;
         }
     };
 };

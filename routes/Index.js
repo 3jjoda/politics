@@ -3,6 +3,7 @@
 import pageRoutes from './PageRoutes.js';
 import apiRoutes from './ApiRoutes.js';
 import authRoutes from './AuthRoutes.js';
+import communityRoutes from './CommunityRoutes.js';
 import authApiRoutes from './api/AuthApiRoutes.js';
 import commentRoutes from './api/CommentRoutes.js';
 import ratingRoutes  from './api/RatingRoutes.js';
@@ -12,6 +13,9 @@ import likeRoutes    from './api/LikeRoutes.js';
 export default (app, db) => {
     // 인증
     app.use('/auth', authRoutes(db));
+
+    // 커뮤니티 (페이지 + REST 혼합)
+    app.use('/community', communityRoutes(db));
 
     // REST API
     app.use('/api/auth',     authApiRoutes(db));

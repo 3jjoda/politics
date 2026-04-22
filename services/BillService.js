@@ -16,6 +16,7 @@ export default (db) => {
         getTopicCounts: async () => billDao.getTopicCounts(),
         getPartyCounts: async () => billDao.getPartyCounts(),
         getBillDetailVotes: async (billId) => billDao.getBillDetailVotes(billId),
-        getBillCoProposers: async (billId) => billDao.getBillCoProposers(billId)
+        getBillCoProposers: async (billId) => billDao.getBillCoProposers(billId),
+        search: async (q) => billDao.search(q)
     };
 };

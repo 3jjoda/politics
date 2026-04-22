@@ -1,0 +1,495 @@
+<%
+  const isEdit = mode === 'edit';
+  const formTitle = isEdit ? '글 수정' : '글쓰기';
+  const submitLabel = isEdit ? '수정 완료' : '등록';
+%>
+
+<style>
+  .wr-wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 36px) 24px 80px;
+  }
+  .wr-breadcrumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub2);
+    margin-bottom: 14px;
+  }
+  .wr-breadcrumb a { color: var(--accent); }
+  .wr-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+
+  .wr-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: var(--shadow-sm);
+  }
+  .wr-field { margin-bottom: 20px; }
+  .wr-field:last-child { margin-bottom: 0; }
+  .wr-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .wr-label small { font-weight: 400; color: var(--sub2); margin-left: 6px; font-size: 11px; }
+
+  .wr-input, .wr-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    background: #fff;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }
+  .wr-input:focus, .wr-textarea:focus { border-color: var(--accent); }
+  .wr-textarea { min-height: 260px; resize: vertical; line-height: 1.75; }
+  .wr-count {
+    text-align: right;
+    font-size: 11px;
+    color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 4px;
+  }
+
+  /* 법안 첨부 */
+  .wr-bill-block {
+    padding: 16px 18px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .wr-bill-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .wr-bill-header-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--sub);
+  }
+  .wr-bill-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .wr-bill-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .wr-bill-search {
+    position: relative;
+  }
+  .wr-bill-search input {
+    width: 100%;
+    padding: 10px 14px 10px 36px;
+    background: #fff;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .wr-bill-search input:focus { border-color: var(--accent); }
+  .wr-bill-search::before {
+    content: '';
+    position: absolute;
+    left: 12px; top: 50%;
+    width: 14px; height: 14px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231A1D24' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat center;
+    transform: translateY(-50%);
+  }
+  .wr-bill-results {
+    margin-top: 8px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  .wr-bill-result-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .wr-bill-result-item:hover { background: var(--bg3); }
+  .wr-bill-result-item:last-child { border-bottom: none; }
+  .wr-bill-result-name {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wr-bill-result-meta {
+    font-size: 11px;
+    color: var(--sub2);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .wr-bill-empty {
+    padding: 18px;
+    text-align: center;
+    color: var(--sub2);
+    font-size: 12px;
+  }
+
+  .wr-bill-preview {
+    padding: 14px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .wr-bill-preview-icon {
+    width: 28px; height: 28px;
+    flex-shrink: 0;
+    background: var(--accent-10);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+  }
+  .wr-bill-preview-info { flex: 1; min-width: 0; }
+  .wr-bill-preview-name {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 600;
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wr-bill-preview-meta {
+    font-size: 11px;
+    color: var(--sub);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .wr-bill-remove {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--sub);
+    width: 28px; height: 28px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    transition: all 0.15s;
+  }
+  .wr-bill-remove:hover { border-color: var(--red); color: var(--red); }
+
+  .wr-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .wr-btn {
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.15s;
+  }
+  .wr-btn:hover { border-color: var(--border2); }
+  .wr-btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .wr-btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .wr-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .wr-error {
+    padding: 10px 14px;
+    background: rgba(208,58,58,0.08);
+    border: 1px solid rgba(208,58,58,0.2);
+    color: var(--red);
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+</style>
+
+<div class="wr-wrap">
+  <div class="wr-breadcrumb">
+    <a href="/">홈</a> / <a href="/community">커뮤니티</a> / <%= formTitle %>
+  </div>
+  <h1 class="wr-title"><%= formTitle %></h1>
+
+  <% if (locals.error) { %>
+    <div class="wr-error" id="wr-error"><%= error %></div>
+  <% } else { %>
+    <div class="wr-error" id="wr-error" style="display:none"></div>
+  <% } %>
+
+  <form class="wr-card" id="wr-form" autocomplete="off" onsubmit="return false">
+    <div class="wr-field">
+      <label class="wr-label" for="wr-title-input">제목 <small>최대 200자</small></label>
+      <input type="text" id="wr-title-input" class="wr-input" maxlength="200"
+             value="<%= post.title || '' %>" placeholder="제목을 입력하세요" required>
+      <div class="wr-count"><span id="wr-title-count">0</span> / 200</div>
+    </div>
+
+    <div class="wr-field">
+      <label class="wr-label" for="wr-content-input">내용 <small>최대 5000자</small></label>
+      <textarea id="wr-content-input" class="wr-input wr-textarea" maxlength="5000"
+                placeholder="내용을 입력하세요" required><%= post.content || '' %></textarea>
+      <div class="wr-count"><span id="wr-content-count">0</span> / 5000</div>
+    </div>
+
+    <div class="wr-field">
+      <label class="wr-label">법안 첨부 <small>선택 · 1개</small></label>
+      <div class="wr-bill-block">
+        <!-- 첨부 전 상태 -->
+        <div id="wr-bill-idle" style="<%= attachedBill ? 'display:none' : '' %>">
+          <div class="wr-bill-header">
+            <div class="wr-bill-header-label">
+              📋 관련 법안을 검색해서 첨부할 수 있습니다
+            </div>
+            <button type="button" class="wr-bill-btn" id="wr-bill-search-btn">법안 검색</button>
+          </div>
+          <div id="wr-bill-search-box" style="display:none">
+            <div class="wr-bill-search">
+              <input type="text" id="wr-bill-search-input" placeholder="법안명으로 검색 (2자 이상)">
+            </div>
+            <div class="wr-bill-results" id="wr-bill-results" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- 첨부 완료 상태 -->
+        <div id="wr-bill-attached" style="<%= attachedBill ? '' : 'display:none' %>">
+          <div class="wr-bill-preview">
+            <div class="wr-bill-preview-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <div class="wr-bill-preview-info">
+              <div class="wr-bill-preview-name" id="wr-bill-name"><%= attachedBill ? attachedBill.bill_name : '' %></div>
+              <div class="wr-bill-preview-meta" id="wr-bill-meta">
+                <% if (attachedBill) { %>
+                  <% if (attachedBill.proc_result_name) { %><span><%= attachedBill.proc_result_name %></span>·<% } %>
+                  <% if (attachedBill.committee) { %><span><%= attachedBill.committee %></span>·<% } %>
+                  <% if (attachedBill.propose_dt) { %><span><%= attachedBill.propose_dt %></span><% } %>
+                <% } %>
+              </div>
+            </div>
+            <button type="button" class="wr-bill-remove" id="wr-bill-remove" aria-label="첨부 취소">×</button>
+          </div>
+        </div>
+        <input type="hidden" id="wr-linked-bill-id" value="<%= (post && post.linked_bill_id) || '' %>">
+      </div>
+    </div>
+
+    <div class="wr-actions">
+      <a href="<%= isEdit ? `/community/${post.id}` : '/community' %>" class="wr-btn">취소</a>
+      <button type="button" class="wr-btn wr-btn-primary" id="wr-submit"><%= submitLabel %></button>
+    </div>
+  </form>
+</div>
+
+<script>
+(() => {
+  const MODE   = '<%= mode %>';
+  const POST_ID = <%= (post && post.id) ? Number(post.id) : 'null' %>;
+
+  const titleInput   = document.getElementById('wr-title-input');
+  const contentInput = document.getElementById('wr-content-input');
+  const titleCount   = document.getElementById('wr-title-count');
+  const contentCount = document.getElementById('wr-content-count');
+  const submitBtn    = document.getElementById('wr-submit');
+  const errBox       = document.getElementById('wr-error');
+
+  // 법안 첨부 관련 요소
+  const idleBox     = document.getElementById('wr-bill-idle');
+  const attachedBox = document.getElementById('wr-bill-attached');
+  const searchBtn   = document.getElementById('wr-bill-search-btn');
+  const searchBox   = document.getElementById('wr-bill-search-box');
+  const searchInput = document.getElementById('wr-bill-search-input');
+  const resultsBox  = document.getElementById('wr-bill-results');
+  const billName    = document.getElementById('wr-bill-name');
+  const billMeta    = document.getElementById('wr-bill-meta');
+  const removeBtn   = document.getElementById('wr-bill-remove');
+  const billIdInput = document.getElementById('wr-linked-bill-id');
+
+  // 카운트 초기화
+  const updateCounts = () => {
+    titleCount.textContent = titleInput.value.length;
+    contentCount.textContent = contentInput.value.length;
+  };
+  titleInput.addEventListener('input', updateCounts);
+  contentInput.addEventListener('input', updateCounts);
+  updateCounts();
+
+  const escapeHtml = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  const showError = (msg) => {
+    errBox.textContent = msg;
+    errBox.style.display = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const hideError = () => {
+    errBox.textContent = '';
+    errBox.style.display = 'none';
+  };
+
+  /* ===== 법안 검색 ===== */
+  searchBtn.addEventListener('click', () => {
+    searchBox.style.display = searchBox.style.display === 'none' ? '' : 'none';
+    if (searchBox.style.display !== 'none') searchInput.focus();
+  });
+
+  let debounceTimer = null;
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim();
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (q.length < 2) {
+      resultsBox.style.display = 'none';
+      resultsBox.innerHTML = '';
+      return;
+    }
+    debounceTimer = setTimeout(() => search(q), 300);
+  });
+
+  const search = async (q) => {
+    try {
+      resultsBox.style.display = '';
+      resultsBox.innerHTML = '<div class="wr-bill-empty">검색 중...</div>';
+      const res = await fetch(`/api/bills/search?q=${encodeURIComponent(q)}`, {
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await res.json();
+      const items = data.items || [];
+      if (items.length === 0) {
+        resultsBox.innerHTML = '<div class="wr-bill-empty">검색 결과가 없습니다.</div>';
+        return;
+      }
+      resultsBox.innerHTML = items.map(b => `
+        <div class="wr-bill-result-item" data-bill='${JSON.stringify(b).replace(/'/g, "&#39;")}'>
+          <div class="wr-bill-result-name">${escapeHtml(b.bill_name)}</div>
+          <div class="wr-bill-result-meta">
+            ${b.proc_result_name ? `<span>${escapeHtml(b.proc_result_name)}</span>` : ''}
+            ${b.committee ? `<span>· ${escapeHtml(b.committee)}</span>` : ''}
+            ${b.propose_dt ? `<span>· ${escapeHtml(b.propose_dt)}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+      resultsBox.querySelectorAll('.wr-bill-result-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const b = JSON.parse(el.dataset.bill.replace(/&#39;/g, "'"));
+          attachBill(b);
+        });
+      });
+    } catch (err) {
+      resultsBox.innerHTML = '<div class="wr-bill-empty">검색 중 오류가 발생했습니다.</div>';
+    }
+  };
+
+  const attachBill = (b) => {
+    billIdInput.value = b.bill_id;
+    billName.textContent = b.bill_name;
+    const parts = [];
+    if (b.proc_result_name) parts.push(escapeHtml(b.proc_result_name));
+    if (b.committee) parts.push(escapeHtml(b.committee));
+    if (b.propose_dt) parts.push(escapeHtml(b.propose_dt));
+    billMeta.innerHTML = parts.map(p => `<span>${p}</span>`).join(' · ');
+    idleBox.style.display = 'none';
+    attachedBox.style.display = '';
+    searchBox.style.display = 'none';
+    searchInput.value = '';
+    resultsBox.innerHTML = '';
+    resultsBox.style.display = 'none';
+  };
+
+  removeBtn.addEventListener('click', () => {
+    billIdInput.value = '';
+    billName.textContent = '';
+    billMeta.innerHTML = '';
+    attachedBox.style.display = 'none';
+    idleBox.style.display = '';
+  });
+
+  /* ===== 제출 ===== */
+  submitBtn.addEventListener('click', async () => {
+    hideError();
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    if (!title) return showError('제목을 입력해주세요.');
+    if (!content) return showError('내용을 입력해주세요.');
+
+    const payload = {
+      title,
+      content,
+      linkedBillId: billIdInput.value || null
+    };
+    submitBtn.disabled = true;
+    submitBtn.textContent = '저장 중...';
+
+    try {
+      const url    = MODE === 'edit' ? `/community/${POST_ID}` : '/community';
+      const method = MODE === 'edit' ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (res.status === 401) { location.href = '/auth/login?next=' + encodeURIComponent(location.pathname); return; }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '요청 실패');
+      location.href = data.redirectTo || '/community';
+    } catch (err) {
+      showError(err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = '<%= submitLabel %>';
+    }
+  });
+})();
+</script>

@@ -1,0 +1,332 @@
+<%
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const resultClass = (r) => {
+    if (!r) return 'pb-badge-pending';
+    if (r.indexOf('가결') > -1) return 'pb-badge-passed';
+    if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
+    if (r === '철회') return 'pb-badge-withdrawn';
+    if (r.indexOf('대안') > -1) return 'pb-badge-alt';
+    return 'pb-badge-pending';
+  };
+  const isAuthor = locals.currentUser && currentUser.user_id === post.user_id;
+  const isDeletedUser = !post.nickname;
+%>
+
+<style>
+  .pd-wrap {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 36px) 24px 80px;
+  }
+  .pd-breadcrumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub2);
+    margin-bottom: 18px;
+  }
+  .pd-breadcrumb a { color: var(--accent); }
+
+  .pd-header {
+    padding: 28px 32px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .pd-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 14px;
+    word-break: break-all;
+  }
+  .pd-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 13px;
+    color: var(--sub);
+    flex-wrap: wrap;
+  }
+  .pd-meta .date { font-family: 'JetBrains Mono', monospace; color: var(--sub2); }
+  .pd-meta .nick { font-weight: 600; color: var(--text); }
+  .pd-meta .nick.deleted { color: var(--sub2); font-weight: 500; }
+  .pd-meta .views { color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
+  .pd-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+  }
+  .pd-act-btn {
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--sub);
+    font-size: 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .pd-act-btn:hover { border-color: var(--border2); color: var(--text); }
+  .pd-act-btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+  /* 법안 첨부 카드 */
+  .pd-bill {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 12px;
+    margin-bottom: 18px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .pd-bill:hover {
+    border-color: var(--accent);
+    transform: translateX(2px);
+  }
+  .pd-bill-icon {
+    width: 36px; height: 36px;
+    background: var(--accent-10);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .pd-bill-body { flex: 1; min-width: 0; }
+  .pd-bill-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--sub2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+  .pd-bill-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pd-bill-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--sub);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .pd-bill-arrow { color: var(--sub2); flex-shrink: 0; }
+
+  /* 본문 */
+  .pd-body {
+    padding: 32px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+    font-size: 15px;
+    line-height: 1.9;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  /* 좋아요 */
+  .pd-like-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+  }
+  .pd-like-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--sub);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .pd-like-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pd-like-btn.liked {
+    background: var(--accent-10);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .pd-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 24px 0;
+  }
+  .pd-comment-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+  }
+  .pd-comment-title strong {
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-right: 6px;
+  }
+</style>
+
+<div class="pd-wrap">
+  <div class="pd-breadcrumb">
+    <a href="/">홈</a> / <a href="/community">커뮤니티</a> / <%= post.id %>번 글
+  </div>
+
+  <div class="pd-header">
+    <h1 class="pd-title"><%= post.title %></h1>
+    <div class="pd-meta">
+      <% if (isDeletedUser) { %>
+        <span class="nick deleted">탈퇴한 사용자</span>
+      <% } else { %>
+        <span class="nick"><%= post.nickname %></span>
+      <% } %>
+      <span class="date"><%= post.created_at %></span>
+      <% if (post.updated_at && post.updated_at !== post.created_at) { %>
+        <span class="date">· 수정됨</span>
+      <% } %>
+      <span class="views">👁 <%= nf(post.view_count) %></span>
+
+      <% if (isAuthor) { %>
+        <div class="pd-actions">
+          <a href="/community/<%= post.id %>/edit" class="pd-act-btn">수정</a>
+          <button type="button" class="pd-act-btn danger" id="pd-delete">삭제</button>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (post.linked_bill_id && post.linked_bill_name) { %>
+    <a href="/bill/<%= post.linked_bill_id %>" class="pd-bill">
+      <div class="pd-bill-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div class="pd-bill-body">
+        <div class="pd-bill-label">첨부된 법안</div>
+        <div class="pd-bill-name"><%= post.linked_bill_name %></div>
+        <div class="pd-bill-meta">
+          <% if (post.linked_bill_result) { %>
+            <span class="pb-badge <%= resultClass(post.linked_bill_result) %>"><%= post.linked_bill_result %></span>
+          <% } %>
+          <% if (post.linked_bill_committee) { %><span><%= post.linked_bill_committee %></span><% } %>
+          <% if (post.linked_bill_propose_dt) { %><span>· 발의 <%= post.linked_bill_propose_dt %></span><% } %>
+        </div>
+      </div>
+      <div class="pd-bill-arrow">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </a>
+  <% } %>
+
+  <div class="pd-body"><%= post.content %></div>
+
+  <div class="pd-like-row">
+    <button type="button" class="pd-like-btn" id="pd-like-btn" data-post-id="<%= post.id %>">
+      👍 <span id="pd-like-label">도움돼요</span>
+      <strong id="pd-like-count" style="margin-left:4px">0</strong>
+    </button>
+  </div>
+
+  <div class="pd-divider"></div>
+
+  <!-- 댓글 -->
+  <div class="pd-comment-title"><strong>의견</strong> 댓글</div>
+  <div id="comment-widget"></div>
+</div>
+
+<script>
+(() => {
+  const POST_ID = <%= Number(post.id) %>;
+  const IS_AUTHOR = <%= isAuthor ? 'true' : 'false' %>;
+
+  // 댓글 위젯 마운트
+  const mount = () => {
+    if (!window.PB) return setTimeout(mount, 30);
+    PB.mountComments({ containerId: 'comment-widget', type: 'post', targetId: POST_ID });
+    initLike();
+  };
+
+  // 좋아요 토글
+  const initLike = async () => {
+    const btn = document.getElementById('pd-like-btn');
+    const cntEl = document.getElementById('pd-like-count');
+    const refresh = async () => {
+      try {
+        const d = await PB.fetch(`/api/likes?type=post&targetId=${POST_ID}`);
+        cntEl.textContent = d.count || 0;
+        btn.classList.toggle('liked', !!d.liked);
+      } catch (e) { /* ignore */ }
+    };
+    await refresh();
+    btn.addEventListener('click', async () => {
+      if (!PB.isLoggedIn()) return PB.redirectToLogin();
+      try {
+        const d = await PB.fetch('/api/likes', {
+          method: 'POST',
+          body: JSON.stringify({ type: 'post', targetId: POST_ID })
+        });
+        cntEl.textContent = d.count || 0;
+        btn.classList.toggle('liked', !!d.liked);
+      } catch (err) {
+        if (err.status === 401) return PB.redirectToLogin();
+        alert('좋아요 실패: ' + err.message);
+      }
+    });
+  };
+
+  // 삭제
+  if (IS_AUTHOR) {
+    const dbtn = document.getElementById('pd-delete');
+    dbtn?.addEventListener('click', async () => {
+      if (!confirm('게시글을 삭제하시겠습니까? 되돌릴 수 없습니다.')) return;
+      try {
+        const res = await fetch(`/community/${POST_ID}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Accept': 'application/json' }
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || '삭제 실패');
+        }
+        const data = await res.json();
+        location.href = data.redirectTo || '/community';
+      } catch (err) {
+        alert('삭제 실패: ' + err.message);
+      }
+    });
+  }
+
+  mount();
+})();
+</script>

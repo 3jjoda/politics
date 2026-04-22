@@ -1,0 +1,253 @@
+<%
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const resultClass = (r) => {
+    if (!r) return 'pb-badge-pending';
+    if (r.indexOf('가결') > -1) return 'pb-badge-passed';
+    if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
+    if (r === '철회') return 'pb-badge-withdrawn';
+    if (r.indexOf('대안') > -1) return 'pb-badge-alt';
+    return 'pb-badge-pending';
+  };
+  const { page, totalPages, totalCount } = pagination;
+
+  const buildHref = (p) => {
+    const q = [`page=${p}`].join('&');
+    return `/community?${q}`;
+  };
+  const pagesAround = () => {
+    const maxBtns = 7;
+    let start = Math.max(1, page - 3);
+    let end = Math.min(totalPages, start + maxBtns - 1);
+    start = Math.max(1, end - maxBtns + 1);
+    const arr = [];
+    for (let p = start; p <= end; p++) arr.push(p);
+    return arr;
+  };
+%>
+
+<style>
+  .cm-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 36px) 24px 80px;
+  }
+  .cm-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .cm-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 44px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .cm-sub { font-size: 13px; color: var(--sub); margin-top: 4px; }
+  .cm-write-btn {
+    padding: 10px 22px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+  .cm-write-btn:hover { background: var(--accent2); }
+  .cm-write-btn.disabled {
+    background: var(--bg3);
+    color: var(--sub2);
+    border: 1px solid var(--border);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .cm-list { display: flex; flex-direction: column; gap: 10px; }
+  .cm-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 22px;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+    box-shadow: var(--shadow-sm);
+  }
+  .cm-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
+  .cm-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .cm-bill-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 10px;
+    padding: 6px 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--sub);
+    max-width: 100%;
+  }
+  .cm-bill-chip-ic {
+    flex-shrink: 0;
+    width: 14px; height: 14px;
+    color: var(--accent);
+  }
+  .cm-bill-chip-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+    font-weight: 500;
+  }
+  .cm-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    color: var(--sub2);
+    flex-wrap: wrap;
+  }
+  .cm-card-meta .nick { color: var(--sub); font-weight: 500; }
+  .cm-card-meta .date { font-family: 'JetBrains Mono', monospace; }
+  .cm-card-stats {
+    display: flex;
+    gap: 12px;
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .cm-card-stats span { display: inline-flex; align-items: center; gap: 3px; }
+  .cm-empty {
+    padding: 60px 24px;
+    text-align: center;
+    color: var(--sub);
+    background: var(--bg2);
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+  }
+
+  .cm-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+  .cm-pg-btn {
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--sub);
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    text-decoration: none;
+  }
+  .cm-pg-btn:hover { border-color: var(--border2); color: var(--text); }
+  .cm-pg-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .cm-pg-ellipsis { color: var(--sub2); padding: 0 6px; }
+</style>
+
+<div class="cm-wrap">
+  <div class="cm-head">
+    <div>
+      <div class="cm-title">커뮤니티</div>
+      <div class="cm-sub">법안·정치 이슈에 대한 의견을 나눠보세요. 총 <%= nf(totalCount) %>개의 글</div>
+    </div>
+    <% if (locals.currentUser) { %>
+      <a href="/community/write" class="cm-write-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        글쓰기
+      </a>
+    <% } else { %>
+      <a href="/auth/login?next=%2Fcommunity" class="cm-write-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        로그인하고 글쓰기
+      </a>
+    <% } %>
+  </div>
+
+  <% if (posts && posts.length > 0) { %>
+    <div class="cm-list">
+      <% posts.forEach(p => { %>
+        <a href="/community/<%= p.id %>" class="cm-card">
+          <div class="cm-card-title"><%= p.title %></div>
+          <% if (p.linked_bill_id && p.linked_bill_name) { %>
+            <div class="cm-bill-chip">
+              <svg class="cm-bill-chip-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span class="cm-bill-chip-name"><%= p.linked_bill_name %></span>
+              <% if (p.linked_bill_result) { %>
+                <span class="pb-badge <%= resultClass(p.linked_bill_result) %>" style="margin-left:4px"><%= p.linked_bill_result %></span>
+              <% } %>
+            </div>
+          <% } %>
+          <div class="cm-card-meta">
+            <span class="nick"><%= p.nickname || '탈퇴한 사용자' %></span>
+            <span class="date"><%= p.created_at %></span>
+            <span class="cm-card-stats">
+              <span>👁 <%= nf(p.view_count) %></span>
+              <span>👍 <%= nf(p.like_count) %></span>
+              <span>💬 <%= nf(p.comment_count) %></span>
+            </span>
+          </div>
+        </a>
+      <% }); %>
+    </div>
+
+    <% if (totalPages > 1) {
+         const pagesList = pagesAround();
+    %>
+      <div class="cm-pagination">
+        <% if (page > 1) { %>
+          <a href="<%= buildHref(page - 1) %>" class="cm-pg-btn">←</a>
+        <% } %>
+        <% if (pagesList[0] > 1) { %>
+          <a href="<%= buildHref(1) %>" class="cm-pg-btn">1</a>
+          <% if (pagesList[0] > 2) { %><span class="cm-pg-ellipsis">...</span><% } %>
+        <% } %>
+        <% pagesList.forEach(p => { %>
+          <% if (p === page) { %>
+            <span class="cm-pg-btn active"><%= p %></span>
+          <% } else { %>
+            <a href="<%= buildHref(p) %>" class="cm-pg-btn"><%= p %></a>
+          <% } %>
+        <% }); %>
+        <% if (pagesList[pagesList.length - 1] < totalPages) { %>
+          <% if (pagesList[pagesList.length - 1] < totalPages - 1) { %><span class="cm-pg-ellipsis">...</span><% } %>
+          <a href="<%= buildHref(totalPages) %>" class="cm-pg-btn"><%= totalPages %></a>
+        <% } %>
+        <% if (page < totalPages) { %>
+          <a href="<%= buildHref(page + 1) %>" class="cm-pg-btn">→</a>
+        <% } %>
+      </div>
+    <% } %>
+  <% } else { %>
+    <div class="cm-empty">
+      아직 등록된 게시글이 없습니다. 첫 글의 주인공이 되어보세요.
+    </div>
+  <% } %>
+</div>
