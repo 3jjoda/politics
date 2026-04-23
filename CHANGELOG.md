@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-04-23 (저녁) — login 로고도 분리 배치
+
+nav 와 같은 이유(워드마크 텍스트 작음) 로 **login 카드 로고도 마크+워드마크 분리** 로 교체.
+- 기존: `<img src="logo-primary.svg" class="auth-logo-img" height=44>`
+- 변경: `mark-only.svg` 48×48 + `wordmark-nav.svg` h36px (gap 12px)
+- CSS: `.auth-logo-img` → `.auth-logo-mark-img` + `.auth-logo-wordmark-img`
+- `logo-primary.svg` 는 login 에서 빠짐 → 현재 전 페이지 미사용 (보존)
+
+---
+
 ## 2026-04-23 (오후) — 브랜드 에셋 통합 & 메타태그
 
 공식 로고/파비콘 세트 확정 → 프로젝트 전반에 배치.

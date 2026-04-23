@@ -19,11 +19,18 @@
   .auth-logo {
     display: inline-flex;
     align-items: center;
+    gap: 12px;
     margin-bottom: 20px;
   }
-  .auth-logo-img {
+  .auth-logo-mark-img {
     display: block;
-    height: 44px;
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+  }
+  .auth-logo-wordmark-img {
+    display: block;
+    height: 36px;
     width: auto;
   }
 
@@ -110,7 +117,8 @@
 <div class="auth-wrap">
   <div class="auth-card">
     <div class="auth-logo">
-      <img src="/assets/imgs/logo-primary.svg" alt="정치 바로미터" class="auth-logo-img">
+      <img src="/assets/imgs/mark-only.svg" alt="" class="auth-logo-mark-img" aria-hidden="true">
+      <img src="/assets/imgs/wordmark-nav.svg" alt="정치 바로미터" class="auth-logo-wordmark-img">
     </div>
 
     <h1 class="auth-title">로그인 / 가입</h1>

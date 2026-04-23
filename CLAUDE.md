@@ -309,7 +309,7 @@ ASSEMBLY_AGE=22
 
 ### 현재 사용 중 (`public/assets/imgs/`)
 - nav 로고: `mark-only.svg` (36px) + `wordmark-nav.svg` (h28px, 단일행)
-- login 카드: `logo-primary.svg` (h44px)
+- login 카드: `mark-only.svg` (48px) + `wordmark-nav.svg` (h36px, gap 12px)
 - 파비콘: `favicon.ico`, `favicon-16.svg`, `favicon-32.svg`, `apple-touch-180.png`
 - 앱 아이콘: `app-icon-192.png`, `app-icon-512.png` (`public/manifest.json` 참조)
 - OG: `og-image.png` (1200×630)
