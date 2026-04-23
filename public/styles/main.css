@@ -111,28 +111,26 @@ input, textarea, select { font-family: inherit; }
 }
 
 .pb-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 10px;
   text-decoration: none;
 }
-
-.pb-logo-mark {
-  width: 30px;
-  height: 30px;
-  background: var(--accent);
-  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+.pb-logo-mark-img {
+  display: block;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
 }
-
-.pb-logo-text {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px;
-  letter-spacing: 0.05em;
-  color: var(--text);
+.pb-logo-wordmark-img {
+  display: block;
+  height: 28px;
+  width: auto;
 }
-
-.pb-logo-text span { color: var(--accent); }
+@media (max-width: 768px) {
+  .pb-logo-wordmark-img { display: none; }
+  .pb-logo-mark-img { width: 32px; height: 32px; }
+}
 
 .pb-nav-links {
   display: flex;

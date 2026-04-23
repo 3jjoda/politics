@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= locals.pageTitle ? locals.pageTitle : '정치 바로미터' %></title>
 
+    <!-- Primary Meta -->
+    <meta name="description" content="당신의 한 표가 어디로 갔는지 끝까지 봅니다. 22대 국회의 모든 법안, 의원, 표결을 시민이 직접 확인하는 정치 데이터 플랫폼.">
+    <meta name="keywords" content="정치, 국회, 법안, 의원, 투표, 공약, 22대 국회, 정치 데이터">
+    <meta name="theme-color" content="#B8740C">
+
+    <!-- Favicon / App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/assets/imgs/favicon-32.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/imgs/favicon-32.svg">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/imgs/favicon-16.svg">
+    <link rel="shortcut icon" href="/assets/imgs/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/imgs/apple-touch-180.png">
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="정치 바로미터 — 내 한표의 바로미터">
+    <meta property="og:description" content="당신의 한 표가 어디로 갔는지 끝까지 봅니다. 22대 국회의 모든 법안, 의원, 표결을 시민이 직접 확인하는 정치 데이터 플랫폼.">
+    <meta property="og:url" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.currentUrl || '/') %>">
+    <meta property="og:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') %>/assets/imgs/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="정치 바로미터">
+    <meta property="og:locale" content="ko_KR">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="정치 바로미터 — 내 한표의 바로미터">
+    <meta name="twitter:description" content="당신의 한 표가 어디로 갔는지 끝까지 봅니다. 22대 국회의 모든 법안, 의원, 표결을 시민이 직접 확인하는 정치 데이터 플랫폼.">
+    <meta name="twitter:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') %>/assets/imgs/og-image.png">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -19,9 +49,9 @@
 
 <nav class="pb-nav">
     <div class="pb-nav-inner">
-        <a href="/" class="pb-logo">
-            <div class="pb-logo-mark"></div>
-            <span class="pb-logo-text">정치<span>바로미터</span></span>
+        <a href="/" class="pb-logo" aria-label="정치 바로미터">
+            <img src="/assets/imgs/mark-only.svg" alt="" class="pb-logo-mark-img" aria-hidden="true">
+            <img src="/assets/imgs/wordmark-nav.svg" alt="정치 바로미터" class="pb-logo-wordmark-img">
         </a>
         <ul class="pb-nav-links">
             <li><a href="/" class="<%= (locals.currentUrl === '/') ? 'active' : '' %>">홈</a></li>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 120" width="480" height="120">
+  <title>정치 바로미터 — Monochrome Logo (검정 단색)</title>
+  <g transform="translate(12 28) scale(1.0625)">
+    <circle cx="32" cy="32" r="25" fill="none" stroke="#0F1B1F" stroke-width="6.5"></circle>
+    <g stroke="#0F1B1F" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 30 16 Q 29 32 30 48"></path>
+      <path d="M 31 30 Q 37 34 42 38"></path>
+    </g>
+  </g>
+  <text x="104" y="60" font-family="&#39;Noto Serif KR&#39;, serif" font-weight="900" font-size="36" fill="#0F1B1F" letter-spacing="-1">정치 바로미터</text>
+  <text x="104" y="86" font-family="&#39;JetBrains Mono&#39;, monospace" font-weight="500" font-size="11" fill="#0F1B1F" letter-spacing="2.2">POLITICS · BAROMETER</text>
+</svg>

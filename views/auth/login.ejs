@@ -19,22 +19,13 @@
   .auth-logo {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
     margin-bottom: 20px;
   }
-  .auth-logo-mark {
-    width: 36px;
-    height: 36px;
-    background: var(--accent);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  .auth-logo-img {
+    display: block;
+    height: 44px;
+    width: auto;
   }
-  .auth-logo-text {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 26px;
-    letter-spacing: 0.05em;
-    color: var(--text);
-  }
-  .auth-logo-text span { color: var(--accent); }
 
   .auth-title {
     font-size: 22px;
@@ -119,8 +110,7 @@
 <div class="auth-wrap">
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="auth-logo-mark"></div>
-      <span class="auth-logo-text">정치<span>바로미터</span></span>
+      <img src="/assets/imgs/logo-primary.svg" alt="정치 바로미터" class="auth-logo-img">
     </div>
 
     <h1 class="auth-title">로그인 / 가입</h1>
