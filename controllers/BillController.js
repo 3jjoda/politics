@@ -55,10 +55,13 @@ export default (db) => {
             // committee 파라미터 — 쉼표 분리 지원 (예: 기획재정위원회,재정경제기획위원회)
             const committeeRaw = req.query.committee ? String(req.query.committee).trim() : null;
             const committee = committeeRaw || null;
+            // party 파라미터 — 쉼표 분리 지원 (대표발의 정당 복수선택)
+            const partyRaw = req.query.party ? String(req.query.party).trim() : null;
+            const party = partyRaw || null;
 
             const [bills, statusCounts, topicCounts, partyCounts] = await Promise.all([
-                billService.getList({ search, status, committee, limit: pageSize, offset }),
-                billService.getStatusCounts(committee),
+                billService.getList({ search, status, committee, party, limit: pageSize, offset }),
+                billService.getStatusCounts(committee, party),
                 billService.getTopicCounts(),
                 billService.getPartyCounts()
             ]);
@@ -74,7 +77,7 @@ export default (db) => {
                 statusCounts,
                 topicCounts,
                 partyCounts,
-                query: { search: search || '', status: status || '', committee: committee || '' },
+                query: { search: search || '', status: status || '', committee: committee || '', party: party || '' },
                 pagination: { page, pageSize, totalCount, totalPages }
             });
         } catch (error) {

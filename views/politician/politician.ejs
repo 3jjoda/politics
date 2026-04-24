@@ -633,10 +633,59 @@
   .page-btn:hover { border-color: var(--border2); color: var(--text); }
   .page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-  /* 필터 시트 (모바일 바텀시트) — 데스크톱에선 버튼/헤더/백드롭 숨김 */
+  /* 필터 시트 (모바일 바텀시트) — 버튼/백드롭은 데스크톱 숨김, 헤더는 항상 노출 */
   .filter-sheet-btn { display: none; }
-  .filter-sheet-header { display: none; }
   .filter-sheet-backdrop { display: none; }
+
+  /* 사이드바 내부 헤더 — 데스크톱/모바일 공통 */
+  .filter-sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .filter-sheet-title { font-size: 14px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+  .filter-sheet-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .filter-sheet-reset,
+  .filter-sheet-apply {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .filter-sheet-reset {
+    background: var(--bg3);
+    color: var(--sub);
+    border-color: var(--border);
+  }
+  .filter-sheet-apply {
+    background: var(--accent);
+    color: #fff;
+  }
+  .filter-sheet-close {
+    display: none;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--text);
+    cursor: pointer;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
 
   @media (max-width: 1024px) {
     .content-wrap { grid-template-columns: 1fr; }
@@ -656,10 +705,11 @@
     .pol-list-num-label { display: inline-block; }
     .pol-list-num { text-align: right; font-size: 14px; }
 
-    /* 필터 버튼 노출 */
+    /* 필터 버튼 노출 — 검색 바 위에 전체 폭 */
     .filter-sheet-btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       padding: 10px 14px;
       background: var(--bg2);
@@ -669,8 +719,15 @@
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
+      flex-basis: 100%;
     }
     .filter-sheet-btn:hover { border-color: var(--accent); }
+
+    /* 검색/정렬/총원이 한 줄에 — search 가 가변, count 는 끝에 */
+    .filter-right { width: 100%; flex-wrap: wrap; }
+    .search-wrap { flex: 1; min-width: 160px; }
+    .search-input { width: 100%; }
+    .filter-count { margin-left: auto; }
     .filter-sheet-badge {
       display: inline-flex;
       align-items: center;
@@ -705,29 +762,16 @@
     }
     body.filter-sheet-open .sidebar { transform: translateY(0); }
 
-    /* 시트 안쪽 헤더 */
+    /* 모바일 시트 헤더 오버라이드 — 닫기 버튼 노출 */
     .filter-sheet-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      padding: 16px 4px 12px;
-      background: var(--bg2);
+      padding: 16px 14px 12px;
+      border-radius: 0;
+      border: none;
       border-bottom: 1px solid var(--border);
       margin-bottom: 12px;
-      z-index: 1;
     }
-    .filter-sheet-title { font-size: 16px; font-weight: 700; color: var(--text); }
-    .filter-sheet-close {
-      background: transparent;
-      border: none;
-      font-size: 28px;
-      line-height: 1;
-      color: var(--text);
-      cursor: pointer;
-      padding: 0 4px;
-    }
+    .filter-sheet-title { font-size: 16px; }
+    .filter-sheet-close { display: block; font-size: 28px; }
 
     /* 시트 내부에선 sidebar-list 가 더 길게 보이도록 */
     .sidebar-list { max-height: none; }
@@ -809,16 +853,13 @@
       </button>
     </div>
 
-    <!-- 모바일 전용: 필터 시트 오픈 -->
+    <!-- 모바일 전용: 필터 시트 오픈 (검색 바 위) -->
     <button type="button" class="filter-sheet-btn" id="filter-sheet-btn" aria-label="필터 열기">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
       필터<span class="filter-sheet-badge" id="filter-sheet-badge" hidden>0</span>
     </button>
 
-    <!-- 좌우 분리 여백 + 총원 -->
-    <span class="filter-count" id="filter-count">총 <%= nf(politicians.length) %>명</span>
-
-    <!-- RIGHT: 정렬 + 검색 (검색이 더 눈에 띄도록) -->
+    <!-- RIGHT: 정렬 + 검색 + 총원 (count 는 검색 옆으로) -->
     <div class="filter-right">
       <select id="pol-sort" class="filter-select">
         <option value="propose">정렬: 발의 많은순</option>
@@ -829,6 +870,7 @@
         <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="pol-search" class="search-input" placeholder="의원 이름, 지역구 검색...">
       </div>
+      <span class="filter-count" id="filter-count">총 <%= nf(politicians.length) %>명</span>
     </div>
   </div>
 </div>
@@ -871,6 +913,10 @@
   <aside class="sidebar" id="filter-sidebar">
     <div class="filter-sheet-header">
       <span class="filter-sheet-title">필터</span>
+      <div class="filter-sheet-actions">
+        <button type="button" class="filter-sheet-reset" id="filter-sheet-reset">초기화</button>
+        <button type="button" class="filter-sheet-apply" id="filter-sheet-apply">적용</button>
+      </div>
       <button type="button" class="filter-sheet-close" id="filter-sheet-close" aria-label="닫기">×</button>
     </div>
     <!-- 성별 분포 (클릭 필터) -->
@@ -1066,7 +1112,8 @@
 
 <script>
 (() => {
-  const state = { party: '', cmit: '', elect: '', sex: '', ageBucket: '', q: '', sort: 'propose' };
+  // party 는 상단 탭(단일), 나머지는 사이드바 복수선택 배열
+  const state = { party: '', cmit: [], elect: [], sex: [], ageBucket: [], q: '', sort: 'propose' };
 
   const gridContainer = document.getElementById('grid-container');
   const listContainer = document.getElementById('list-container');
@@ -1089,10 +1136,10 @@
       const textHit = !q || (window.PB && (PB.matchesQuery(name, q) || PB.matchesQuery(district, q)));
       const matches = textHit &&
         (!state.party || party === state.party) &&
-        (!state.cmit  || cmit  === state.cmit) &&
-        (!state.elect || elect === state.elect) &&
-        (!state.sex       || sex === state.sex) &&
-        (!state.ageBucket || age === state.ageBucket);
+        (state.cmit.length === 0       || state.cmit.includes(cmit)) &&
+        (state.elect.length === 0      || state.elect.includes(elect)) &&
+        (state.sex.length === 0        || state.sex.includes(sex)) &&
+        (state.ageBucket.length === 0  || state.ageBucket.includes(age));
 
       el.style.display = matches ? '' : 'none';
       return matches;
@@ -1118,8 +1165,8 @@
     document.getElementById('grid-empty').style.display = visibleCount === 0 ? '' : 'none';
     document.getElementById('list-empty').style.display = visibleCount === 0 ? '' : 'none';
 
-    // 필터 시트 배지 — 사이드바에 속한 필터 개수 (party 는 별도 UI 라 제외)
-    const active = [state.sex, state.ageBucket, state.cmit, state.elect].filter(Boolean).length;
+    // 필터 시트 배지 — 선택된 항목 총 개수 (party 는 별도 UI 라 제외)
+    const active = state.sex.length + state.ageBucket.length + state.cmit.length + state.elect.length;
     const badge = document.getElementById('filter-sheet-badge');
     if (badge) {
       if (active > 0) { badge.textContent = String(active); badge.hidden = false; }
@@ -1127,17 +1174,69 @@
     }
   };
 
-  // 필터 시트 open/close
-  const sheetBtn = document.getElementById('filter-sheet-btn');
-  const sheetClose = document.getElementById('filter-sheet-close');
-  const sheetBackdrop = document.getElementById('filter-sheet-backdrop');
-  const openSheet = () => document.body.classList.add('filter-sheet-open');
-  const closeSheet = () => document.body.classList.remove('filter-sheet-open');
+  // 필터 시트 — 시트 오픈 중엔 applyFilter() 지연, 적용 시에만 커밋
+  const sheetBtn       = document.getElementById('filter-sheet-btn');
+  const sheetClose     = document.getElementById('filter-sheet-close');
+  const sheetBackdrop  = document.getElementById('filter-sheet-backdrop');
+  const sheetReset     = document.getElementById('filter-sheet-reset');
+  const sheetApply     = document.getElementById('filter-sheet-apply');
+  let sheetSnapshot = null;
+  const isSheetOpen = () => document.body.classList.contains('filter-sheet-open');
+
+  // state 의 배열에 맞춰 .active 를 재계산. "전체" (값='') 는 배열 빈 경우 active
+  const syncVisualsFromState = () => {
+    document.querySelectorAll('#committee-list .sidebar-item').forEach(el => {
+      const v = el.dataset.cmit || '';
+      el.classList.toggle('active', v === '' ? state.cmit.length === 0 : state.cmit.includes(v));
+    });
+    document.querySelectorAll('#elect-list .sidebar-item').forEach(el => {
+      const v = el.dataset.elect || '';
+      el.classList.toggle('active', v === '' ? state.elect.length === 0 : state.elect.includes(v));
+    });
+    document.querySelectorAll('.dist-row[data-dist="sex"]').forEach(el => {
+      el.classList.toggle('active', state.sex.includes(el.dataset.distValue || ''));
+    });
+    document.querySelectorAll('.dist-row[data-dist="ageBucket"]').forEach(el => {
+      el.classList.toggle('active', state.ageBucket.includes(el.dataset.distValue || ''));
+    });
+  };
+  const openSheet = () => {
+    sheetSnapshot = {
+      sex: [...state.sex],
+      ageBucket: [...state.ageBucket],
+      cmit: [...state.cmit],
+      elect: [...state.elect]
+    };
+    document.body.classList.add('filter-sheet-open');
+  };
+  const cancelSheet = () => {
+    if (sheetSnapshot) {
+      state.sex = [...sheetSnapshot.sex];
+      state.ageBucket = [...sheetSnapshot.ageBucket];
+      state.cmit = [...sheetSnapshot.cmit];
+      state.elect = [...sheetSnapshot.elect];
+      syncVisualsFromState();
+    }
+    document.body.classList.remove('filter-sheet-open');
+  };
+  const applySheet = () => {
+    applyFilter();
+    document.body.classList.remove('filter-sheet-open');
+  };
+  const resetSheet = () => {
+    state.sex = [];
+    state.ageBucket = [];
+    state.cmit = [];
+    state.elect = [];
+    syncVisualsFromState();
+  };
   sheetBtn?.addEventListener('click', openSheet);
-  sheetClose?.addEventListener('click', closeSheet);
-  sheetBackdrop?.addEventListener('click', closeSheet);
+  sheetClose?.addEventListener('click', cancelSheet);
+  sheetBackdrop?.addEventListener('click', cancelSheet);
+  sheetReset?.addEventListener('click', resetSheet);
+  sheetApply?.addEventListener('click', applySheet);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && document.body.classList.contains('filter-sheet-open')) closeSheet();
+    if (e.key === 'Escape' && isSheetOpen()) cancelSheet();
   });
 
   // Search
@@ -1159,40 +1258,51 @@
       applyFilter();
     });
   });
-  // Sidebar committee
+  // 다중선택 토글 헬퍼 — value='' 이면 "전체" 클릭(배열 비움)
+  const toggleMulti = (listSelector, kind, dataKey, value) => {
+    if (value === '') {
+      state[kind] = [];
+    } else {
+      const i = state[kind].indexOf(value);
+      if (i >= 0) state[kind].splice(i, 1);
+      else state[kind].push(value);
+    }
+    // "전체" 포함 전체 리스트 시각 재계산
+    document.querySelectorAll(`${listSelector} .sidebar-item`).forEach(el => {
+      const v = el.dataset[dataKey] || '';
+      el.classList.toggle('active', v === '' ? state[kind].length === 0 : state[kind].includes(v));
+    });
+  };
+
+  // Sidebar committee (복수선택)
   document.querySelectorAll('#committee-list .sidebar-item').forEach(item => {
     item.addEventListener('click', () => {
-      document.querySelectorAll('#committee-list .sidebar-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      state.cmit = item.dataset.cmit || '';
-      applyFilter();
+      toggleMulti('#committee-list', 'cmit', 'cmit', item.dataset.cmit || '');
+      // 사이드바 클릭은 항상 지연 — 적용 버튼에서만 커밋
     });
   });
-  // Sidebar elect
+  // Sidebar elect (복수선택)
   document.querySelectorAll('#elect-list .sidebar-item').forEach(item => {
     item.addEventListener('click', () => {
-      document.querySelectorAll('#elect-list .sidebar-item').forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      state.elect = item.dataset.elect || '';
-      applyFilter();
+      toggleMulti('#elect-list', 'elect', 'elect', item.dataset.elect || '');
+      // 사이드바 클릭은 항상 지연 — 적용 버튼에서만 커밋
     });
   });
 
-  // 성별·연령대 분포 행 클릭 → 필터 토글
+  // 성별·연령대 분포 행 클릭 → 복수선택 토글
   document.querySelectorAll('.dist-row').forEach(row => {
     row.addEventListener('click', () => {
       const kind  = row.dataset.dist;       // 'sex' 또는 'ageBucket'
-      const value = row.dataset.distValue;
-      const siblings = document.querySelectorAll(`.dist-row[data-dist="${kind}"]`);
-      const wasActive = row.classList.contains('active');
-      siblings.forEach(s => s.classList.remove('active'));
-      if (wasActive) {
-        state[kind] = '';
+      const value = row.dataset.distValue || '';
+      const i = state[kind].indexOf(value);
+      if (i >= 0) {
+        state[kind].splice(i, 1);
+        row.classList.remove('active');
       } else {
+        state[kind].push(value);
         row.classList.add('active');
-        state[kind] = value;
       }
-      applyFilter();
+      // 사이드바 클릭은 항상 지연 — 적용 버튼에서만 커밋
     });
   });
   // Grid/List toggle

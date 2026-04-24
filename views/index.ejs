@@ -150,7 +150,7 @@
   /* KPI */
   .home-kpi {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 16px;
   }
   .kpi-card {
@@ -242,7 +242,7 @@
   /* Trending */
   .trending-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     gap: 16px;
   }
   .bill-card-main {
@@ -531,7 +531,7 @@
 
   @media (max-width: 1024px) {
     .politicians-grid { grid-template-columns: repeat(3, 1fr); }
-    .trending-grid { grid-template-columns: 1fr; }
+    .trending-grid { grid-template-columns: minmax(0, 1fr); }
     .vote-table-header, .vote-row {
       grid-template-columns: 3fr 1fr 1fr 100px;
     }
@@ -542,13 +542,27 @@
   }
 
   @media (max-width: 768px) {
+    .home-hero { padding: 80px 20px 40px; }
     .home-hero-inner { grid-template-columns: 1fr; gap: 40px; }
+    .home-hero-title { font-size: clamp(40px, 10vw, 56px); }
     .politicians-grid { grid-template-columns: repeat(2, 1fr); }
     .vote-table-header, .vote-row {
       grid-template-columns: 1fr 100px;
+      padding: 12px 16px;
     }
     .vote-table-header span:not(:first-child):not(:last-child),
     .vote-row div:not(:first-child):not(:last-child) { display: none; }
+
+    /* 모바일 여백·폰트 스케일 */
+    .pb-section { padding: 48px 12px; }
+    .bill-card-main, .kpi-card { padding: 18px 14px; }
+    .kpi-card.large { flex-direction: column; align-items: stretch; gap: 16px; }
+    .kpi-card.large .kpi-value { font-size: 48px; }
+    .kpi-value { font-size: 36px; }
+    .bill-name { font-size: 16px; overflow-wrap: anywhere; }
+    .bill-info { font-size: 12px; }
+    /* 긴 위원회명이 단일 토큰으로 카드 폭 밀어내지 않도록 배지 텍스트도 필요 시 분리 */
+    .pb-badge { overflow-wrap: anywhere; }
   }
 
   @keyframes pbFadeUp {

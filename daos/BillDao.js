@@ -15,8 +15,8 @@ fs.readdirSync(queriesPath).forEach(file => {
 export default (db) => {
     return {
         /* 법안 목록 (검색/필터/페이징) */
-        getList: async ({ search = null, status = null, committee = null, limit = 50, offset = 0 } = {}) => {
-            const { rows } = await db.query(queries.getList, [search, status, committee, limit, offset]);
+        getList: async ({ search = null, status = null, committee = null, party = null, limit = 50, offset = 0 } = {}) => {
+            const { rows } = await db.query(queries.getList, [search, status, committee, limit, offset, party]);
             return rows;
         },
 
@@ -56,9 +56,9 @@ export default (db) => {
             return rows;
         },
 
-        /* 법안 상태별 카운트 (committee 필터 지원) */
-        getStatusCounts: async (committee = null) => {
-            const { rows } = await db.query(queries.getStatusCounts, [committee]);
+        /* 법안 상태별 카운트 (committee/party 필터 지원) */
+        getStatusCounts: async (committee = null, party = null) => {
+            const { rows } = await db.query(queries.getStatusCounts, [committee, party]);
             return rows[0];
         },
 

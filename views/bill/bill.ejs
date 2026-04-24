@@ -292,9 +292,11 @@
   .side-item-name {
     flex: 1;
     min-width: 0;
-    word-break: keep-all;
-    white-space: normal;
     line-height: 1.35;
+    /* 데스크톱: 한 줄로 유지 + 오버플로우 말줄임 (사이드바 폭 제한) */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .side-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sub2); flex-shrink: 0; margin-top: 6px; }
   .side-item.active .side-dot { background: var(--accent); }
@@ -442,20 +444,77 @@
     border-radius: 12px;
   }
 
-  /* 필터 시트 (모바일 바텀시트) — 데스크톱에선 버튼/헤더/백드롭 숨김 */
+  /* 필터 시트 — 모바일 전용 오픈 버튼/백드롭, 헤더는 상시 노출 */
   .filter-sheet-btn { display: none; }
-  .filter-sheet-header { display: none; }
   .filter-sheet-backdrop { display: none; }
+
+  /* 사이드바 내부 헤더 — 데스크톱/모바일 공통 */
+  .filter-sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .filter-sheet-title { font-size: 14px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+  .filter-sheet-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+  }
+  .filter-sheet-reset,
+  .filter-sheet-apply {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .filter-sheet-reset {
+    background: var(--bg3);
+    color: var(--sub);
+    border-color: var(--border);
+  }
+  .filter-sheet-apply {
+    background: var(--accent);
+    color: #fff;
+  }
+  .filter-sheet-close {
+    display: none;
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--text);
+    cursor: pointer;
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+
+  /* pending 시각 — 데스크톱/모바일 공통 */
+  #filter-sidebar .side-item.sheet-pending {
+    background: rgba(184,116,12,0.08);
+    color: var(--accent);
+  }
+  #filter-sidebar .side-item.sheet-pending .side-dot { background: var(--accent); }
 
   @media (max-width: 768px) {
     .layout { grid-template-columns: 1fr; }
     .bill-card { grid-template-columns: 1fr; }
     .bill-card-right { flex-direction: row; align-items: center; }
 
-    /* 필터 버튼 노출 */
+    /* 필터 버튼 노출 — 검색 바 위에 전체 폭 */
     .filter-sheet-btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       padding: 10px 14px;
       background: var(--bg2);
@@ -465,6 +524,7 @@
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
+      flex-basis: 100%;
     }
     .filter-sheet-btn:hover { border-color: var(--accent); }
     .filter-sheet-badge {
@@ -501,31 +561,26 @@
     }
     body.filter-sheet-open .sidebar { transform: translateY(0); }
 
-    /* 시트 안쪽 헤더 */
+    /* 모바일 시트 헤더 오버라이드 — 닫기 버튼 노출, 박스 스타일 → 구분선 스타일 */
     .filter-sheet-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      padding: 16px 4px 12px;
-      background: var(--bg2);
+      padding: 16px 14px 12px;
+      border-radius: 0;
+      border: none;
       border-bottom: 1px solid var(--border);
       margin-bottom: 12px;
-      z-index: 1;
     }
-    .filter-sheet-title { font-size: 16px; font-weight: 700; color: var(--text); }
-    .filter-sheet-close {
-      background: transparent;
-      border: none;
-      font-size: 28px;
-      line-height: 1;
-      color: var(--text);
-      cursor: pointer;
-      padding: 0 4px;
-    }
+    .filter-sheet-title { font-size: 16px; }
+    .filter-sheet-close { display: block; }
 
     .side-list { max-height: none; }
+
+    /* 바텀시트는 폭 여유 있으니 말줄임 해제 — 긴 위원회명도 전체 노출(줄바꿈) */
+    .side-item-name {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: keep-all;
+    }
 
     /* 백드롭 */
     .filter-sheet-backdrop {
@@ -595,19 +650,25 @@
 
 <form class="filter-bar" method="get" action="/bill" id="bill-filter-form">
   <div class="filter-bar-inner">
+    <!-- 모바일 전용: 필터 시트 오픈 (검색 바 위) -->
+    <%
+      const selectedCount =
+        (query.committee || '').split(',').filter(Boolean).length +
+        (query.party || '').split(',').filter(Boolean).length;
+    %>
+    <button type="button" class="filter-sheet-btn" id="filter-sheet-btn" aria-label="필터 열기">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      필터<% if (selectedCount > 0) { %><span class="filter-sheet-badge"><%= selectedCount %></span><% } %>
+    </button>
     <div class="search-wrap">
       <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" class="search-input" name="search" value="<%= query.search %>" placeholder="법안명, 발의자 이름, 법안번호 검색...">
     </div>
     <% if (query.status)    { %><input type="hidden" name="status"    value="<%= query.status %>"><% } %>
     <% if (query.committee) { %><input type="hidden" name="committee" value="<%= query.committee %>"><% } %>
+    <% if (query.party)     { %><input type="hidden" name="party"     value="<%= query.party %>"><% } %>
     <button type="submit" class="search-btn">검색</button>
     <span class="filter-count">총 <%= nf(pagination.totalCount) %>건</span>
-    <!-- 모바일 전용: 필터 시트 오픈 -->
-    <button type="button" class="filter-sheet-btn" id="filter-sheet-btn" aria-label="필터 열기">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-      필터<% if (query.committee) { %><span class="filter-sheet-badge">1</span><% } %>
-    </button>
   </div>
 </form>
 
@@ -619,6 +680,7 @@
          if (t.key) parts.push('status=' + encodeURIComponent(t.key));
          if (query.search) parts.push('search=' + encodeURIComponent(query.search));
          if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
+         if (query.party) parts.push('party=' + encodeURIComponent(query.party));
          if (parts.length) href += '?' + parts.join('&');
          const active = (currentStatus === t.key) || (currentStatus === '' && t.key === '');
     %>
@@ -635,6 +697,10 @@
   <aside class="sidebar" id="filter-sidebar">
     <div class="filter-sheet-header">
       <span class="filter-sheet-title">필터</span>
+      <div class="filter-sheet-actions">
+        <button type="button" class="filter-sheet-reset" id="filter-sheet-reset">초기화</button>
+        <button type="button" class="filter-sheet-apply" id="filter-sheet-apply">적용</button>
+      </div>
       <button type="button" class="filter-sheet-close" id="filter-sheet-close" aria-label="닫기">×</button>
     </div>
     <div class="side-card">
@@ -645,14 +711,18 @@
             const parts = [];
             if (query.search) parts.push('search=' + encodeURIComponent(query.search));
             if (query.status) parts.push('status=' + encodeURIComponent(query.status));
+            if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
             return '/bill' + (parts.length ? '?' + parts.join('&') : '');
           })();
         %>
         <%
           // "전체" 링크는 필터와 무관하게 전체 법안 수 (topicCounts 합계)
           const grandTotal = (topicCounts || []).reduce((s, tc) => s + Number(tc.cnt || 0), 0);
+          // 복수선택 지원: 쉼표 분리된 committee 를 배열로 (서버사이드 active 판정용)
+          const selectedCommittees = (query.committee || '').split(',').filter(Boolean);
+          const isAllActive = selectedCommittees.length === 0;
         %>
-        <a href="<%= allTopicHref %>" class="side-item <%= !query.committee ? 'active' : '' %>">
+        <a href="<%= allTopicHref %>" class="side-item <%= isAllActive ? 'active' : '' %>" data-committee-value="">
           <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">전체</span></span>
           <span class="side-count"><%= nf(grandTotal) %></span>
         </a>
@@ -663,21 +733,22 @@
           const minors = (topicCounts || []).filter(tc => Number(tc.cnt || 0) <  MAJOR_THRESHOLD);
           const minorNames  = minors.map(tc => tc.committee).filter(Boolean);
           const minorTotal  = minors.reduce((s, tc) => s + Number(tc.cnt || 0), 0);
-          const minorValue  = minorNames.join(',');  // 쉼표 분리 → SQL string_to_array 로 IN 매칭
-          const isMinorActive = minorValue && String(query.committee) === minorValue;
+          const minorValue  = minorNames.join(',');
+          // 모든 minor 가 선택에 포함되어 있으면 그룹 active
+          const isMinorActive = minorNames.length > 0 && minorNames.every(n => selectedCommittees.includes(n));
         %>
         <% majors.forEach(tc => {
+             const fullName = tc.committee || '미지정';
              const parts = [];
              if (tc.committee) parts.push('committee=' + encodeURIComponent(tc.committee));
              if (query.search) parts.push('search=' + encodeURIComponent(query.search));
              if (query.status) parts.push('status=' + encodeURIComponent(query.status));
+             if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
              const href = '/bill' + (parts.length ? '?' + parts.join('&') : '');
-             const active = String(query.committee) === String(tc.committee);
-             const fullName = tc.committee || '미지정';
-             const shortName = fullName.length > 8 ? fullName.slice(0, 8) + '…' : fullName;
+             const active = selectedCommittees.includes(tc.committee);
         %>
-          <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>"<% if (fullName !== shortName) { %> title="<%= fullName %>"<% } %>>
-            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= shortName %></span></span>
+          <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>" title="<%= fullName %>" data-committee-value="<%= tc.committee %>">
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= fullName %></span></span>
             <span class="side-count"><%= nf(tc.cnt) %></span>
           </a>
         <% }); %>
@@ -685,9 +756,10 @@
              const parts = ['committee=' + encodeURIComponent(minorValue)];
              if (query.search) parts.push('search=' + encodeURIComponent(query.search));
              if (query.status) parts.push('status=' + encodeURIComponent(query.status));
+             if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
              const href = '/bill?' + parts.join('&');
         %>
-          <a href="<%= href %>" class="side-item <%= isMinorActive ? 'active' : '' %>" title="<%= minorNames.join(', ') %>">
+          <a href="<%= href %>" class="side-item <%= isMinorActive ? 'active' : '' %>" title="<%= minorNames.join(', ') %>" data-committee-value="<%= minorValue %>">
             <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">기타/특별위원회</span></span>
             <span class="side-count"><%= nf(minorTotal) %></span>
           </a>
@@ -698,11 +770,32 @@
     <div class="side-card">
       <div class="side-title">정당별 (대표발의)</div>
       <div class="side-list">
-        <% partyCounts.forEach(pc => { %>
-          <div class="side-item">
+        <%
+          const selectedParties = (query.party || '').split(',').filter(Boolean);
+          const allPartyHref = (() => {
+            const parts = [];
+            if (query.search)    parts.push('search=' + encodeURIComponent(query.search));
+            if (query.status)    parts.push('status=' + encodeURIComponent(query.status));
+            if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
+            return '/bill' + (parts.length ? '?' + parts.join('&') : '');
+          })();
+        %>
+        <a href="<%= allPartyHref %>" class="side-item <%= selectedParties.length === 0 ? 'active' : '' %>" data-party-value="">
+          <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">전체</span></span>
+          <span class="side-count"><%= nf(partyCounts.reduce((s, p) => s + Number(p.cnt || 0), 0)) %></span>
+        </a>
+        <% partyCounts.forEach(pc => {
+             const parts = ['party=' + encodeURIComponent(pc.party_name)];
+             if (query.search)    parts.push('search=' + encodeURIComponent(query.search));
+             if (query.status)    parts.push('status=' + encodeURIComponent(query.status));
+             if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
+             const href = '/bill?' + parts.join('&');
+             const active = selectedParties.includes(pc.party_name);
+        %>
+          <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>" data-party-value="<%= pc.party_name %>">
             <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= pc.party_name %></span></span>
             <span class="side-count"><%= nf(pc.cnt) %></span>
-          </div>
+          </a>
         <% }); %>
       </div>
     </div>
@@ -785,6 +878,7 @@
           if (query.search) parts.push('search=' + encodeURIComponent(query.search));
           if (query.status) parts.push('status=' + encodeURIComponent(query.status));
           if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
+          if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
           parts.push('page=' + p);
           return '/bill?' + parts.join('&');
         };
@@ -843,16 +937,106 @@
 
 <script>
 (() => {
-  const btn = document.getElementById('filter-sheet-btn');
-  const closeBtn = document.getElementById('filter-sheet-close');
-  const backdrop = document.getElementById('filter-sheet-backdrop');
-  const open = () => document.body.classList.add('filter-sheet-open');
-  const close = () => document.body.classList.remove('filter-sheet-open');
+  const btn       = document.getElementById('filter-sheet-btn');
+  const closeBtn  = document.getElementById('filter-sheet-close');
+  const backdrop  = document.getElementById('filter-sheet-backdrop');
+  const resetBtn  = document.getElementById('filter-sheet-reset');
+  const applyBtn  = document.getElementById('filter-sheet-apply');
+  const isOpen = () => document.body.classList.contains('filter-sheet-open');
+
+  // 카테고리와 정당은 각각 별도 Set (AND 조합)
+  let pendingCmt   = new Set();
+  let pendingParty = new Set();
+
+  // 두 카드 공통 토글 로직 — Set + data-*-value 기반
+  const configs = [
+    { attr: 'data-committee-value', getSet: () => pendingCmt,   setKey: 'committee' },
+    { attr: 'data-party-value',     getSet: () => pendingParty, setKey: 'party'     }
+  ];
+
+  const updateSheetVisuals = () => {
+    configs.forEach(cfg => {
+      const set = cfg.getSet();
+      document.querySelectorAll(`#filter-sidebar a.side-item[${cfg.attr}]`).forEach(el => {
+        const val = el.getAttribute(cfg.attr);
+        let active;
+        if (val === '') {
+          active = set.size === 0;
+        } else {
+          const names = val.split(',').filter(Boolean);
+          active = names.length > 0 && names.every(n => set.has(n));
+        }
+        el.classList.toggle('sheet-pending', active);
+      });
+    });
+  };
+
+  const loadFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    pendingCmt   = new Set((params.get('committee') || '').split(',').filter(Boolean));
+    pendingParty = new Set((params.get('party') || '').split(',').filter(Boolean));
+  };
+
+  const open = () => {
+    // 모바일 시트 열기 — 현재 URL 기준으로 pending 동기화
+    loadFromUrl();
+    updateSheetVisuals();
+    document.body.classList.add('filter-sheet-open');
+  };
+  const close = () => {
+    // 모바일 취소 — pending 을 현재 URL 로 복원 (데스크톱 pending 은 그대로)
+    loadFromUrl();
+    updateSheetVisuals();
+    document.body.classList.remove('filter-sheet-open');
+  };
+  const reset = () => {
+    pendingCmt.clear();
+    pendingParty.clear();
+    updateSheetVisuals();
+  };
+  const apply = () => {
+    const params = new URLSearchParams(window.location.search);
+    if (pendingCmt.size > 0)   params.set('committee', Array.from(pendingCmt).join(','));
+    else                        params.delete('committee');
+    if (pendingParty.size > 0) params.set('party',     Array.from(pendingParty).join(','));
+    else                        params.delete('party');
+    params.delete('page');
+    const qs = params.toString();
+    window.location.href = '/bill' + (qs ? '?' + qs : '');
+  };
+
+  // 카드별 링크 클릭 intercept — 데스크톱/모바일 공통, 항상 pending 토글 (즉시 navigation 안 함)
+  configs.forEach(cfg => {
+    document.querySelectorAll(`#filter-sidebar a.side-item[${cfg.attr}]`).forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.preventDefault();
+        const set = cfg.getSet();
+        const val = item.getAttribute(cfg.attr);
+        if (val === '') {
+          set.clear();
+        } else {
+          const names = val.split(',').filter(Boolean);
+          const allPresent = names.every(n => set.has(n));
+          if (allPresent) names.forEach(n => set.delete(n));
+          else            names.forEach(n => set.add(n));
+        }
+        updateSheetVisuals();
+      });
+    });
+  });
+
+  // 페이지 로드 시 URL 로 pending 초기화 + 서버렌더 .active 를 .sheet-pending 으로 교체
+  loadFromUrl();
+  document.querySelectorAll('#filter-sidebar .side-item.active').forEach(el => el.classList.remove('active'));
+  updateSheetVisuals();
+
   btn?.addEventListener('click', open);
   closeBtn?.addEventListener('click', close);
   backdrop?.addEventListener('click', close);
+  resetBtn?.addEventListener('click', reset);
+  applyBtn?.addEventListener('click', apply);
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && document.body.classList.contains('filter-sheet-open')) close();
+    if (e.key === 'Escape' && isOpen()) close();
   });
 })();
 </script>
