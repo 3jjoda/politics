@@ -5,6 +5,61 @@
 
 ---
 
+## 2026-04-25 — 의원 상세 구조 재편 + 모바일 UX 개선
+
+### 의원 상세 페이지 정보 구조 단순화 (`views/politician/politician_detail.ejs`)
+분석 정보가 **히어로 레이더 / 사이드바 카드 3개 / 개요 탭** 3곳에 중복 흩어져 있던 문제 해결. 하나의 "분석" 탭으로 응집.
+- 탭 순서 재배치 + 이름 변경: `[개요 분석, 법안 활동, 표결 내역, 국민 평가]` → `[분석, 법안 활동, 표결 내역, 국민 평가]`, **분석이 기본 오픈 탭** (기존 기본은 법안 활동)
+- **히어로 레이더(4축 다이아몬드) 제거** — 분석 탭에 동일 레이더 있음
+- **사이드바 전체 제거** (`<aside class="sidebar">`) — 3개 카드 모두 중복:
+  - `표결 요약` 도넛 차트 → 분석 탭 "표결 성향" 바 차트
+  - `관심 분야 Top 5` → 분석 탭 "대표발의 관심분야 TOP 5"
+  - `기본 정보` → **별도 카드 없이 아바타 오른쪽 컬럼에 통합**. `.profile-subinfo` 라는 `<dl>` 로 meta 행 아래에 이어지도록 배치 (border-top 구분선). 중복 제거: 지역구·선출방식·재선·위원회는 meta 행에 이미 있어서 subinfo 에서 뺌. 남는 항목은 생년월일·성별·이메일·홈페이지·국회 프로필 5가지
+    - 레이아웃: `display: flex; flex-wrap: wrap; gap: 10px 28px` — 자연스럽게 흘러가는 배치
+    - 이메일만 `.full { flex-basis: 100% }` 으로 단독 행 → 시각적 흐름이 `생년월일·성별 / 이메일 / 홈페이지·국회프로필` 3줄
+    - `dt` 의 `min-width` 미설정 — 라벨 글자 폭만 차지해서 "성별 남성" 같은 짧은 항목도 라벨·값이 10px 간격으로 붙음
+    - 모바일(≤1024px): 각 항목 `flex-basis: 100%` 로 수직 스택, identity 블록 전체 중앙 정렬
+    - 외부 링크 카피 통일: 홈페이지·국회 프로필 모두 "바로가기 →"
+- `content-wrap` CSS: `grid-template-columns: 1fr 300px` → 단일 컬럼, 반응형 `.content-wrap { grid-template-columns: 1fr }` 삭제
+- 사용 안 하게 된 CSS 삭제: `.sidebar`, `.profile-radar-wrap`, `.profile-radar-label`
+- **히어로 KPI 행(발의·표결 참여율·가결율)을 분석 탭 최상단으로 이동** — 모바일 세로 스택 시 `아바타+이름 → 기본정보` 가 바로 이어져 한 눈에 들어오도록. 분석 탭은 "숫자 요약 → 시각화" 흐름(KPI 행 → 레이더/표결성향/관심분야 그리드)
+- `.profile-identity { margin-bottom: 24px }` 제거 — KPI 행이 빠져서 뒤에 뭔가 이어지지 않으므로
+- 법안 활동 탭 카드 링크: `b.link_url` (국회 원안) → `/bill/<%= b.bill_id %>` (내부 법안 상세)
+
+### 모바일 반응형 개선
+- **헤더 wordmark 모바일에서도 노출** — 원래 `display: none` 이었던 걸 높이 `28px → 22px` 로 축소 + 표시 (`main.css:130`)
+- **법안 데이터 갱신 시각을 햄버거 패널 상단에 추가** (`.pb-mobile-freshness`) — nav 배지는 공간 제약으로 모바일에서 숨긴 대신 메뉴 열면 최상단에서 바로 보이도록
+- **의원 리스트 그리드/리스트 토글 모바일에서 자동 리스트 강제** — `#grid-view { display: none !important }` / `#list-view { display: block !important }`, 토글 버튼 자체도 숨김 (`views/politician/politician.ejs`)
+- **의원 리스트 사이드바 필터를 모바일 바텀시트로** — `.filter-sheet-btn` 추가, `body.filter-sheet-open` 으로 슬라이드업, 백드롭·× 버튼·ESC 닫기, 활성 필터 개수 배지(sex/ageBucket/cmit/elect 합산, party 는 히스토그램 UI 라 제외)
+
+### ROADMAP 갱신
+- 2순위 17번 "의원 상세 개요 분석 탭 오픈" 항목 완료 처리 (분석 탭 오픈 + 재편으로 대체) — 라인 제거, 이후 번호 재매핑
+
+### 공용 `.pb-page-header` 패턴 (`public/styles/main.css`)
+섹션별 페이지 타이틀 UI 가 `bill/politician` (hero 그라디언트), `glossary/community/about` (평범한 wrapper) 로 일관성 없이 나뉘어 있던 것을 하나로 통일.
+- `main.css` 에 `.pb-page-header / .pb-page-header-inner / .pb-page-title / .pb-page-desc` 추가
+  - `margin-top: calc(-1 * var(--nav-h))` + `border-top: var(--nav-h) solid transparent` 트릭으로 그라디언트가 고정 nav 뒤까지 깔림
+  - `padding: 72px 24px 32px` — breadcrumb 제거한 뒤 타이틀(Bebas Neue 44px) 이 nav 에 가려지던 문제 해결 (기존 40px → 72px)
+  - `.pb-page-header-inner` 는 `flex + justify-content: space-between` 이라 우측에 액션 버튼(예: 커뮤니티 글쓰기) 배치 가능
+- 적용: `bill.ejs` / `politician.ejs` / `glossary.ejs` / `community/list.ejs` / `about.ejs` — 페이지 자체 CSS 제거 + HTML 만 공용 클래스로 교체
+- Breadcrumb 정책 확정: **목록/랜딩 페이지는 제거**(bill, politician, glossary), 상세/sub 페이지는 유지(bill_detail, politician_detail, community/detail, community/write)
+- Wrapper 계열 padding 통일: 이전엔 28/36/64px 섞여 있던 걸 `calc(var(--nav-h) + 36px)` 한 벌로 (`bill_detail` 28→36, `about-main-container` 64→calc, 글로벌 `.pb-page-header` 는 자체적으로 nav 처리하므로 그 하위 wrapper 는 `36px` 만)
+
+### 의원 분석 탭 월별 발의 막대 그래프 개선 (`views/politician/politician_detail.ejs`)
+- **버그 수정**: `.month-bar.highlight { background: var(--cyan) }` 에서 `--cyan` 이 어디에도 정의돼있지 않아 transparent 로 떨어져 max 대비 80% 이상인 월이 안 보이던 문제 — `var(--accent2)` (브랜드 골드 호버톤) 로 교체
+- 0건 월 차트 렌더 생략 (`<% if (cnt > 0) %>`) + 기존 `min-height: 2px → 6px` 로 1건도 확실히 보이게
+- 값 레이블 (`.month-val`) 호버에서만 노출 → **항상 노출**로 변경. `.month-bar` 내부로 이동해서 막대 높이에 따라 레이블 위치가 따라오도록 (이전엔 wrapper 최상단에 고정되어 짧은 막대와 시각적 단절)
+- 차트 높이 `120px → 140px`, `padding: 0 0 24px → 18px 0 24px` — 상단 값 레이블 공간 확보
+
+### 표결 성향 바 차트 수치 보강 (`views/politician/politician_detail.ejs`)
+- 기존 "찬성 비율 45.2%" → "찬성 비율 45.2% (1,234건)" — 퍼센트 옆에 실제 건수 괄호로 병기. 찬성/반대/기권/불참 4개 항목 모두
+
+### 법안 페이지 사이드바 위원회 이름 축약 (`views/bill/bill.ejs`)
+긴 위원회 이름이 우측 카운트 영역을 침범하던 문제.
+- `committee.length > 8` 이면 `slice(0, 8) + '…'` 로 축약, 원문은 `title` 속성으로 호버 툴팁
+
+---
+
 ## 2026-04-24 (밤) — 데이터 갱신 시각 배지
 
 ### 의미 없던 `● LIVE` 정적 배지 → "● 법안 N시간 전 갱신" 으로 교체

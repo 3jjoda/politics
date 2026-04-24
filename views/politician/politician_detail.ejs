@@ -96,28 +96,57 @@
   .profile-hero-inner {
     max-width: 1280px;
     margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 48px;
-    align-items: center;
     position: relative;
   }
   .breadcrumb {
-    grid-column: 1 / -1;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     color: var(--sub2);
-    margin-bottom: 6px;
+    margin-bottom: 12px;
   }
   .breadcrumb a { color: var(--accent); }
 
   .profile-identity {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 24px;
+    gap: 32px;
     align-items: center;
-    margin-bottom: 24px;
   }
+  .profile-content { min-width: 0; }
+
+  .profile-subinfo {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+  }
+  .profile-subinfo .full { flex-basis: 100%; }
+  .profile-subinfo > div {
+    display: flex;
+    gap: 10px;
+    font-size: 13px;
+    min-width: 0;
+    align-items: baseline;
+  }
+  .profile-subinfo dt {
+    color: var(--sub2);
+    flex-shrink: 0;
+  }
+  .profile-subinfo dd {
+    color: var(--text);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .profile-subinfo dd.mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+  .profile-subinfo a { color: var(--accent); }
   .profile-avatar {
     width: 240px; height: 240px;
     border-radius: 50%;
@@ -171,6 +200,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
+    margin-bottom: 16px;
   }
   .profile-kpi {
     padding: 18px 22px;
@@ -205,21 +235,6 @@
     color: var(--sub2);
     margin-top: 5px;
     font-family: 'JetBrains Mono', monospace;
-  }
-
-  /* 히어로 레이더 */
-  .profile-radar-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-  }
-  .profile-radar-label {
-    font-size: 12px;
-    color: var(--sub2);
-    font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
   }
 
   /* Tabs */
@@ -270,10 +285,6 @@
     max-width: 1280px;
     margin: 0 auto;
     padding: 24px;
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    gap: 24px;
-    align-items: start;
   }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
@@ -367,7 +378,6 @@
   .v-none    { color: var(--sub2); font-size: 12px; }
 
   /* Sidebar */
-  .sidebar { display: flex; flex-direction: column; gap: 16px; }
   .side-card {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -507,8 +517,8 @@
     display: flex;
     align-items: flex-end;
     gap: 6px;
-    height: 120px;
-    padding-bottom: 24px;
+    height: 140px;
+    padding: 18px 0 24px;
     position: relative;
   }
   .monthly-chart::after {
@@ -533,19 +543,19 @@
     width: 100%;
     display: flex;
     align-items: flex-end;
-    position: relative;
   }
   .month-bar {
+    position: relative;
     width: 100%;
     background: var(--accent);
     border-radius: 3px 3px 0 0;
-    opacity: 0.7;
+    opacity: 0.8;
     cursor: pointer;
-    min-height: 2px;
+    min-height: 6px;
     transition: opacity 0.2s;
   }
   .month-bar:hover { opacity: 1; }
-  .month-bar.highlight { background: var(--cyan); opacity: 1; }
+  .month-bar.highlight { background: var(--accent2); opacity: 1; }
   .month-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
@@ -553,17 +563,16 @@
     text-align: center;
   }
   .month-val {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--sub2);
     position: absolute;
-    top: -16px;
+    bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.15s;
+    margin-bottom: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--sub);
+    white-space: nowrap;
   }
-  .month-col:hover .month-val { opacity: 1; }
 
   /* Timeline */
   .timeline {
@@ -765,9 +774,12 @@
   }
 
   @media (max-width: 1024px) {
-    .content-wrap { grid-template-columns: 1fr; }
-    .profile-hero-inner { grid-template-columns: auto 1fr; }
-    .profile-avatar { width: 180px; height: 180px; box-shadow: 0 0 0 8px <%= partyColor %>22; }
+    .profile-identity { grid-template-columns: 1fr; gap: 20px; text-align: center; }
+    .profile-avatar { width: 180px; height: 180px; box-shadow: 0 0 0 8px <%= partyColor %>22; margin: 0 auto; }
+    .profile-top { justify-content: center; }
+    .profile-meta { justify-content: center; }
+    .profile-subinfo > div { flex-basis: 100%; }
+    .profile-subinfo { text-align: left; }
     .profile-actions { display: none; }
     .overview-grid { grid-template-columns: 1fr; }
     .overview-grid.two { grid-template-columns: 1fr; }
@@ -789,139 +801,68 @@
       <a href="/">홈</a> / <a href="/politician">의원</a> / <%= politician.name %>
     </div>
 
-    <div>
-      <div class="profile-identity">
-        <div class="profile-avatar">
-          <%- avatarHtml(politician.name, politician.photo_url, 240) %>
+    <div class="profile-identity">
+      <div class="profile-avatar">
+        <%- avatarHtml(politician.name, politician.photo_url, 240) %>
+      </div>
+      <div class="profile-content">
+        <div class="profile-top">
+          <h1 class="profile-name"><%= politician.name %></h1>
+          <span class="profile-party-badge"><%= politician.party_name || '무소속' %></span>
         </div>
-        <div>
-          <div class="profile-top">
-            <h1 class="profile-name"><%= politician.name %></h1>
-            <span class="profile-party-badge"><%= politician.party_name || '무소속' %></span>
-          </div>
-          <div class="profile-meta">
+        <div class="profile-meta">
+          <span class="profile-meta-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <%= politician.electoral_district || '—' %>
+          </span>
+          <% if (politician.elect_gbn_nm) { %>
             <span class="profile-meta-item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <%= politician.electoral_district || '—' %>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <%= politician.elect_gbn_nm %><% if (politician.reele_gbn_nm) { %> · <%= politician.reele_gbn_nm %><% } %>
             </span>
-            <% if (politician.elect_gbn_nm) { %>
-              <span class="profile-meta-item">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                <%= politician.elect_gbn_nm %><% if (politician.reele_gbn_nm) { %> · <%= politician.reele_gbn_nm %><% } %>
-              </span>
-            <% } %>
-            <% if (politician.cmit_nm) { %>
-              <span class="profile-meta-item">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                <%= politician.cmit_nm %>
-              </span>
-            <% } %>
-          </div>
+          <% } %>
+          <% if (politician.cmit_nm) { %>
+            <span class="profile-meta-item">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              <%= politician.cmit_nm %>
+            </span>
+          <% } %>
         </div>
-      </div>
 
-      <div class="profile-kpis-row">
-        <div class="profile-kpi">
-          <div class="profile-kpi-val kpi-blue"><%= nf(proposeCnt) %></div>
-          <div class="profile-kpi-label">법안 발의 <span class="pb-help" data-help-href="/glossary#rep-proposer" title="대표발의 설명">?</span></div>
-          <div class="profile-kpi-sub">공동발의 <%= nf(coProposeCnt) %>건</div>
-        </div>
-        <div class="profile-kpi">
-          <% if (voteParticipateRate == null) { %>
-            <div class="profile-kpi-val em-dash" title="추후 제공 예정">—</div>
-          <% } else { %>
-            <div class="profile-kpi-val kpi-amber"><%= voteParticipateRate.toFixed(0) %>%</div>
+        <dl class="profile-subinfo">
+          <% if (politician.birthday) { %>
+            <div><dt>생년월일</dt><dd><%= politician.birthday %> (<%= politician.age %>세)</dd></div>
           <% } %>
-          <div class="profile-kpi-label">표결 참여율 <span class="pb-help" data-help-href="/glossary#vote-absent" title="(찬성+반대+기권) / 전체 표결">?</span></div>
-          <% if (vsTotal > 0) { %>
-            <div class="profile-kpi-sub"><%= nf(vsAttended) %> / <%= nf(vsTotal) %></div>
-          <% } else { %>
-            <div class="profile-kpi-sub">표결 데이터 수집 전</div>
+          <% if (politician.sex_gbn_nm) { %>
+            <div><dt>성별</dt><dd><%= politician.sex_gbn_nm %></dd></div>
           <% } %>
-        </div>
-        <div class="profile-kpi">
-          <% if (passRate == null) { %>
-            <div class="profile-kpi-val em-dash">—</div>
-          <% } else { %>
-            <div class="profile-kpi-val kpi-green"><%= passRate.toFixed(0) %>%</div>
+          <% if (politician.e_mail) { %>
+            <div class="full"><dt>이메일</dt><dd class="mono"><%= politician.e_mail %></dd></div>
           <% } %>
-          <div class="profile-kpi-label">가결율 <span class="pb-help" data-help-href="/glossary#original" title="가결 법안 수 / 대표발의 법안 수">?</span></div>
-          <div class="profile-kpi-sub">
-            <% if (proposeCnt === 0) { %>
-              대표발의 없음
-            <% } else { %>
-              <%= nf(passedCnt) %> / <%= nf(proposeCnt) %>
-            <% } %>
-          </div>
-        </div>
+          <% if (politician.homepage) { %>
+            <div><dt>홈페이지</dt><dd><a href="<%= politician.homepage %>" target="_blank" rel="noopener">바로가기 →</a></dd></div>
+          <% } %>
+          <% const engSlug = (politician.eng_nm || '').toUpperCase().replace(/\s+/g, ''); %>
+          <% if (engSlug) { %>
+            <div><dt>국회 프로필</dt><dd><a href="https://www.assembly.go.kr/members/22nd/<%= engSlug %>" target="_blank" rel="noopener">바로가기 →</a></dd></div>
+          <% } %>
+        </dl>
       </div>
-    </div>
-
-    <!-- 히어로 레이더 (4축 다이아몬드) -->
-    <div class="profile-radar-wrap">
-      <div class="profile-radar-label">활동 레이더</div>
-      <%
-        const HERO_R = 110;
-        const heroPt = (val, idx) => {
-          const r = (val / 100) * HERO_R;
-          const rad = radarAngles[idx] * Math.PI / 180;
-          return `${(r * Math.cos(rad)).toFixed(1)},${(r * Math.sin(rad)).toFixed(1)}`;
-        };
-        const heroRadarPts = radarValues.map((v, i) => heroPt(v, i)).join(' ');
-        const gridPt = (scale) => radarAngles.map(a => {
-          const rad = a * Math.PI / 180;
-          const r = HERO_R * scale;
-          return `${(r * Math.cos(rad)).toFixed(1)},${(r * Math.sin(rad)).toFixed(1)}`;
-        }).join(' ');
-      %>
-      <svg width="280" height="280" viewBox="-140 -140 280 280" overflow="visible">
-        <!-- 배경 마름모 4단계 (25/50/75/100%) -->
-        <polygon points="<%= gridPt(1.0) %>"  fill="none" stroke="#E2DFD4" stroke-width="1"/>
-        <polygon points="<%= gridPt(0.75) %>" fill="none" stroke="#E2DFD4" stroke-width="1"/>
-        <polygon points="<%= gridPt(0.5) %>"  fill="none" stroke="#E2DFD4" stroke-width="1"/>
-        <polygon points="<%= gridPt(0.25) %>" fill="none" stroke="#E2DFD4" stroke-width="1"/>
-        <!-- 축 -->
-        <% radarAngles.forEach(a => {
-             const rad = a * Math.PI / 180;
-             const ex = (HERO_R * Math.cos(rad)).toFixed(1);
-             const ey = (HERO_R * Math.sin(rad)).toFixed(1);
-        %>
-          <line x1="0" y1="0" x2="<%= ex %>" y2="<%= ey %>" stroke="#E2DFD4" stroke-width="1"/>
-        <% }); %>
-        <!-- 데이터 영역 -->
-        <polygon points="<%= heroRadarPts %>" fill="rgba(184,116,12,0.1)" stroke="var(--accent)" stroke-width="2"/>
-        <!-- 데이터 점 -->
-        <% radarValues.forEach((v, i) => {
-             const rad = radarAngles[i] * Math.PI / 180;
-             const r = (v / 100) * HERO_R;
-             const cx = (r * Math.cos(rad)).toFixed(1);
-             const cy = (r * Math.sin(rad)).toFixed(1);
-        %>
-          <circle cx="<%= cx %>" cy="<%= cy %>" r="4" fill="#B8740C"/>
-        <% }); %>
-        <!-- 꼭짓점 라벨 + 수치 -->
-        <text x="0"    y="-122" text-anchor="middle" fill="#4B5362" font-size="12" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[0] %></text>
-        <text x="122"  y="5"    text-anchor="start"  fill="#4B5362" font-size="12" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[1] %></text>
-        <text x="0"    y="134"  text-anchor="middle" fill="#4B5362" font-size="12" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[2] %></text>
-        <text x="-122" y="5"    text-anchor="end"    fill="#4B5362" font-size="12" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[3] %></text>
-      </svg>
     </div>
   </div>
 </div>
 
-<!-- TABS — 개요분석은 추후 오픈 -->
+<!-- TABS -->
 <div class="tab-bar">
   <div class="tab-bar-inner">
-    <button class="tab-btn active" data-tab="bills">
+    <button class="tab-btn active" data-tab="overview">분석</button>
+    <button class="tab-btn" data-tab="bills">
       법안 활동 <span class="tab-count"><%= nf(billsTabCount) %></span>
     </button>
     <button class="tab-btn" data-tab="votes">
       표결 내역 <span class="tab-count"><%= nf(votesTabCount) %></span>
     </button>
     <button class="tab-btn" data-tab="comments">국민 평가</button>
-    <!-- 추후 오픈
-    <button class="tab-btn" data-tab="overview">개요 분석</button>
-    -->
   </div>
 </div>
 
@@ -929,7 +870,7 @@
   <div>
 
     <!-- ===== 법안 활동 탭 ===== -->
-    <div class="tab-panel active" id="tab-bills">
+    <div class="tab-panel" id="tab-bills">
       <div class="bill-filter-tabs">
         <button class="bill-filter-tab active" data-bf="all">
           <span class="dot" style="background:var(--accent)"></span>
@@ -958,7 +899,7 @@
           </div>
           <div id="bills-container">
             <% bills.forEach(b => { %>
-              <a href="<%= b.link_url || '#' %>" target="_blank" rel="noopener"
+              <a href="/bill/<%= b.bill_id %>"
                  class="bill-table-row bills-row"
                  data-kind="<%= b.proposer_yn ? 'rep' : 'co' %>">
                 <div class="bill-row-name">
@@ -1046,8 +987,44 @@
       <% } %>
     </div>
 
-    <!-- ===== 개요 분석 탭 ===== -->
-    <div class="tab-panel" id="tab-overview">
+    <!-- ===== 분석 탭 ===== -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="profile-kpis-row">
+        <div class="profile-kpi">
+          <div class="profile-kpi-val kpi-blue"><%= nf(proposeCnt) %></div>
+          <div class="profile-kpi-label">법안 발의 <span class="pb-help" data-help-href="/glossary#rep-proposer" title="대표발의 설명">?</span></div>
+          <div class="profile-kpi-sub">공동발의 <%= nf(coProposeCnt) %>건</div>
+        </div>
+        <div class="profile-kpi">
+          <% if (voteParticipateRate == null) { %>
+            <div class="profile-kpi-val em-dash" title="추후 제공 예정">—</div>
+          <% } else { %>
+            <div class="profile-kpi-val kpi-amber"><%= voteParticipateRate.toFixed(0) %>%</div>
+          <% } %>
+          <div class="profile-kpi-label">표결 참여율 <span class="pb-help" data-help-href="/glossary#vote-absent" title="(찬성+반대+기권) / 전체 표결">?</span></div>
+          <% if (vsTotal > 0) { %>
+            <div class="profile-kpi-sub"><%= nf(vsAttended) %> / <%= nf(vsTotal) %></div>
+          <% } else { %>
+            <div class="profile-kpi-sub">표결 데이터 수집 전</div>
+          <% } %>
+        </div>
+        <div class="profile-kpi">
+          <% if (passRate == null) { %>
+            <div class="profile-kpi-val em-dash">—</div>
+          <% } else { %>
+            <div class="profile-kpi-val kpi-green"><%= passRate.toFixed(0) %>%</div>
+          <% } %>
+          <div class="profile-kpi-label">가결율 <span class="pb-help" data-help-href="/glossary#original" title="가결 법안 수 / 대표발의 법안 수">?</span></div>
+          <div class="profile-kpi-sub">
+            <% if (proposeCnt === 0) { %>
+              대표발의 없음
+            <% } else { %>
+              <%= nf(passedCnt) %> / <%= nf(proposeCnt) %>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
       <div class="overview-grid">
         <!-- 레이더 (4축 다이아몬드) -->
         <div class="card">
@@ -1107,19 +1084,19 @@
             <% if (vsTotal > 0) { %>
               <div class="category-bars">
                 <div>
-                  <div class="cat-bar-label">찬성 비율<span class="cat-bar-val" style="color:var(--green)"><%= pct(vs.for_cnt, vsAttended).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-label">찬성 비율<span class="cat-bar-val" style="color:var(--green)"><%= pct(vs.for_cnt, vsAttended).toFixed(1) %>% (<%= nf(vs.for_cnt) %>건)</span></div>
                   <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.for_cnt, vsAttended) %>%;background:var(--green)"></div></div>
                 </div>
                 <div>
-                  <div class="cat-bar-label">반대 비율<span class="cat-bar-val" style="color:var(--red)"><%= pct(vs.against_cnt, vsAttended).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-label">반대 비율<span class="cat-bar-val" style="color:var(--red)"><%= pct(vs.against_cnt, vsAttended).toFixed(1) %>% (<%= nf(vs.against_cnt) %>건)</span></div>
                   <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.against_cnt, vsAttended) %>%;background:var(--red)"></div></div>
                 </div>
                 <div>
-                  <div class="cat-bar-label">기권 비율<span class="cat-bar-val" style="color:var(--accent)"><%= pct(vs.abstain_cnt, vsAttended).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-label">기권 비율<span class="cat-bar-val" style="color:var(--accent)"><%= pct(vs.abstain_cnt, vsAttended).toFixed(1) %>% (<%= nf(vs.abstain_cnt) %>건)</span></div>
                   <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.abstain_cnt, vsAttended) %>%;background:var(--accent)"></div></div>
                 </div>
                 <div>
-                  <div class="cat-bar-label">불참 비율<span class="cat-bar-val"><%= pct(vs.absent_cnt, vsTotal).toFixed(1) %>%</span></div>
+                  <div class="cat-bar-label">불참 비율<span class="cat-bar-val"><%= pct(vs.absent_cnt, vsTotal).toFixed(1) %>% (<%= nf(vs.absent_cnt) %>건)</span></div>
                   <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.absent_cnt, vsTotal) %>%;background:var(--sub2)"></div></div>
                 </div>
               </div>
@@ -1168,13 +1145,17 @@
             <% if (monthly && monthly.length > 0) { %>
               <div class="monthly-chart">
                 <% monthly.forEach(m => {
-                     const h = (Number(m.cnt) / monthlyMax) * 100;
-                     const isHigh = Number(m.cnt) >= monthlyMax * 0.8 && Number(m.cnt) > 0;
+                     const cnt = Number(m.cnt);
+                     const h = (cnt / monthlyMax) * 100;
+                     const isHigh = cnt >= monthlyMax * 0.8 && cnt > 0;
                 %>
                   <div class="month-col">
                     <div class="month-bar-wrap">
-                      <span class="month-val"><%= m.cnt %></span>
-                      <div class="month-bar <%= isHigh ? 'highlight' : '' %>" style="height:<%= h %>%"></div>
+                      <% if (cnt > 0) { %>
+                        <div class="month-bar <%= isHigh ? 'highlight' : '' %>" style="height:<%= h %>%">
+                          <span class="month-val"><%= cnt %></span>
+                        </div>
+                      <% } %>
                     </div>
                     <div class="month-label"><%= parseInt(m.mm, 10) %>월</div>
                   </div>
@@ -1252,151 +1233,8 @@
     </div>
 
   </div>
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="side-card">
-      <div class="side-card-header">표결 요약</div>
-      <div class="side-card-body">
-        <% if (vsTotal > 0) {
-             const partRate = voteParticipateRate;
-             const cForDeg = pct(vs.for_cnt, vsTotal);
-             const cAgainstDeg = pct(vs.against_cnt, vsTotal);
-             const cAbsDeg = pct(vs.abstain_cnt, vsTotal);
-             const cMissDeg = pct(vs.absent_cnt, vsTotal);
-             const circ = 282.7;  // 2π × 45
-             const s1 = (cForDeg / 100) * circ;
-             const s2 = (cAgainstDeg / 100) * circ;
-             const s3 = (cAbsDeg / 100) * circ;
-             const s4 = (cMissDeg / 100) * circ;
-        %>
-          <div class="vote-summary" title="참여율 = (찬성+반대+기권) ÷ 전체 본회의 표결 법안 수">
-            <div class="vote-donut">
-              <svg width="120" height="120" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#E2DFD4" stroke-width="12"/>
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#0F9D6E" stroke-width="12"
-                        stroke-dasharray="<%= s1.toFixed(1) %> <%= circ %>" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#D03A3A" stroke-width="12"
-                        stroke-dasharray="<%= s2.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-s1).toFixed(1) %>" transform="rotate(-90 60 60)"/>
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#B8740C" stroke-width="12"
-                        stroke-dasharray="<%= s3.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2)).toFixed(1) %>" transform="rotate(-90 60 60)"/>
-                <circle cx="60" cy="60" r="45" fill="none" stroke="#7A8090" stroke-width="12"
-                        stroke-dasharray="<%= s4.toFixed(1) %> <%= circ %>" stroke-dashoffset="<%= (-(s1+s2+s3)).toFixed(1) %>" transform="rotate(-90 60 60)"/>
-                <text x="60" y="68" text-anchor="middle" fill="#1A1D24" font-size="30" font-weight="700" font-family="Bebas Neue"><%= partRate.toFixed(0) %>%</text>
-              </svg>
-              <div class="vote-donut-label">참여율</div>
-            </div>
-            <div class="vote-legend">
-              <div class="vote-legend-item">
-                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--green)"></span>찬성</span>
-                <span class="vote-legend-val"><%= nf(vs.for_cnt) %></span>
-              </div>
-              <div class="vote-legend-item">
-                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--red)"></span>반대</span>
-                <span class="vote-legend-val"><%= nf(vs.against_cnt) %></span>
-              </div>
-              <div class="vote-legend-item">
-                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--accent)"></span>기권</span>
-                <span class="vote-legend-val"><%= nf(vs.abstain_cnt) %></span>
-              </div>
-              <div class="vote-legend-item">
-                <span class="vote-legend-left"><span class="legend-dot" style="background:var(--sub2)"></span>불참</span>
-                <span class="vote-legend-val"><%= nf(vs.absent_cnt) %></span>
-              </div>
-            </div>
-          </div>
-          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--sub2);line-height:1.6">
-            참여율 = <span style="color:var(--sub)">(찬성+반대+기권)</span> ÷ 전체
-            <span class="pb-help" data-help-href="/glossary#vote-absent" title="용어 설명">?</span>
-          </div>
-        <% } else { %>
-          <div class="notice-block">표결 기록이 아직 수집되지 않았습니다.</div>
-        <% } %>
-      </div>
-    </div>
-
-    <div class="side-card">
-      <div class="side-card-header">관심 분야 Top 5</div>
-      <div class="side-card-body">
-        <% if (topics5.length > 0) { %>
-          <div class="category-bars">
-            <% topics5.forEach(t => {
-                 const w = maxTopicCnt > 0 ? (Number(t.cnt) / maxTopicCnt * 100) : 0;
-            %>
-              <div>
-                <div class="cat-bar-label"><%= t.topic_name %><span class="cat-bar-val"><%= t.cnt %>건</span></div>
-                <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= w %>%"></div></div>
-              </div>
-            <% }); %>
-          </div>
-        <% } else { %>
-          <div style="font-size:12px;color:var(--sub2)">대표발의 법안이 없습니다.</div>
-        <% } %>
-      </div>
-    </div>
-
-    <div class="side-card">
-      <div class="side-card-header">기본 정보</div>
-      <div class="side-card-body">
-        <div class="info-list">
-          <% if (politician.reele_gbn_nm) { %>
-          <div class="info-item">
-            <span class="info-key">당선 횟수</span>
-            <span class="info-val"><%= politician.reele_gbn_nm %></span>
-          </div>
-          <% } %>
-          <% if (politician.elect_gbn_nm) { %>
-          <div class="info-item">
-            <span class="info-key">선출 방식</span>
-            <span class="info-val"><%= politician.elect_gbn_nm %></span>
-          </div>
-          <% } %>
-          <% if (politician.cmit_nm) { %>
-          <div class="info-item">
-            <span class="info-key">소속 위원회</span>
-            <span class="info-val"><%= politician.cmit_nm %></span>
-          </div>
-          <% } %>
-          <% if (politician.birthday) { %>
-          <div class="info-item">
-            <span class="info-key">생년월일</span>
-            <span class="info-val"><%= politician.birthday %> (<%= politician.age %>세)</span>
-          </div>
-          <% } %>
-          <% if (politician.sex_gbn_nm) { %>
-          <div class="info-item">
-            <span class="info-key">성별</span>
-            <span class="info-val"><%= politician.sex_gbn_nm %></span>
-          </div>
-          <% } %>
-          <% if (politician.e_mail) { %>
-          <div class="info-item">
-            <span class="info-key">이메일</span>
-            <span class="info-val" style="font-family:'JetBrains Mono';font-size:12px"><%= politician.e_mail %></span>
-          </div>
-          <% } %>
-          <% if (politician.homepage) { %>
-          <div class="info-item">
-            <span class="info-key">홈페이지</span>
-            <span class="info-val"><a href="<%= politician.homepage %>" target="_blank" rel="noopener" style="color:var(--accent);font-size:11px">바로가기 →</a></span>
-          </div>
-          <% } %>
-          <% const engSlug = (politician.eng_nm || '').toUpperCase().replace(/\s+/g, ''); %>
-          <% if (engSlug) { %>
-          <div class="info-item">
-            <span class="info-key">국회 프로필</span>
-            <span class="info-val">
-              <a href="https://www.assembly.go.kr/members/22nd/<%= engSlug %>"
-                 target="_blank" rel="noopener"
-                 style="color:var(--accent);font-size:12px">국회 공식 프로필 →</a>
-            </span>
-          </div>
-          <% } %>
-        </div>
-      </div>
-    </div>
-  </aside>
 </div>
+
 
 <script>
 (() => {

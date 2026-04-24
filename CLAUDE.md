@@ -1,5 +1,5 @@
 # 3jjoda 프로젝트 — Claude Code 컨텍스트
-> 마지막 업데이트: 2026-04-24
+> 마지막 업데이트: 2026-04-25
 > 이 파일은 **현재 코드 상태**만 담습니다.
 > 비전·로드맵: [ROADMAP.md](./ROADMAP.md)
 > 작업 이력: [CHANGELOG.md](./CHANGELOG.md)
@@ -56,6 +56,14 @@
 - 폰트: Noto Sans KR 15px/1.75, `word-break: keep-all`
   - **Noto Serif KR 900** (2026-04-24 추가) — 법안 분석 Zone 1 한 줄 요약·Zone 4 판단 질문 전용
 - 공통 CSS: `public/styles/main.css` (`.pb-*` prefix)
+
+### 공용 페이지 헤더 `.pb-page-header`
+`main.css` 에 정의된 섹션 타이틀 블록. 모든 목록/랜딩 페이지가 동일 컨셉으로 쓰도록 통일.
+- 트릭: `margin-top: calc(-1 * var(--nav-h))` + `border-top: var(--nav-h) solid transparent` — 그라디언트 배경이 고정 nav 뒤까지 바닥부터 뻗음
+- 내부: `.pb-page-header-inner { flex; justify-content: space-between; align-items: flex-end }` — 좌측 `.pb-page-title` (Bebas Neue 44px) + `.pb-page-desc` (desc 14px), 우측에 액션 버튼(예: 커뮤니티 글쓰기) 배치 가능
+- 적용 페이지: `/bill`, `/politician`, `/glossary`, `/community`, `/about`
+- Breadcrumb 정책: **목록/랜딩은 미노출** (nav 의 active 상태로 충분), 상세/sub 페이지(`/bill/:id`, `/politician/:id`, `/community/:id`, `/community/write`) 만 노출
+- Wrapper padding 통일: page-header 를 쓰는 페이지의 본문 wrapper 는 `padding: 36px 24px 80px` (nav 오프셋은 header 가 처리), page-header 없는 페이지(`bill_detail`, `community/detail`, `community/write`) 는 `padding: calc(var(--nav-h) + 36px) 24px 80px` 로 직접 처리
 
 ---
 
@@ -236,7 +244,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 |---|---|---|
 | `/` | `views/index.ejs` | 홈 (KPI, 주목 법안, 활발 의원, 월별 추이) |
 | `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글) |
-| `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (법안·표결·국민평가 탭) |
+| `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (상태 스테퍼, 카테고리 사이드바, 페이징) |
 | `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·시민 찬반·본회의 표결·댓글) |
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
@@ -266,6 +274,15 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - 퇴임 의원: 필터 `퇴임 N명` 칩으로 집계, 개별 chip 은 `.retired` 클릭 불가
 - 데이터 주입: `window.__BILL_VOTERS__ = { agree[], disagree[], abstain[], absent[] }` — `{mona_cd, name, party, photo}` 만 직렬화
 - 닫기: backdrop / × / ESC, 열릴 때 `body` 스크롤 잠금
+
+### `/politician/:id` 페이지 구조 (2026-04-25 재편)
+- **히어로**: breadcrumb → `.profile-identity` (아바타 240px + 이름·정당배지·메타) → `.profile-subinfo` (생년월일·성별 / 이메일 / 홈페이지·국회프로필 — flex-wrap, 이메일만 `.full` 로 단독 행). 카드 박스 없이 hero 배경에 자연스럽게 녹아듬
+- **탭**: `[분석(기본), 법안 활동, 표결 내역, 국민 평가]`
+- **분석 탭** (기본 활성): KPI 행(발의·표결참여·가결율) → `overview-grid` 3카드(활동 레이더 / 표결 성향 / 관심분야 TOP 5) → `overview-grid.two` (월별 발의 + 정당별 공동발의 협력 | 주요 법안 이력 타임라인). "숫자 요약 → 시각화 → 시계열·관계" 흐름
+- **법안 활동 탭**: 전체/대표발의/공동발의 필터 + 법안 리스트, 카드 클릭 시 `/bill/:id` 내부 링크
+- **표결 내역 탭**: 본회의 표결 기록 리스트 (최근 50건 + 전체 개수 표시)
+- **국민 평가 탭**: `PB.mountRating` + `PB.mountComments` 위젯 (클릭 시에만 마운트 — lazy)
+- 사이드바 없음, `content-wrap` 은 단일 컬럼 max-width 1280px 컨테이너
 
 ### OAuth
 - `GET /auth/google` → `GET /auth/google/callback`

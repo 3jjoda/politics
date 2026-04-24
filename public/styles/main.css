@@ -796,6 +796,37 @@ input, textarea, select { font-family: inherit; }
   min-height: calc(100vh - var(--nav-h));
 }
 
+/* ===== PAGE HEADER (공용 히어로) ===== */
+.pb-page-header {
+  padding: 72px 24px 32px;
+  border-top: var(--nav-h) solid transparent;
+  margin-top: calc(-1 * var(--nav-h));
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(184,116,12,0.04) 0%, transparent 100%);
+}
+.pb-page-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.pb-page-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 44px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.pb-page-desc {
+  font-size: 14px;
+  color: var(--sub);
+  max-width: 680px;
+  line-height: 1.6;
+}
+
 /* ===== FOOTER ===== */
 .pb-footer {
   border-top: 1px solid var(--border);

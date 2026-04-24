@@ -57,29 +57,6 @@
 %>
 
 <style>
-  .page-header {
-    padding: 40px 24px 32px;
-    border-top: 60px solid transparent;
-    margin-top: -60px;
-    border-bottom: 1px solid var(--border);
-    background: linear-gradient(180deg, rgba(184,116,12,0.04) 0%, transparent 100%);
-  }
-  .page-header-inner { max-width: 1280px; margin: 0 auto; }
-  .breadcrumb {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--sub2);
-    margin-bottom: 14px;
-  }
-  .breadcrumb a { color: var(--accent); }
-  .page-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 44px;
-    letter-spacing: 0.02em;
-    margin-bottom: 6px;
-  }
-  .page-desc { font-size: 14px; color: var(--sub); }
-
   /* Status stepper */
   .stepper-wrap {
     max-width: 1280px;
@@ -473,11 +450,12 @@
   }
 </style>
 
-<div class="page-header">
-  <div class="page-header-inner">
-    <div class="breadcrumb"><a href="/">홈</a> / 법안</div>
-    <h1 class="page-title">법안</h1>
-    <p class="page-desc">22대 국회 <%= nf(sc.total) %>개 법안의 발의부터 처리까지 모두 확인합니다</p>
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <div>
+      <h1 class="pb-page-title">법안</h1>
+      <p class="pb-page-desc">22대 국회 <%= nf(sc.total) %>개 법안의 발의부터 처리까지 모두 확인합니다</p>
+    </div>
   </div>
 </div>
 
@@ -588,9 +566,11 @@
              if (query.status) parts.push('status=' + encodeURIComponent(query.status));
              const href = '/bill' + (parts.length ? '?' + parts.join('&') : '');
              const active = String(query.committee) === String(tc.committee);
+             const fullName = tc.committee || '미지정';
+             const shortName = fullName.length > 8 ? fullName.slice(0, 8) + '…' : fullName;
         %>
-          <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>">
-            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= tc.committee || '미지정' %></span></span>
+          <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>"<% if (fullName !== shortName) { %> title="<%= fullName %>"<% } %>>
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= shortName %></span></span>
             <span class="side-count"><%= nf(tc.cnt) %></span>
           </a>
         <% }); %>

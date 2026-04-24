@@ -3,34 +3,9 @@
 .about-main-container {
   max-width: 960px;
   margin: 0 auto;
-  padding: 64px 24px 80px;
+  padding: 36px 24px 80px;
   line-height: 1.85;
   color: var(--text);
-}
-
-.about-hero {
-  text-align: center;
-  padding: 64px 20px 44px;
-  margin-bottom: 44px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(184,116,12,0.05) 0%, transparent 100%);
-  border-radius: 12px;
-}
-
-.about-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 52px;
-  letter-spacing: 0.02em;
-  color: var(--text);
-  margin-bottom: 18px;
-  line-height: 1.1;
-}
-
-.about-subtitle {
-  font-size: 17px;
-  color: var(--sub);
-  max-width: 680px;
-  margin: 0 auto;
 }
 
 .about-section {
@@ -128,8 +103,6 @@
 }
 
 @media (max-width: 768px) {
-  .about-title { font-size: 36px; }
-  .about-subtitle { font-size: 15px; }
   .section-title { font-size: 20px; }
   .highlight-section { padding: 30px 18px; }
 }

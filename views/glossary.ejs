@@ -105,29 +105,7 @@
   .gl-wrap {
     max-width: 960px;
     margin: 0 auto;
-    /* 상단 고정 nav(60px) 아래로 확실히 밀어내기 */
-    padding: calc(var(--nav-h) + 36px) 24px 80px;
-  }
-  .gl-breadcrumb {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--sub2);
-    margin-bottom: 18px;
-  }
-  .gl-breadcrumb a { color: var(--accent); }
-
-  .gl-title {
-    font-size: 32px;
-    font-weight: 700;
-    margin-bottom: 10px;
-    color: var(--text);
-  }
-  .gl-lead {
-    font-size: 15px;
-    color: var(--sub);
-    margin-bottom: 44px;
-    line-height: 1.85;
-    max-width: 680px;
+    padding: 36px 24px 80px;
   }
 
   .gl-section {
@@ -259,15 +237,19 @@
   }
 </style>
 
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <div>
+      <h1 class="pb-page-title">용어 설명</h1>
+      <p class="pb-page-desc">
+        정치 바로미터는 국회 공공데이터의 원래 용어를 그대로 사용합니다.<br>
+        익숙하지 않은 법안 처리 결과·발의 구분·표결 결과를 여기서 찾아보세요.
+      </p>
+    </div>
+  </div>
+</div>
+
 <div class="gl-wrap">
-  <div class="gl-breadcrumb"><a href="/">홈</a> / 용어 설명</div>
-
-  <h1 class="gl-title">용어 설명</h1>
-  <p class="gl-lead">
-    정치 바로미터는 국회 공공데이터의 원래 용어를 그대로 사용합니다.
-    익숙하지 않은 법안 처리 결과·발의 구분·표결 결과를 여기서 찾아보세요.
-  </p>
-
   <!-- 목차 -->
   <nav class="gl-toc" aria-label="목차">
     <div class="gl-toc-title">TABLE OF CONTENTS</div>

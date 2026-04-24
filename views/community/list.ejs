@@ -29,23 +29,8 @@
   .cm-wrap {
     max-width: 960px;
     margin: 0 auto;
-    padding: calc(var(--nav-h) + 36px) 24px 80px;
+    padding: 36px 24px 80px;
   }
-  .cm-head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-  }
-  .cm-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 44px;
-    letter-spacing: 0.02em;
-    color: var(--text);
-  }
-  .cm-sub { font-size: 13px; color: var(--sub); margin-top: 4px; }
   .cm-write-btn {
     padding: 10px 22px;
     background: var(--accent);
@@ -173,11 +158,11 @@
   .cm-pg-ellipsis { color: var(--sub2); padding: 0 6px; }
 </style>
 
-<div class="cm-wrap">
-  <div class="cm-head">
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
     <div>
-      <div class="cm-title">커뮤니티</div>
-      <div class="cm-sub">자유롭게 의견을 나눠보세요. 총 <%= nf(totalCount) %>개의 글</div>
+      <h1 class="pb-page-title">커뮤니티</h1>
+      <p class="pb-page-desc">자유롭게 의견을 나눠보세요. 총 <%= nf(totalCount) %>개의 글</p>
     </div>
     <% if (locals.currentUser) { %>
       <a href="/community/write" class="cm-write-btn">
@@ -191,6 +176,9 @@
       </a>
     <% } %>
   </div>
+</div>
+
+<div class="cm-wrap">
 
   <% if (posts && posts.length > 0) { %>
     <div class="cm-list">
