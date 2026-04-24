@@ -598,7 +598,10 @@
       const proposerHtml = bill.proposer_mona_cd
         ? `<a href="/politician/${encodeURIComponent(bill.proposer_mona_cd)}">${PB.escapeHtml(bill.proposer)}</a>`
         : PB.escapeHtml(bill.proposer);
-      line2Parts.push(`<span>대표발의 ${proposerHtml}</span>`);
+      const coRepSuffix = Number(bill.co_rep_count) > 1
+        ? ` 외 ${Number(bill.co_rep_count) - 1}인 공동대표`
+        : '';
+      line2Parts.push(`<span>대표발의 ${proposerHtml}${coRepSuffix}</span>`);
     }
     if (bill.propose_dt) line2Parts.push(`<span>발의일 ${PB.escapeHtml(fmtDate(bill.propose_dt))}</span>`);
     if (bill.co_proposer_count) line2Parts.push(`<span>공동발의 ${Number(bill.co_proposer_count)}인</span>`);

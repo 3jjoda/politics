@@ -126,12 +126,16 @@ export default (db) => {
                 absent:   votes.filter(v => v.vote_result === '불참')
             };
 
+            // 공동대표 인원 수 — proposer_yn=true 인 발의자가 2명 이상이면 공동대표
+            const coRepCount = coProposers.filter(cp => cp.proposer_yn).length;
+
             res.render('bill/bill_detail', {
                 pageTitle: `정치 바로미터 - ${bill.bill_name}`,
                 pageStyles: 'bill/bill_detail',
                 currentUrl: `/bill/${billId}`,
                 bill,
                 coProposers,
+                coRepCount,
                 voters,
                 voteCounts: {
                     agree:    voters.agree.length,

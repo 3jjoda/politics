@@ -190,14 +190,23 @@ async function runBillSync(assemblyAge) {
         const billRows = [];
         const coProposerRows = [];
 
+        const splitCsv = (raw) => raw
+            ? String(raw).split(',').map(s => s.trim()).filter(Boolean)
+            : [];
+
         for (const bill of allBills) {
             const billId = bill.BILL_ID;
             const billNo = bill.BILL_NO;
-            const rstMonaCd = bill.RST_MONA_CD || null;
-            const publMonaCdRaw = bill.PUBL_MONA_CD || '';
-            const coProposerList = publMonaCdRaw
-                ? publMonaCdRaw.split(',').map(s => s.trim()).filter(Boolean)
-                : [];
+            // 대표발의자 — API가 공동대표 케이스에서 쉼표로 여러 값을 반환
+            const rstMonaList    = splitCsv(bill.RST_MONA_CD);
+            const rstProposerRaw = bill.RST_PROPOSER || '';
+            const firstRstMonaCd = rstMonaList[0] || null;
+            // bills.proposer_name 은 단일 컬럼 — 첫 이름만 저장 (목록·검색 호환)
+            const firstRstProposer = rstProposerRaw
+                ? String(rstProposerRaw).split(',')[0].trim()
+                : null;
+            // 공동발의자
+            const coProposerList = splitCsv(bill.PUBL_MONA_CD);
 
             billRows.push([
                 billId, billNo, bill.BILL_NAME,
@@ -205,16 +214,16 @@ async function runBillSync(assemblyAge) {
                 bill.PROC_RESULT || null,
                 bill.AGE || assemblyAge,
                 bill.DETAIL_LINK || null,
-                rstMonaCd,
-                bill.RST_PROPOSER || null,
+                firstRstMonaCd,
+                firstRstProposer,
                 bill.COMMITTEE || null,
                 bill.COMMITTEE_ID || null,
                 coProposerList.length,
             ]);
 
-            // 대표발의자
-            if (rstMonaCd) {
-                coProposerRows.push([billId, billNo, rstMonaCd, 1]);
+            // 대표발의자 — 공동대표 모두 proposer_yn=1
+            for (const monaCd of rstMonaList) {
+                coProposerRows.push([billId, billNo, monaCd, 1]);
             }
             // 공동발의자
             for (const monaCd of coProposerList) {

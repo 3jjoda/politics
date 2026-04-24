@@ -537,6 +537,7 @@
             <% if (bill.proposer_name) { %>
               <span>대표발의
                 <% if (bill.mona_cd) { %><a href="/politician/<%= bill.mona_cd %>"><%= bill.proposer_name %></a><% } else { %><%= bill.proposer_name %><% } %>
+                <% if (coRepCount > 1) { %> 외 <%= coRepCount - 1 %>인 공동대표<% } %>
               </span>
               <span class="sep">·</span>
             <% } %>
@@ -674,6 +675,7 @@
           proposer_mona_cd:   <%- JSON.stringify(bill.mona_cd || '').replace(/</g, '\\u003c') %>,
           propose_dt:         <%- JSON.stringify(bill.propose_dt || '').replace(/</g, '\\u003c') %>,
           co_proposer_count:  <%= Number(bill.co_proposer_count || 0) %>,
+          co_rep_count:       <%= Number(coRepCount || 0) %>,
           status:             <%- JSON.stringify(bill.proc_result_name || '계류').replace(/</g, '\\u003c') %>,
           committee:          <%- JSON.stringify(bill.committee || '').replace(/</g, '\\u003c') %>,
           link_url:           <%- JSON.stringify(bill.link_url || '').replace(/</g, '\\u003c') %>
