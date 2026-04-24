@@ -648,6 +648,9 @@
     .stats-row { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 768px) {
+    .filter-toggle { display: none; }
+    #grid-view { display: none !important; }
+    #list-view { display: block !important; }
     .list-header { display: none; }
     .pol-list-item { grid-template-columns: 48px 1fr 80px; }
     .pol-list-item > div:nth-child(3),
