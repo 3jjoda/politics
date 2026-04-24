@@ -86,6 +86,12 @@ export default (db) => {
             return rows;
         },
 
+        /* 법안 상세 - AI 분석 결과 (없으면 null) */
+        getAiAnalysis: async (billId) => {
+            const { rows } = await db.query(queries.getAiAnalysis, [billId]);
+            return rows[0] || null;
+        },
+
         /* 법안 검색 (커뮤니티 첨부용) */
         search: async (q) => {
             const term = String(q || '').trim();

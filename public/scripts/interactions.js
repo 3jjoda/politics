@@ -9,6 +9,7 @@
  *   - PB.mountRating  : 의원 별점 위젯
  *   - PB.mountComments: 댓글 목록 + 작성 위젯
  *   - PB.mountCitizenVote : 법안 시민 찬반 위젯
+ *   - PB.mountBillAnalysis : 법안 AI 분석 5-Zone 위젯
  *   - PB.redirectToLogin : 로그인 유도
  */
 (function () {
@@ -547,6 +548,148 @@
       render(d);
     } catch (err) {
       root.innerHTML = `<div class="pb-muted">시민 찬반을 불러올 수 없습니다: ${PB.escapeHtml(err.message)}</div>`;
+    }
+  };
+
+  /* ===================================================================
+     PB.mountBillAnalysis — 법안 AI 분석 5-Zone 위젯
+     opts: { containerId, analysisData, bill, scrollTargetId }
+     MVP: Zone 1~4 만 렌더. Zone 5 는 추후 구현.
+  =================================================================== */
+  // <strong> 태그만 허용한 선별 이스케이프
+  const renderRichText = (body) => {
+    const escaped = String(body == null ? '' : body)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    return escaped
+      .replace(/&lt;strong&gt;/g, '<strong>')
+      .replace(/&lt;\/strong&gt;/g, '</strong>');
+  };
+
+  const ISSUE_LABEL = { pro: '찬성 논리', con: '반대 우려', gap: '법안 빈틈' };
+
+  PB.mountBillAnalysis = (opts) => {
+    const root = document.getElementById(opts.containerId);
+    if (!root) return;
+    const a = opts.analysisData;
+    if (!a) { root.style.display = 'none'; return; }
+
+    const bill = opts.bill || {};
+    const scrollTargetId = opts.scrollTargetId || 'citizen-vote-section';
+
+    const changes = a.changes || {};
+    const affected = a.affected || {};
+    const issues = Array.isArray(a.issues) ? a.issues : [];
+    const questions = Array.isArray(a.judgment_questions) ? a.judgment_questions : [];
+
+    const hookMetaParts = [];
+    if (bill.bill_no)   hookMetaParts.push(`<span>#${PB.escapeHtml(bill.bill_no)}</span>`);
+    if (bill.proposer)  hookMetaParts.push(`<span>대표발의 ${PB.escapeHtml(bill.proposer)}</span>`);
+    if (bill.committee) hookMetaParts.push(`<span>${PB.escapeHtml(bill.committee)}</span>`);
+
+    const hookTags = [];
+    if (a.category) hookTags.push(`<span class="hook-tag tag-accent">${PB.escapeHtml(a.category)}</span>`);
+    if (a.reading_time_min) hookTags.push(`<span class="hook-tag">읽기 ${Number(a.reading_time_min)}분</span>`);
+    if (bill.status) hookTags.push(`<span class="hook-tag">${PB.escapeHtml(bill.status)}</span>`);
+
+    const changesHtml = changes.revised
+      ? `${renderRichText(changes.revised)}${changes.current ? `<div class="analysis-card-sub">현행: ${renderRichText(changes.current)}</div>` : ''}`
+      : '<span class="pb-muted">정보 없음</span>';
+
+    const benefitText = affected.benefit
+      || (Array.isArray(affected.direct) ? affected.direct.slice(0, 3).join(', ') : '');
+    const lossText = affected.loss
+      || (Array.isArray(affected.indirect) ? affected.indirect.slice(0, 3).join(', ') : '');
+
+    const issueItemsHtml = issues.map((is, idx) => {
+      const type = (is.type === 'pro' || is.type === 'con' || is.type === 'gap') ? is.type : 'gap';
+      const label = ISSUE_LABEL[type];
+      const expanded = idx === 0;
+      return `
+        <div class="issue-item ${expanded ? 'expanded' : ''}" data-idx="${idx}">
+          <div class="issue-head">
+            <span class="issue-badge issue-badge-${type}">${PB.escapeHtml(label)}</span>
+            <div class="issue-title">${PB.escapeHtml(is.title || '')}</div>
+            <span class="issue-toggle">${expanded ? '↑ 접기' : '↓ 펼치기'}</span>
+          </div>
+          <div class="issue-body">${renderRichText(is.body || '')}</div>
+        </div>
+      `;
+    }).join('');
+
+    const questionsHtml = questions.map((q) => {
+      const text = typeof q === 'string' ? q : (q.question || '');
+      const hint = typeof q === 'object' && q.hint ? `<span class="judgment-hint">${PB.escapeHtml(q.hint)}</span>` : '';
+      return `<li>${PB.escapeHtml(text)}${hint}</li>`;
+    }).join('');
+
+    root.innerHTML = `
+      <div class="analysis-zone-1">
+        ${hookMetaParts.length ? `<div class="analysis-hook-meta">${hookMetaParts.join('')}</div>` : ''}
+        ${bill.bill_name ? `<div class="analysis-hook-title">${PB.escapeHtml(bill.bill_name)}</div>` : ''}
+        <div class="analysis-hook-summary">${renderRichText(a.summary || '')}</div>
+        ${hookTags.length ? `<div class="analysis-hook-tags">${hookTags.join('')}</div>` : ''}
+      </div>
+
+      <div class="analysis-zone-2">
+        <div class="analysis-card">
+          <div class="analysis-card-label"><span class="card-emoji">🔄</span>바뀌는 것</div>
+          <div class="analysis-card-body">${changesHtml}</div>
+        </div>
+        <div class="analysis-card">
+          <div class="analysis-card-label"><span class="card-emoji">👍</span>혜택받는 사람</div>
+          <div class="analysis-card-body">${benefitText ? renderRichText(benefitText) : '<span class="pb-muted">정보 없음</span>'}</div>
+        </div>
+        <div class="analysis-card">
+          <div class="analysis-card-label"><span class="card-emoji">⚠️</span>손해보는 곳</div>
+          <div class="analysis-card-body">${lossText ? renderRichText(lossText) : '<span class="pb-muted">정보 없음</span>'}</div>
+        </div>
+        <div class="analysis-zone-2-progress">
+          <span>여기까지 읽으면 30%</span>
+          <div class="progress-track"><div class="progress-fill"></div></div>
+        </div>
+      </div>
+
+      ${issues.length ? `
+      <div class="analysis-zone-3">
+        <div class="analysis-zone-3-title">쟁점</div>
+        ${issueItemsHtml}
+        <div class="analysis-zone-3-progress">
+          <span>여기까지 읽으면 70%</span>
+          <div class="progress-track"><div class="progress-fill"></div></div>
+        </div>
+      </div>` : ''}
+
+      ${questions.length ? `
+      <div class="analysis-zone-4">
+        <div class="analysis-zone-4-title">💭 이 법안, 어떻게 생각하세요?</div>
+        <div class="analysis-zone-4-hint">답이 없는 질문들이에요. 투표 전 한 번만 생각해보세요.</div>
+        <ol class="judgment-list">${questionsHtml}</ol>
+        <div class="analysis-cta">
+          <button type="button" class="cta-primary" data-action="scroll-to-vote">찬반 투표하기</button>
+        </div>
+      </div>` : ''}
+    `;
+
+    // Zone 3 accordion
+    root.querySelectorAll('.issue-head').forEach((head) => {
+      head.addEventListener('click', () => {
+        const item = head.closest('.issue-item');
+        if (!item) return;
+        const expanded = item.classList.toggle('expanded');
+        const toggle = head.querySelector('.issue-toggle');
+        if (toggle) toggle.textContent = expanded ? '↑ 접기' : '↓ 펼치기';
+      });
+    });
+
+    // Zone 4 CTA — 시민 찬반 섹션으로 스크롤
+    const ctaVote = root.querySelector('[data-action="scroll-to-vote"]');
+    if (ctaVote) {
+      ctaVote.addEventListener('click', () => {
+        const target = document.getElementById(scrollTargetId);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
   };
 

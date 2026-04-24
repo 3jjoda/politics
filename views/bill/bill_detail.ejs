@@ -191,6 +191,328 @@
     .vote-dashboard { grid-template-columns: repeat(2, 1fr); }
     .vote-lists { grid-template-columns: 1fr; }
   }
+
+  /* =========================================================
+     AI 분석 섹션 (UI_ANALYSIS.md 5-Zone)
+     ========================================================= */
+  .bill-ai-analysis {
+    --accent-wash: #FAF6EB;
+    --serif: 'Noto Serif KR', 'Noto Sans KR', serif;
+    margin-bottom: 20px;
+  }
+  .bill-ai-analysis > * + * { margin-top: 1.25rem; }
+  .bill-ai-analysis .accent { color: var(--accent); font-weight: 700; }
+
+  /* Zone 1: 훅 */
+  .analysis-zone-1 {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+  }
+  .analysis-hook-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub2);
+    margin-bottom: 10px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .analysis-hook-meta span + span::before {
+    content: '·';
+    margin-right: 10px;
+    color: var(--border2);
+  }
+  .analysis-hook-title {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .analysis-hook-summary {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 18px;
+    word-break: keep-all;
+  }
+  .analysis-hook-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .analysis-hook-tags .hook-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 11px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .analysis-hook-tags .hook-tag.tag-accent {
+    background: var(--accent-10);
+    border-color: var(--accent-20);
+    color: var(--accent2);
+  }
+
+  /* Zone 2: 한눈에 보기 */
+  .analysis-zone-2 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    position: relative;
+  }
+  .analysis-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+  .analysis-card-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sub2);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .analysis-card-label .card-emoji { font-size: 14px; }
+  .analysis-card-body {
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    word-break: keep-all;
+  }
+  .analysis-card-sub {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--sub);
+    line-height: 1.55;
+  }
+  .analysis-zone-2-progress {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    padding: 0 4px;
+  }
+  .analysis-zone-2-progress .progress-track {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .analysis-zone-2-progress .progress-fill {
+    width: 30%;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Zone 3: 쟁점 */
+  .analysis-zone-3 {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+  }
+  .analysis-zone-3-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--sub);
+    margin-bottom: 16px;
+  }
+  .issue-item {
+    border-top: 1px solid var(--border);
+    padding: 14px 0;
+  }
+  .issue-item:first-of-type { border-top: none; padding-top: 4px; }
+  .issue-item:last-of-type { padding-bottom: 4px; }
+  .issue-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .issue-badge {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+    margin-top: 2px;
+  }
+  .issue-badge-pro { background: rgba(59,130,246,0.10); color: #2563EB; }
+  .issue-badge-con { background: rgba(234,88,12,0.10);  color: #C2410C; }
+  .issue-badge-gap { background: var(--bg3);            color: var(--sub); }
+  .issue-title {
+    flex: 1;
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--text);
+    word-break: keep-all;
+  }
+  .issue-toggle {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+    margin-top: 4px;
+  }
+  .issue-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, margin 0.25s ease;
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--sub);
+    word-break: keep-all;
+  }
+  .issue-body strong { color: var(--text); font-weight: 700; }
+  .issue-item.expanded .issue-body {
+    max-height: 800px;
+    margin-top: 10px;
+    margin-left: 54px;
+  }
+  .analysis-zone-3-progress {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+  }
+  .analysis-zone-3-progress .progress-track {
+    flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  .analysis-zone-3-progress .progress-fill {
+    width: 70%; height: 100%; background: var(--accent); border-radius: 2px;
+  }
+
+  /* Zone 4: 판단 질문 */
+  .analysis-zone-4 {
+    background: var(--accent-wash);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+  }
+  .analysis-zone-4-title {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .analysis-zone-4-hint {
+    font-size: 13px;
+    color: var(--sub);
+    margin-bottom: 16px;
+    line-height: 1.55;
+  }
+  .judgment-list {
+    list-style: none;
+    counter-reset: judgment;
+    margin: 0 0 20px;
+    padding: 0;
+  }
+  .judgment-list li {
+    counter-increment: judgment;
+    position: relative;
+    padding: 10px 0 10px 34px;
+    font-family: var(--serif);
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text);
+    border-top: 1px solid rgba(184,116,12,0.15);
+    word-break: keep-all;
+  }
+  .judgment-list li:first-child { border-top: none; }
+  .judgment-list li::before {
+    content: counter(judgment);
+    position: absolute;
+    left: 0; top: 12px;
+    width: 22px; height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+  }
+  .judgment-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--sub2);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+  .analysis-cta {
+    display: flex;
+    gap: 10px;
+  }
+  .analysis-cta button {
+    flex: 1;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    font-family: inherit;
+  }
+  .analysis-cta .cta-secondary {
+    background: var(--bg2);
+    border-color: var(--border2);
+    color: var(--text);
+  }
+  .analysis-cta .cta-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .analysis-cta .cta-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .analysis-cta .cta-primary:hover { background: var(--accent2); }
+
+  /* 모바일 */
+  @media (max-width: 768px) {
+    .analysis-hook-summary { font-size: 22px; }
+    .analysis-hook-title { font-size: 18px; }
+    .analysis-zone-2 { grid-template-columns: 1fr; }
+    .analysis-cta { flex-direction: column; }
+    .analysis-zone-1,
+    .analysis-zone-3,
+    .analysis-zone-4 { padding: 1.25rem 1.25rem; }
+    .issue-item.expanded .issue-body { margin-left: 0; }
+  }
 </style>
 
 <div class="bd-wrap">
@@ -219,6 +541,11 @@
     </div>
   </div>
 
+  <!-- AI 분석 (5-Zone) -->
+  <% if (analysis) { %>
+    <section class="bill-ai-analysis" id="bill-analysis"></section>
+  <% } %>
+
   <% if (bill.link_url) { %>
     <div style="margin-bottom:16px">
       <a href="<%= bill.link_url %>" target="_blank" rel="noopener" class="bd-external">
@@ -229,7 +556,7 @@
   <% } %>
 
   <!-- 시민 찬반 -->
-  <div class="bd-section">
+  <div class="bd-section" id="citizen-vote-section">
     <h2>시민 찬반
       <span class="pb-help" data-help-href="/glossary#vote-for" title="로그인한 시민들의 찬반 — 국회의원 표결과는 별개">?</span>
     </h2>
@@ -320,6 +647,15 @@
   </div>
 </div>
 
+<%# AI 분석 데이터 주입 — </script> 이스케이프로 XSS 방어 %>
+<% if (analysis) { %>
+<script>
+  window.__BILL_ANALYSIS__ = <%- JSON.stringify(analysis).replace(/</g, '\\u003c') %>;
+</script>
+<% } else { %>
+<script>window.__BILL_ANALYSIS__ = null;</script>
+<% } %>
+
 <script>
 (() => {
   const BILL_ID = '<%= bill.bill_id %>';
@@ -327,6 +663,21 @@
     if (!window.PB) return setTimeout(mount, 30);
     PB.mountCitizenVote({ containerId: 'citizen-vote-widget', billId: BILL_ID });
     PB.mountComments({ containerId: 'comment-widget', type: 'bill', targetId: BILL_ID });
+    if (window.__BILL_ANALYSIS__ && typeof PB.mountBillAnalysis === 'function') {
+      PB.mountBillAnalysis({
+        containerId: 'bill-analysis',
+        analysisData: window.__BILL_ANALYSIS__,
+        bill: {
+          bill_id:     BILL_ID,
+          bill_no:     '<%= bill.bill_no || "" %>',
+          bill_name:   <%- JSON.stringify(bill.bill_name || '').replace(/</g, '\\u003c') %>,
+          proposer:    <%- JSON.stringify(bill.proposer_name || '').replace(/</g, '\\u003c') %>,
+          status:      <%- JSON.stringify(bill.proc_result_name || '계류').replace(/</g, '\\u003c') %>,
+          committee:   <%- JSON.stringify(bill.committee || '').replace(/</g, '\\u003c') %>
+        },
+        scrollTargetId: 'citizen-vote-section'
+      });
+    }
   };
   mount();
 })();

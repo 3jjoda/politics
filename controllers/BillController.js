@@ -110,9 +110,13 @@ export default (db) => {
             }
             const bill = billData[0];
 
-            const [coProposers, votes] = await Promise.all([
+            const [coProposers, votes, analysis] = await Promise.all([
                 billService.getBillCoProposers(billId),
-                billService.getBillDetailVotes(billId)
+                billService.getBillDetailVotes(billId),
+                billService.getAiAnalysis(billId).catch((err) => {
+                    logger.warn(`AI 분석 조회 실패 (bill_id=${billId}): ${err.message}`);
+                    return null;
+                })
             ]);
 
             const voters = {
@@ -134,7 +138,8 @@ export default (db) => {
                     disagree: voters.disagree.length,
                     abstain:  voters.abstain.length,
                     absent:   voters.absent.length
-                }
+                },
+                analysis
             });
 
         } catch (error) {
