@@ -76,8 +76,12 @@ $$ LANGUAGE plpgsql;
 - `code_groups`, `codes` — 공통코드 (BILL_TOPIC 16종 분류, 현재는 committee 단일 기준으로 대체)
 - `parties`, `party_names_history` — 정당
 - `politicians` — 의원 (mona_cd UNIQUE)
+  - ⚠️ **현직 22대 의원만 저장** (2026-04-24 현재 295명). `syncPoliticians.js` 가 열린국회 "현역 의원 API" 기반이라 중도 퇴임·사직·당선무효·사망·승계 등으로 빠진 ~11명은 미포함
+  - 결과: `bill_votes` / `bill_co_proposers` 에 해당 mona_cd 기록은 남아있지만 JOIN miss → 이름·정당·사진 렌더 불가. UI 는 "(퇴임)" fallback 으로 처리 (voter-list / proposer-chip)
+  - 근본 해결은 "역대 국회의원 API" 전환 — [ROADMAP.md](./ROADMAP.md) 베타 오픈 전 필수 3번
 - `politician_party_memberships` — 의원-정당 이력
 - `bills` (PK bill_id VARCHAR), `bill_co_proposers`, `bill_votes` — 법안·발의자·표결
+  - `bill_co_proposers.proposer_yn=1` 이 여러 행인 경우 = 공동 대표발의. `bills.mona_cd` / `proposer_name` 은 첫 번째 대표만 저장 (2026-04-24)
 - `temp_*` — 배치용 staging (현재 미사용)
 
 ### 사용자 / 상호작용 테이블

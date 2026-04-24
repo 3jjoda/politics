@@ -111,6 +111,17 @@
   }
   .voter-list li a:hover { color: var(--accent); }
   .voter-list .party { color: var(--sub); font-size: 12px; }
+  /* 퇴임 의원 fallback — politicians 테이블에 없는 mona_cd */
+  .voter-list li .retired-voter {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    font-size: 13px;
+    color: var(--sub2);
+    font-style: italic;
+    cursor: default;
+  }
+  .voter-list li .retired-voter .party { color: var(--sub2); }
 
   .proposers-grid {
     display: grid;
@@ -129,6 +140,8 @@
     color: var(--text);
   }
   .proposer-chip.rep { border-color: var(--accent); background: rgba(184,116,12,0.08); }
+  .proposer-chip.retired { color: var(--sub2); font-style: italic; cursor: default; }
+  .proposer-chip.retired .party-sm { color: var(--sub2); }
   .proposer-chip .avatar {
     width: 28px; height: 28px;
     border-radius: 50%;
@@ -582,7 +595,13 @@
           <h3>찬성 의원 (<%= voteCounts.agree %>명)</h3>
           <ul class="voter-list">
             <% voters.agree.forEach(v => { %>
-              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+              <li>
+                <% if (v.name) { %>
+                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
+                <% } else { %>
+                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
+                <% } %>
+              </li>
             <% }); %>
           </ul>
         </div>
@@ -590,7 +609,13 @@
           <h3>반대 의원 (<%= voteCounts.disagree %>명)</h3>
           <ul class="voter-list">
             <% voters.disagree.forEach(v => { %>
-              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+              <li>
+                <% if (v.name) { %>
+                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
+                <% } else { %>
+                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
+                <% } %>
+              </li>
             <% }); %>
             <% if (voters.disagree.length === 0) { %><li style="color:var(--sub2);font-size:12px">반대 의원이 없습니다.</li><% } %>
           </ul>
@@ -599,7 +624,13 @@
           <h3>기권 의원 (<%= voteCounts.abstain %>명)</h3>
           <ul class="voter-list">
             <% voters.abstain.forEach(v => { %>
-              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+              <li>
+                <% if (v.name) { %>
+                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
+                <% } else { %>
+                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
+                <% } %>
+              </li>
             <% }); %>
             <% if (voters.abstain.length === 0) { %><li style="color:var(--sub2);font-size:12px">기권 의원이 없습니다.</li><% } %>
           </ul>
@@ -608,7 +639,13 @@
           <h3>불참 의원 (<%= voteCounts.absent %>명)</h3>
           <ul class="voter-list">
             <% voters.absent.slice(0, 60).forEach(v => { %>
-              <li><a href="/politician/<%= v.mona_cd %>"><span><%= v.name || v.mona_cd %></span><span class="party"><%= v.party_name || '' %></span></a></li>
+              <li>
+                <% if (v.name) { %>
+                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
+                <% } else { %>
+                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
+                <% } %>
+              </li>
             <% }); %>
             <% if (voters.absent.length > 60) { %><li style="color:var(--sub2);font-size:11px">... 외 <%= voters.absent.length - 60 %>명</li><% } %>
           </ul>
@@ -626,15 +663,30 @@
       <h2>발의자 (<%= coProposers.length %>명)</h2>
       <div class="proposers-grid">
         <% coProposers.forEach(cp => { %>
-          <a href="/politician/<%= cp.mona_cd %>" class="proposer-chip <%= cp.proposer_yn ? 'rep' : '' %>" style="text-decoration:none">
-            <div class="avatar">
-              <%- avatarHtml(cp.name, cp.photo_url, 28) %>
+          <% const chipClasses = ['proposer-chip']; %>
+          <% if (cp.proposer_yn) chipClasses.push('rep'); %>
+          <% if (!cp.name) chipClasses.push('retired'); %>
+          <% if (cp.name) { %>
+            <a href="/politician/<%= cp.mona_cd %>" class="<%= chipClasses.join(' ') %>" style="text-decoration:none">
+              <div class="avatar">
+                <%- avatarHtml(cp.name, cp.photo_url, 28) %>
+              </div>
+              <div style="min-width:0;overflow:hidden">
+                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cp.name %><% if (cp.proposer_yn) { %> <span style="color:var(--accent);font-size:11px">(대표)</span><% } %></div>
+                <div class="party-sm"><%= cp.party_name || '' %></div>
+              </div>
+            </a>
+          <% } else { %>
+            <div class="<%= chipClasses.join(' ') %>" title="22대 임기 중 퇴임 의원">
+              <div class="avatar">
+                <%- avatarHtml(null, null, 28) %>
+              </div>
+              <div style="min-width:0;overflow:hidden">
+                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">(퇴임)<% if (cp.proposer_yn) { %> <span style="color:var(--accent);font-size:11px">(대표)</span><% } %></div>
+                <div class="party-sm">—</div>
+              </div>
             </div>
-            <div style="min-width:0;overflow:hidden">
-              <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cp.name || cp.mona_cd %><% if (cp.proposer_yn) { %> <span style="color:var(--accent);font-size:11px">(대표)</span><% } %></div>
-              <div class="party-sm"><%= cp.party_name || '' %></div>
-            </div>
-          </a>
+          <% } %>
         <% }); %>
       </div>
     </div>
