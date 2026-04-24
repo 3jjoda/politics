@@ -442,11 +442,107 @@
     border-radius: 12px;
   }
 
+  /* 필터 시트 (모바일 바텀시트) — 데스크톱에선 버튼/헤더/백드롭 숨김 */
+  .filter-sheet-btn { display: none; }
+  .filter-sheet-header { display: none; }
+  .filter-sheet-backdrop { display: none; }
+
   @media (max-width: 768px) {
     .layout { grid-template-columns: 1fr; }
-    .sidebar { display: none; }
     .bill-card { grid-template-columns: 1fr; }
     .bill-card-right { flex-direction: row; align-items: center; }
+
+    /* 필터 버튼 노출 */
+    .filter-sheet-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .filter-sheet-btn:hover { border-color: var(--accent); }
+    .filter-sheet-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 9px;
+    }
+
+    /* 사이드바를 바텀시트로 전환 */
+    .sidebar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      top: auto;
+      max-height: 85vh;
+      width: 100%;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      padding: 0 16px 20px;
+      overflow-y: auto;
+      z-index: 150;
+      box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
+      transform: translateY(100%);
+      transition: transform 0.25s ease-out;
+    }
+    body.filter-sheet-open .sidebar { transform: translateY(0); }
+
+    /* 시트 안쪽 헤더 */
+    .filter-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      padding: 16px 4px 12px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+      z-index: 1;
+    }
+    .filter-sheet-title { font-size: 16px; font-weight: 700; color: var(--text); }
+    .filter-sheet-close {
+      background: transparent;
+      border: none;
+      font-size: 28px;
+      line-height: 1;
+      color: var(--text);
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    .side-list { max-height: none; }
+
+    /* 백드롭 */
+    .filter-sheet-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 140;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    body.filter-sheet-open .filter-sheet-backdrop {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    body.filter-sheet-open { overflow: hidden; }
   }
 </style>
 
@@ -507,6 +603,11 @@
     <% if (query.committee) { %><input type="hidden" name="committee" value="<%= query.committee %>"><% } %>
     <button type="submit" class="search-btn">검색</button>
     <span class="filter-count">총 <%= nf(pagination.totalCount) %>건</span>
+    <!-- 모바일 전용: 필터 시트 오픈 -->
+    <button type="button" class="filter-sheet-btn" id="filter-sheet-btn" aria-label="필터 열기">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      필터<% if (query.committee) { %><span class="filter-sheet-badge">1</span><% } %>
+    </button>
   </div>
 </form>
 
@@ -528,8 +629,14 @@
   </div>
 </div>
 
+<div class="filter-sheet-backdrop" id="filter-sheet-backdrop" hidden></div>
+
 <div class="layout">
-  <aside class="sidebar">
+  <aside class="sidebar" id="filter-sidebar">
+    <div class="filter-sheet-header">
+      <span class="filter-sheet-title">필터</span>
+      <button type="button" class="filter-sheet-close" id="filter-sheet-close" aria-label="닫기">×</button>
+    </div>
     <div class="side-card">
       <div class="side-title">카테고리</div>
       <div class="side-list">
@@ -733,3 +840,19 @@
     <% } %>
   </div>
 </div>
+
+<script>
+(() => {
+  const btn = document.getElementById('filter-sheet-btn');
+  const closeBtn = document.getElementById('filter-sheet-close');
+  const backdrop = document.getElementById('filter-sheet-backdrop');
+  const open = () => document.body.classList.add('filter-sheet-open');
+  const close = () => document.body.classList.remove('filter-sheet-open');
+  btn?.addEventListener('click', open);
+  closeBtn?.addEventListener('click', close);
+  backdrop?.addEventListener('click', close);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('filter-sheet-open')) close();
+  });
+})();
+</script>

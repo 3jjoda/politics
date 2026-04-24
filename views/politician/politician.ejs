@@ -543,7 +543,7 @@
     border-radius: 12px;
     padding: 16px 22px;
     display: grid;
-    grid-template-columns: 48px 1fr 150px 80px 80px 110px;
+    grid-template-columns: 48px 1fr 80px 80px 110px;
     gap: 16px;
     align-items: center;
     transition: all 0.2s;
@@ -557,9 +557,15 @@
   }
   .pol-list-avatar img,
   .pol-list-avatar svg { width: 100%; height: 100%; display: block; }
-  .pol-list-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+  .pol-list-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+  }
+  .pol-list-name { font-size: 15px; font-weight: 600; color: var(--text); }
   .pol-list-sub { font-size: 12px; color: var(--sub); }
-  .pol-list-party { font-size: 13px; color: var(--sub); }
   .pol-list-num {
     font-family: 'JetBrains Mono', monospace;
     font-size: 15px;
@@ -567,10 +573,18 @@
     text-align: center;
     font-weight: 600;
   }
+  .pol-list-num-label {
+    display: none;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--sub2);
+    margin-right: 4px;
+  }
 
   .list-header {
     display: grid;
-    grid-template-columns: 48px 1fr 150px 80px 80px 110px;
+    grid-template-columns: 48px 1fr 80px 80px 110px;
     gap: 16px;
     padding: 10px 22px;
     font-size: 11px;
@@ -635,10 +649,12 @@
     #grid-view { display: none !important; }
     #list-view { display: block !important; }
     .list-header { display: none; }
-    .pol-list-item { grid-template-columns: 48px 1fr 80px; }
-    .pol-list-item > div:nth-child(3),
-    .pol-list-item > div:nth-child(5),
-    .pol-list-item > div:nth-child(6) { display: none; }
+    .pol-list-item { grid-template-columns: 48px 1fr auto; gap: 12px; padding: 14px 16px; }
+    /* 공동(4번째), 상세→(5번째) 숨김 — 발의(3번째) 만 노출 */
+    .pol-list-item > div:nth-child(4),
+    .pol-list-item > div:nth-child(5) { display: none; }
+    .pol-list-num-label { display: inline-block; }
+    .pol-list-num { text-align: right; font-size: 14px; }
 
     /* 필터 버튼 노출 */
     .filter-sheet-btn {
@@ -1008,7 +1024,6 @@
       <div class="list-header">
         <span></span>
         <span>의원</span>
-        <span>정당</span>
         <span style="text-align:center">발의</span>
         <span style="text-align:center">공동</span>
         <span></span>
@@ -1032,12 +1047,14 @@
               <%- avatarHtml(p.name, p.photo_url, 40) %>
             </div>
             <div>
-              <div class="pol-list-name"><%= p.name %></div>
+              <div class="pol-list-name-row">
+                <span class="pol-list-name"><%= p.name %></span>
+                <span class="pol-party-badge <%= pClass %>"><%= p.party_name || '무소속' %></span>
+              </div>
               <div class="pol-list-sub"><%= p.electoral_district || '—' %></div>
             </div>
-            <div class="pol-list-party"><%= p.party_name || '무소속' %></div>
-            <div class="pol-list-num"><%= p.propose_cnt %></div>
-            <div class="pol-list-num"><%= p.co_propose_cnt %></div>
+            <div class="pol-list-num"><span class="pol-list-num-label">발의</span><%= p.propose_cnt %></div>
+            <div class="pol-list-num"><span class="pol-list-num-label">공동</span><%= p.co_propose_cnt %></div>
             <div><span style="font-size:11px;color:var(--accent)">상세 →</span></div>
           </a>
         <% }); %>
