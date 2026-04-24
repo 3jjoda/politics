@@ -34,36 +34,6 @@
     margin-bottom: 18px;
   }
   .bd-breadcrumb a { color: var(--accent); }
-  .bd-header {
-    padding: 28px 32px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-bottom: 20px;
-  }
-  .bd-meta-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-  }
-  .bd-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1.45;
-    margin-bottom: 14px;
-  }
-  .bd-meta {
-    display: flex;
-    gap: 18px;
-    flex-wrap: wrap;
-    font-size: 14px;
-    color: var(--sub);
-  }
-  .bd-meta strong { color: var(--text); font-weight: 500; }
-  .bd-meta a { color: var(--accent); }
 
   .bd-section {
     background: var(--bg2);
@@ -81,18 +51,6 @@
     font-family: 'JetBrains Mono', monospace;
     margin-bottom: 18px;
   }
-  .bd-external {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 9px 16px;
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    color: var(--text);
-    font-size: 14px;
-  }
-  .bd-external:hover { border-color: var(--accent); color: var(--accent); }
-
   .vote-dashboard {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -203,34 +161,74 @@
   .bill-ai-analysis > * + * { margin-top: 1.25rem; }
   .bill-ai-analysis .accent { color: var(--accent); font-weight: 700; }
 
-  /* Zone 1: 훅 */
-  .analysis-zone-1 {
+  /* Zone 1 + basic header 공용 카드 스타일 */
+  .analysis-zone-1,
+  .bill-basic-header {
     background: var(--bg2);
     border: 0.5px solid var(--border);
     border-radius: 12px;
     padding: 1.5rem 1.75rem;
   }
+  .bill-basic-header { margin-bottom: 20px; }
+
+  /* 메타 + 국회 원문 링크를 한 줄에 배치 */
+  .zone-1-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .zone-1-top .meta-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .zone-1-top .original-link {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub);
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .zone-1-top .original-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-wash, #FAF6EB);
+  }
+
+  /* 메타 2줄 구조 (Zone 1 + basic header 공용) */
   .analysis-hook-meta {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     color: var(--sub2);
-    margin-bottom: 10px;
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+    line-height: 1.6;
   }
-  .analysis-hook-meta span + span::before {
-    content: '·';
-    margin-right: 10px;
-    color: var(--border2);
-  }
+  .analysis-hook-meta + .analysis-hook-meta { margin-top: 0; }
+  .analysis-hook-meta .sep { color: var(--border2); }
+  .analysis-hook-meta a { color: var(--accent); }
+  .analysis-hook-meta-block { margin-bottom: 12px; }
+
   .analysis-hook-title {
     font-family: var(--serif);
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--text);
-    line-height: 1.5;
-    margin-bottom: 12px;
+    line-height: 1.45;
+    margin: 0 0 12px;
+    word-break: keep-all;
   }
   .analysis-hook-summary {
     font-family: var(--serif);
@@ -238,7 +236,7 @@
     font-weight: 900;
     color: var(--text);
     line-height: 1.4;
-    margin-bottom: 18px;
+    margin: 0 0 18px;
     word-break: keep-all;
   }
   .analysis-hook-tags {
@@ -505,54 +503,55 @@
   /* 모바일 */
   @media (max-width: 768px) {
     .analysis-hook-summary { font-size: 22px; }
-    .analysis-hook-title { font-size: 18px; }
+    .analysis-hook-title { font-size: 19px; }
     .analysis-zone-2 { grid-template-columns: 1fr; }
     .analysis-cta { flex-direction: column; }
     .analysis-zone-1,
     .analysis-zone-3,
-    .analysis-zone-4 { padding: 1.25rem 1.25rem; }
+    .analysis-zone-4,
+    .bill-basic-header { padding: 1.25rem 1.25rem; }
     .issue-item.expanded .issue-body { margin-left: 0; }
+    .zone-1-top { gap: 8px; }
+    .zone-1-top .original-link { font-size: 11px; padding: 3px 8px; }
   }
 </style>
 
 <div class="bd-wrap">
   <div class="bd-breadcrumb"><a href="/">홈</a> / <a href="/bill">법안</a> / <%= bill.bill_no || bill.bill_id %></div>
 
-  <div class="bd-header">
-    <div class="bd-meta-row">
-      <% if (bill.committee) { %><span class="pb-badge pb-badge-category"><%= bill.committee %></span><% } %>
-      <span class="pb-badge <%= resultClass(bill.proc_result_name) %>">
-        <%= bill.proc_result_name || '계류' %>
-        <span class="pb-help" data-help-href="/glossary#<%= termAnchor(bill.proc_result_name) %>" title="용어 설명 보기">?</span>
-      </span>
-      <span style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2);margin-left:auto">#<%= bill.bill_no || bill.bill_id %></span>
-    </div>
-    <h1 class="bd-title"><%= bill.bill_name %></h1>
-    <div class="bd-meta">
-      <% if (bill.proposer_name) { %>
-        <span><strong>대표발의</strong>
-          <% if (bill.mona_cd) { %><a href="/politician/<%= bill.mona_cd %>"><%= bill.proposer_name %></a>
-          <% } else { %><%= bill.proposer_name %><% } %>
-        </span>
-      <% } %>
-      <span><strong>발의일</strong> <%= bill.propose_dt || '—' %></span>
-      <% if (bill.committee) { %><span><strong>소관위</strong> <%= bill.committee %></span><% } %>
-      <% if (bill.co_proposer_count) { %><span><strong>공동발의</strong> <%= bill.co_proposer_count %>인</span><% } %>
-    </div>
-  </div>
+  <% const proposeDtFmt = (bill.propose_dt || '').replace(/-/g, '.') || '—'; %>
 
-  <!-- AI 분석 (5-Zone) -->
+  <!-- AI 분석 (5-Zone) — 분석 있으면 Zone 1이 히어로, 없으면 기본 헤더 -->
   <% if (analysis) { %>
     <section class="bill-ai-analysis" id="bill-analysis"></section>
-  <% } %>
-
-  <% if (bill.link_url) { %>
-    <div style="margin-bottom:16px">
-      <a href="<%= bill.link_url %>" target="_blank" rel="noopener" class="bd-external">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        국회 원문 보기
-      </a>
-    </div>
+  <% } else { %>
+    <section class="bill-basic-header">
+      <div class="zone-1-top">
+        <div class="meta-col">
+          <div class="analysis-hook-meta">
+            <span>#<%= bill.bill_no || bill.bill_id %></span>
+            <% if (bill.committee) { %><span class="sep">·</span><span><%= bill.committee %></span><% } %>
+            <span class="sep">·</span><span><%= bill.proc_result_name || '계류' %></span>
+          </div>
+          <div class="analysis-hook-meta">
+            <% if (bill.proposer_name) { %>
+              <span>대표발의
+                <% if (bill.mona_cd) { %><a href="/politician/<%= bill.mona_cd %>"><%= bill.proposer_name %></a><% } else { %><%= bill.proposer_name %><% } %>
+              </span>
+              <span class="sep">·</span>
+            <% } %>
+            <span>발의일 <%= proposeDtFmt %></span>
+            <% if (bill.co_proposer_count) { %>
+              <span class="sep">·</span><span>공동발의 <%= bill.co_proposer_count %>인</span>
+            <% } %>
+          </div>
+        </div>
+        <% if (bill.link_url) { %>
+          <a href="<%= bill.link_url %>" target="_blank" rel="noopener" class="original-link">국회 원문 ↗</a>
+        <% } %>
+      </div>
+      <h1 class="analysis-hook-title" style="margin-bottom:0"><%= bill.bill_name %></h1>
+    </section>
   <% } %>
 
   <!-- 시민 찬반 -->
@@ -668,12 +667,16 @@
         containerId: 'bill-analysis',
         analysisData: window.__BILL_ANALYSIS__,
         bill: {
-          bill_id:     BILL_ID,
-          bill_no:     '<%= bill.bill_no || "" %>',
-          bill_name:   <%- JSON.stringify(bill.bill_name || '').replace(/</g, '\\u003c') %>,
-          proposer:    <%- JSON.stringify(bill.proposer_name || '').replace(/</g, '\\u003c') %>,
-          status:      <%- JSON.stringify(bill.proc_result_name || '계류').replace(/</g, '\\u003c') %>,
-          committee:   <%- JSON.stringify(bill.committee || '').replace(/</g, '\\u003c') %>
+          bill_id:            BILL_ID,
+          bill_no:            '<%= bill.bill_no || "" %>',
+          bill_name:          <%- JSON.stringify(bill.bill_name || '').replace(/</g, '\\u003c') %>,
+          proposer:           <%- JSON.stringify(bill.proposer_name || '').replace(/</g, '\\u003c') %>,
+          proposer_mona_cd:   <%- JSON.stringify(bill.mona_cd || '').replace(/</g, '\\u003c') %>,
+          propose_dt:         <%- JSON.stringify(bill.propose_dt || '').replace(/</g, '\\u003c') %>,
+          co_proposer_count:  <%= Number(bill.co_proposer_count || 0) %>,
+          status:             <%- JSON.stringify(bill.proc_result_name || '계류').replace(/</g, '\\u003c') %>,
+          committee:          <%- JSON.stringify(bill.committee || '').replace(/</g, '\\u003c') %>,
+          link_url:           <%- JSON.stringify(bill.link_url || '').replace(/</g, '\\u003c') %>
         },
         scrollTargetId: 'citizen-vote-section'
       });

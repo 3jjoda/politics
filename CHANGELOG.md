@@ -5,6 +5,65 @@
 
 ---
 
+## 2026-04-24 — AI 법안 분석 기능 1차 구현
+
+### 분석 원칙 수립 ([ANALYSIS.md](./ANALYSIS.md) 신규)
+- 법안 분석 설계 원칙 14개 수립 (v1 → v4 진화)
+- 4개 모델 × 4개 프롬프트 버전 × 4개 법안 유형 실증 테스트
+- Haiku + v4 프롬프트를 메인 엔진으로 확정
+- 예산 97% 절감: $252 가정 → $7.5 확정
+
+### UI 표시 원칙 수립 (5-Zone 구조)
+- Progressive Disclosure · Reading Rhythm · Time Promise 원리 기반
+- Zone 1 훅 / Zone 2 빠른 이해 / Zone 3 쟁점 / Zone 4 판단 / Zone 5 전문 정보
+- MVP는 Zone 1~4 (Zone 5 는 후속 작업)
+
+### DB 구조 (`etc/ddl/bill_ai_analysis.sql` 신규)
+- `bill_ai_analysis` 테이블 신설 — JSONB 중심, 5-Zone 구조 직접 매핑
+  - `summary / category / reading_time_min / changes / affected / issues / context / limitations / judgment_questions`
+  - 메타: `model / prompt_version / tokens_input / tokens_output / cost_usd / needs_review / review_status`
+- 인덱스: `prompt_version` / `needs_review (partial WHERE TRUE)` / `category`
+- `update_updated_at()` 공용 트리거 적용
+- 환경교육법(`bill_id=PRC_J2J6R0S4Q1R3P1P0O3K1K0J9J4I1I0`) 샘플 INSERT 포함 — `prompt_version='v4-sample'` 로 실제 분석과 구분, `ON CONFLICT DO UPDATE` 멱등
+
+### 백엔드 구현
+- `daos/queries/bill/getAiAnalysis.sql` 신규
+- `BillDao.getAiAnalysis(billId)` — 없으면 null 반환
+- `BillService.getAiAnalysis` 프록시 추가
+- `BillController.getDetailPage` — 기존 `Promise.all` 에 병렬 조회 합류 + 실패 시 null fallback + `logger.warn`
+
+### 프론트엔드 UI (`views/bill/bill_detail.ejs`)
+- 법안 상세 페이지 5-Zone UI 구조 추가 (인라인 `<style>` 약 260줄)
+- XSS-safe JSON 주입: `JSON.stringify(analysis).replace(/</g, '\\u003c')` — `</script>` 브레이크아웃 차단 (3곳 적용)
+- 섹션 재배열: 메타 → AI 분석 → 원문 → 시민 찬반(`#citizen-vote-section`) → 본회의 → 발의자 → 댓글
+- Noto Serif KR `wght@400;700;900` 폰트 로드 (`views/layout.ejs`)
+
+### 위젯 (`public/scripts/interactions.js`)
+- `PB.mountBillAnalysis` 신규
+- `renderRichText()` 헬퍼 — 전체 HTML 이스케이프 후 `<strong>` 페어만 복원하는 선별 이스케이프
+- Zone 3 accordion — 첫 번째만 기본 펼침, 클릭 시 `max-height` 트랜지션, 아이콘 `↓ 펼치기 ↔ ↑ 접기`
+- Zone 4 "찬반 투표하기" → `#citizen-vote-section` smooth scroll (기본 full-width 골드 버튼 1개)
+- "더 알아보기" 버튼은 Zone 5 구현 전까지 렌더하지 않음
+- `bill.link_url` falsy 시 국회 원문 링크 미렌더
+
+### 법안 상세 헤더 리팩토링
+- `.bd-header` 카드와 Zone 1의 정보 중복 제거 — 헤더 카드 완전 삭제
+- 통합된 카드 구조:
+  - 분석 있음: 메타 2줄(식별자 / 발의 정보) + 법안명(`<h1>`) + 한 줄 요약(`<h2>`, 세리프 28px/900) + 태그 3개
+  - 분석 없음: `.bill-basic-header` — 메타 2줄 + 법안명. Zone 1과 동일한 카드 스타일(공용 셀렉터)
+- 발의일 포맷 `YYYY-MM-DD → YYYY.MM.DD`
+- 대표발의자 이름에 `/politician/:id` 링크 (`proposer_mona_cd` 있을 때)
+- 국회 원문 버튼을 헤더 카드 우측 상단으로 이동(`.zone-1-top > .original-link`) — 이전엔 헤더와 시민찬반 사이에 단독으로 떠 있어 시각적으로 분리됨
+- 폐기된 클래스: `.bd-header / .bd-title / .bd-meta / .bd-meta-row / .bd-external` (main.css 공유 shadow 셀렉터에서도 제거)
+
+### 모바일 대응 (≤768px)
+- Zone 2 카드: grid 3열 → 세로 스택 1열
+- Zone 4 CTA: flex → 세로 스택
+- Zone 1 한 줄 요약: 28px → 22px, 법안명: 22px → 19px
+- 국회 원문 링크: 폰트 11px · padding 3px 8px 로 축소, `flex-wrap + margin-left:auto` 로 공간 부족 시 메타 아래 오른쪽 정렬
+
+---
+
 ## 2026-04-23 (저녁) — login 로고도 분리 배치
 
 nav 와 같은 이유(워드마크 텍스트 작음) 로 **login 카드 로고도 마크+워드마크 분리** 로 교체.

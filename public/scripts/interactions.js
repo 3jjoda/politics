@@ -583,10 +583,25 @@
     const issues = Array.isArray(a.issues) ? a.issues : [];
     const questions = Array.isArray(a.judgment_questions) ? a.judgment_questions : [];
 
-    const hookMetaParts = [];
-    if (bill.bill_no)   hookMetaParts.push(`<span>#${PB.escapeHtml(bill.bill_no)}</span>`);
-    if (bill.proposer)  hookMetaParts.push(`<span>대표발의 ${PB.escapeHtml(bill.proposer)}</span>`);
-    if (bill.committee) hookMetaParts.push(`<span>${PB.escapeHtml(bill.committee)}</span>`);
+    // 메타 2줄 — 1줄: 식별자 | 2줄: 발의 정보
+    const joinMeta = (parts) =>
+      parts.filter(Boolean).reduce((acc, p, i) => acc + (i ? '<span class="sep">·</span>' : '') + p, '');
+
+    const line1Parts = [];
+    if (bill.bill_no)   line1Parts.push(`<span>#${PB.escapeHtml(bill.bill_no)}</span>`);
+    if (bill.committee) line1Parts.push(`<span>${PB.escapeHtml(bill.committee)}</span>`);
+    line1Parts.push(`<span>${PB.escapeHtml(bill.status || '계류')}</span>`);
+
+    const fmtDate = (s) => String(s || '').replace(/-/g, '.');
+    const line2Parts = [];
+    if (bill.proposer) {
+      const proposerHtml = bill.proposer_mona_cd
+        ? `<a href="/politician/${encodeURIComponent(bill.proposer_mona_cd)}">${PB.escapeHtml(bill.proposer)}</a>`
+        : PB.escapeHtml(bill.proposer);
+      line2Parts.push(`<span>대표발의 ${proposerHtml}</span>`);
+    }
+    if (bill.propose_dt) line2Parts.push(`<span>발의일 ${PB.escapeHtml(fmtDate(bill.propose_dt))}</span>`);
+    if (bill.co_proposer_count) line2Parts.push(`<span>공동발의 ${Number(bill.co_proposer_count)}인</span>`);
 
     const hookTags = [];
     if (a.category) hookTags.push(`<span class="hook-tag tag-accent">${PB.escapeHtml(a.category)}</span>`);
@@ -624,11 +639,21 @@
       return `<li>${PB.escapeHtml(text)}${hint}</li>`;
     }).join('');
 
+    const originalLinkHtml = bill.link_url
+      ? `<a href="${PB.escapeHtml(bill.link_url)}" target="_blank" rel="noopener" class="original-link">국회 원문 ↗</a>`
+      : '';
+
     root.innerHTML = `
       <div class="analysis-zone-1">
-        ${hookMetaParts.length ? `<div class="analysis-hook-meta">${hookMetaParts.join('')}</div>` : ''}
-        ${bill.bill_name ? `<div class="analysis-hook-title">${PB.escapeHtml(bill.bill_name)}</div>` : ''}
-        <div class="analysis-hook-summary">${renderRichText(a.summary || '')}</div>
+        <div class="zone-1-top">
+          <div class="meta-col">
+            <div class="analysis-hook-meta">${joinMeta(line1Parts)}</div>
+            ${line2Parts.length ? `<div class="analysis-hook-meta">${joinMeta(line2Parts)}</div>` : ''}
+          </div>
+          ${originalLinkHtml}
+        </div>
+        ${bill.bill_name ? `<h1 class="analysis-hook-title">${PB.escapeHtml(bill.bill_name)}</h1>` : ''}
+        <h2 class="analysis-hook-summary">${renderRichText(a.summary || '')}</h2>
         ${hookTags.length ? `<div class="analysis-hook-tags">${hookTags.join('')}</div>` : ''}
       </div>
 

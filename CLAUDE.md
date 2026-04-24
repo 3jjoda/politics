@@ -1,5 +1,5 @@
 # 3jjoda 프로젝트 — Claude Code 컨텍스트
-> 마지막 업데이트: 2026-04-23
+> 마지막 업데이트: 2026-04-24
 > 이 파일은 **현재 코드 상태**만 담습니다.
 > 비전·로드맵: [ROADMAP.md](./ROADMAP.md)
 > 작업 이력: [CHANGELOG.md](./CHANGELOG.md)
@@ -9,6 +9,9 @@
 - 의미 있는 마일스톤 → CHANGELOG.md 맨 위에 추가 (역순)
 - 기획 단계 → ROADMAP.md
 - 기획이 구현되면 → ROADMAP에서 제거, CLAUDE.md에 추가, CHANGELOG에 기록
+- 관련 문서:
+  - [ANALYSIS.md](./ANALYSIS.md) — AI 법안 분석 생성 원칙 (v4 프롬프트)
+  - [UI_ANALYSIS.md](./UI_ANALYSIS.md) — AI 분석 UI 표시 원칙
 
 ---
 
@@ -36,7 +39,7 @@
 - PostgreSQL (Supabase) — pg 드라이버
 - **Passport** (google-oauth20, kakao) + **express-session** + **connect-pg-simple**
 - Railway (배포 완료)
-- Claude API (claude-haiku-4-5-20251001) — 법안 분류
+- Claude API (claude-haiku-4-5-20251001) — 법안 분류·AI 법안 분석 (v4 프롬프트, JSON mode)
 
 ### 디자인 토큰 (라이트 테마 · 골드 액센트)
 ```
@@ -51,6 +54,7 @@
 --nav-h:   60px       고정 nav 높이
 ```
 - 폰트: Noto Sans KR 15px/1.75, `word-break: keep-all`
+  - **Noto Serif KR 900** (2026-04-24 추가) — 법안 분석 Zone 1 한 줄 요약·Zone 4 판단 질문 전용
 - 공통 CSS: `public/styles/main.css` (`.pb-*` prefix)
 
 ---
@@ -163,6 +167,36 @@ CREATE TABLE "session" (
 CREATE INDEX "IDX_session_expire" ON "session" ("expire");
 ```
 
+### AI 법안 분석 테이블 (2026-04-24 신규)
+
+```sql
+-- 5-Zone UI 구조에 직접 매핑되는 JSONB 중심 테이블
+CREATE TABLE bill_ai_analysis (
+  bill_id              VARCHAR(50) PRIMARY KEY REFERENCES bills(bill_id) ON DELETE CASCADE,
+  summary              TEXT        NOT NULL,      -- Zone 1 한 줄 요약
+  category             VARCHAR(50),               -- Zone 1 태그
+  reading_time_min     SMALLINT    DEFAULT 2,     -- Zone 1 "읽기 N분"
+  changes              JSONB       NOT NULL,      -- Zone 2 {current, revised, clause}
+  affected             JSONB       NOT NULL,      -- Zone 2 {benefit, loss, direct[], indirect[]}
+  issues               JSONB       NOT NULL,      -- Zone 3 [{type, title, body}] — type: pro|con|gap
+  context              JSONB,                     -- Zone 5 참고 맥락 (미구현)
+  limitations          JSONB,                     -- Zone 5 분석 한계 (미구현)
+  judgment_questions   JSONB       NOT NULL,      -- Zone 4 [{question, hint}]
+  model                VARCHAR(50) NOT NULL,      -- 예: claude-haiku-4-5-20251001
+  prompt_version       VARCHAR(10) NOT NULL,      -- 예: v4 (v4-sample = 수동 시드)
+  tokens_input         INT,
+  tokens_output        INT,
+  cost_usd             NUMERIC(8,6),              -- 건당 비용 추적
+  needs_review         BOOLEAN     DEFAULT FALSE, -- 사실 오류 의심 플래그
+  review_status        VARCHAR(20) DEFAULT 'auto',-- auto|human_approved|human_rejected
+  analyzed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at           TIMESTAMPTZ DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ DEFAULT NOW()
+);
+-- 인덱스: prompt_version / needs_review(partial WHERE TRUE) / category
+-- 트리거: trg_bill_ai_analysis_updated_at
+```
+
 ### codes 테이블 데이터 (BILL_TOPIC, 레거시)
 > 현재는 `bills.committee` 단일 기준으로 대체됨. BILL_TOPIC 코드는 유지만 하고 조회에는 미사용.
 
@@ -186,7 +220,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 ### DDL 파일 위치
 `etc/ddl/` — 모든 스키마 변경이 여기 기록됨
 - `users_update.sql`, `comments.sql`, `politician_ratings.sql`,
-  `bill_citizen_votes.sql`, `likes.sql`, `posts.sql`, `user_session.sql`
+  `bill_citizen_votes.sql`, `likes.sql`, `posts.sql`, `user_session.sql`,
+  `bill_ai_analysis.sql` (2026-04-24 신규 — 샘플 INSERT 포함)
 
 ---
 
@@ -199,7 +234,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글) |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (법안·표결·국민평가 탭) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (상태 스테퍼, 카테고리 사이드바, 페이징) |
-| `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (시민 찬반·본회의 표결·댓글) |
+| `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·시민 찬반·본회의 표결·댓글) |
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
@@ -208,6 +243,16 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/glossary` | `glossary.ejs` | 용어 설명 (목차 + 4섹션) |
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
 | `/auth/setup` | `auth/setup.ejs` | 신규 OAuth 닉네임·성별·연령대 설정 (필수) |
+
+### `/bill/:id` 5-Zone AI 분석 UI
+`bill_ai_analysis` 테이블에 레코드가 있을 때만 렌더. 없으면 `.bill-basic-header` (메타 + 법안명) 로 대체.
+- **Zone 1 — 훅**: 메타 2줄(#번호·위원회·상태 / 대표발의·발의일·공동발의) + `<h1>` 법안명 + `<h2>` 한 줄 요약 (세리프 28px/900) + 태그(카테고리·읽기시간·상태)
+- **Zone 2 — 한눈에 보기**: 3카드 (바뀌는 것 / 혜택 / 손해) + "여기까지 읽으면 30%" 프로그레스
+- **Zone 3 — 쟁점**: `issues[]` accordion (첫 번째만 기본 펼침). type별 배지 — `pro=파랑 / con=주황 / gap=회색` + "70%" 프로그레스
+- **Zone 4 — 판단 질문**: `judgment_questions[]` 번호 매기기 + 골드톤 배경(`#FAF6EB`) + "찬반 투표하기" CTA → `#citizen-vote-section` smooth scroll
+- **Zone 5 — 참고 맥락·분석 한계**: 미구현. DB에 `context`/`limitations` 컬럼은 존재. "더 알아보기" 버튼은 Zone 5 추가 시 부활 예정.
+- **국회 원문 링크**: 헤더 카드 우측 상단에 배치 (`.zone-1-top > .original-link`)
+- **XSS 방어**: `JSON.stringify(analysis).replace(/</g, '\\u003c')` + `renderRichText()` 헬퍼로 `<strong>` 만 허용하는 선별 이스케이프
 
 ### OAuth
 - `GET /auth/google` → `GET /auth/google/callback`
@@ -249,6 +294,11 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - `PB.mountRating({containerId, monaCd})` — 별점 위젯
 - `PB.mountComments({containerId, type, targetId})` — 댓글 위젯 (작성·수정·삭제·좋아요·정렬)
 - `PB.mountCitizenVote({containerId, billId})` — 법안 시민 찬반
+- `PB.mountBillAnalysis({containerId, analysisData, bill, scrollTargetId})` — AI 법안 분석 5-Zone 위젯
+  - `renderRichText()` 내부 헬퍼 — `<strong>` 만 허용하는 선별 이스케이프 (2026-04-24)
+  - Zone 3 accordion — 첫 번째만 기본 펼침, 클릭 시 `max-height` 트랜지션
+  - Zone 4 "찬반 투표하기" → `scrollTargetId` (기본 `citizen-vote-section`) smooth scroll
+  - `analysisData` falsy 시 컨테이너 `display:none` (EJS 조건부 렌더와 이중 안전장치)
 - `PB.avatarSvg(name, size)` — 이니셜 SVG 아바타 (라이트 파스텔 8팔레트)
 - `PB.renderStars`, `PB.escapeHtml`, `PB.isLoggedIn()`, `PB.redirectToLogin()`
 - `window.__USER__ = { id, nickname } | null` — 서버에서 주입
