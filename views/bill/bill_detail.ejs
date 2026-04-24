@@ -63,65 +63,41 @@
     border-radius: 12px;
     background: var(--bg3);
     text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.08s;
+    font: inherit;
+    width: 100%;
   }
+  .vote-box:hover:not([data-empty]) {
+    border-color: var(--border2);
+    background: var(--bg2);
+  }
+  .vote-box:active:not([data-empty]) { transform: translateY(1px); }
+  .vote-box[data-empty] { cursor: default; opacity: 0.55; }
   .vote-box strong {
     display: block;
     font-size: 12px;
     color: var(--sub);
     margin-bottom: 8px;
   }
-  .vote-box span {
+  .vote-box .vote-count {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 36px;
     line-height: 1;
+    display: block;
   }
-  .vote-box.agree    span { color: var(--green); }
-  .vote-box.disagree span { color: var(--red); }
-  .vote-box.abstain  span { color: var(--accent); }
-  .vote-box.absent   span { color: var(--sub); }
-
-  .vote-lists {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  .vote-list-container {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 18px;
-    max-height: 280px;
-    overflow-y: auto;
-  }
-  .vote-list-container h3 {
-    font-size: 13px;
-    color: var(--sub);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-family: 'JetBrains Mono', monospace;
-    margin-bottom: 12px;
-  }
-  .voter-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-  .voter-list li a {
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 0;
-    font-size: 13px;
-    color: var(--text);
-  }
-  .voter-list li a:hover { color: var(--accent); }
-  .voter-list .party { color: var(--sub); font-size: 12px; }
-  /* 퇴임 의원 fallback — politicians 테이블에 없는 mona_cd */
-  .voter-list li .retired-voter {
-    display: flex;
-    justify-content: space-between;
-    padding: 5px 0;
-    font-size: 13px;
+  .vote-box.agree    .vote-count { color: var(--green); }
+  .vote-box.disagree .vote-count { color: var(--red); }
+  .vote-box.abstain  .vote-count { color: var(--accent); }
+  .vote-box.absent   .vote-count { color: var(--sub); }
+  .vote-box .vote-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
     color: var(--sub2);
-    font-style: italic;
-    cursor: default;
+    font-family: 'JetBrains Mono', monospace;
   }
-  .voter-list li .retired-voter .party { color: var(--sub2); }
+  .vote-box[data-empty] .vote-hint { visibility: hidden; }
 
   .proposers-grid {
     display: grid;
@@ -160,7 +136,132 @@
 
   @media (max-width: 768px) {
     .vote-dashboard { grid-template-columns: repeat(2, 1fr); }
-    .vote-lists { grid-template-columns: 1fr; }
+  }
+
+  /* 표결 의원 명단 모달 */
+  .voter-modal .pb-modal-card {
+    max-width: 760px;
+    padding: 22px 24px 20px;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
+  }
+  .voter-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .voter-modal-title { font-size: 17px; font-weight: 700; color: var(--text); }
+  .voter-modal-title .tc-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .voter-modal-title.agree    .tc-dot { background: var(--green); }
+  .voter-modal-title.disagree .tc-dot { background: var(--red); }
+  .voter-modal-title.abstain  .tc-dot { background: var(--accent); }
+  .voter-modal-title.absent   .tc-dot { background: var(--sub); }
+  .voter-modal-close {
+    background: transparent;
+    border: none;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--sub);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .voter-modal-close:hover { background: var(--bg3); color: var(--text); }
+  .voter-modal-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+  .voter-modal-search {
+    margin-bottom: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .voter-modal-search input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--bg2);
+    color: var(--text);
+    box-sizing: border-box;
+  }
+  .voter-modal-search input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(184,116,12,0.12);
+  }
+  .voter-modal-search input::placeholder { color: var(--sub2); }
+  .voter-filter-chip {
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    font-size: 12px;
+    color: var(--sub);
+    cursor: pointer;
+    font: inherit;
+    line-height: 1.4;
+    transition: all 0.12s;
+  }
+  .voter-filter-chip:hover { border-color: var(--border2); color: var(--text); }
+  .voter-filter-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .voter-filter-chip .chip-count {
+    margin-left: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    opacity: 0.8;
+  }
+  .voter-modal-grid {
+    flex: 0 0 auto;
+    height: 456px;           /* 8줄 고정 (chip ~50px + gap 8px) */
+    overflow-y: auto;
+    padding: 4px 2px 2px;
+  }
+  .voter-modal-grid .proposers-grid {
+    margin: 0;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  /* 정당별 chip 배경 — politician 페이지와 동일 팔레트(저채도 tint) */
+  .voter-modal-grid .proposer-chip.cp-minjoo  { background: rgba(30,64,175,0.08);  border-color: rgba(30,64,175,0.28); }
+  .voter-modal-grid .proposer-chip.cp-gukhim  { background: rgba(185,28,28,0.08);  border-color: rgba(185,28,28,0.28); }
+  .voter-modal-grid .proposer-chip.cp-jokuk   { background: rgba(109,40,217,0.08); border-color: rgba(109,40,217,0.28); }
+  .voter-modal-grid .proposer-chip.cp-gaehyuk { background: rgba(180,83,9,0.10);   border-color: rgba(180,83,9,0.28); }
+  .voter-modal-grid .proposer-chip.cp-jinbo   { background: rgba(153,27,27,0.08);  border-color: rgba(153,27,27,0.28); }
+  .voter-modal-grid .proposer-chip.cp-etc     { background: rgba(75,85,99,0.08);   border-color: rgba(75,85,99,0.28); }
+  .voter-modal-grid .proposer-chip.retired    { background: var(--bg3); border-color: var(--border); }
+  .voter-modal-empty {
+    padding: 40px 12px;
+    text-align: center;
+    color: var(--sub2);
+    font-size: 13px;
+  }
+  @media (max-width: 768px) {
+    .voter-modal .pb-modal-card { padding: 18px 16px 16px; }
+    .voter-modal-filters { max-height: 120px; }
+    .voter-modal-grid { height: 60vh; }
+    .voter-modal-grid .proposers-grid {
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    }
   }
 
   /* =========================================================
@@ -584,72 +685,19 @@
     <% const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0; %>
     <% if (hasVotes) { %>
       <div class="vote-dashboard">
-        <div class="vote-box agree"><strong>찬성</strong><span><%= nf(voteCounts.agree) %></span></div>
-        <div class="vote-box disagree"><strong>반대</strong><span><%= nf(voteCounts.disagree) %></span></div>
-        <div class="vote-box abstain"><strong>기권</strong><span><%= nf(voteCounts.abstain) %></span></div>
-        <div class="vote-box absent"><strong>불참</strong><span><%= nf(voteCounts.absent) %></span></div>
+        <% ['agree','disagree','abstain','absent'].forEach(b => {
+             const labels = { agree:'찬성', disagree:'반대', abstain:'기권', absent:'불참' };
+             const c = voteCounts[b];
+        %>
+          <button type="button" class="vote-box <%= b %>" data-bucket="<%= b %>"<% if (!c) { %> data-empty aria-disabled="true"<% } %>>
+            <strong><%= labels[b] %></strong>
+            <span class="vote-count"><%= nf(c) %></span>
+            <span class="vote-hint">명단 보기</span>
+          </button>
+        <% }); %>
       </div>
-
-      <div class="vote-lists">
-        <div class="vote-list-container">
-          <h3>찬성 의원 (<%= voteCounts.agree %>명)</h3>
-          <ul class="voter-list">
-            <% voters.agree.forEach(v => { %>
-              <li>
-                <% if (v.name) { %>
-                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
-                <% } else { %>
-                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
-                <% } %>
-              </li>
-            <% }); %>
-          </ul>
-        </div>
-        <div class="vote-list-container">
-          <h3>반대 의원 (<%= voteCounts.disagree %>명)</h3>
-          <ul class="voter-list">
-            <% voters.disagree.forEach(v => { %>
-              <li>
-                <% if (v.name) { %>
-                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
-                <% } else { %>
-                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
-                <% } %>
-              </li>
-            <% }); %>
-            <% if (voters.disagree.length === 0) { %><li style="color:var(--sub2);font-size:12px">반대 의원이 없습니다.</li><% } %>
-          </ul>
-        </div>
-        <div class="vote-list-container">
-          <h3>기권 의원 (<%= voteCounts.abstain %>명)</h3>
-          <ul class="voter-list">
-            <% voters.abstain.forEach(v => { %>
-              <li>
-                <% if (v.name) { %>
-                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
-                <% } else { %>
-                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
-                <% } %>
-              </li>
-            <% }); %>
-            <% if (voters.abstain.length === 0) { %><li style="color:var(--sub2);font-size:12px">기권 의원이 없습니다.</li><% } %>
-          </ul>
-        </div>
-        <div class="vote-list-container">
-          <h3>불참 의원 (<%= voteCounts.absent %>명)</h3>
-          <ul class="voter-list">
-            <% voters.absent.slice(0, 60).forEach(v => { %>
-              <li>
-                <% if (v.name) { %>
-                  <a href="/politician/<%= v.mona_cd %>"><span><%= v.name %></span><span class="party"><%= v.party_name || '' %></span></a>
-                <% } else { %>
-                  <div class="retired-voter" title="22대 임기 중 퇴임 의원"><span>(퇴임)</span><span class="party">—</span></div>
-                <% } %>
-              </li>
-            <% }); %>
-            <% if (voters.absent.length > 60) { %><li style="color:var(--sub2);font-size:11px">... 외 <%= voters.absent.length - 60 %>명</li><% } %>
-          </ul>
-        </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--sub2);text-align:center">
+        각 박스를 누르면 표결 의원 명단이 열립니다.
       </div>
     <% } else { %>
       <div style="padding:32px;text-align:center;color:var(--sub);background:var(--bg3);border:1px dashed var(--border);border-radius:8px">
@@ -699,6 +747,24 @@
   </div>
 </div>
 
+<!-- 표결 의원 명단 모달 -->
+<% if (hasVotes) { %>
+  <div class="pb-modal voter-modal" id="voter-modal" hidden role="dialog" aria-modal="true" aria-labelledby="voter-modal-title">
+    <div class="pb-modal-backdrop" data-voter-close></div>
+    <div class="pb-modal-card">
+      <div class="voter-modal-head">
+        <div class="voter-modal-title" id="voter-modal-title"><span class="tc-dot"></span><span class="tc-text"></span></div>
+        <button type="button" class="voter-modal-close" aria-label="닫기" data-voter-close>×</button>
+      </div>
+      <div class="voter-modal-filters" id="voter-modal-filters"></div>
+      <div class="voter-modal-search">
+        <input type="search" id="voter-modal-search-input" placeholder="이름 검색" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="voter-modal-grid" id="voter-modal-grid"></div>
+    </div>
+  </div>
+<% } %>
+
 <%# AI 분석 데이터 주입 — </script> 이스케이프로 XSS 방어 %>
 <% if (analysis) { %>
 <script>
@@ -706,6 +772,19 @@
 </script>
 <% } else { %>
 <script>window.__BILL_ANALYSIS__ = null;</script>
+<% } %>
+
+<% if (hasVotes) { %>
+<script>
+  window.__BILL_VOTERS__ = <%- JSON.stringify({
+    agree:    voters.agree.map(v    => ({ mona_cd: v.mona_cd, name: v.name || null, party: v.party_name || null, photo: v.photo_url || null })),
+    disagree: voters.disagree.map(v => ({ mona_cd: v.mona_cd, name: v.name || null, party: v.party_name || null, photo: v.photo_url || null })),
+    abstain:  voters.abstain.map(v  => ({ mona_cd: v.mona_cd, name: v.name || null, party: v.party_name || null, photo: v.photo_url || null })),
+    absent:   voters.absent.map(v   => ({ mona_cd: v.mona_cd, name: v.name || null, party: v.party_name || null, photo: v.photo_url || null }))
+  }).replace(/</g, '\\u003c') %>;
+</script>
+<% } else { %>
+<script>window.__BILL_VOTERS__ = null;</script>
 <% } %>
 
 <script>
@@ -737,5 +816,150 @@
     }
   };
   mount();
+
+  /* =========================================================
+     본회의 표결 명단 모달
+     ========================================================= */
+  const voters = window.__BILL_VOTERS__;
+  const modal = document.getElementById('voter-modal');
+  if (!voters || !modal) return;
+
+  const BUCKET_LABEL = { agree: '찬성', disagree: '반대', abstain: '기권', absent: '불참' };
+  const RETIRED_KEY = '__retired__';
+  const titleEl   = modal.querySelector('.voter-modal-title');
+  const titleText = titleEl.querySelector('.tc-text');
+  const filterEl  = document.getElementById('voter-modal-filters');
+  const gridEl    = document.getElementById('voter-modal-grid');
+  const searchEl  = document.getElementById('voter-modal-search-input');
+  const esc = (s) => (window.PB && PB.escapeHtml) ? PB.escapeHtml(s) : String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const avatar = (name, photo) => {
+    if (photo) return `<img src="${esc(photo)}" alt="${esc(name || '')}" style="width:100%;height:100%;object-fit:cover">`;
+    return (window.PB && PB.avatarSvg) ? PB.avatarSvg(name || '', 28) : '';
+  };
+  const partyClassOf = (name) => {
+    if (!name) return 'cp-etc';
+    if (name.indexOf('더불어민주') > -1) return 'cp-minjoo';
+    if (name.indexOf('국민의힘')   > -1) return 'cp-gukhim';
+    if (name.indexOf('조국혁신')   > -1) return 'cp-jokuk';
+    if (name.indexOf('개혁')       > -1) return 'cp-gaehyuk';
+    if (name.indexOf('진보')       > -1) return 'cp-jinbo';
+    return 'cp-etc';
+  };
+
+  let currentBucket = null;
+  let currentFilter = 'all';
+  let currentQuery  = '';
+
+  const sortByName = (list) => list.slice().sort((a, b) => {
+    const an = a.name || '￿', bn = b.name || '￿'; // 퇴임은 맨 뒤
+    return an.localeCompare(bn, 'ko');
+  });
+
+  const buildPartyIndex = (list) => {
+    const map = new Map();
+    for (const v of list) {
+      const key = v.name ? (v.party || '무소속') : RETIRED_KEY;
+      if (!map.has(key)) map.set(key, 0);
+      map.set(key, map.get(key) + 1);
+    }
+    return [...map.entries()].sort((a, b) => {
+      if (a[0] === RETIRED_KEY) return 1;
+      if (b[0] === RETIRED_KEY) return -1;
+      return b[1] - a[1]; // 인원 많은 순
+    });
+  };
+
+  const renderGrid = () => {
+    const q = currentQuery;
+    const list = sortByName(voters[currentBucket].filter(v => {
+      if (currentFilter === RETIRED_KEY) { if (v.name) return false; }
+      else if (currentFilter !== 'all')  { if (!v.name || (v.party || '무소속') !== currentFilter) return false; }
+      if (q && !PB.matchesQuery(v.name || '', q)) return false;
+      return true;
+    }));
+    if (list.length === 0) {
+      const msg = q ? `"${esc(q)}" 에 해당하는 의원이 없습니다.` : '해당 조건의 의원이 없습니다.';
+      gridEl.innerHTML = `<div class="voter-modal-empty">${msg}</div>`;
+      return;
+    }
+    const chips = list.map(v => {
+      if (v.name) {
+        const pc = partyClassOf(v.party);
+        return `<a href="/politician/${esc(v.mona_cd)}" class="proposer-chip ${pc}" style="text-decoration:none">
+          <div class="avatar">${avatar(v.name, v.photo)}</div>
+          <div style="min-width:0;overflow:hidden">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(v.name)}</div>
+            <div class="party-sm">${esc(v.party || '무소속')}</div>
+          </div>
+        </a>`;
+      }
+      return `<div class="proposer-chip retired" title="22대 임기 중 퇴임 의원">
+        <div class="avatar">${avatar(null, null)}</div>
+        <div style="min-width:0;overflow:hidden">
+          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">(퇴임)</div>
+          <div class="party-sm">—</div>
+        </div>
+      </div>`;
+    }).join('');
+    gridEl.innerHTML = `<div class="proposers-grid">${chips}</div>`;
+  };
+
+  const renderFilters = () => {
+    const idx = buildPartyIndex(voters[currentBucket]);
+    const totalClickable = voters[currentBucket].length;
+    const btns = [`<button type="button" class="voter-filter-chip${currentFilter === 'all' ? ' active' : ''}" data-party="all">전체<span class="chip-count">${totalClickable}</span></button>`];
+    for (const [key, count] of idx) {
+      const isRetired = key === RETIRED_KEY;
+      const label = isRetired ? '퇴임' : key;
+      btns.push(`<button type="button" class="voter-filter-chip${currentFilter === key ? ' active' : ''}" data-party="${esc(key)}">${esc(label)}<span class="chip-count">${count}</span></button>`);
+    }
+    filterEl.innerHTML = btns.join('');
+  };
+
+  const openModal = (bucket) => {
+    currentBucket = bucket;
+    currentFilter = 'all';
+    currentQuery  = '';
+    searchEl.value = '';
+    titleEl.className = 'voter-modal-title ' + bucket;
+    titleText.textContent = `${BUCKET_LABEL[bucket]} ${voters[bucket].length}명`;
+    renderFilters();
+    renderGrid();
+    modal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    gridEl.scrollTop = 0;
+  };
+
+  const closeModal = () => {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+  };
+
+  document.querySelectorAll('.vote-box[data-bucket]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.hasAttribute('data-empty')) return;
+      openModal(btn.dataset.bucket);
+    });
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target.closest('[data-voter-close]')) closeModal();
+  });
+  filterEl.addEventListener('click', (e) => {
+    const chip = e.target.closest('.voter-filter-chip');
+    if (!chip) return;
+    currentFilter = chip.dataset.party;
+    renderFilters();
+    renderGrid();
+    gridEl.scrollTop = 0;
+  });
+  searchEl.addEventListener('input', () => {
+    currentQuery = searchEl.value.trim();
+    renderGrid();
+    gridEl.scrollTop = 0;
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  });
 })();
 </script>

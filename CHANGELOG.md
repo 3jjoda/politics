@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-04-24 (저녁) — 표결 명단 모달화 + 한글 초성 검색 + 카피 톤 조정
+
+### 본회의 표결 결과 UI 개편 (`views/bill/bill_detail.ejs`)
+기존 4박스 아래 2×2 `.vote-lists` 로 늘어뜨리던 명단을 전부 **모달**로 옮김 — 상세 페이지 스크롤 피로도 해소.
+- 찬성/반대/기권/불참 박스를 `<button data-bucket="...">` 으로 전환, 숫자 아래 "명단 보기" 힌트
+- 0표 버킷은 `data-empty` 로 클릭 비활성
+- 모달 구성: 버킷 라벨(색상 점) + 정당별 필터 칩(카운트 포함, 인원 많은 순) + 이름 검색 + 5열 × 8줄 고정 그리드(`height: 456px`)
+- 명단 chip 은 발의자 섹션의 `.proposer-chip` 재사용 → 시각 일관성
+- 정당별 chip 배경 tint — `politician.ejs` 6색 팔레트 재사용 (민주당 청색 / 국민의힘 적색 / 조국혁신 자색 / 개혁신당 주황 / 진보당 적갈 / 기타 회색, bg 0.08 alpha / border 0.28 alpha)
+- 퇴임 의원: 필터에 "퇴임 N명" 칩으로 집계 표시, 개별 chip 은 `.retired` 로 클릭 불가 회색 유지
+- 모달 닫기: backdrop · × 버튼 · ESC · body 스크롤 잠금
+- 폐기된 CSS: `.vote-lists / .vote-list-container / .voter-list / .retired-voter`
+- 모바일(≤768px): 그리드 `auto-fill minmax(130px, 1fr)` 2열, 높이 `60vh`
+
+### 한글 초성 검색 헬퍼 (`public/scripts/interactions.js`)
+공용으로 쓸 수 있게 `PB` 네임스페이스에 추가.
+- `PB.toChoseong('김철수') → 'ㄱㅊㅅ'` — U+AC00~D7A3 음절을 `(code-AC00)/588` 로 초성 인덱스 계산 후 compat-jamo 로 변환
+- `PB.isChoseongOnly(q)` — 쿼리가 compat-jamo 자음(ㄱ-ㅎ)만인지 판별
+- `PB.matchesQuery(target, query)` — 1) 직접 `includes` (영문은 `toLowerCase`) 2) 실패 & 쿼리가 초성만이면 `toChoseong(target).includes(q)` fallback
+- 적용: 법안 상세 표결 모달 이름 검색, 의원 리스트(이름 + 지역구 — `ㅈㄹ` → "종로" 매칭)
+
+### 사용자 노출 카피 "추적" → "확인" 교체
+감시·미행 뉘앙스가 중립성 브랜드와 어긋나 4곳 교체. 내부 기술 문맥(prompt_version 추적, 비용 추적, request trace ID, filter dataset 추적)은 의미가 달라 그대로 유지.
+- `views/index.ejs` — "실시간 **추적** 중" / "모든 활동을 **추적**합니다"
+- `views/politician/politician.ejs` — "의정 활동을 모두 **추적**합니다"
+- `views/bill/bill.ejs` — "발의부터 처리까지 모두 **추적**합니다"
+
+---
+
 ## 2026-04-24 — AI 법안 분석 기능 1차 구현
 
 ### 분석 원칙 수립 ([ANALYSIS.md](./ANALYSIS.md) 신규)

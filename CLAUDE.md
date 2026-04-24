@@ -258,6 +258,15 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - **국회 원문 링크**: 헤더 카드 우측 상단에 배치 (`.zone-1-top > .original-link`)
 - **XSS 방어**: `JSON.stringify(analysis).replace(/</g, '\\u003c')` + `renderRichText()` 헬퍼로 `<strong>` 만 허용하는 선별 이스케이프
 
+### `/bill/:id` 본회의 표결 명단 모달 (2026-04-24)
+4개 박스(찬성/반대/기권/불참) 클릭 시 모달로 전체 명단 표시 — 상세 페이지 스크롤 부담 제거.
+- 박스: `<button data-bucket>` · 0표는 `data-empty` 로 클릭 비활성
+- 모달 구성: 버킷 라벨 + 정당별 필터 칩(카운트, 인원 많은 순) + 이름 검색(초성 지원) + 5열 × 8줄 고정 그리드 `height: 456px`
+- chip: 발의자 섹션의 `.proposer-chip` 재사용 + 정당별 배경 tint(`cp-minjoo / cp-gukhim / cp-jokuk / cp-gaehyuk / cp-jinbo / cp-etc`, bg 0.08 alpha)
+- 퇴임 의원: 필터 `퇴임 N명` 칩으로 집계, 개별 chip 은 `.retired` 클릭 불가
+- 데이터 주입: `window.__BILL_VOTERS__ = { agree[], disagree[], abstain[], absent[] }` — `{mona_cd, name, party, photo}` 만 직렬화
+- 닫기: backdrop / × / ESC, 열릴 때 `body` 스크롤 잠금
+
 ### OAuth
 - `GET /auth/google` → `GET /auth/google/callback`
 - `GET /auth/kakao`  → `GET /auth/kakao/callback`
@@ -304,6 +313,9 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - Zone 4 "찬반 투표하기" → `scrollTargetId` (기본 `citizen-vote-section`) smooth scroll
   - `analysisData` falsy 시 컨테이너 `display:none` (EJS 조건부 렌더와 이중 안전장치)
 - `PB.avatarSvg(name, size)` — 이니셜 SVG 아바타 (라이트 파스텔 8팔레트)
+- `PB.toChoseong(str)` / `PB.isChoseongOnly(q)` / `PB.matchesQuery(target, query)` — 한글 초성 검색 (2026-04-24)
+  - 쿼리가 compat-jamo 자음(ㄱ-ㅎ)만이면 `toChoseong(target).includes(q)` 로 초성 부분일치, 그 외엔 일반 substring (영문은 `toLowerCase`)
+  - 적용: 법안 상세 표결 모달 이름 검색, 의원 리스트 이름·지역구 검색
 - `PB.renderStars`, `PB.escapeHtml`, `PB.isLoggedIn()`, `PB.redirectToLogin()`
 - `window.__USER__ = { id, nickname } | null` — 서버에서 주입
 

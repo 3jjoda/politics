@@ -9,6 +9,7 @@ import setupPassport from './config/passport.js';
 import { injectUser } from './middlewares/auth.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
+import { dataFreshnessMiddleware } from './utils/dataFreshness.js';
 import expressLayouts from 'express-ejs-layouts';
 import { avatarHtml } from './utils/avatar.js';
 
@@ -61,6 +62,9 @@ app.use(passport.session());
 
 /* 모든 템플릿에 currentUser 주입 */
 app.use(injectUser);
+
+/* 모든 템플릿에 법안 데이터 갱신 시각 주입 (10분 캐시) */
+app.use(dataFreshnessMiddleware(db));
 
 /* db.query 래핑: SQL + 결과 건수 자동 로깅 */
 const originalQuery = db.query.bind(db);

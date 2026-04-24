@@ -58,11 +58,13 @@
             <li><a href="/politician" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/politician') === 0) ? 'active' : '' %>">의원</a></li>
             <li><a href="/bill" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/bill') === 0) ? 'active' : '' %>">법안</a></li>
             <li><a href="/community" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/community') === 0) ? 'active' : '' %>">커뮤니티</a></li>
-            <li><a href="/glossary" class="<%= (locals.currentUrl === '/glossary') ? 'active' : '' %>">용어 설명</a></li>
-            <li><a href="/about" class="<%= (locals.currentUrl === '/about') ? 'active' : '' %>">사이트 소개</a></li>
+            <li><a href="/glossary" class="<%= (locals.currentUrl === '/glossary') ? 'active' : '' %>">용어</a></li>
+            <li><a href="/about" class="<%= (locals.currentUrl === '/about') ? 'active' : '' %>">소개</a></li>
         </ul>
         <div class="pb-nav-right">
-            <span class="pb-nav-badge">● LIVE</span>
+            <% if (locals.dataFreshness) { %>
+                <span class="pb-nav-badge" title="법안 데이터 마지막 갱신: <%= dataFreshness.absolute %>">● 법안 <%= dataFreshness.relative %> 갱신</span>
+            <% } %>
             <% if (locals.currentUser) { %>
                 <div class="pb-user-menu" id="pb-user-menu">
                     <button class="pb-user-btn" id="pb-user-btn" aria-haspopup="true" aria-expanded="false">
@@ -102,8 +104,8 @@
         <li><a href="/politician">의원</a></li>
         <li><a href="/bill">법안</a></li>
         <li><a href="/community">커뮤니티</a></li>
-        <li><a href="/glossary">용어 설명</a></li>
-        <li><a href="/about">사이트 소개</a></li>
+        <li><a href="/glossary">용어</a></li>
+        <li><a href="/about">소개</a></li>
     </ul>
 </div>
 
@@ -136,8 +138,8 @@
             &copy; 2026 정치 바로미터 · 열린국회정보포털 공공데이터 기반
         </div>
         <ul class="pb-footer-links">
-            <li><a href="/about">사이트 소개</a></li>
-            <li><a href="/glossary">용어 설명</a></li>
+            <li><a href="/about">소개</a></li>
+            <li><a href="/glossary">용어</a></li>
             <li><a href="#">데이터 출처</a></li>
             <li><a href="#">피드백</a></li>
             <li><a href="#">개인정보처리방침</a></li>

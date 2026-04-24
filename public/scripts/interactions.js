@@ -56,6 +56,47 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  /* ===================================================================
+     한글 초성 검색
+       - PB.toChoseong('김철수')       → 'ㄱㅊㅅ'
+       - PB.matchesQuery('김철수','ㄱㅊ') → true  (초성 부분일치)
+       - PB.matchesQuery('김철수','김')  → true  (직접 부분일치)
+       - query가 compat-jamo 자음만일 때 초성 매칭, 그 외는 일반 substring
+  =================================================================== */
+  const CHOSEONG = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+  const CHOSEONG_SET = new Set(CHOSEONG);
+  PB.toChoseong = (str) => {
+    if (!str) return '';
+    let out = '';
+    const s = String(str);
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      const code = s.charCodeAt(i);
+      if (code >= 0xAC00 && code <= 0xD7A3) {
+        out += CHOSEONG[Math.floor((code - 0xAC00) / 588)];
+      } else {
+        out += ch;
+      }
+    }
+    return out;
+  };
+  PB.isChoseongOnly = (q) => {
+    if (!q) return false;
+    for (let i = 0; i < q.length; i++) {
+      if (!CHOSEONG_SET.has(q[i])) return false;
+    }
+    return true;
+  };
+  PB.matchesQuery = (target, query) => {
+    const q = String(query || '').trim();
+    if (!q) return true;
+    if (target == null) return false;
+    const t = String(target);
+    if (t.toLowerCase().includes(q.toLowerCase())) return true;
+    if (PB.isChoseongOnly(q)) return PB.toChoseong(t).includes(q);
+    return false;
+  };
+
   PB.renderStars = (score, { size = 16, interactive = false } = {}) => {
     const s = Math.max(0, Math.min(5, Number(score) || 0));
     let html = `<span class="pb-stars" data-score="${s}" style="font-size:${size}px">`;

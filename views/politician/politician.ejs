@@ -660,7 +660,7 @@
   <div class="page-header-inner">
     <div class="breadcrumb"><a href="/">홈</a> / 국회의원</div>
     <h1 class="page-title">국회의원</h1>
-    <p class="page-desc">22대 국회 <%= nf(politicians.length) %>명의 의정 활동을 모두 추적합니다</p>
+    <p class="page-desc">22대 국회 <%= nf(politicians.length) %>명의 의정 활동을 모두 확인합니다</p>
   </div>
 </div>
 
@@ -964,20 +964,21 @@
   const countEl = document.getElementById('filter-count');
 
   const applyFilter = () => {
-    const q = state.q.trim().toLowerCase();
+    const q = state.q.trim();
     let visibleCount = 0;
 
     const filterCard = (el) => {
-      const name = (el.dataset.name || '').toLowerCase();
-      const district = (el.dataset.district || '').toLowerCase();
+      const name     = el.dataset.name || '';
+      const district = el.dataset.district || '';
       const party = el.dataset.party || '';
       const cmit = el.dataset.cmit || '';
       const elect = el.dataset.elect || '';
       const sex   = el.dataset.sex || '';
       const age   = el.dataset.ageBucket || '';
 
-      const matches =
-        (!q || name.includes(q) || district.includes(q)) &&
+      // 이름·지역구 — 직접 부분일치 + 한글 초성 매칭 (PB.matchesQuery)
+      const textHit = !q || (window.PB && (PB.matchesQuery(name, q) || PB.matchesQuery(district, q)));
+      const matches = textHit &&
         (!state.party || party === state.party) &&
         (!state.cmit  || cmit  === state.cmit) &&
         (!state.elect || elect === state.elect) &&

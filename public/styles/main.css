@@ -162,13 +162,14 @@ input, textarea, select { font-family: inherit; }
 }
 
 .pb-nav-badge {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   color: var(--green);
   background: rgba(15,157,110,0.1);
   border: 1px solid rgba(15,157,110,0.25);
   padding: 4px 10px;
   border-radius: 4px;
+  white-space: nowrap;
+  cursor: default;
 }
 
 .pb-nav-btn {
@@ -971,6 +972,7 @@ input, textarea, select { font-family: inherit; }
 @media (max-width: 768px) {
   .pb-nav-links { display: none; }
   .pb-nav-btn { display: none; }
+  .pb-nav-badge { display: none; }
   .pb-hamburger { display: inline-block; }
   .pb-footer-inner { flex-direction: column; text-align: center; }
   body { font-size: 14px; }
