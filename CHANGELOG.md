@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-04-24 (밤) — 데이터 갱신 시각 배지
+
+### 의미 없던 `● LIVE` 정적 배지 → "● 법안 N시간 전 갱신" 으로 교체
+nav 우측 배지가 실제 시그널을 전달하도록 수정. `syncBills.js` 가 `ON CONFLICT ... updated_at = NOW()` 로 시각을 찍어주고 있어서 스키마 변경 없이 `MAX(bills.updated_at)` 한 줄로 구현 가능했음. 크론 배치 도입 시 배지가 자연스럽게 살아있는 시그널이 됨.
+
+### 구현
+- `utils/dataFreshness.js` 신규
+  - `getBillFreshness(db)` — `MAX(bills.updated_at)` 조회 + 10분 메모리 캐시
+  - `formatRelativeKo(date)` — 분/시간/일/주/달 한국어 상대시간 (음수 방어 → "방금 전")
+  - `dataFreshnessMiddleware(db)` — `res.locals.dataFreshness = { lastUpdated, relative, absolute }` 주입, 조회 실패 시 이전 캐시 유지·없으면 `null`
+- `app.js` — `injectUser` 다음에 미들웨어 등록
+- `views/layout.ejs` — `● LIVE` → `<% if (locals.dataFreshness) %>` 조건부 `● 법안 <%= relative %> 갱신` + `title` 속성에 절대시각 (Asia/Seoul 로케일)
+- `public/styles/main.css` `.pb-nav-badge` — `JetBrains Mono` 제거(한글 대응) + `white-space: nowrap` + 모바일(≤768px) `display: none`
+
+### 판단 배경
+- **표결 갱신 시각은 의도적으로 제외** — `bill_votes` 엔 `updated_at` 컬럼이 없고, `MAX(vote_date)` 는 "국회가 마지막으로 표결한 날"이라 "데이터 신선도"와 의미가 다름. nav 배지엔 단일 시그널만 노출.
+- 방문자 수·실시간 접속자는 초기엔 작은 숫자가 오히려 신뢰도를 깎고, 실시간 추적은 heartbeat 인프라가 별도로 필요해서 제외.
+
+---
+
 ## 2026-04-24 (저녁) — 표결 명단 모달화 + 한글 초성 검색 + 카피 톤 조정
 
 ### 본회의 표결 결과 UI 개편 (`views/bill/bill_detail.ejs`)

@@ -99,6 +99,12 @@
 
 <div class="pb-mobile-panel" id="pb-mobile-panel">
     <button class="pb-mobile-close" id="pb-mobile-close" aria-label="close">×</button>
+    <% if (locals.dataFreshness) { %>
+        <div class="pb-mobile-freshness" title="법안 데이터 마지막 갱신: <%= dataFreshness.absolute %>">
+            <span class="pb-mobile-freshness-dot">●</span>
+            법안 <%= dataFreshness.relative %> 갱신
+        </div>
+    <% } %>
     <ul>
         <li><a href="/">홈</a></li>
         <li><a href="/politician">의원</a></li>

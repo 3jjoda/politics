@@ -128,8 +128,8 @@ input, textarea, select { font-family: inherit; }
   width: auto;
 }
 @media (max-width: 768px) {
-  .pb-logo-wordmark-img { display: none; }
   .pb-logo-mark-img { width: 32px; height: 32px; }
+  .pb-logo-wordmark-img { height: 22px; }
 }
 
 .pb-nav-links {
@@ -774,6 +774,20 @@ input, textarea, select { font-family: inherit; }
   font-size: 30px;
   cursor: pointer;
 }
+
+.pb-mobile-freshness {
+  font-size: 12px;
+  color: var(--green);
+  background: rgba(15,157,110,0.08);
+  border: 1px solid rgba(15,157,110,0.2);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pb-mobile-freshness-dot { line-height: 1; }
 
 /* ===== MAIN ===== */
 .pb-main {

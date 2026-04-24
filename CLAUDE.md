@@ -298,6 +298,10 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - `middlewares/auth.js`
   - `requireLogin` — API 401 / 페이지 `/auth/login?next=...` 리다이렉트
   - `injectUser` — `res.locals.currentUser` + `req.session.userId` 주입
+- `utils/dataFreshness.js`
+  - `dataFreshnessMiddleware(db)` — `MAX(bills.updated_at)` 조회 + 10분 메모리 캐시, `res.locals.dataFreshness = { lastUpdated, relative, absolute }` 주입
+  - `formatRelativeKo(date)` — 분/시간/일/주/달 단위 한국어 상대시간
+  - nav 배지(`views/layout.ejs` `.pb-nav-badge`)가 "● 법안 N시간 전 갱신" 렌더에 사용. 모바일(≤768px)은 숨김. `syncBills.js` 의 `ON CONFLICT ... updated_at = NOW()` 가 시각 소스 → 크론 배치가 배지를 실시간으로 갱신
 
 ---
 
