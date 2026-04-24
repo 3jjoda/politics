@@ -1,4 +1,4 @@
-/* 법안 시민 찬반 집계
+/* 법안 국민 찬반 집계
    $1 bill_id
 */
 SELECT COUNT(*) FILTER (WHERE vote = 'agree')    AS agree_cnt

@@ -55,8 +55,50 @@
 - 기존 "찬성 비율 45.2%" → "찬성 비율 45.2% (1,234건)" — 퍼센트 옆에 실제 건수 괄호로 병기. 찬성/반대/기권/불참 4개 항목 모두
 
 ### 법안 페이지 사이드바 위원회 이름 축약 (`views/bill/bill.ejs`)
-긴 위원회 이름이 우측 카운트 영역을 침범하던 문제.
-- `committee.length > 8` 이면 `slice(0, 8) + '…'` 로 축약, 원문은 `title` 속성으로 호버 툴팁
+긴 위원회 이름이 우측 카운트 영역을 침범하던 문제. 데스크톱만 축약, 모바일 바텀시트는 여유가 있으니 줄바꿈으로 전체 노출.
+- 데스크톱: `.side-item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }` — CSS 말줄임 (처음엔 서버사이드 `slice(0, 8) + '…'` 로 구현했다가 모바일/데스크톱 분기를 CSS 로 단순화). `title` 속성은 호버 툴팁으로 전체 이름 노출
+- 모바일(바텀시트): `white-space: normal; word-break: keep-all` — 폭 여유로 줄바꿈
+
+### 필터 시트 UX 전면 개편 (의원 + 법안 공통)
+선택 즉시 검색이 아니라 **여러 항목 선택 후 적용**으로 변경. PC 사이드바도 동일 패턴.
+- 사이드바 상단에 `.filter-sheet-header` 상시 노출 (sticky) — `[필터] [초기화] [적용] [×(모바일 only)]`
+- 클릭 시 `.active` / `.sheet-pending` 만 토글, `applyFilter()` / navigation 은 **적용 버튼에서만** 커밋
+- 취소(×·백드롭·ESC): 시트 열기 전 상태로 복원 (politician 은 state 스냅샷, bill 은 URL 재로드)
+- **복수선택 지원**:
+  - `politician.ejs` — `state.sex/ageBucket/cmit/elect` 를 배열로 전환, 카테고리 내 OR · 카테고리 간 AND 매칭. 배지는 선택 항목 총 개수
+  - `bill.ejs` — `pendingCmt` / `pendingParty` Set 관리, 적용 시 `?committee=A,B&party=X,Y` URL 로 navigation. "기타/특별위원회" 는 minor 이름들의 쉼표 연결 value 로 atomic 토글 (그룹 내 모든 이름이 pending 에 있을 때만 active)
+- `.sheet-pending` CSS 전역화 — 서버렌더 `.active` 는 JS init 에서 제거 후 `.sheet-pending` 으로 교체하여 이후 인터랙션은 pending 만 관리
+
+### 법안 페이지 정당 필터 (복수선택)
+서버사이드 party 필터 신규 추가.
+- `daos/queries/bill/getList.sql` — `$6 party` 파라미터 + `LEFT JOIN politicians p ON p.mona_cd = b.mona_cd` + `COALESCE(p.party_name, '기타/무소속') = ANY(string_to_array($6, ','))`
+- `getStatusCounts.sql` — committee 와 동일하게 party 필터도 반영하여 상태 탭 숫자 일관성 유지 (`$2 party`)
+- `BillDao` / `BillService` / `BillController` 시그니처에 party 전파
+- `views/bill/bill.ejs` — 정당별 사이드바 `<div class="side-item">` → `<a class="side-item" data-party-value="X" href="…">` 로 전환, "전체" 항목 추가. 각 링크 `href` 에 현재 query.committee/search/status 보존. 폼 hidden input · 상태탭 링크 · 페이징 hrefBuilder 전부 `query.party` 포함
+
+### 법안·의원 필터바 모바일 구조 통일
+- 모바일에서 **필터 버튼이 검색 바 위**로 올라가도록 `filter-sheet-btn { flex-basis: 100%; justify-content: center }`
+- 의원 페이지: 총원 count 를 `filter-right` 안으로 이동 → 바 우측에 검색 입력과 함께 정렬. 모바일에선 `.filter-right { width: 100% }` + `.filter-count { margin-left: auto }`
+
+### 모바일 의원 리스트 (`views/politician/politician.ejs`)
+그리드 토글 숨김 후 리스트 전용으로 전환한 뒤, 리스트 아이템 정보 밀도 개선.
+- 기존 열 구조 `[avatar, 의원, 정당(text), 발의, 공동, 상세]` 6열 → `[avatar, 이름+정당배지, 발의, 공동, 상세]` 5열
+- 정당 텍스트 컬럼 제거 + 이름 옆에 `.pol-party-badge` 컬러 배지 inline (PC 그리드 카드와 동일 색상)
+- 모바일(≤768px): 공동·상세 컬럼 숨김, 발의 숫자 옆에 "발의" 라벨 노출 (`.pol-list-num-label { display: none }` 기본 + 모바일에서 `display: inline-block`)
+
+### 홈 모바일 가로 오버플로우 수정 (`views/index.ejs`)
+주목할 법안 카드가 좁은 viewport(~500px 이하)에서 우측이 잘리는 문제.
+- **원인**: 그리드 트랙 `grid-template-columns: 1fr` 의 default `min-width: auto` 때문에 카드의 intrinsic min-content (긴 위원회명 배지 등)가 트랙을 컨테이너 밖으로 밀어냄
+- **해결**: `minmax(0, 1fr)` 로 트랙이 content min-content 와 무관하게 0 까지 축소되도록 함 (`.trending-grid`, `.home-kpi` 모두 적용)
+- 부가: 모바일 padding 축소 (`.pb-section` 24→12, 카드 24→18/14), 긴 토큰 안전 분리 (`overflow-wrap: anywhere` 를 `.bill-name` · `.pb-badge` 에), `.kpi-card.large` 세로 스택
+- 정리: 처음엔 `.pb-main { overflow-x: clip }`, `.pb-section { overflow-x: hidden }`, 다중 `min-width: 0` 같은 방어 코드를 여럿 깔았으나 `minmax(0, ...)` 도입 후 모두 불필요해져 제거
+
+### "시민" → "국민" 용어 통일
+중립성 브랜드 톤 조정. 사용자 노출 전부 교체.
+- UI: `layout.ejs` OG/meta × 3, `bill_detail.ejs` "국민 찬반"·"국민 의견"·"로그인한 국민들", `auth/setup.ejs` 닉네임 placeholder "현명한국민", `interactions.js` 에러 메시지
+- 주석: bill_detail / main.css / interactions.js / getStats.sql 각종 주석
+- 문서: CLAUDE.md (스키마 주석, 라우트·API 설명), ROADMAP.md, ANALYSIS.md, CHANGELOG 과거 항목
+- 유지: DB 테이블 `bill_citizen_votes`, 폴더 `citizen_vote/`, 함수 `PB.mountCitizenVote()`, CSS 클래스 `.citizen-vote-section` 등 **기술 식별자는 그대로** — 내부 레이블만 바꾸면 대규모 리팩토링 유발
 
 ---
 
@@ -139,7 +181,7 @@ nav 우측 배지가 실제 시그널을 전달하도록 수정. `syncBills.js` 
 ### 프론트엔드 UI (`views/bill/bill_detail.ejs`)
 - 법안 상세 페이지 5-Zone UI 구조 추가 (인라인 `<style>` 약 260줄)
 - XSS-safe JSON 주입: `JSON.stringify(analysis).replace(/</g, '\\u003c')` — `</script>` 브레이크아웃 차단 (3곳 적용)
-- 섹션 재배열: 메타 → AI 분석 → 원문 → 시민 찬반(`#citizen-vote-section`) → 본회의 → 발의자 → 댓글
+- 섹션 재배열: 메타 → AI 분석 → 원문 → 국민 찬반(`#citizen-vote-section`) → 본회의 → 발의자 → 댓글
 - Noto Serif KR `wght@400;700;900` 폰트 로드 (`views/layout.ejs`)
 
 ### 위젯 (`public/scripts/interactions.js`)
@@ -157,7 +199,7 @@ nav 우측 배지가 실제 시그널을 전달하도록 수정. `syncBills.js` 
   - 분석 없음: `.bill-basic-header` — 메타 2줄 + 법안명. Zone 1과 동일한 카드 스타일(공용 셀렉터)
 - 발의일 포맷 `YYYY-MM-DD → YYYY.MM.DD`
 - 대표발의자 이름에 `/politician/:id` 링크 (`proposer_mona_cd` 있을 때)
-- 국회 원문 버튼을 헤더 카드 우측 상단으로 이동(`.zone-1-top > .original-link`) — 이전엔 헤더와 시민찬반 사이에 단독으로 떠 있어 시각적으로 분리됨
+- 국회 원문 버튼을 헤더 카드 우측 상단으로 이동(`.zone-1-top > .original-link`) — 이전엔 헤더와 국민찬반 사이에 단독으로 떠 있어 시각적으로 분리됨
 - 폐기된 클래스: `.bd-header / .bd-title / .bd-meta / .bd-meta-row / .bd-external` (main.css 공유 shadow 셀렉터에서도 제거)
 
 ### 모바일 대응 (≤768px)
@@ -298,7 +340,7 @@ nav 와 같은 이유(워드마크 텍스트 작음) 로 **login 카드 로고�
 ### 상호작용 기능
 9. **댓글 API** (`type: politician | bill | post`, 소프트 삭제)
 10. **의원 별점** (1~5, 평균·분포·나의 점수)
-11. **법안 시민 찬반** (의원 본회의 표결과 분리, 1인 1표 변경 가능)
+11. **법안 국민 찬반** (의원 본회의 표결과 분리, 1인 1표 변경 가능)
 12. **좋아요 토글** (comment/post)
 13. **용어 설명 페이지** (`/glossary`, 목차 + 4섹션, 뱃지 `?` 링크 연결)
 

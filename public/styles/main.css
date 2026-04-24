@@ -362,7 +362,7 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ==============================================================
-   PB.* 상호작용 위젯 공용 스타일 (별점, 댓글, 시민 찬반)
+   PB.* 상호작용 위젯 공용 스타일 (별점, 댓글, 국민 찬반)
    ============================================================== */
 
 .pb-muted { color: var(--sub); font-size: 13px; padding: 16px; text-align: center; }
@@ -664,7 +664,7 @@ input, textarea, select { font-family: inherit; }
   justify-content: flex-end;
 }
 
-/* 시민 찬반 위젯 */
+/* 국민 찬반 위젯 */
 .cv-bar {
   display: flex;
   height: 36px;

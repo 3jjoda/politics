@@ -136,7 +136,7 @@ CREATE TABLE politician_ratings (
   UNIQUE (politician_id, user_id)
 );
 
--- 법안 시민 찬반 (국회의원 표결과 별개)
+-- 법안 국민 찬반 (국회의원 표결과 별개)
 CREATE TABLE bill_citizen_votes (
   id          BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   bill_id     VARCHAR(50) NOT NULL REFERENCES bills(bill_id) ON DELETE CASCADE,
@@ -243,10 +243,10 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | 경로 | 뷰 | 설명 |
 |---|---|---|
 | `/` | `views/index.ejs` | 홈 (KPI, 주목 법안, 활발 의원, 월별 추이) |
-| `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글) |
+| `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터) |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
-| `/bill` | `bill/bill.ejs` | 법안 목록 (상태 스테퍼, 카테고리 사이드바, 페이징) |
-| `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·시민 찬반·본회의 표결·댓글) |
+| `/bill` | `bill/bill.ejs` | 법안 목록 (상태 스테퍼, 카테고리·정당 복수선택 사이드바, 페이징) |
+| `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·국민 찬반·본회의 표결·댓글) |
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
@@ -298,7 +298,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | DELETE | `/api/auth/withdraw` | 회원 탈퇴 (익명화) |
 | GET / POST / PUT / DELETE | `/api/comments[/:id]` | 댓글 CRUD (소프트 삭제, 대댓글 1단계) |
 | GET / POST | `/api/ratings/politician/:monacd` | 별점 조회/UPSERT |
-| GET / POST | `/api/votes/bill/:billId` | 시민 찬반 조회/UPSERT |
+| GET / POST | `/api/votes/bill/:billId` | 국민 찬반 조회/UPSERT |
 | GET / POST | `/api/likes` | 좋아요 토글/카운트 |
 | GET | `/api/bills/search?q=X` | 법안 검색 (커뮤니티 첨부용) |
 | GET | `/api/bills/trending?sort=recent\|close\|popular\|bipartisan` | 홈 주목할 법안 (정렬 탭 동적 교체) |
@@ -306,10 +306,23 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | PUT / DELETE | `/community/:id` | 수정/삭제 (본인만) |
 
 ### 법안 필터 URL 규약
-- `/bill?committee=행정안전위원회` — 단일 위원회 필터
+- `/bill?committee=행정안전위원회` — 단일 위원회
 - `/bill?committee=기획재정위원회,재정경제기획위원회` — **쉼표 분리 복수 매칭** (`string_to_array` 로 SQL IN 처리)
-- 홈 카테고리 탭 "조세/재정", 사이드바 "기타/특별위원회" 묶음이 이 방식 사용
-- 카테고리 + 상태 탭 연동: committee 선택 시 스테퍼·상태 탭 숫자 모두 해당 위원회 기준으로 재계산
+- `/bill?party=더불어민주당,국민의힘` — **대표발의 정당 복수 필터** (2026-04-25 추가). `LEFT JOIN politicians p ON p.mona_cd = b.mona_cd` + `COALESCE(p.party_name, '기타/무소속') = ANY(...)`
+- committee + party 동시 적용 시 AND 매칭
+- 홈 카테고리 탭 "조세/재정", 사이드바 "기타/특별위원회" 묶음이 committee 복수 방식 사용
+- 상태 탭 카운트(`getStatusCounts`)도 committee/party 필터 모두 반영하여 탭 숫자 일관성 유지
+
+### 필터 사이드바 UX (의원·법안 공통, 2026-04-25)
+PC/모바일 동일 패턴으로 통일.
+- 사이드바 상단에 `.filter-sheet-header { sticky top: 0 }` — `[필터] [초기화] [적용] [×(모바일만)]`
+- 항목 클릭은 즉시 검색/navigation 하지 않고 **pending 상태만 토글**. 적용 버튼에서만 커밋
+- 취소(×/backdrop/ESC): 시트 열기 전 상태 복원 (politician 은 state 스냅샷, bill 은 `loadFromUrl()` 재실행)
+- **복수선택**:
+  - politician: `state.sex/ageBucket/cmit/elect` 배열, 카테고리 내 OR · 카테고리 간 AND
+  - bill: `pendingCmt` / `pendingParty` Set, 적용 시 `?committee=A,B&party=X,Y` navigation. "기타/특별위원회" 는 minor 이름 쉼표 value 로 atomic 토글
+- 모바일(≤768px): `filter-sheet-btn` 이 검색 바 위 전체폭. 바텀시트 슬라이드업 + 백드롭
+- `.sheet-pending` CSS 전역. 서버렌더 `.active` 는 JS init 에서 제거 후 `.sheet-pending` 으로 교체
 
 ### 공용 미들웨어
 - `middlewares/auth.js`
@@ -327,7 +340,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - `PB.fetch(path, opts)` — JSON + credentials 자동 처리
 - `PB.mountRating({containerId, monaCd})` — 별점 위젯
 - `PB.mountComments({containerId, type, targetId})` — 댓글 위젯 (작성·수정·삭제·좋아요·정렬)
-- `PB.mountCitizenVote({containerId, billId})` — 법안 시민 찬반
+- `PB.mountCitizenVote({containerId, billId})` — 법안 국민 찬반
 - `PB.mountBillAnalysis({containerId, analysisData, bill, scrollTargetId})` — AI 법안 분석 5-Zone 위젯
   - `renderRichText()` 내부 헬퍼 — `<strong>` 만 허용하는 선별 이스케이프 (2026-04-24)
   - Zone 3 accordion — 첫 번째만 기본 펼침, 클릭 시 `max-height` 트랜지션

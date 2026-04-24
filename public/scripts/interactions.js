@@ -8,7 +8,7 @@
  *   - PB.timeAgo      : "N분 전" 포맷
  *   - PB.mountRating  : 의원 별점 위젯
  *   - PB.mountComments: 댓글 목록 + 작성 위젯
- *   - PB.mountCitizenVote : 법안 시민 찬반 위젯
+ *   - PB.mountCitizenVote : 법안 국민 찬반 위젯
  *   - PB.mountBillAnalysis : 법안 AI 분석 5-Zone 위젯
  *   - PB.redirectToLogin : 로그인 유도
  */
@@ -526,7 +526,7 @@
   };
 
   /* ===================================================================
-     법안 시민 찬반 위젯
+     법안 국민 찬반 위젯
   =================================================================== */
   PB.mountCitizenVote = async (opts) => {
     const root = document.getElementById(opts.containerId);
@@ -588,7 +588,7 @@
       const d = await PB.fetch(`/api/votes/bill/${encodeURIComponent(billId)}`);
       render(d);
     } catch (err) {
-      root.innerHTML = `<div class="pb-muted">시민 찬반을 불러올 수 없습니다: ${PB.escapeHtml(err.message)}</div>`;
+      root.innerHTML = `<div class="pb-muted">국민 찬반을 불러올 수 없습니다: ${PB.escapeHtml(err.message)}</div>`;
     }
   };
 
@@ -752,7 +752,7 @@
       });
     });
 
-    // Zone 4 CTA — 시민 찬반 섹션으로 스크롤
+    // Zone 4 CTA — 국민 찬반 섹션으로 스크롤
     const ctaVote = root.querySelector('[data-action="scroll-to-vote"]');
     if (ctaVote) {
       ctaVote.addEventListener('click', () => {
