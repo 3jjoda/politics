@@ -57,6 +57,28 @@
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
   /* ===================================================================
+     공용 스피너 — /assets/imgs/spinner.svg 기반
+       PB.spinner({ size, label }) → HTML 문자열 (컨테이너 innerHTML 에 그대로 사용)
+       PB.spinner.overlay({ label })  → 부모에 absolute 로 깔리는 오버레이 HTML
+  =================================================================== */
+  PB.spinner = (opts = {}) => {
+    const size  = opts.size  || 36;
+    const label = opts.label || '불러오는 중…';
+    return `<div class="pb-spinner" role="status" aria-live="polite">
+      <img src="/assets/imgs/spinner.svg" width="${size}" height="${size}" alt="" aria-hidden="true">
+      <span class="pb-spinner-label">${PB.escapeHtml(label)}</span>
+    </div>`;
+  };
+  PB.spinner.overlay = (opts = {}) => {
+    const size  = opts.size  || 36;
+    const label = opts.label || '불러오는 중…';
+    return `<div class="pb-spinner-overlay" role="status" aria-live="polite">
+      <img src="/assets/imgs/spinner.svg" width="${size}" height="${size}" alt="" aria-hidden="true">
+      <span class="pb-spinner-label">${PB.escapeHtml(label)}</span>
+    </div>`;
+  };
+
+  /* ===================================================================
      한글 초성 검색
        - PB.toChoseong('김철수')       → 'ㄱㅊㅅ'
        - PB.matchesQuery('김철수','ㄱㅊ') → true  (초성 부분일치)
@@ -223,6 +245,7 @@
       }
     };
 
+    root.innerHTML = PB.spinner();
     try {
       const data = await PB.fetch(`/api/ratings/politician/${monaCd}`);
       render(data);
@@ -511,6 +534,7 @@
     };
 
     const load = async () => {
+      root.innerHTML = PB.spinner({ label: '댓글 불러오는 중…' });
       try {
         const { items } = await PB.fetch(`/api/comments?type=${encodeURIComponent(type)}&targetId=${encodeURIComponent(targetId)}`);
         // 삭제된 댓글도 보관 (tombstone 처리용). 좋아요는 살아있는 것만.
@@ -584,6 +608,7 @@
       });
     };
 
+    root.innerHTML = PB.spinner();
     try {
       const d = await PB.fetch(`/api/votes/bill/${encodeURIComponent(billId)}`);
       render(d);

@@ -119,6 +119,12 @@
     <%- body %>
 </main>
 
+<!-- 페이지 전환 로더 — 링크 클릭/폼 submit 시 풀스크린 오버레이 -->
+<div class="pb-page-loader" id="pb-page-loader" hidden aria-hidden="true">
+    <img src="/assets/imgs/spinner.svg" width="48" height="48" alt="">
+    <span class="pb-page-loader-label">불러오는 중…</span>
+</div>
+
 <% if (locals.currentUser) { %>
 <!-- 회원 탈퇴 확인 모달 -->
 <div class="pb-modal" id="pb-withdraw-modal" hidden>
@@ -159,6 +165,47 @@
 <script src="/scripts/globalStore.js"></script>
 <script src="/scripts/interactions.js"></script>
 <script>
+    /* 페이지 전환 로더 — 내부 링크 클릭/폼 submit 동안 풀스크린 오버레이.
+       프로그래매틱 navigation 의 경우 window.pbShowLoader() 직접 호출 가능 */
+    (function () {
+        const loader = document.getElementById('pb-page-loader');
+        if (!loader) return;
+        const show = () => { loader.removeAttribute('hidden'); loader.setAttribute('aria-hidden', 'false'); };
+        const hide = () => { loader.setAttribute('hidden', '');     loader.setAttribute('aria-hidden', 'true');  };
+        window.pbShowLoader = show;
+        window.pbHideLoader = hide;
+
+        document.addEventListener('click', (e) => {
+            if (e.defaultPrevented) return;          // JS 가 navigation 막은 경우
+            if (e.button !== 0) return;              // 좌클릭만
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;  // 새 탭 등
+            const link = e.target.closest('a[href]');
+            if (!link) return;
+            if (link.target === '_blank' || link.hasAttribute('download')) return;
+            if (link.dataset.noLoader != null) return;
+            const href = link.getAttribute('href') || '';
+            if (!href || href.startsWith('#') || href.startsWith('mailto:') ||
+                href.startsWith('tel:')   || href.startsWith('javascript:')) return;
+            try {
+                const u = new URL(href, location.href);
+                if (u.origin !== location.origin) return;            // 외부
+                if (u.pathname === location.pathname &&
+                    u.search   === location.search) return;          // 동일 URL
+            } catch { return; }
+            show();
+        });
+
+        document.addEventListener('submit', (e) => {
+            if (e.defaultPrevented) return;          // AJAX 폼
+            const form = e.target;
+            if (form?.dataset?.noLoader != null) return;
+            show();
+        });
+
+        // 뒤로가기/앞으로 (bfcache 복원 포함) 시 로더 숨김
+        window.addEventListener('pageshow', hide);
+    })();
+
     document.addEventListener('DOMContentLoaded', () => {
         const serverData = <%- JSON.stringify(locals.initialData || null) %>;
         const storedData = sessionStorage.getItem('initialData');

@@ -1002,6 +1002,7 @@
     else                        params.delete('party');
     params.delete('page');
     const qs = params.toString();
+    window.pbShowLoader?.();
     window.location.href = '/bill' + (qs ? '?' + qs : '');
   };
 

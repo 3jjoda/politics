@@ -796,6 +796,65 @@ input, textarea, select { font-family: inherit; }
   min-height: calc(100vh - var(--nav-h));
 }
 
+/* ===== SPINNER (공용 로딩) ===== */
+.pb-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 16px;
+  min-height: 120px;
+}
+.pb-spinner img { display: block; }
+.pb-spinner-label {
+  font-size: 12px;
+  color: var(--sub2);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.04em;
+}
+.pb-spinner-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(247,246,241,0.78);
+  backdrop-filter: blur(2px);
+  z-index: 5;
+  pointer-events: auto;
+}
+.pb-spinner-overlay img { display: block; }
+
+/* 페이지 전환 풀스크린 로더 — 링크/폼 navigation 동안 노출 */
+.pb-page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(26, 29, 36, 0.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.pb-page-loader[hidden] { display: none; }
+.pb-page-loader img {
+  display: block;
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.25));
+}
+.pb-page-loader-label {
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
 /* ===== PAGE HEADER (공용 히어로) ===== */
 .pb-page-header {
   padding: 72px 24px 32px;

@@ -338,6 +338,12 @@ PC/모바일 동일 패턴으로 통일.
 ## 프론트엔드 상호작용 헬퍼 (`public/scripts/interactions.js`)
 `window.PB` 전역 네임스페이스:
 - `PB.fetch(path, opts)` — JSON + credentials 자동 처리
+- `PB.spinner({ size, label })` — 공용 로딩 스피너 HTML (`/assets/imgs/spinner.svg` 기반, 자체 CSS 애니메이션). `.pb-spinner` 클래스로 main.css 에 스타일 정의. `PB.spinner.overlay()` 는 부모 위에 absolute 로 깔리는 변형. 위젯 초기 fetch (rating/comments/citizenVote) + 홈 trending sort 변경 + community write 법안 검색에 적용
+- **페이지 전환 풀스크린 로더** (`#pb-page-loader` in layout.ejs) — 내부 링크 클릭 / 폼 submit 시 어두운 backdrop + 스피너로 전환 표시
+  - 자동 트리거: document-level click(a[href]) / submit 리스너가 외부 링크·앵커·새 탭·동일 URL 등을 제외한 internal navigation 만 캐치. `e.defaultPrevented` 면 스킵 (AJAX 처리된 경우)
+  - 스킵 마커: 링크/폼에 `data-no-loader` 속성
+  - 프로그래매틱 navigation: `window.pbShowLoader()` / `pbHideLoader()` 직접 호출 (예: bill 필터 시트 적용 버튼)
+  - bfcache 복원: `pageshow` 이벤트로 자동 hide
 - `PB.mountRating({containerId, monaCd})` — 별점 위젯
 - `PB.mountComments({containerId, type, targetId})` — 댓글 위젯 (작성·수정·삭제·좋아요·정렬)
 - `PB.mountCitizenVote({containerId, billId})` — 법안 국민 찬반

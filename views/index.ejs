@@ -1034,8 +1034,8 @@
         const sort = btn.dataset.sort;
         if (sort === currentSort) return;
         buttons.forEach(b => { b.classList.toggle('active', b === btn); b.disabled = true; });
-        const grid = root.querySelector('.trending-grid');
-        if (grid) grid.classList.add('is-loading');
+        // 기존 그리드를 스피너로 교체 (PB.spinner — 공용)
+        root.innerHTML = (window.PB && PB.spinner) ? PB.spinner({ label: '주목할 법안 불러오는 중…' }) : '<div class="pb-muted">불러오는 중…</div>';
         try {
           const res = await fetch(`/api/bills/trending?sort=${encodeURIComponent(sort)}`, {
             credentials: 'include',
@@ -1046,6 +1046,7 @@
           currentSort = sort;
         } catch (err) {
           console.error('trending fetch failed', err);
+          root.innerHTML = `<div class="pb-muted" style="text-align:center;padding:40px 0">주목할 법안을 불러올 수 없습니다.</div>`;
         } finally {
           buttons.forEach(b => { b.disabled = false; });
         }

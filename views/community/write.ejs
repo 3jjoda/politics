@@ -372,7 +372,9 @@
   const search = async (q) => {
     try {
       resultsBox.style.display = '';
-      resultsBox.innerHTML = '<div class="wr-bill-empty">검색 중...</div>';
+      resultsBox.innerHTML = (window.PB && PB.spinner)
+        ? PB.spinner({ size: 28, label: '법안 검색 중…' })
+        : '<div class="wr-bill-empty">검색 중...</div>';
       const res = await fetch(`/api/bills/search?q=${encodeURIComponent(q)}`, {
         credentials: 'include',
         headers: { 'Accept': 'application/json' }
