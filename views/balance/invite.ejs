@@ -1,0 +1,214 @@
+<style>
+  .bg-invite-wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 36px) 24px 80px;
+  }
+
+  .bg-hero {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  .bg-hero-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .bg-hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+  .bg-hero-subtitle {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 1.55;
+    color: var(--text);
+    margin: 0 auto 24px;
+    max-width: 640px;
+    word-break: keep-all;
+  }
+  .bg-hero-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .bg-hero-meta .dot { color: var(--accent); }
+
+  /* 3가지 약속 카드 */
+  .bg-promise-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  .bg-promise-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 22px 24px;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .bg-promise-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .bg-promise-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #FAF6EB;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .bg-promise-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 8px;
+    word-break: keep-all;
+  }
+  .bg-promise-desc {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--sub);
+    margin: 0;
+    word-break: keep-all;
+  }
+  .bg-promise-desc strong { color: var(--text); }
+
+  /* CTA */
+  .bg-cta {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .bg-start-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 40px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .bg-start-btn:hover {
+    background: var(--accent2);
+    transform: translateY(-1px);
+  }
+
+  /* 보조 링크 */
+  .bg-aux-links {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--sub);
+  }
+  .bg-aux-links a {
+    color: var(--sub);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--border2);
+    padding-bottom: 1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .bg-aux-links a:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .bg-aux-links .sep {
+    color: var(--border2);
+    pointer-events: none;
+  }
+
+  /* 모바일 */
+  @media (max-width: 768px) {
+    .bg-invite-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    .bg-hero-title { font-size: 38px; }
+    .bg-hero-subtitle { font-size: 17px; }
+    .bg-promise-grid { grid-template-columns: 1fr; gap: 12px; }
+    .bg-promise-card { padding: 18px 18px 20px; }
+    .bg-start-btn { padding: 14px 32px; font-size: 15px; width: 100%; max-width: 320px; }
+    .bg-aux-links { gap: 14px; flex-direction: column; }
+    .bg-aux-links .sep { display: none; }
+  }
+</style>
+
+<div class="bg-invite-wrap">
+  <div class="bg-hero">
+    <div class="bg-hero-eyebrow">📊 성향 진단 · mapping <%= mappingVersion %></div>
+    <h1 class="bg-hero-title">내 정치 입장의 입체적 모양</h1>
+    <p class="bg-hero-subtitle">
+      좌·우 한 줄 라벨이 아니라, 4축 좌표로 자기 입장을 봅니다.
+      흔들고 다시 세우는 과정에서 자기 입장이 진짜 자기 것이 됩니다.
+    </p>
+    <span class="bg-hero-meta">
+      <span class="dot">●</span><%= questionCount %>문항 · 약 7~10분
+    </span>
+  </div>
+
+  <div class="bg-promise-grid">
+    <div class="bg-promise-card">
+      <div class="bg-promise-num">01</div>
+      <h3 class="bg-promise-title">라벨링하지 않습니다</h3>
+      <p class="bg-promise-desc">
+        "당신은 <strong>진보 80%</strong>" 같은 1축 압축은 정보를 잃습니다.
+        같은 "우" 안에도 결이 다른 사람이 있습니다.
+      </p>
+    </div>
+    <div class="bg-promise-card">
+      <div class="bg-promise-num">02</div>
+      <h3 class="bg-promise-title">정당과 매칭하지 않습니다</h3>
+      <p class="bg-promise-desc">
+        "<strong>○○당과 78% 일치</strong>"는 줄세우기입니다.
+        이 게임은 <strong>의원과의 결</strong>로 연결됩니다.
+      </p>
+    </div>
+    <div class="bg-promise-card">
+      <div class="bg-promise-num">03</div>
+      <h3 class="bg-promise-title">매핑을 공개합니다</h3>
+      <p class="bg-promise-desc">
+        어떤 답이 어떤 축에 어떻게 들어가는지
+        <strong>전부 공개</strong>합니다. 객관이 아니라 투명입니다.
+      </p>
+    </div>
+  </div>
+
+  <div class="bg-cta">
+    <a href="/balance-game/respond" class="bg-start-btn">
+      시작하기 →
+    </a>
+  </div>
+
+  <div class="bg-aux-links">
+    <a href="/balance-game/mapping">매핑 미리 보기</a>
+    <span class="sep">·</span>
+    <span style="color:var(--sub2)">이미 했어요 → 카드 보기 (Phase 3+ 예정)</span>
+  </div>
+</div>

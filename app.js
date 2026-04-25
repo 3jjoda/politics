@@ -7,6 +7,7 @@ import dbConfig from './config/database.js';
 import setupRoutes from './routes/Index.js';
 import setupPassport from './config/passport.js';
 import { injectUser } from './middlewares/auth.js';
+import { injectBalanceGameStatus } from './middlewares/balanceGame.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
 import { dataFreshnessMiddleware } from './utils/dataFreshness.js';
@@ -65,6 +66,9 @@ app.use(injectUser);
 
 /* 모든 템플릿에 법안 데이터 갱신 시각 주입 (10분 캐시) */
 app.use(dataFreshnessMiddleware(db));
+
+/* 모든 템플릿에 balanceGameCompleted boolean 주입 — D 레이어 미완료 배지용 */
+app.use(injectBalanceGameStatus(db));
 
 /* db.query 래핑: SQL + 결과 건수 자동 로깅 */
 const originalQuery = db.query.bind(db);

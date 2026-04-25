@@ -5,6 +5,93 @@
 
 ---
 
+## 2026-04-26 — 정치 성향 밸런스 게임 골격 (단계 1·2 + DB)
+
+데이터 의존성 없는 화면·구조·DB 부분만. 단계 3·4·5 (펼침·비교·연결) / 의원 거리 계산 / D 레이어 활성 / 문항 시드는 다음 라운드.
+
+### DB 마이그레이션 — 4개 테이블 (BALANCEGAME §11)
+`etc/ddl/migrations/2026-04-26-balance-game.sql`:
+- `balance_game_responses` — append-only 응답 카드 (재검사해도 덮어쓰지 않고 `is_archived=TRUE`로 숨김). `user_id` NULL 허용 (비로그인 응답)
+- `balance_game_questions` — 문항 마스터, `mapping_version` 추적
+- `bill_axis_mapping` — 법안-축 매핑 (사람이 결정, 의원 좌표 계산 입력)
+- `politician_axis_score` — 의원 4축 좌표 (PK: `mona_cd`+`mapping_version`). 향후 D 레이어에서 거리 계산
+- 모든 테이블이 `mapping_version` 으로 추적 — ANALYSIS.md `prompt_version` 패턴과 동일
+
+### 라우트·컨트롤러·mock 문항
+- `controllers/BalanceGameController.js` 신규 — `getInvitePage` / `getRespondPage` / `getMappingPreviewPage`
+- `routes/PageRoutes.js` 에 `/balance-game`, `/balance-game/respond`, `/balance-game/mapping` 등록
+- `data/balanceGameMockQuestions.js` 신규 — BALANCEGAME §9 의 20개 문항을 모듈로 박아둠. DB 시드 전 화면 골격 검증용. 확정 후 `balance_game_questions` 로 이전
+
+### nav 메뉴 + 미들웨어
+- `views/layout.ejs` PC nav 와 모바일 패널에 "성향 진단" 항목 추가 (의원·법안 다음, 커뮤니티 앞)
+- `middlewares/balanceGame.js` 신규 — `injectBalanceGameStatus` 가 `res.locals.balanceGameCompleted` 주입. 비로그인·응답 0건 → false, 응답 1건+ → true. `app.js` 의 `injectUser` 다음 단계에 등록
+
+### 단계 1 — 초대 (`views/balance/invite.ejs`)
+UI_BALANCEGAME §단계1 그대로:
+- Hero (Bebas Neue 52px) + 부제(Noto Serif KR) + 시간 약속 칩 (`📊 mapping v1 · 20문항 · 약 7~10분`)
+- **3가지 약속 카드** 가로 배열 (모바일 세로 스택): 라벨링 X / 정당 매칭 X / 매핑 공개 — 정치人과의 차별점을 첫 화면부터 노출
+- 시작 버튼 + 보조 링크 (매핑 미리 보기 / Phase 3+ 카드 보기 안내)
+
+### 단계 2 — 응답 (`views/balance/respond.ejs`)
+한 화면 한 문항 + 진행도 + A/B/C + 키보드:
+- sticky 진행도 바 (`3/20 — 경제`) + 진행 트랙 (응답한 만큼 채움)
+- 양측 맥락 한 단락 (Noto Serif KR 17px, 2~3줄)
+- A/B/C 버튼 세로 스택. C("잘 모르겠다") 는 회색 톤이지만 흐릿하지 않게 (UI_BALANCEGAME 명시)
+- 키보드 지원: `1·2·3` / `A·B·C` / `←` 이전 문항
+- localStorage 저장 (`pb.balanceGame.draft.<mappingVersion>`) — 중간 이탈 시 이어하기. 응답 완료 후 자동 정리
+- 응답 완료 화면 — 단계 3·4·5 미구현 안내 + 클라이언트에서 즉석 계산한 4축 점수 디버그 출력 (`<pre>` 박스)
+- 페이드 전환 0.3초 (자동 응답 모드 회피 + 답답하지 않은 속도)
+- 모바일에선 키보드 힌트 숨김, 버튼 최소 56px 터치 타겟
+
+### 매핑 미리 보기 (`views/balance/mapping_preview.ejs`)
+단계 1 의 보조 링크 도달지. 4축별로 5문항씩 그룹화, 각 옵션의 매핑 점수(+1 / -1 / ±0)를 칩으로 시각화. 점수 색은 시민 찬반과 같은 `--vote-pro` / `--vote-con` 톤 사용 (디자인 토큰 재활용, "정당색·강조색 X" 정신 유지). 매핑 버전 라벨 노출 + 피드백 메일 안내. 본격 매핑 변경 추적은 Phase 1 출시 직전 정밀화
+
+### 의원 카드 — 미완료 유저 회색 배지
+`public/styles/main.css` 에 `.bg-pending-badge` 컴포넌트 신규 (회색 톤 pill). `views/politician/politician.ejs` 의 그리드 카드 + 리스트 카드 양쪽에 `<% if (locals.balanceGameCompleted === false) { %>📊 진단 후 표시<% } %>` 조건부 렌더. 카드 전체가 `<a>` 라 배지엔 `pointer-events: none` — 시각 신호만, 클릭 시엔 의원 상세로 자연스럽게 이동. 의원 상세에 큰 D 레이어 배지·홈 탭 비활성·1회 풀스크린 안내·마이페이지 카드는 다음 라운드.
+
+### 미해결 (다음 라운드)
+- 단계 3 펼침 (다이아몬드 클라이맥스 애니메이션)
+- 단계 4 비교 (분포 다이아몬드 + 인구통계 토글)
+- 단계 5 연결 (비슷한 의원 TOP 3 + 출구 5종)
+- 응답 저장 API (`POST /api/balance-game/responses`)
+- 의원 4축 좌표 배치 (`batch/calcPoliticianAxis.js`) + 사람이 매핑하는 50~100건의 `bill_axis_mapping` 시드
+- D 레이어 활성 표시 — 의원 카드 `🎯 0.7  📊 v1` / 홈 탭 / 법안 상세 Zone 4 끝
+- 문항 시드 (`balance_game_questions` 행 채움 — 매핑 확정 후)
+- 1회 풀스크린 안내 + 마이페이지 카드
+
+---
+
+## 2026-04-26 — 국민 찬반 위젯 색 중립화 (`public/styles/main.css`)
+
+[ANALYSIS.md](./ANALYSIS.md) §7-장치1 "크다=좋다 프레임 차단" + 정당색 회피 원칙 동시 적용.
+
+### 결정 — 찬성/반대 색은 등명도 저채도 두 hue
+기존 `--green` / `--red` 는 본회의 표결(가결/부결) 같은 **객관 데이터**엔 자연스럽지만, 시민 찬반은 의견이 갈리는 영역이라 한쪽 명도·채도가 더 세면 무의식적으로 "찬성=좋음" 프레임이 생긴다. 다음 안 검토:
+- 골드 채도 단계 / 골드 vs 차콜 / 골드 vs 보라(--purple) — 골드는 별점·좋아요·`comment.liked` 가 이미 점령. 한쪽 편으로 쓰면 의미 충돌 ❌
+- `--purple` 채도 92% 라 자극 강함 ❌
+- 차콜 vs 베이지 — 명도차 너무 커서 "찬성=무거움" 프레임 ❌
+- **선택**: cool slate vs warm mocha 등명도 저채도 — hue 만 cool/warm 으로 갈라 무게 동등 + 시각 구분 가능 + 골드 채도 영역과 분리 → 별점·좋아요와 톤 충돌 0
+
+### 적용
+- 신규 토큰 2종 (`public/styles/main.css :root`):
+  - `--vote-pro: #7499B4` (HSL 205, 30%, 58% — cool slate)
+  - `--vote-con: #B48E74` (HSL  24, 30%, 58% — warm mocha)
+  - 명도(L) / 채도(S) 동일, hue 만 cool/warm 보색 방향. 정당 대표색 어디에도 안 걸림
+  - 4단계 조정으로 최종값 도달: L=36%/S=14% → L=45%/S=20% → L=58%/S=22% → **L=58%/S=30%**. 어두움·hue 약함 피드백을 명도와 채도로 단계 보강. 명도 올리는 시점에 글자색을 흰색에서 차콜로 동시 전환 — 차콜 글자 + 밝은 배경 대비 ~7:1 (WCAG AAA)
+- 위젯 클래스 색 교체 (`.cv-*`): `cv-agree/cv-disagree` 막대, `cv-dot-agree/disagree` 도트, `cv-btn-*-active` 버튼. `--green/--red` 4곳 → 각각 `--vote-pro/--vote-con` 로
+- `cv-seg` 글자색 `#fff` → `var(--text)` + `font-weight: 600` → `700` (밝아진 배경에 차콜 글자 + 굵기 ↑로 가독성)
+- `cv-btn-*-active` 글자색 `#fff` → `var(--text)`
+- `cv-seg` 안의 % 숫자 + `cv-legend` 의 "찬성/반대 N명" 라벨이 색맹 접근성 보강
+
+### 미변경 — 본회의 표결 시각화는 그대로
+본회의 가결/부결은 객관 데이터라 정당색 회피 대상이 아님. `--green/--red` 유지:
+- `views/index.ejs` 홈 vote 카드, KPI 카드
+- `views/bill/bill.ejs` 카드 우측 vote-mini 막대
+- `views/bill/bill_detail.ejs` 본회의 표결 4박스
+- `views/politician/politician_detail.ejs` v-for/v-against 칩, 표결 성향 바, 타임라인 dot
+
+---
+
 ## 2026-04-26 — AI 분석·요청 필터 카드 통합 + 카테고리 v4.1 도입
 
 ### AI 법안 분석 카테고리 2-tier 분류 (v4.1)

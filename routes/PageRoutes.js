@@ -4,6 +4,7 @@ import express from 'express';
 import InitController from '../controllers/InitController.js';
 import PoliticianController from '../controllers/PoliticianController.js';
 import BillController from '../controllers/BillController.js';
+import BalanceGameController from '../controllers/BalanceGameController.js';
 import { requireLogin } from '../middlewares/auth.js';
 
 export default (db) => {
@@ -11,6 +12,7 @@ export default (db) => {
     const initController = InitController(db);
     const politicianController = PoliticianController(db);
     const billController = BillController(db);
+    const balanceGameController = BalanceGameController(db);
 
     // 메인 페이지
     router.get('/', initController.getHomePage);
@@ -54,6 +56,11 @@ export default (db) => {
 
     // 마이페이지 — 내가 요청한 분석
     router.get('/my/analysis-requests', requireLogin, billController.getMyAnalysisRequestsPage);
+
+    // 성향 진단 (밸런스 게임) — 단계 1·2 골격
+    router.get('/balance-game',          balanceGameController.getInvitePage);
+    router.get('/balance-game/respond',  balanceGameController.getRespondPage);
+    router.get('/balance-game/mapping',  balanceGameController.getMappingPreviewPage);
 
     return router;
 };

@@ -1049,6 +1049,9 @@
               <% if (p.elect_gbn_nm) { %>
                 <span class="pol-elect-badge"><%= p.elect_gbn_nm %></span>
               <% } %>
+              <% if (locals.balanceGameCompleted === false) { %>
+                <span class="bg-pending-badge" title="성향 진단 후 당신과의 거리가 표시됩니다">📊 진단 후 표시</span>
+              <% } %>
             </div>
 
             <div class="pol-overlay">
@@ -1101,7 +1104,12 @@
             </div>
             <div class="pol-list-num"><span class="pol-list-num-label">발의</span><%= p.propose_cnt %></div>
             <div class="pol-list-num"><span class="pol-list-num-label">공동</span><%= p.co_propose_cnt %></div>
-            <div><span style="font-size:11px;color:var(--accent)">상세 →</span></div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <% if (locals.balanceGameCompleted === false) { %>
+                <span class="bg-pending-badge" title="성향 진단 후 당신과의 거리가 표시됩니다">📊 진단 후 표시</span>
+              <% } %>
+              <span style="font-size:11px;color:var(--accent)">상세 →</span>
+            </div>
           </a>
         <% }); %>
       </div>

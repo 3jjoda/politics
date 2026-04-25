@@ -33,6 +33,18 @@
   --blue:   #2563EB;  /* 순수 링크/참조용 (브랜드 아님) */
   --purple: #7C3AED;
 
+  /* 밸런스 게임 D 레이어 — 미완료 유저 회색 배지
+     의원 카드·홈 탭 등에 일관된 톤. 게임 완료 시 거리 배지로 교체될 자리. */
+  --bg-pending-fg: #7A8090;   /* = --sub2 */
+  --bg-pending-bg: rgba(122, 128, 144, 0.10);
+
+  /* 국민 찬반 — 등명도(L≈58%) 저채도(S≈22%) 두 hue.
+     ANALYSIS.md §7-장치1 "크다=좋다 프레임 차단" 정신.
+     찬성/반대 무게 동등, 정당색·골드 액센트와 톤 충돌 없음.
+     글자는 차콜(--text)로 — 색은 밝히고 텍스트 대비는 유지(7:1+, WCAG AAA) */
+  --vote-pro: #7499B4;  /* cool slate (HSL 205, 30%, 58%) */
+  --vote-con: #B48E74;  /* warm mocha (HSL  24, 30%, 58%) */
+
   /* 그림자 */
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   --shadow:    0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
@@ -678,16 +690,16 @@ input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: var(--text);
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   transition: width 0.4s ease;
   min-width: 0;
   white-space: nowrap;
 }
-.cv-agree    { background: var(--green); }
-.cv-disagree { background: var(--red); }
+.cv-agree    { background: var(--vote-pro); }
+.cv-disagree { background: var(--vote-con); }
 .cv-legend {
   display: flex;
   align-items: center;
@@ -700,8 +712,8 @@ input, textarea, select { font-family: inherit; }
 .cv-legend-item { display: flex; align-items: center; gap: 6px; }
 .cv-legend-item strong { color: var(--text); }
 .cv-dot { width: 10px; height: 10px; border-radius: 50%; }
-.cv-dot-agree    { background: var(--green); }
-.cv-dot-disagree { background: var(--red); }
+.cv-dot-agree    { background: var(--vote-pro); }
+.cv-dot-disagree { background: var(--vote-con); }
 .cv-total { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sub2); }
 
 .cv-actions {
@@ -726,16 +738,34 @@ input, textarea, select { font-family: inherit; }
 }
 .cv-btn:hover { border-color: var(--border2); }
 .cv-btn-agree.active {
-  background: var(--green);
-  color: #fff;
-  border-color: var(--green);
+  background: var(--vote-pro);
+  color: var(--text);
+  border-color: var(--vote-pro);
 }
 .cv-btn-disagree.active {
-  background: var(--red);
-  color: #fff;
-  border-color: var(--red);
+  background: var(--vote-con);
+  color: var(--text);
+  border-color: var(--vote-con);
 }
 .cv-my-hint { margin-left: auto; font-size: 12px; color: var(--sub2); }
+
+/* 밸런스 게임 — 미완료 유저 D 레이어 배지
+   완료 유저에겐 같은 자리에 거리 배지(🎯 0.7  📊 v1)가 들어갈 예정 */
+.bg-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--bg-pending-bg);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--bg-pending-fg);
+  white-space: nowrap;
+  pointer-events: none;     /* 카드 전체 링크라 배지가 클릭 막지 않게 */
+}
 
 /* ===== MOBILE PANEL ===== */
 .pb-mobile-panel {

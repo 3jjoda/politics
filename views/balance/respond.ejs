@@ -1,0 +1,418 @@
+<%
+  // 서버 → 클라이언트 데이터 직렬화 (XSS 방어 — </script> 이스케이프)
+  const escape = (s) => JSON.stringify(s).replace(/</g, '\\u003c');
+%>
+
+<style>
+  .bg-respond-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 24px) 20px 80px;
+  }
+
+  /* 진행도 바 (sticky) */
+  .bg-progress {
+    position: sticky;
+    top: var(--nav-h);
+    z-index: 40;
+    margin: 0 -20px 24px;
+    padding: 14px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  .bg-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+  .bg-progress-counter {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--sub);
+    flex-shrink: 0;
+  }
+  .bg-progress-counter strong { color: var(--text); }
+  .bg-progress-axis {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 3px 10px;
+    background: #FAF6EB;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .bg-progress-prev {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--sub2);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+  }
+  .bg-progress-prev:hover { color: var(--accent); }
+  .bg-progress-prev:disabled { opacity: 0.3; cursor: default; }
+
+  .bg-progress-track {
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .bg-progress-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s ease;
+  }
+
+  /* 양측 맥락 (한 화면 한 문항) */
+  .bg-question {
+    /* 문항 전환 시 0.3초 페이드 */
+    animation: bgQuestionIn 0.3s ease;
+  }
+  @keyframes bgQuestionIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .bg-prompt {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1.75;
+    color: var(--text);
+    margin: 28px 0 24px;
+    padding: 0 4px;
+    word-break: keep-all;
+  }
+
+  /* A/B/C 버튼 — 세로 스택 */
+  .bg-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .bg-option {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 64px;
+    padding: 14px 18px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  }
+  .bg-option:hover {
+    border-color: var(--accent);
+    background: #FAF6EB;
+  }
+  .bg-option:active { transform: scale(0.99); }
+  .bg-option .key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--bg3);
+    color: var(--sub);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .bg-option .text { flex: 1; line-height: 1.55; word-break: keep-all; }
+
+  /* C — 회색 톤이지만 흐릿하지 않게 */
+  .bg-option.skip {
+    background: var(--bg);
+    color: var(--sub);
+  }
+  .bg-option.skip .key {
+    background: var(--bg3);
+    color: var(--sub2);
+  }
+  .bg-option.skip:hover {
+    border-color: var(--sub2);
+    background: var(--bg3);
+    color: var(--text);
+  }
+
+  /* 키보드 힌트 */
+  .bg-keyboard-hint {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bg-keyboard-hint kbd {
+    padding: 1px 6px;
+    border: 1px solid var(--border2);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--bg2);
+    color: var(--sub);
+    font-family: inherit;
+    font-size: 11px;
+  }
+
+  /* 완료 화면 (단계 3·4·5 미구현 — placeholder) */
+  .bg-done {
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .bg-done-title {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 900;
+    font-size: 28px;
+    color: var(--text);
+    margin: 0 0 12px;
+  }
+  .bg-done-desc {
+    font-size: 14px;
+    color: var(--sub);
+    line-height: 1.7;
+    margin: 0 0 24px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    word-break: keep-all;
+  }
+  .bg-done-debug {
+    display: inline-block;
+    margin: 16px 0 24px;
+    padding: 14px 18px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub);
+    text-align: left;
+    line-height: 1.6;
+    white-space: pre;
+  }
+  .bg-done-actions {
+    display: inline-flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .bg-done-actions a {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    background: var(--bg2);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .bg-done-actions a:hover { border-color: var(--accent); color: var(--accent); }
+  .bg-done-actions a.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .bg-done-actions a.primary:hover { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+
+  @media (max-width: 768px) {
+    .bg-respond-wrap { padding: calc(var(--nav-h) + 16px) 16px 60px; }
+    .bg-prompt { font-size: 16px; line-height: 1.7; }
+    .bg-option { font-size: 15px; min-height: 56px; padding: 12px 14px; gap: 10px; }
+    .bg-keyboard-hint { display: none; }   /* 모바일은 키보드 힌트 숨김 */
+  }
+</style>
+
+<div class="bg-respond-wrap">
+  <!-- 진행도 -->
+  <div class="bg-progress">
+    <div class="bg-progress-row">
+      <span class="bg-progress-counter"><strong id="bg-current-num">1</strong> / <%= questions.length %></span>
+      <span class="bg-progress-axis" id="bg-current-axis">—</span>
+      <button type="button" class="bg-progress-prev" id="bg-btn-prev" disabled>← 이전 문항</button>
+    </div>
+    <div class="bg-progress-track" aria-hidden="true">
+      <div class="bg-progress-fill" id="bg-progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- 문항 영역 (JS 가 채움) -->
+  <section class="bg-question" id="bg-question-section" aria-live="polite">
+    <p class="bg-prompt" id="bg-prompt"></p>
+    <div class="bg-options" id="bg-options"></div>
+  </section>
+
+  <p class="bg-keyboard-hint">
+    <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 으로 선택 ·
+    <kbd>←</kbd> 이전 문항
+  </p>
+
+  <!-- 완료 화면 (단계 3·4·5 placeholder) -->
+  <section class="bg-done" id="bg-done-section" hidden>
+    <h2 class="bg-done-title">응답 완료 🎉</h2>
+    <p class="bg-done-desc">
+      단계 3 펼침·단계 4 비교·단계 5 연결은 아직 구현되지 않았습니다.<br>
+      현재는 응답이 클라이언트에 모인 상태로, 다음 라운드에서
+      다이아몬드 카드 + 분포 비교 + 의원 매칭이 추가됩니다.
+    </p>
+    <pre class="bg-done-debug" id="bg-done-debug"></pre>
+    <div class="bg-done-actions">
+      <a href="/balance-game" class="primary">다시 시작</a>
+      <a href="/balance-game/mapping">매핑 보기</a>
+      <a href="/">홈으로</a>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const QUESTIONS = <%- escape(questions) %>;
+  const AXES      = <%- escape(axes) %>;
+  const MAPPING_V = <%- escape(mappingVersion) %>;
+  const STORAGE_KEY = 'pb.balanceGame.draft.' + MAPPING_V;
+
+  const promptEl    = document.getElementById('bg-prompt');
+  const optionsEl   = document.getElementById('bg-options');
+  const counterEl   = document.getElementById('bg-current-num');
+  const axisEl      = document.getElementById('bg-current-axis');
+  const fillEl      = document.getElementById('bg-progress-fill');
+  const prevBtn     = document.getElementById('bg-btn-prev');
+  const questionSec = document.getElementById('bg-question-section');
+  const doneSec     = document.getElementById('bg-done-section');
+  const debugEl     = document.getElementById('bg-done-debug');
+
+  // 응답 상태 — answers[questionId] = optionId ('A'|'B'|'C')
+  let answers = {};
+  let idx = 0;
+
+  // 로컬 저장 복원 (이어하기)
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.answers && typeof parsed.answers === 'object') answers = parsed.answers;
+      if (Number.isInteger(parsed.idx) && parsed.idx >= 0 && parsed.idx < QUESTIONS.length) {
+        idx = parsed.idx;
+      }
+    }
+  } catch (e) {}
+
+  const persist = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers, idx, ts: Date.now() }));
+    } catch (e) {}
+  };
+
+  const clearStorage = () => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  };
+
+  const renderQuestion = () => {
+    if (idx >= QUESTIONS.length) return showDone();
+    const q = QUESTIONS[idx];
+
+    counterEl.textContent = String(idx + 1);
+    axisEl.textContent = AXES[q.axis] ? AXES[q.axis].label : q.axis;
+
+    promptEl.textContent = q.prompt;
+
+    // 진행도 — "응답한 만큼" 채움
+    const answered = Object.keys(answers).filter(qId => QUESTIONS.some(qq => qq.id === qId)).length;
+    fillEl.style.width = (answered / QUESTIONS.length * 100).toFixed(1) + '%';
+
+    // 옵션 렌더 (페이드인은 section 의 keyframes)
+    optionsEl.innerHTML = '';
+    q.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'bg-option' + (opt.id === 'C' ? ' skip' : '');
+      btn.dataset.optionId = opt.id;
+      btn.innerHTML = `
+        <span class="key">${opt.id}</span>
+        <span class="text">${escapeHtml(opt.text)}</span>
+      `;
+      btn.addEventListener('click', () => choose(opt.id));
+      optionsEl.appendChild(btn);
+    });
+
+    // 페이드 다시 트리거
+    questionSec.style.animation = 'none';
+    questionSec.offsetWidth;
+    questionSec.style.animation = '';
+
+    prevBtn.disabled = idx === 0;
+  };
+
+  const choose = (optionId) => {
+    const q = QUESTIONS[idx];
+    answers[q.id] = optionId;
+    idx += 1;
+    persist();
+    renderQuestion();
+  };
+
+  const goPrev = () => {
+    if (idx === 0) return;
+    idx -= 1;
+    persist();
+    renderQuestion();
+  };
+
+  const showDone = () => {
+    questionSec.hidden = true;
+    document.querySelector('.bg-keyboard-hint')?.setAttribute('hidden', '');
+    fillEl.style.width = '100%';
+    counterEl.textContent = String(QUESTIONS.length);
+    axisEl.textContent = '완료';
+    prevBtn.disabled = true;
+    doneSec.hidden = false;
+
+    // 디버그 — 4축 점수 즉석 계산 (단계 3 미구현 자리에 임시)
+    const score = { economy: 0, social: 0, security: 0, institution: 0 };
+    const skipped = { economy: 0, social: 0, security: 0, institution: 0 };
+    QUESTIONS.forEach(q => {
+      const ans = answers[q.id];
+      if (!ans) return;
+      const opt = q.options.find(o => o.id === ans);
+      if (!opt) return;
+      if (opt.score === 0) skipped[q.axis] = (skipped[q.axis] || 0) + 1;
+      else                  score[q.axis] = (score[q.axis] || 0) + opt.score;
+    });
+    debugEl.textContent =
+      'mapping: ' + MAPPING_V + '\n' +
+      'score:    ' + JSON.stringify(score) + '\n' +
+      'skipped:  ' + JSON.stringify(skipped);
+
+    clearStorage();
+  };
+
+  const escapeHtml = (s) =>
+    String(s).replace(/[&<>"']/g, ch => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[ch]));
+
+  // 키보드 지원 — 1·2·3 / ←
+  document.addEventListener('keydown', (e) => {
+    // 입력 필드에 포커스가 있으면 무시
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea') return;
+    if (idx >= QUESTIONS.length) return;
+    if (e.key === '1' || e.key === 'a' || e.key === 'A') { e.preventDefault(); choose('A'); }
+    else if (e.key === '2' || e.key === 'b' || e.key === 'B') { e.preventDefault(); choose('B'); }
+    else if (e.key === '3' || e.key === 'c' || e.key === 'C') { e.preventDefault(); choose('C'); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); goPrev(); }
+  });
+
+  prevBtn.addEventListener('click', goPrev);
+
+  renderQuestion();
+})();
+</script>

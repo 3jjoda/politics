@@ -22,9 +22,7 @@
 1. ~~**AI 법안 분석 배치 스크립트 구현**~~ ✅ 2026-04-25 완료 (`batch/syncBillAiAnalysis.js` v4 → 04-26 v4.1 카테고리 2-tier). 다음 운영 액션:
    - 가결 490건 본격 분석 (~$8.4) — 사용자 결정 후 진행
    - 분석 요청 우선순위 큐 (`/bill?has_analysis=N&request_status=any&sort=requested`) 주기적 처리
-2. 국민 찬반 위젯 디자인 중립화
-   - 초록/빨강 → 골드 계열 대비 색으로 전환
-   - 정당색 회피 원칙 유지
+2. ~~국민 찬반 위젯 디자인 중립화~~ ✅ 2026-04-26 완료 (`--vote-pro` 슬레이트 / `--vote-con` 모카, 등명도 저채도 두 hue. 본회의 표결 시각화는 객관 데이터라 `--green/--red` 유지)
 3. **22대 역대 의원 데이터 보강** — `politicians` 테이블에 중도 퇴임 의원 포함
    - 현재 상태: `syncPoliticians.js` 가 현직 API 기반 → 현직 295명만. 22대 임기 중 사직·당선무효·사망·승계 등으로 퇴임한 ~11명이 누락
    - 증상: 본회의 표결 리스트·발의자 카드에서 해당 의원 이름·정당·사진 공란, LEFT JOIN miss 로 `mona_cd` 원본이 노출될 뻔함 (2026-04-24 UI fallback 으로 "(퇴임)" 표기는 처리)
@@ -40,6 +38,15 @@
 11. **AI 분석 자동 트리거** — 임계값(5명) 도달 시 cron 또는 hook 으로 자동 분석. 현재는 운영자가 수동으로 `--bill-id` 실행. 자동화 위치는 `batch/syncBillAiAnalysis.js` 의 `fetchTargets` 에 "request_count >= threshold AND a.bill_id IS NULL" 분기 추가
 12. **prompt cache 활성화** — 현재 system prompt(~3,300 tok)가 Haiku 4.5 임계값(~4,096) 미달로 캐시 안 들어감. 예시·금지표현 추가로 4,500+ 토큰까지 늘리면 자동 활성. 절감 효과 = 1건당 cache_read $0.0033 (input × 0.10) ≈ -20%
 13. **legacy `category` 컬럼 DROP** — v4.1 안정화 1주 후 (`bill_ai_analysis.category` 와 `bills.bill_topic_cd` 둘 다)
+14. **정치 성향 밸런스 게임** — [BALANCEGAME.md](./BALANCEGAME.md) / [UI_BALANCEGAME.md](./UI_BALANCEGAME.md) 참조
+    - ✅ 2026-04-26 단계 1·2 골격 + DB 4테이블 + nav + 의원 카드 회색 배지
+    - ⬜ 단계 3 펼침 (다이아몬드 클라이맥스 애니메이션) — 의원 상세 4축 레이더 컴포넌트 재사용
+    - ⬜ 단계 4 비교 (분포 다이아몬드 + 인구통계 토글)
+    - ⬜ 단계 5 연결 (비슷한 의원 TOP 3 + 출구 5종)
+    - ⬜ 응답 저장 API (`POST /api/balance-game/responses`) + Phase 1 출시 직전 문항 시드
+    - ⬜ `batch/calcPoliticianAxis.js` + 사람이 50~100건 매핑 (`bill_axis_mapping` 시드)
+    - ⬜ D 레이어 활성: 의원 카드 거리 배지, 홈 "결 비슷한 의원의 법안" 탭, 법안 상세 Zone 4 끝 1줄
+    - ⬜ 1회 풀스크린 안내 + 마이페이지 카드 갤러리
 
 ### 베타 오픈 후 — 1순위
 14. **AI 분석 Zone 5 추가** — 참고 맥락(`context`) · 분석 한계(`limitations`) 접힘 표시 + Zone 4 "더 알아보기" 버튼 부활
@@ -50,7 +57,7 @@
     - ④ 당론 이탈 의원 순위
     - ⑤ 법안 생존율 깔때기
 16. **의원 AI 분석 기능** — [ANALYSIS.md](./ANALYSIS.md) 원칙 재사용 (의원 활동 프로파일·표결 패턴·대표발의 성향)
-17. 정치 성향 밸런스 게임 + 밸런스게임 서비스 링크
+17. **밸런스게임 서비스 링크** — 정치 바로미터 내 미니 게임이 정착하면 별도 서비스(밸런스게임 서비스)로 확장. Phase 6: Venn 콜드스타트 자료
 18. 재화 시스템 (credits 컬럼 + credit_logs 테이블)
 19. 의원 별점 → 재화 소비로 전환
 

@@ -50,7 +50,8 @@
 --text:    #1A1D24 / --sub: #4B5362 / --sub2: #7A8090
 --accent:  #B8740C    브랜드 골드 (활성/버튼/링크)
 --accent2: #925C09    호버
---green:   #0F9D6E / --red: #D03A3A / --purple: #7C3AED
+--green:   #0F9D6E / --red: #D03A3A / --purple: #7C3AED   # 객관 데이터 (본회의 가결/부결) 전용
+--vote-pro: #7499B4 / --vote-con: #B48E74                  # 시민 찬반 — 등명도(L=58%) 등채도(S=30%), cool/warm 두 hue. 글자는 차콜 (2026-04-26)
 --nav-h:   60px       고정 nav 높이
 ```
 - 폰트: Noto Sans KR 15px/1.75, `word-break: keep-all`
@@ -273,6 +274,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   `bill_analysis_requests.sql` (2026-04-25 — 분석 요청 테이블 + view)
 - `etc/ddl/migrations/` — 누적 변경
   - `2026-04-26-bill-category-tier.sql` — `bill_ai_analysis` 에 `category_main`/`category_sub` 컬럼 추가
+  - `2026-04-26-balance-game.sql` — 밸런스 게임 4테이블 (`balance_game_responses` append-only / `balance_game_questions` / `bill_axis_mapping` / `politician_axis_score`). [BALANCEGAME.md](./BALANCEGAME.md) 참조
 
 ---
 
@@ -291,6 +293,9 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
 | `/community/:id` | `community/detail.ejs` | 상세 (조회수·좋아요·댓글) |
 | `/my/analysis-requests` | `my/analysis_requests.ejs` | 마이페이지 — 내가 요청한 AI 분석 (`requireLogin`) |
+| `/balance-game` | `balance/invite.ejs` | 성향 진단 — 단계 1 초대 (3가지 약속 카드 + 시작 버튼) |
+| `/balance-game/respond` | `balance/respond.ejs` | 단계 2 응답 (한 화면 한 문항, 진행도, A/B/C, 키보드 1·2·3·←, mock 문항) |
+| `/balance-game/mapping` | `balance/mapping_preview.ejs` | 매핑 미리 보기 (4축별 문항·점수 공개) |
 | `/about` | `about.ejs` | 사이트 소개 |
 | `/glossary` | `glossary.ejs` | 용어 설명 (목차 + 4섹션) |
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
@@ -403,6 +408,8 @@ PC/모바일 동일 패턴으로 통일.
   - `dataFreshnessMiddleware(db)` — `MAX(bills.updated_at)` 조회 + 10분 메모리 캐시, `res.locals.dataFreshness = { lastUpdated, relative, absolute }` 주입
   - `formatRelativeKo(date)` — 분/시간/일/주/달 단위 한국어 상대시간
   - nav 배지(`views/layout.ejs` `.pb-nav-badge`)가 "● 법안 N시간 전 갱신" 렌더에 사용. 모바일(≤768px)은 숨김. `syncBills.js` 의 `ON CONFLICT ... updated_at = NOW()` 가 시각 소스 → 크론 배치가 배지를 실시간으로 갱신
+- `middlewares/balanceGame.js` (2026-04-26)
+  - `injectBalanceGameStatus(db)` — `res.locals.balanceGameCompleted` boolean 주입. 비로그인·응답 0건 → false (= 카드에 회색 배지 노출), 응답 1건+ → true. 로그인 유저 한정으로 `balance_game_responses` 1행 EXISTS 조회. 의원 카드(`politician.ejs` 그리드·리스트 양쪽)의 `📊 진단 후 표시` 회색 배지 + 향후 홈 탭 비활성·법안 상세 Zone 4 끝 1줄 등 D 레이어 자리에 일관 적용 예정
 
 ---
 
