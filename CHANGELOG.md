@@ -5,6 +5,140 @@
 
 ---
 
+## 2026-04-26 — AI 분석·요청 필터 카드 통합 + 카테고리 v4.1 도입
+
+### AI 법안 분석 카테고리 2-tier 분류 (v4.1)
+자유 형식 카테고리("교육·환경", "조세·재정·금융" 등)가 분석이 늘어나면 표현 분기로 카테고리가 폭발하는 문제 해결.
+- `bill_ai_analysis` 에 `category_main VARCHAR(50)` + `category_sub VARCHAR(50)` 컬럼 추가 (기존 `category` 는 deprecate, 안정화 후 DROP 예정)
+- `category_main` = 16종 고정 set: `정치·행정 / 외교·통일 / 국방·안보 / 사법·치안 / 산업·R&D / 조세·재정 / 노동·고용 / 교육·인재 / 환경·에너지 / 보건·의료 / 복지·돌봄 / 주거·국토 / 농어촌·수산 / 문화·예술 / 안전·재난 / 유통·소비자`
+- `category_sub` = 자유 형식 10자 이내 (예: "양자기술", "환경교육", "소상공인")
+- 카드 표시: "환경·에너지 · 환경교육" 형태 (sub 는 회색 톤)
+- 16종 + 정의 + 모호 케이스 결정 가이드를 v4.1 SYSTEM_PROMPT 에 주입 ([ANALYSIS.md](./ANALYSIS.md))
+- `batch/billCategories.js` 신규 — `CATEGORIES` / `CATEGORY_DEFINITIONS` / `CATEGORY_TIE_BREAKER` 모듈로 분석 배치·재분류 배치 공유
+- `batch/reclassifyCategories.js` 신규 — 한 번의 Haiku 호출로 N건 일괄 재분류 (12건 $0.0068, 1건당 $0.0006)
+- `syncBillAiAnalysis.js` v4.1 변경: SYSTEM_PROMPT 에 16종 정의·tie-breaker 포함, JSON 스키마 `category_main`/`category_sub` 분리, INSERT 컬럼 변경, 검증 로직(`validateCategoryMain`)으로 16종 외 라벨이면 `needs_review=true` 강제. PROMPT_VERSION='v4.1'
+- 비용: input ~5,170 tok, 1건당 **~$0.0172** (v4 의 $0.014 대비 +20%, 카테고리 정의 추가로 system prompt 가 길어짐)
+- 검증: 기존 12건 재분류 + 신규 5건 분석 모두 16종 외 0건. 분포 12개 카테고리 균형 사용 (모호 케이스 "환경교육법 → 환경·에너지", "양자과학기술법 → 산업·R&D" 가이드 그대로 동작)
+- 마이그레이션 SQL: `etc/ddl/migrations/2026-04-26-bill-category-tier.sql`
+
+### AI 분석 + 분석 요청 필터 카드 통합 (`views/bill/bill.ejs`)
+처음엔 별도 카드 두 개 (AI 분석 / 분석 요청) 로 출시 후 통합 결정.
+- 5항목 단일 라디오: `전체 / 🤖 있음 / 없음 / 💡 요청 있음 / 🔥 우선 분석 대기 (5명+)`
+- 각 항목이 (`has_analysis`, `request_status`) 페어를 동시에 설정 — `data-analysis-ha` + `data-analysis-rs` 두 속성에 박아둠
+- "💡 요청 있음" 카운트는 **미분석 한정**으로 (`getRequestStats.sql` 에 `LEFT JOIN bill_ai_analysis WHERE a.bill_id IS NULL` 추가) — 카드 카운트 ↔ 클릭 후 결과 항상 일치
+- JS: 한 클릭에 `pendingHasAnalysis` + `pendingRequestStatus` 동시 토글, 같은 항목 재클릭 시 둘 다 비움(전체 복귀)
+
+### stats 캐시 stale 수정
+4개 카운트(total / analyzed / request_any / request_priority)가 한 5분 캐시에 묶여 있어, 분석 요청 새로 누른 직후 사이드바 카운트가 stale 되는 문제.
+- `getAnalysisStats.sql` — total/analyzed 만 (16k+ row COUNT 가 무거우므로 5분 캐시 가치 큼)
+- `getRequestStats.sql` 신규 — any/priority 만 (view 인덱스 스캔이라 가벼움 + 캐시 X, 매 요청 fresh)
+- Service 에서 두 메서드 분리, controller 가 `Promise.all` 후 한 객체로 병합해 view 전달
+- 검증: DB INSERT 직후 페이지 새로고침 → 카운트 즉시 갱신, total_bills 는 5분 캐시 그대로
+
+### 법안 상세에 AI 분석 라벨 + 디스클레이머
+[ANALYSIS.md](./ANALYSIS.md) §7-장치4 "AI 가 생성한 분석으로 사실이 아닐 수 있습니다" 가 미적용 상태였음. 분석 분기 위 공통 라벨 한 줄로 통합.
+- 분석 있음: `🤖 AI 분석   AI가 생성한 분석으로 사실과 다를 수 있습니다   v4.1` (골드 배경)
+- 분석 없음: `🤖 AI 분석   아직 분석되지 않은 법안입니다` (회색 배경)
+- `prompt_version` 도 라벨 우측 메타로 표기
+
+### 법안 카드 "💡 N명 요청" → "💡 AI 분석 N명 요청"
+무엇을 요청한다는 건지 모호하다는 피드백 — 리스트 카드 + 마이페이지 카드 두 군데 일관되게 변경.
+
+---
+
+## 2026-04-25 (오후) — AI 분석 표시 시스템 + 분석 요청 시스템
+
+### 분석 요청 1인 1요청 시스템 (DDL 신규)
+미분석 법안에 사용자가 "분석 요청"을 누르면 1행 적재. 운영자는 요청 카운트 기반 우선순위로 다음 분석 큐 결정.
+- 신규 테이블 `bill_analysis_requests`(`bill_id` × `user_id` UNIQUE)
+- 카운트 view `bill_analysis_request_counts` (성능 최적화 — 리스트 LEFT JOIN 시 사용)
+- 임계값(기본 5명) 환경변수 `ANALYSIS_REQUEST_THRESHOLD`
+- DDL: `etc/ddl/bill_analysis_requests.sql`
+
+### 라우트 신규 3종
+- `POST /bill/:id/request-analysis` — `requireLogin`, 이미 분석된 법안엔 `ALREADY_ANALYZED` 400, 멱등 처리(중복 요청은 count 만 반환)
+- `GET /api/bill/:id/analysis-status` — `{ count, hasRequested, threshold }` JSON
+- `GET /my/analysis-requests` — 마이페이지 "내가 요청한 분석" (로그인 필수)
+
+### 법안 리스트 페이지 확장 (`views/bill/bill.ejs`)
+- **AI 분석 진행률 배너** — 상단에 "🤖 법안 16,889건 중 AI 분석 완료 N건 (X%)" + 가로 막대
+- **사이드바 AI 분석 필터 카드** (이후 04-26 에 분석 요청 카드와 통합)
+- **사이드바 "주제별" 카드** — `bill_ai_analysis.category_main` distinct 옵션
+- **정렬 드롭다운** — `최신순(default) / 분석 있음 우선 / 요청 많은 순`
+- **카드 강조** — 분석 있는 법안은 `border-left: 3px solid var(--accent)` + `🤖 AI 분석` 배지 + 한 줄 요약(세리프 14px, 2줄 클램프)
+- **카드 메타** — AI 분류 (main · sub) + 미분석에 요청 1명+ 시 "💡 AI 분석 N명 요청"
+- **🔥 우선 분석 대기 배지** — 미분석 + 요청 임계값 도달 시 카드에 표시
+- **모바일 사이드바 시트** — 기존 카테고리·정당 카드의 pending state 패턴(적용 버튼 누르기 전엔 navigation 안 함)에 AI 분석 / AI 카테고리 추가, JS `loadFromUrl/apply/reset` 확장
+
+### 법안 상세 분석 요청 위젯 (`views/bill/bill_detail.ejs`)
+미분석 법안에서 5-Zone UI 자리에 노출.
+- 큰 숫자 카운터(세리프 32px) `<count> / <threshold>명` + 골드 그라디언트 진행 바
+- 5명 도달 시 "🎉 충분한 요청이 모였어요. 곧 분석됩니다." 초록 박스
+- 비로그인: "로그인하고 분석 요청하기" → `/auth/login?next=...` 리다이렉트
+- 로그인 + 요청 안 함: "💡 이 법안 분석 요청하기" 버튼
+- 로그인 + 이미 요청: "✓ 요청했어요" 비활성 버튼
+- AJAX 성공 시 카운트·진행 바 즉시 갱신 + 버튼 교체 (페이지 새로고침 없이)
+- `PB.mountAnalysisRequest({ containerId })` 헬퍼 신규 (`public/scripts/interactions.js`)
+
+### 마이페이지 신규 (`views/my/analysis_requests.ejs`)
+- 요약 라인: "총 N건 요청 / ✓ 완료 X / ⏳ 대기 Y / 임계값 5명"
+- 카드 리스트: 완료(초록 좌측 보더) / 대기(골드 좌측 보더), 분석 완료된 카드엔 한 줄 요약·AI 카테고리 노출
+- nav 드롭다운 "내 활동(준비중)" → "내가 요청한 분석" 링크 교체
+
+### 운영자용 분석 우선순위 쿼리
+다음 분석 대상 골라 `node batch/syncBillAiAnalysis.js --bill-id <id>` 로 처리.
+```sql
+SELECT b.bill_id, b.bill_no, b.bill_name, b.proc_result_name,
+       rc.request_count, rc.last_requested_at
+  FROM bills b
+  JOIN bill_analysis_request_counts rc ON rc.bill_id = b.bill_id
+  LEFT JOIN bill_ai_analysis a         ON a.bill_id = b.bill_id
+ WHERE a.bill_id IS NULL
+ ORDER BY rc.request_count DESC, rc.last_requested_at DESC
+ LIMIT 50;
+```
+
+또는 UI 로: `/bill?has_analysis=N&request_status=any&sort=requested`
+
+---
+
+## 2026-04-25 — AI 법안 분석 배치 v4 (`batch/syncBillAiAnalysis.js`)
+
+### 새 배치 스크립트 — Claude Haiku 4.5 + v4 프롬프트
+[ANALYSIS.md](./ANALYSIS.md) §3 의 17개 분석 원칙 + 5-Zone JSON 스키마 그대로 출력. 가결 법안 우선 + on-demand 분석 모두 대응.
+- **본문 수집**: `pal.assembly.go.kr/napal/lgsltpa/lgsltpaDone/view.do?lgsltPaId=<bill_id>` 의 "제안이유 및 주요내용" 박스를 cheerio 로 파싱 (5/5 샘플 모두 안정 추출)
+- **모델**: `claude-haiku-4-5-20251001` (분석 품질이 Sonnet 권고 대비 충분, $30/M 차이 유의미)
+- **출력**: JSON 스키마 강제 (`summary, category, reading_time_min, changes, affected, issues[3], context[2-3], limitations[2-3], judgment_questions[3]`)
+- **인자**: `--limit N` (기본 3) / `--bill-id ID...` 직접 지정. Phase 1 가결 법안 우선 자동 선별
+- **요청 간 sleep 1500ms** + 429 retry-after 대응 (490건 배치 안정성)
+- **오타 후처리** — `TYPO_MAP` 으로 알려진 깨짐 자동 치환
+- **`needs_review` 자동 판정** — 연도(`\d{4}년`) 3개 이상 / 구체적 기관·법명 5개 이상 / `limitations` 3개 이상이면 `true`
+- **Prompt Caching 적용** — `system` 을 `cache_control: ephemeral` 로 감쌈. 단 Haiku 4.5 의 캐시 최소 토큰(추정 ~4,096) 미달로 현재 system prompt(~3,100 tok)에선 활성화 안 됨 (cache_w/cache_r=0). 코드 자체는 준비, 향후 system prompt 가 4,500+ 으로 늘면 자동 활성
+- **비용 (Haiku 4.5 가격, v4)**: input $1.0 / output $5.0 / cache write $1.25 / cache read $0.10 per MTok. 1건당 평균 ~$0.014 (v4) / $0.017 (v4.1, 04-26 갱신)
+- 5건 dry-run 실행 후 18초/건, JSON 파싱 실패 0건, 17개 원칙 준수(정당 언급 없음, 발의자 인용, pro/con/gap 3쟁점) 확인
+
+### 시드 행과의 차이
+- 기존 v4-sample 1건은 수동 시드 + cost_usd 잘못 계산 (`$0.000413`). 정식 v4 는 정확 가격 산출
+- 04-26 v4.1 도입 후 12 시드 + 5 신규 = 17건 모두 `category_main` 16종 set 안에 분류 완료
+
+### 라우트
+- `routes/PageRoutes.js` 에 `requireLogin` import + 신규 라우트 등록
+- `routes/ApiRoutes.js` 에 `GET /api/bill/:id/analysis-status` 추가
+
+### URL 컨벤션
+| 경로 | 의미 |
+|---|---|
+| `/bill?has_analysis=Y` | 분석 있는 것만 |
+| `/bill?has_analysis=N` | 분석 없는 것만 |
+| `/bill?ai_category_main=조세·재정` | AI main 카테고리 (쉼표 분리 복수 지원) |
+| `/bill?request_status=any` | 미분석 + 요청 1명+ |
+| `/bill?request_status=priority` | 미분석 + 임계값 도달 |
+| `/bill?sort=ai_priority` | 분석 있음 우선 |
+| `/bill?sort=requested` | 요청 많은 순 |
+| `/bill?ai_category=...` | (구버전 호환 — 자동으로 `ai_category_main` 으로 매핑) |
+
+---
+
 ## 2026-04-25 — 의원 상세 구조 재편 + 모바일 UX 개선
 
 ### 의원 상세 페이지 정보 구조 단순화 (`views/politician/politician_detail.ejs`)

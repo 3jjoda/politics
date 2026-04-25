@@ -673,7 +673,13 @@
     if (bill.co_proposer_count) line2Parts.push(`<span>공동발의 ${Number(bill.co_proposer_count)}인</span>`);
 
     const hookTags = [];
-    if (a.category) hookTags.push(`<span class="hook-tag tag-accent">${PB.escapeHtml(a.category)}</span>`);
+    // v4.1: category_main + category_sub 우선, 구버전 fallback (a.category)
+    const catMain = a.category_main || a.category || '';
+    const catSub  = a.category_sub  || '';
+    if (catMain) {
+      const label = catSub ? `${catMain} · ${catSub}` : catMain;
+      hookTags.push(`<span class="hook-tag tag-accent">${PB.escapeHtml(label)}</span>`);
+    }
     if (a.reading_time_min) hookTags.push(`<span class="hook-tag">읽기 ${Number(a.reading_time_min)}분</span>`);
     if (bill.status) hookTags.push(`<span class="hook-tag">${PB.escapeHtml(bill.status)}</span>`);
 
@@ -785,6 +791,70 @@
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
+  };
+
+  /* ===================================================================
+     PB.mountAnalysisRequest — 법안 AI 분석 요청 위젯
+     opts: { containerId }
+     읽는 data-* 속성: bill-id / count / threshold / has-requested / logged-in
+  =================================================================== */
+  PB.mountAnalysisRequest = (opts) => {
+    const widget = document.getElementById(opts.containerId);
+    if (!widget) return;
+    const billId = widget.dataset.billId;
+    const button = widget.querySelector('#btn-request-analysis');
+    if (!button) return;  // 비로그인·이미 요청한 경우엔 button 없음
+
+    const updateUi = (count, threshold) => {
+      const cur = widget.querySelector('.count-current');
+      if (cur) cur.textContent = count;
+      const fill = widget.querySelector('.request-progress-fill');
+      if (fill) fill.style.width = Math.min(100, (count / threshold) * 100) + '%';
+      // "요청했어요" 버튼으로 교체
+      const done = document.createElement('button');
+      done.type = 'button';
+      done.className = 'btn-request-done';
+      done.disabled = true;
+      done.textContent = '✓ 요청했어요';
+      button.replaceWith(done);
+      // 임계값 도달 시 메시지 추가
+      if (count >= threshold && !widget.querySelector('.threshold-reached')) {
+        const div = document.createElement('div');
+        div.className = 'threshold-reached';
+        div.textContent = '🎉 충분한 요청이 모였어요. 곧 분석됩니다.';
+        const action = widget.querySelector('.request-action');
+        if (action) action.parentNode.insertBefore(div, action);
+      }
+    };
+
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const orig = button.textContent;
+      button.textContent = '요청 중...';
+      try {
+        const res = await fetch(`/bill/${encodeURIComponent(billId)}/request-analysis`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.status === 401) {
+          // 미들웨어가 redirect 줬을 수도 있고 401 JSON 줬을 수도 있음
+          const next = encodeURIComponent(window.location.pathname);
+          window.location.href = `/auth/login?next=${next}`;
+          return;
+        }
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || '요청 실패');
+        }
+        const data = await res.json();
+        updateUi(Number(data.count || 0), Number(data.threshold || 5));
+      } catch (err) {
+        button.disabled = false;
+        button.textContent = orig;
+        alert('요청 실패: ' + (err.message || '잠시 후 다시 시도해주세요.'));
+      }
+    });
   };
 
   window.PB = PB;

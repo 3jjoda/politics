@@ -19,11 +19,9 @@
 ## 다음 작업 우선순위
 
 ### 베타 오픈 전 필수
-1. **AI 법안 분석 배치 스크립트 구현** (`batch/analyzeBills.js`)
-   - Haiku + v4 프롬프트 ([ANALYSIS.md](./ANALYSIS.md))
-   - JSON mode + 후처리 파이프라인 (오타·메타 섹션 제거)
-   - 가결 490건 먼저 → 전체 16,817건 확장
-   - 예상 비용: $7 이내
+1. ~~**AI 법안 분석 배치 스크립트 구현**~~ ✅ 2026-04-25 완료 (`batch/syncBillAiAnalysis.js` v4 → 04-26 v4.1 카테고리 2-tier). 다음 운영 액션:
+   - 가결 490건 본격 분석 (~$8.4) — 사용자 결정 후 진행
+   - 분석 요청 우선순위 큐 (`/bill?has_analysis=N&request_status=any&sort=requested`) 주기적 처리
 2. 국민 찬반 위젯 디자인 중립화
    - 초록/빨강 → 골드 계열 대비 색으로 전환
    - 정당색 회피 원칙 유지
@@ -38,25 +36,28 @@
 7. Google AdSense 신청
 8. ~~OG 태그 적용 (og-image.png → layout.ejs)~~ ✅ 2026-04-23 완료
 9. ~~법안 상세 페이지 UI 개선 (AI 분석 5-Zone 통합)~~ ✅ 2026-04-24 완료
+10. ~~AI 분석 표시 시스템 + 분석 요청 시스템~~ ✅ 2026-04-25 완료 (진행률 배너, 통합 필터, 카드 배지·요약, 미분석 시 요청 위젯, 마이페이지)
+11. **AI 분석 자동 트리거** — 임계값(5명) 도달 시 cron 또는 hook 으로 자동 분석. 현재는 운영자가 수동으로 `--bill-id` 실행. 자동화 위치는 `batch/syncBillAiAnalysis.js` 의 `fetchTargets` 에 "request_count >= threshold AND a.bill_id IS NULL" 분기 추가
+12. **prompt cache 활성화** — 현재 system prompt(~3,300 tok)가 Haiku 4.5 임계값(~4,096) 미달로 캐시 안 들어감. 예시·금지표현 추가로 4,500+ 토큰까지 늘리면 자동 활성. 절감 효과 = 1건당 cache_read $0.0033 (input × 0.10) ≈ -20%
+13. **legacy `category` 컬럼 DROP** — v4.1 안정화 1주 후 (`bill_ai_analysis.category` 와 `bills.bill_topic_cd` 둘 다)
 
 ### 베타 오픈 후 — 1순위
-10. **AI 분석 Zone 5 추가** — 참고 맥락(`context`) · 분석 한계(`limitations`) 접힘 표시 + Zone 4 "더 알아보기" 버튼 부활
-11. 국회 X레이 메뉴 (시각화 5종)
+14. **AI 분석 Zone 5 추가** — 참고 맥락(`context`) · 분석 한계(`limitations`) 접힘 표시 + Zone 4 "더 알아보기" 버튼 부활
+15. 국회 X레이 메뉴 (시각화 5종)
     - ① 발의왕 vs 입법왕 산점도 ← 최우선
     - ② 정당별 관심 위원회 히트맵
     - ③ 여야 표결 온도차 TOP10
     - ④ 당론 이탈 의원 순위
     - ⑤ 법안 생존율 깔때기
-12. **의원 AI 분석 기능** — [ANALYSIS.md](./ANALYSIS.md) 원칙 재사용 (의원 활동 프로파일·표결 패턴·대표발의 성향)
-13. 정치 성향 밸런스 게임 + 밸런스게임 서비스 링크
-14. 재화 시스템 (credits 컬럼 + credit_logs 테이블)
-15. 의원 별점 → 재화 소비로 전환
+16. **의원 AI 분석 기능** — [ANALYSIS.md](./ANALYSIS.md) 원칙 재사용 (의원 활동 프로파일·표결 패턴·대표발의 성향)
+17. 정치 성향 밸런스 게임 + 밸런스게임 서비스 링크
+18. 재화 시스템 (credits 컬럼 + credit_logs 테이블)
+19. 의원 별점 → 재화 소비로 전환
 
 ### 베타 오픈 후 — 2순위
-16. 악성 댓글 실시간 감지 + 삼진아웃
-17. 커뮤니티 고도화 (신고·검색·정렬)
-18. 실시간 알림
-19. `bill_topic_cd` 컬럼 DB 드롭
+20. 악성 댓글 실시간 감지 + 삼진아웃
+21. 커뮤니티 고도화 (신고·검색·정렬)
+22. 실시간 알림
 
 ---
 

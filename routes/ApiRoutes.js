@@ -25,6 +25,7 @@ export default (db) => {
     router.get('/bill:id', billController.getDetail);       // 법안 상세
     router.get('/bills/trending', billController.getTrending); // 홈 주목할 법안 (sort)
     router.get('/bills/search', billController.search);     // 법안 검색 (커뮤니티 첨부용)
+    router.get('/bill/:id/analysis-status', billController.getAnalysisStatus); // AI 분석 요청 상태
 
     return router;
 };

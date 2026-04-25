@@ -1,7 +1,9 @@
 SELECT
   bill_id,
   summary,
-  category,
+  category,           -- legacy (deprecated, 후속 작업으로 제거 예정)
+  category_main,
+  category_sub,
   reading_time_min,
   changes,
   affected,

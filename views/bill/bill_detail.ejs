@@ -267,6 +267,47 @@
   /* =========================================================
      AI 분석 섹션 (UI_ANALYSIS.md 5-Zone)
      ========================================================= */
+  /* AI 분석 라벨 — 분석 섹션 위 한 줄, 디스클레이머 + 상태 명시 */
+  .ai-analysis-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 14px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .ai-analysis-label.is-done {
+    background: #FAF6EB;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+  .ai-analysis-label.is-pending {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--sub);
+  }
+  .ai-analysis-label .label-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+  }
+  .ai-analysis-label .label-note {
+    flex: 1;
+    min-width: 0;
+  }
+  .ai-analysis-label .label-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    flex-shrink: 0;
+  }
+  .ai-analysis-label.is-done .label-meta { color: var(--accent2, #925C09); opacity: 0.8; }
+
   .bill-ai-analysis {
     --accent-wash: #FAF6EB;
     --serif: 'Noto Serif KR', 'Noto Sans KR', serif;
@@ -627,6 +668,91 @@
     .issue-item.expanded .issue-body { margin-left: 0; }
     .zone-1-top { gap: 8px; }
     .zone-1-top .original-link { font-size: 11px; padding: 3px 8px; }
+
+    .analysis-request-section { padding: 20px 16px; }
+    .request-count-display { font-size: 24px; }
+  }
+
+  /* 분석 요청 위젯 */
+  .analysis-request-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin: 20px 0;
+  }
+  .request-header h2 {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 6px;
+  }
+  .request-header p {
+    color: var(--sub);
+    font-size: 13px;
+    margin: 0 0 18px;
+  }
+  .request-header strong { color: var(--accent); }
+  .request-count-display {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 12px;
+    line-height: 1.1;
+  }
+  .request-count-display .count-separator,
+  .request-count-display .count-target {
+    color: var(--sub);
+    font-weight: 400;
+  }
+  .request-progress-bar {
+    height: 8px;
+    background: var(--bg3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .request-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #D4A442);
+    transition: width 0.4s;
+  }
+  .threshold-reached {
+    background: rgba(15,157,110,0.10);
+    color: var(--green);
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    padding: 10px 14px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .request-action { text-align: center; }
+  .btn-request,
+  .btn-request-done {
+    display: inline-block;
+    padding: 12px 28px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    text-decoration: none;
+  }
+  .btn-request {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-request:hover { opacity: 0.9; }
+  .btn-request-done {
+    background: var(--bg3);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    cursor: default;
   }
 </style>
 
@@ -634,6 +760,19 @@
   <div class="bd-breadcrumb"><a href="/">홈</a> / <a href="/bill">법안</a> / <%= bill.bill_no || bill.bill_id %></div>
 
   <% const proposeDtFmt = (bill.propose_dt || '').replace(/-/g, '.') || '—'; %>
+
+  <!-- AI 분석 라벨 — 분석 있음/없음 두 분기 공통 명시 -->
+  <div class="ai-analysis-label <%= analysis ? 'is-done' : 'is-pending' %>">
+    <span class="label-tag">🤖 AI 분석</span>
+    <% if (analysis) { %>
+      <span class="label-note">AI가 생성한 분석으로 사실과 다를 수 있습니다</span>
+      <% if (analysis.prompt_version) { %>
+        <span class="label-meta"><%= analysis.prompt_version %></span>
+      <% } %>
+    <% } else { %>
+      <span class="label-note">아직 분석되지 않은 법안입니다</span>
+    <% } %>
+  </div>
 
   <!-- AI 분석 (5-Zone) — 분석 있으면 Zone 1이 히어로, 없으면 기본 헤더 -->
   <% if (analysis) { %>
@@ -666,6 +805,52 @@
         <% } %>
       </div>
       <h1 class="analysis-hook-title" style="margin-bottom:0"><%= bill.bill_name %></h1>
+    </section>
+
+    <!-- AI 분석 요청 위젯 (미분석일 때만 노출) -->
+    <%
+      const reqCount       = Number(analysisRequestCount || 0);
+      const reqThreshold   = Number(requestThreshold || 5);
+      const reqPct         = Math.min(100, (reqCount / reqThreshold) * 100);
+      const isLoggedIn     = Boolean(currentUser);
+      const reachedThreshold = reqCount >= reqThreshold;
+    %>
+    <section class="analysis-request-section" id="analysis-request-widget"
+             data-bill-id="<%= bill.bill_id %>"
+             data-count="<%= reqCount %>"
+             data-threshold="<%= reqThreshold %>"
+             data-has-requested="<%= hasRequested ? '1' : '0' %>"
+             data-logged-in="<%= isLoggedIn ? '1' : '0' %>">
+      <div class="request-header">
+        <h2>🤔 이 법안의 AI 분석이 아직 없어요</h2>
+        <p>요청이 <strong><%= reqThreshold %>명</strong>에 도달하면 우선 분석됩니다.</p>
+      </div>
+
+      <div class="request-count-display">
+        <span class="count-current"><%= reqCount %></span><span class="count-separator"> / </span><span class="count-target"><%= reqThreshold %>명</span>
+      </div>
+
+      <div class="request-progress-bar">
+        <div class="request-progress-fill" style="width: <%= reqPct.toFixed(2) %>%"></div>
+      </div>
+
+      <% if (reachedThreshold) { %>
+        <div class="threshold-reached">🎉 충분한 요청이 모였어요. 곧 분석됩니다.</div>
+      <% } %>
+
+      <div class="request-action">
+        <% if (!isLoggedIn) { %>
+          <a href="/auth/login?next=<%= encodeURIComponent(currentUrl) %>" class="btn-request">
+            로그인하고 분석 요청하기
+          </a>
+        <% } else if (hasRequested) { %>
+          <button type="button" class="btn-request-done" disabled>✓ 요청했어요</button>
+        <% } else { %>
+          <button type="button" class="btn-request" id="btn-request-analysis">
+            💡 이 법안 분석 요청하기
+          </button>
+        <% } %>
+      </div>
     </section>
   <% } %>
 
@@ -813,6 +998,9 @@
         },
         scrollTargetId: 'citizen-vote-section'
       });
+    }
+    if (typeof PB.mountAnalysisRequest === 'function') {
+      PB.mountAnalysisRequest({ containerId: 'analysis-request-widget' });
     }
   };
   mount();

@@ -43,7 +43,7 @@ export default (db) => {
         }
     });
 
-    /* 법안 목록 페이지 (검색/필터/페이징) */
+    /* 법안 목록 페이지 (검색/필터/정렬/페이징) */
     controller.getListPage = wrapWithContext(async function getListPage(req, res, next) {
         try {
             const pageSize = 50;
@@ -52,19 +52,42 @@ export default (db) => {
 
             const search = req.query.search ? String(req.query.search).trim() : null;
             const status = req.query.status ? String(req.query.status) : null;
-            // committee 파라미터 — 쉼표 분리 지원 (예: 기획재정위원회,재정경제기획위원회)
             const committeeRaw = req.query.committee ? String(req.query.committee).trim() : null;
             const committee = committeeRaw || null;
-            // party 파라미터 — 쉼표 분리 지원 (대표발의 정당 복수선택)
             const partyRaw = req.query.party ? String(req.query.party).trim() : null;
             const party = partyRaw || null;
 
-            const [bills, statusCounts, topicCounts, partyCounts] = await Promise.all([
-                billService.getList({ search, status, committee, party, limit: pageSize, offset }),
+            // AI 분석 필터 — 'Y'(있음) / 'N'(없음) / null(전체)
+            const hasAnalysisRaw = String(req.query.has_analysis || '');
+            const hasAnalysis =
+                (hasAnalysisRaw === 'Y' || hasAnalysisRaw === '1') ? 'Y' :
+                (hasAnalysisRaw === 'N') ? 'N' :
+                null;
+            // AI 카테고리 main — 쉼표 분리 복수 지원 (16종 고정 set)
+            // 구버전 호환: ai_category 파라미터도 ai_category_main 으로 받음
+            const aiCategoryRaw = req.query.ai_category_main || req.query.ai_category || null;
+            const aiCategoryMain = aiCategoryRaw ? String(aiCategoryRaw).trim() || null : null;
+            // 정렬 — 화이트리스트
+            const VALID_SORTS = new Set(['recent', 'ai_priority', 'requested']);
+            const sort = VALID_SORTS.has(req.query.sort) ? req.query.sort : 'recent';
+
+            // 분석 요청 필터 — 'any'(요청 있음) / 'priority'(임계값 도달) / null(전체)
+            const VALID_REQ = new Set(['any', 'priority']);
+            const requestStatus = VALID_REQ.has(req.query.request_status) ? req.query.request_status : null;
+            const priorityThreshold = billService.getRequestThreshold();
+
+            const [bills, statusCounts, topicCounts, partyCounts, aiCategories, baseStats, requestStats] = await Promise.all([
+                billService.getList({ search, status, committee, party, hasAnalysis, aiCategoryMain, sort, requestStatus, priorityThreshold, limit: pageSize, offset }),
                 billService.getStatusCounts(committee, party),
                 billService.getTopicCounts(),
-                billService.getPartyCounts()
+                billService.getPartyCounts(),
+                billService.getAiCategories(),
+                billService.getAnalysisStats(),
+                billService.getRequestStats()
             ]);
+
+            // EJS 호환을 위해 한 객체로 병합
+            const analysisStats = { ...baseStats, ...requestStats };
 
             const totalCount = bills.length > 0 ? parseInt(bills[0].total_count) : 0;
             const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -77,7 +100,19 @@ export default (db) => {
                 statusCounts,
                 topicCounts,
                 partyCounts,
-                query: { search: search || '', status: status || '', committee: committee || '', party: party || '' },
+                aiCategories,
+                analysisStats,
+                requestThreshold: billService.getRequestThreshold(),
+                query: {
+                    search: search || '',
+                    status: status || '',
+                    committee: committee || '',
+                    party: party || '',
+                    has_analysis: hasAnalysis || '',
+                    ai_category_main: aiCategoryMain || '',
+                    request_status: requestStatus || '',
+                    sort
+                },
                 pagination: { page, pageSize, totalCount, totalPages }
             });
         } catch (error) {
@@ -113,13 +148,16 @@ export default (db) => {
             }
             const bill = billData[0];
 
-            const [coProposers, votes, analysis] = await Promise.all([
+            const userId = req.session?.userId || null;
+            const [coProposers, votes, analysis, analysisRequestCount, hasRequested] = await Promise.all([
                 billService.getBillCoProposers(billId),
                 billService.getBillDetailVotes(billId),
                 billService.getAiAnalysis(billId).catch((err) => {
                     logger.warn(`AI 분석 조회 실패 (bill_id=${billId}): ${err.message}`);
                     return null;
-                })
+                }),
+                billService.getAnalysisRequestCount(billId),
+                billService.hasUserRequested(billId, userId)
             ]);
 
             const voters = {
@@ -146,12 +184,82 @@ export default (db) => {
                     abstain:  voters.abstain.length,
                     absent:   voters.absent.length
                 },
-                analysis
+                analysis,
+                analysisRequestCount,
+                hasRequested,
+                requestThreshold: billService.getRequestThreshold()
             });
 
         } catch (error) {
             logger.error('웹 컨트롤러에서 법안 상세 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
+        }
+    });
+
+    /* 분석 요청 — POST /bill/:id/request-analysis (requireLogin 미들웨어로 보호) */
+    controller.requestAnalysis = wrapWithContext(async function requestAnalysis(req, res, next) {
+        try {
+            const billId = req.params.id;
+            const userId = req.session?.userId;
+            if (!userId) return res.status(401).json({ error: '로그인이 필요합니다.' });
+
+            // 법안 존재 확인 (404 방지)
+            const billRows = await billService.getDetail(billId);
+            if (!billRows || billRows.length === 0) {
+                return res.status(404).json({ error: '법안을 찾을 수 없습니다.' });
+            }
+
+            const result = await billService.requestAnalysis(billId, userId);
+            return res.status(200).json({ success: true, ...result });
+        } catch (err) {
+            if (err.code === 'ALREADY_ANALYZED' || err.message === 'ALREADY_ANALYZED') {
+                return res.status(400).json({ error: '이미 분석된 법안입니다.', code: 'ALREADY_ANALYZED' });
+            }
+            logger.error('분석 요청 처리 중 에러:', `${err.message}\n${err.stack}`);
+            next(err);
+        }
+    });
+
+    /* 분석 요청 상태 조회 — GET /api/bill/:id/analysis-status */
+    controller.getAnalysisStatus = wrapWithContext(async function getAnalysisStatus(req, res, next) {
+        try {
+            const billId = req.params.id;
+            const userId = req.session?.userId || null;
+            const [count, hasRequested] = await Promise.all([
+                billService.getAnalysisRequestCount(billId),
+                billService.hasUserRequested(billId, userId)
+            ]);
+            res.status(200).json({
+                count,
+                hasRequested: userId ? hasRequested : null,
+                threshold: billService.getRequestThreshold()
+            });
+        } catch (err) {
+            logger.error('분석 요청 상태 조회 중 에러:', `${err.message}\n${err.stack}`);
+            next(err);
+        }
+    });
+
+    /* 마이페이지 — GET /my/analysis-requests */
+    controller.getMyAnalysisRequestsPage = wrapWithContext(async function getMyAnalysisRequestsPage(req, res, next) {
+        try {
+            const userId = req.session?.userId;
+            if (!userId) {
+                const next_ = encodeURIComponent('/my/analysis-requests');
+                return res.redirect(`/auth/login?next=${next_}`);
+            }
+            const requests = await billService.getMyAnalysisRequests(userId);
+            const requestThreshold = billService.getRequestThreshold();
+            res.render('my/analysis_requests', {
+                pageTitle: '내가 요청한 분석 - 정치 바로미터',
+                pageStyles: 'my/analysis_requests',
+                currentUrl: '/my/analysis-requests',
+                requests,
+                requestThreshold
+            });
+        } catch (err) {
+            logger.error('마이페이지 렌더링 중 에러:', `${err.message}\n${err.stack}`);
+            next(err);
         }
     });
 

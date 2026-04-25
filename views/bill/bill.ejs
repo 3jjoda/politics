@@ -46,14 +46,36 @@
   // 현재 선택된 status: 'pending' 특수 처리 (DB엔 NULL 로 저장됨 → 컨트롤러에서 null 로 매핑 필요)
   const currentStatus = query.status || '';
 
+  // URL 빌더 — query 모든 키 보존 + 일부 override. 빈 값은 자동 제거.
   const qsBuild = (override = {}) => {
-    const base = { search: query.search, status: query.status, committee: query.committee, page: pagination.page };
+    const base = {
+      search:           query.search,
+      status:           query.status,
+      committee:        query.committee,
+      party:            query.party,
+      has_analysis:     query.has_analysis,
+      ai_category_main: query.ai_category_main,
+      request_status:   query.request_status,
+      sort:             query.sort && query.sort !== 'recent' ? query.sort : '',
+      page:             pagination.page > 1 ? pagination.page : ''
+    };
     const merged = { ...base, ...override };
     return Object.entries(merged)
       .filter(([, v]) => v !== '' && v !== null && v !== undefined)
       .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
       .join('&');
   };
+  const billHref = (override = {}) => {
+    const qs = qsBuild(override);
+    return '/bill' + (qs ? '?' + qs : '');
+  };
+
+  // 진행률
+  const aTotal    = Number(analysisStats?.total_bills || 0);
+  const aDone     = Number(analysisStats?.analyzed_bills || 0);
+  const aPercent  = aTotal > 0 ? (aDone / aTotal * 100) : 0;
+
+  const selectedAiCategories = (query.ai_category_main || '').split(',').filter(Boolean);
 %>
 
 <style>
@@ -238,19 +260,31 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    /* 뷰포트 넘어가면 사이드바 내부에서 스크롤 */
+    /* 뷰포트 넘어가면 사이드바 내부에서 스크롤 — PC 는 항상 스크롤바 노출 (macOS 기본
+       overlay 스크롤바가 hover 전까지 안 보이는 문제 회피). 모바일 시트에서는 auto 로 덮음. */
     max-height: calc(100vh - 130px - 24px);
-    overflow-y: auto;
-    scrollbar-width: thin;              /* Firefox */
-    scrollbar-color: var(--border2) transparent;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+    /* Firefox — 트랙·thumb 모두 색 박아서 항상 인지 가능하게 */
+    scrollbar-width: thin;
+    scrollbar-color: var(--sub2) var(--bg3);
   }
-  .sidebar::-webkit-scrollbar { width: 6px; }
-  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  /* WebKit — macOS overlay 스크롤바의 thumb fade-out 우회.
+     fade 는 background-color 에만 적용되므로 box-shadow inset 으로 thumb 를 그린다. */
+  .sidebar::-webkit-scrollbar { width: 10px; }
+  .sidebar::-webkit-scrollbar-track {
+    background: var(--bg3);
+    border-radius: 4px;
+  }
   .sidebar::-webkit-scrollbar-thumb {
-    background: var(--border2);
-    border-radius: 6px;
+    background-color: transparent;
+    box-shadow: inset 0 0 0 10px var(--border2);
+    border-radius: 4px;
+    min-height: 40px;
   }
-  .sidebar::-webkit-scrollbar-thumb:hover { background: var(--sub2); }
+  .sidebar::-webkit-scrollbar-thumb:hover {
+    box-shadow: inset 0 0 0 10px var(--sub2);
+  }
   .side-card {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -308,6 +342,59 @@
     margin-left: 8px;
   }
   .side-item.active .side-count { color: var(--accent); }
+
+  /* AI 분석 진행률 배너 */
+  .analysis-progress-banner {
+    max-width: 1280px;
+    margin: 0 auto 12px;
+    padding: 14px 24px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .progress-text {
+    font-size: 13px;
+    color: var(--sub);
+    flex: 1;
+    min-width: 0;
+  }
+  .progress-text strong { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .progress-bar-track {
+    flex: 0 0 200px;
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    transition: width 0.3s;
+  }
+  .progress-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    flex-shrink: 0;
+    min-width: 48px;
+    text-align: right;
+  }
+
+  /* 정렬 드롭다운 (filter-bar 내부) */
+  .sort-select {
+    padding: 9px 30px 9px 12px;
+    background: var(--bg3) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%237A8090' d='M5 6 0 0h10z'/></svg>") no-repeat right 10px center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 13px;
+    appearance: none;
+    cursor: pointer;
+  }
+  .sort-select:focus { border-color: var(--accent); outline: none; }
 
   /* Bill cards */
   .bill-cards { display: flex; flex-direction: column; gap: 8px; }
@@ -405,6 +492,59 @@
     font-size: 10px;
     color: var(--sub2);
     opacity: 0.7;
+  }
+
+  /* AI 분석 - 카드 강조 */
+  .bill-card.has-analysis { border-left: 3px solid var(--accent); }
+  .badge-ai-analysis {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    background: #FAF6EB;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+  .badge-priority {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+  .bill-card-summary {
+    margin: 6px 0 10px;
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .ai-category-tag {
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .ai-sub-category {
+    color: var(--sub);
+    font-weight: 400;
+  }
+  .request-count-mini {
+    font-size: 12px;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
   }
 
   /* Pagination */
@@ -554,6 +694,7 @@
       border-top-right-radius: 16px;
       padding: 0 16px 20px;
       overflow-y: auto;
+      scrollbar-gutter: auto;
       z-index: 150;
       box-shadow: 0 -8px 24px rgba(0,0,0,0.12);
       transform: translateY(100%);
@@ -648,13 +789,27 @@
   </div>
 </div>
 
+<!-- AI 분석 진행률 배너 -->
+<div class="analysis-progress-banner">
+  <div class="progress-text">
+    🤖 법안 <strong><%= nf(aTotal) %></strong>건 중 AI 분석 완료 <strong><%= nf(aDone) %></strong>건
+  </div>
+  <div class="progress-bar-track" aria-hidden="true">
+    <div class="progress-bar-fill" style="width: <%= aPercent.toFixed(2) %>%"></div>
+  </div>
+  <div class="progress-pct"><%= aPercent.toFixed(1) %>%</div>
+</div>
+
 <form class="filter-bar" method="get" action="/bill" id="bill-filter-form">
   <div class="filter-bar-inner">
     <!-- 모바일 전용: 필터 시트 오픈 (검색 바 위) -->
     <%
       const selectedCount =
         (query.committee || '').split(',').filter(Boolean).length +
-        (query.party || '').split(',').filter(Boolean).length;
+        (query.party || '').split(',').filter(Boolean).length +
+        (query.has_analysis ? 1 : 0) +
+        (query.ai_category_main || '').split(',').filter(Boolean).length +
+        (query.request_status ? 1 : 0);
     %>
     <button type="button" class="filter-sheet-btn" id="filter-sheet-btn" aria-label="필터 열기">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -664,10 +819,18 @@
       <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" class="search-input" name="search" value="<%= query.search %>" placeholder="법안명, 발의자 이름, 법안번호 검색...">
     </div>
-    <% if (query.status)    { %><input type="hidden" name="status"    value="<%= query.status %>"><% } %>
-    <% if (query.committee) { %><input type="hidden" name="committee" value="<%= query.committee %>"><% } %>
-    <% if (query.party)     { %><input type="hidden" name="party"     value="<%= query.party %>"><% } %>
+    <% if (query.status)       { %><input type="hidden" name="status"       value="<%= query.status %>"><% } %>
+    <% if (query.committee)    { %><input type="hidden" name="committee"    value="<%= query.committee %>"><% } %>
+    <% if (query.party)        { %><input type="hidden" name="party"        value="<%= query.party %>"><% } %>
+    <% if (query.has_analysis)     { %><input type="hidden" name="has_analysis"     value="<%= query.has_analysis %>"><% } %>
+    <% if (query.ai_category_main) { %><input type="hidden" name="ai_category_main" value="<%= query.ai_category_main %>"><% } %>
+    <% if (query.request_status)   { %><input type="hidden" name="request_status"   value="<%= query.request_status %>"><% } %>
     <button type="submit" class="search-btn">검색</button>
+    <select class="sort-select" name="sort" onchange="this.form.submit()" aria-label="정렬">
+      <option value="recent"      <%= query.sort === 'recent'      ? 'selected' : '' %>>최신순</option>
+      <option value="ai_priority" <%= query.sort === 'ai_priority' ? 'selected' : '' %>>분석 있음 우선</option>
+      <option value="requested"   <%= query.sort === 'requested'   ? 'selected' : '' %>>요청 많은 순</option>
+    </select>
     <span class="filter-count">총 <%= nf(pagination.totalCount) %>건</span>
   </div>
 </form>
@@ -675,13 +838,7 @@
 <div class="status-tabs">
   <div class="status-tabs-inner">
     <% tabs.forEach(t => {
-         let href = '/bill';
-         const parts = [];
-         if (t.key) parts.push('status=' + encodeURIComponent(t.key));
-         if (query.search) parts.push('search=' + encodeURIComponent(query.search));
-         if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
-         if (query.party) parts.push('party=' + encodeURIComponent(query.party));
-         if (parts.length) href += '?' + parts.join('&');
+         const href = billHref({ status: t.key, page: '' });
          const active = (currentStatus === t.key) || (currentStatus === '' && t.key === '');
     %>
       <a href="<%= href %>" class="status-tab <%= active ? 'active' : '' %>">
@@ -703,18 +860,72 @@
       </div>
       <button type="button" class="filter-sheet-close" id="filter-sheet-close" aria-label="닫기">×</button>
     </div>
+    <!-- AI 분석 통합 카드 — 5항목 단일 라디오
+         (has_analysis, request_status) 페어로 매핑:
+           전체:        ('',  '')
+           🤖 있음:      ('Y', '')
+           없음:         ('N', '')
+           💡 요청 있음:  ('N', 'any')
+           🔥 우선 대기:  ('N', 'priority')
+    -->
+    <%
+      const totalBillsCnt = Number(analysisStats?.total_bills || 0);
+      const analyzedCnt   = Number(analysisStats?.analyzed_bills || 0);
+      const unanalyzedCnt = Math.max(0, totalBillsCnt - analyzedCnt);
+      const reqAny        = Number(analysisStats?.request_any_bills || 0);
+      const reqPriority   = Number(analysisStats?.request_priority_bills || 0);
+      const haCurrent     = query.has_analysis || '';
+      const rsCurrent     = query.request_status || '';
+
+      const items = [
+        { ha: '',  rs: '',         label: '전체',                                      cnt: totalBillsCnt },
+        { ha: 'Y', rs: '',         label: '🤖 있음',                                    cnt: analyzedCnt },
+        { ha: 'N', rs: '',         label: '없음',                                       cnt: unanalyzedCnt },
+        { ha: 'N', rs: 'any',      label: '💡 요청 있음',                                cnt: reqAny },
+        { ha: 'N', rs: 'priority', label: `🔥 우선 분석 대기 (${requestThreshold}명+)`,    cnt: reqPriority }
+      ];
+    %>
+    <div class="side-card">
+      <div class="side-title">AI 분석</div>
+      <div class="side-list">
+        <% items.forEach(it => {
+             const active = (haCurrent === it.ha) && (rsCurrent === it.rs);
+             const href = billHref({ has_analysis: it.ha, request_status: it.rs, page: '' });
+        %>
+          <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>"
+             data-analysis-ha="<%= it.ha %>"
+             data-analysis-rs="<%= it.rs %>">
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= it.label %></span></span>
+            <span class="side-count"><%= nf(it.cnt) %></span>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+
+    <% if ((aiCategories || []).length > 0) { %>
+      <div class="side-card">
+        <div class="side-title">주제별</div>
+        <div class="side-list">
+          <a href="<%= billHref({ ai_category_main: '', page: '' }) %>" class="side-item <%= selectedAiCategories.length === 0 ? 'active' : '' %>" data-ai-category-value="">
+            <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">전체</span></span>
+            <span class="side-count"><%= nf(aiCategories.reduce((s, c) => s + Number(c.cnt || 0), 0)) %></span>
+          </a>
+          <% aiCategories.forEach(c => {
+               const active = selectedAiCategories.includes(c.category);
+               const href = billHref({ ai_category_main: c.category, page: '' });
+          %>
+            <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>" data-ai-category-value="<%= c.category %>">
+              <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name"><%= c.category %></span></span>
+              <span class="side-count"><%= nf(c.cnt) %></span>
+            </a>
+          <% }); %>
+        </div>
+      </div>
+    <% } %>
+
     <div class="side-card">
       <div class="side-title">카테고리</div>
       <div class="side-list">
-        <%
-          const allTopicHref = (() => {
-            const parts = [];
-            if (query.search) parts.push('search=' + encodeURIComponent(query.search));
-            if (query.status) parts.push('status=' + encodeURIComponent(query.status));
-            if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
-            return '/bill' + (parts.length ? '?' + parts.join('&') : '');
-          })();
-        %>
         <%
           // "전체" 링크는 필터와 무관하게 전체 법안 수 (topicCounts 합계)
           const grandTotal = (topicCounts || []).reduce((s, tc) => s + Number(tc.cnt || 0), 0);
@@ -722,7 +933,7 @@
           const selectedCommittees = (query.committee || '').split(',').filter(Boolean);
           const isAllActive = selectedCommittees.length === 0;
         %>
-        <a href="<%= allTopicHref %>" class="side-item <%= isAllActive ? 'active' : '' %>" data-committee-value="">
+        <a href="<%= billHref({ committee: '', page: '' }) %>" class="side-item <%= isAllActive ? 'active' : '' %>" data-committee-value="">
           <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">전체</span></span>
           <span class="side-count"><%= nf(grandTotal) %></span>
         </a>
@@ -739,12 +950,7 @@
         %>
         <% majors.forEach(tc => {
              const fullName = tc.committee || '미지정';
-             const parts = [];
-             if (tc.committee) parts.push('committee=' + encodeURIComponent(tc.committee));
-             if (query.search) parts.push('search=' + encodeURIComponent(query.search));
-             if (query.status) parts.push('status=' + encodeURIComponent(query.status));
-             if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
-             const href = '/bill' + (parts.length ? '?' + parts.join('&') : '');
+             const href = billHref({ committee: tc.committee, page: '' });
              const active = selectedCommittees.includes(tc.committee);
         %>
           <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>" title="<%= fullName %>" data-committee-value="<%= tc.committee %>">
@@ -753,11 +959,7 @@
           </a>
         <% }); %>
         <% if (minorNames.length > 0) {
-             const parts = ['committee=' + encodeURIComponent(minorValue)];
-             if (query.search) parts.push('search=' + encodeURIComponent(query.search));
-             if (query.status) parts.push('status=' + encodeURIComponent(query.status));
-             if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
-             const href = '/bill?' + parts.join('&');
+             const href = billHref({ committee: minorValue, page: '' });
         %>
           <a href="<%= href %>" class="side-item <%= isMinorActive ? 'active' : '' %>" title="<%= minorNames.join(', ') %>" data-committee-value="<%= minorValue %>">
             <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">기타/특별위원회</span></span>
@@ -772,24 +974,13 @@
       <div class="side-list">
         <%
           const selectedParties = (query.party || '').split(',').filter(Boolean);
-          const allPartyHref = (() => {
-            const parts = [];
-            if (query.search)    parts.push('search=' + encodeURIComponent(query.search));
-            if (query.status)    parts.push('status=' + encodeURIComponent(query.status));
-            if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
-            return '/bill' + (parts.length ? '?' + parts.join('&') : '');
-          })();
         %>
-        <a href="<%= allPartyHref %>" class="side-item <%= selectedParties.length === 0 ? 'active' : '' %>" data-party-value="">
+        <a href="<%= billHref({ party: '', page: '' }) %>" class="side-item <%= selectedParties.length === 0 ? 'active' : '' %>" data-party-value="">
           <span class="side-item-left"><span class="side-dot"></span><span class="side-item-name">전체</span></span>
           <span class="side-count"><%= nf(partyCounts.reduce((s, p) => s + Number(p.cnt || 0), 0)) %></span>
         </a>
         <% partyCounts.forEach(pc => {
-             const parts = ['party=' + encodeURIComponent(pc.party_name)];
-             if (query.search)    parts.push('search=' + encodeURIComponent(query.search));
-             if (query.status)    parts.push('status=' + encodeURIComponent(query.status));
-             if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
-             const href = '/bill?' + parts.join('&');
+             const href = billHref({ party: pc.party_name, page: '' });
              const active = selectedParties.includes(pc.party_name);
         %>
           <a href="<%= href %>" class="side-item <%= active ? 'active' : '' %>" data-party-value="<%= pc.party_name %>">
@@ -825,9 +1016,15 @@
                 b.proc_result_name === '부결' ? 'rejected' :
                 b.proc_result_name === '폐기' ? 'dropped' : 'pending';
           %>
-          <a href="/bill/<%= b.bill_id %>" class="bill-card <%= scClass %>">
+          <%
+            const reqCount = Number(b.analysis_request_count || 0);
+            const isPriorityWaiting = !b.has_ai_analysis && reqCount >= requestThreshold;
+          %>
+          <a href="/bill/<%= b.bill_id %>" class="bill-card <%= scClass %> <%= b.has_ai_analysis ? 'has-analysis' : '' %>">
             <div>
               <div class="bill-card-meta">
+                <% if (b.has_ai_analysis) { %><span class="badge-ai-analysis">🤖 AI 분석</span><% } %>
+                <% if (isPriorityWaiting) { %><span class="badge-priority">🔥 우선 분석 대기</span><% } %>
                 <% if (b.committee) { %><span class="pb-badge pb-badge-category"><%= b.committee %></span><% } %>
                 <span class="pb-badge <%= resultClass(b.proc_result_name) %>">
                   <%= b.proc_result_name || '계류' %>
@@ -840,11 +1037,22 @@
                 <% } %>
               </div>
               <div class="bill-card-name"><%= b.bill_name %></div>
+              <% if (b.has_ai_analysis && b.ai_summary) { %>
+                <div class="bill-card-summary"><%= b.ai_summary %></div>
+              <% } %>
               <div class="bill-card-info">
                 <% if (b.proposer_name) { %><span>대표발의 <%= b.proposer_name %></span><span>·</span><% } %>
                 <% if (b.co_proposer_count) { %><span>공동발의 <%= b.co_proposer_count %>인</span><span>·</span><% } %>
                 <span><%= b.propose_dt || '—' %></span>
-                <% if (b.committee) { %><span>·</span><span><%= b.committee %></span><% } %>
+                <% if (b.ai_category_main) { %>
+                  <span>·</span>
+                  <span class="ai-category-tag">
+                    <%= b.ai_category_main %><% if (b.ai_category_sub) { %><span class="ai-sub-category"> · <%= b.ai_category_sub %></span><% } %>
+                  </span>
+                <% } %>
+                <% if (!b.has_ai_analysis && reqCount > 0) { %>
+                  <span>·</span><span class="request-count-mini">💡 AI 분석 <%= reqCount %>명 요청</span>
+                <% } %>
               </div>
             </div>
             <div class="bill-card-right">
@@ -873,15 +1081,7 @@
 
       <%
         const { page, totalPages } = pagination;
-        const buildHref = (p) => {
-          const parts = [];
-          if (query.search) parts.push('search=' + encodeURIComponent(query.search));
-          if (query.status) parts.push('status=' + encodeURIComponent(query.status));
-          if (query.committee) parts.push('committee=' + encodeURIComponent(query.committee));
-          if (query.party)  parts.push('party='  + encodeURIComponent(query.party));
-          parts.push('page=' + p);
-          return '/bill?' + parts.join('&');
-        };
+        const buildHref = (p) => billHref({ page: p });
         const pagesAround = () => {
           const maxBtns = 7;
           let start = Math.max(1, page - 3);
@@ -944,14 +1144,18 @@
   const applyBtn  = document.getElementById('filter-sheet-apply');
   const isOpen = () => document.body.classList.contains('filter-sheet-open');
 
-  // 카테고리와 정당은 각각 별도 Set (AND 조합)
-  let pendingCmt   = new Set();
-  let pendingParty = new Set();
+  // 카테고리·정당·AI 카테고리 각각 Set, AI 분석/분석요청 필터는 enum
+  let pendingCmt           = new Set();
+  let pendingParty         = new Set();
+  let pendingAiCategory    = new Set();
+  let pendingHasAnalysis   = '';   // '' = 전체, 'Y' = 있음, 'N' = 없음
+  let pendingRequestStatus = '';   // '' = 전체, 'any' = 1명+, 'priority' = 임계값 도달
 
-  // 두 카드 공통 토글 로직 — Set + data-*-value 기반
+  // 사이드바 a.side-item 토글 로직 — Set + data-*-value 기반
   const configs = [
-    { attr: 'data-committee-value', getSet: () => pendingCmt,   setKey: 'committee' },
-    { attr: 'data-party-value',     getSet: () => pendingParty, setKey: 'party'     }
+    { attr: 'data-committee-value',   getSet: () => pendingCmt        },
+    { attr: 'data-party-value',       getSet: () => pendingParty      },
+    { attr: 'data-ai-category-value', getSet: () => pendingAiCategory }
   ];
 
   const updateSheetVisuals = () => {
@@ -969,22 +1173,34 @@
         el.classList.toggle('sheet-pending', active);
       });
     });
+    // AI 분석 통합 카드 — (ha, rs) 페어 매칭
+    document.querySelectorAll('#filter-sidebar a.side-item[data-analysis-ha]').forEach(el => {
+      const ha = el.getAttribute('data-analysis-ha') || '';
+      const rs = el.getAttribute('data-analysis-rs') || '';
+      const active = (ha === pendingHasAnalysis) && (rs === pendingRequestStatus);
+      el.classList.toggle('sheet-pending', active);
+    });
   };
 
   const loadFromUrl = () => {
     const params = new URLSearchParams(window.location.search);
-    pendingCmt   = new Set((params.get('committee') || '').split(',').filter(Boolean));
-    pendingParty = new Set((params.get('party') || '').split(',').filter(Boolean));
+    pendingCmt         = new Set((params.get('committee')        || '').split(',').filter(Boolean));
+    pendingParty       = new Set((params.get('party')            || '').split(',').filter(Boolean));
+    // ai_category_main 신규 + 구버전 ai_category 호환
+    const aiCatMain    = params.get('ai_category_main') || params.get('ai_category') || '';
+    pendingAiCategory  = new Set(aiCatMain.split(',').filter(Boolean));
+    const ha           = params.get('has_analysis');
+    pendingHasAnalysis = (ha === 'Y' || ha === '1') ? 'Y' : (ha === 'N') ? 'N' : '';
+    const rs           = params.get('request_status');
+    pendingRequestStatus = (rs === 'any' || rs === 'priority') ? rs : '';
   };
 
   const open = () => {
-    // 모바일 시트 열기 — 현재 URL 기준으로 pending 동기화
     loadFromUrl();
     updateSheetVisuals();
     document.body.classList.add('filter-sheet-open');
   };
   const close = () => {
-    // 모바일 취소 — pending 을 현재 URL 로 복원 (데스크톱 pending 은 그대로)
     loadFromUrl();
     updateSheetVisuals();
     document.body.classList.remove('filter-sheet-open');
@@ -992,21 +1208,32 @@
   const reset = () => {
     pendingCmt.clear();
     pendingParty.clear();
+    pendingAiCategory.clear();
+    pendingHasAnalysis = '';
+    pendingRequestStatus = '';
     updateSheetVisuals();
   };
   const apply = () => {
     const params = new URLSearchParams(window.location.search);
-    if (pendingCmt.size > 0)   params.set('committee', Array.from(pendingCmt).join(','));
-    else                        params.delete('committee');
-    if (pendingParty.size > 0) params.set('party',     Array.from(pendingParty).join(','));
-    else                        params.delete('party');
+    if (pendingCmt.size > 0)        params.set('committee', Array.from(pendingCmt).join(','));
+    else                             params.delete('committee');
+    if (pendingParty.size > 0)      params.set('party', Array.from(pendingParty).join(','));
+    else                             params.delete('party');
+    if (pendingAiCategory.size > 0) params.set('ai_category_main', Array.from(pendingAiCategory).join(','));
+    else                             params.delete('ai_category_main');
+    if (pendingHasAnalysis)         params.set('has_analysis', pendingHasAnalysis);
+    else                             params.delete('has_analysis');
+    if (pendingRequestStatus)       params.set('request_status', pendingRequestStatus);
+    else                             params.delete('request_status');
+    // 구버전 키 잔재 제거
+    params.delete('ai_category');
     params.delete('page');
     const qs = params.toString();
     window.pbShowLoader?.();
     window.location.href = '/bill' + (qs ? '?' + qs : '');
   };
 
-  // 카드별 링크 클릭 intercept — 데스크톱/모바일 공통, 항상 pending 토글 (즉시 navigation 안 함)
+  // 카드별 링크 클릭 intercept — 데스크톱/모바일 공통, 항상 pending 토글
   configs.forEach(cfg => {
     document.querySelectorAll(`#filter-sidebar a.side-item[${cfg.attr}]`).forEach(item => {
       item.addEventListener('click', (e) => {
@@ -1023,6 +1250,25 @@
         }
         updateSheetVisuals();
       });
+    });
+  });
+
+  // AI 분석 통합 카드 — 한 클릭에 (ha, rs) 페어 동시 설정.
+  // 같은 항목 다시 클릭 시 '전체' 로 복귀.
+  document.querySelectorAll('#filter-sidebar a.side-item[data-analysis-ha]').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const ha = item.getAttribute('data-analysis-ha') || '';
+      const rs = item.getAttribute('data-analysis-rs') || '';
+      const isAlreadyActive = (ha === pendingHasAnalysis) && (rs === pendingRequestStatus);
+      if (isAlreadyActive) {
+        pendingHasAnalysis = '';
+        pendingRequestStatus = '';
+      } else {
+        pendingHasAnalysis = ha;
+        pendingRequestStatus = rs;
+      }
+      updateSheetVisuals();
     });
   });
 

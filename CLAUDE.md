@@ -1,5 +1,5 @@
 # 3jjoda 프로젝트 — Claude Code 컨텍스트
-> 마지막 업데이트: 2026-04-25
+> 마지막 업데이트: 2026-04-26
 > 이 파일은 **현재 코드 상태**만 담습니다.
 > 비전·로드맵: [ROADMAP.md](./ROADMAP.md)
 > 작업 이력: [CHANGELOG.md](./CHANGELOG.md)
@@ -179,14 +179,16 @@ CREATE TABLE "session" (
 CREATE INDEX "IDX_session_expire" ON "session" ("expire");
 ```
 
-### AI 법안 분석 테이블 (2026-04-24 신규)
+### AI 법안 분석 테이블 (2026-04-24 신규, 2026-04-26 v4.1 카테고리 2-tier)
 
 ```sql
 -- 5-Zone UI 구조에 직접 매핑되는 JSONB 중심 테이블
 CREATE TABLE bill_ai_analysis (
   bill_id              VARCHAR(50) PRIMARY KEY REFERENCES bills(bill_id) ON DELETE CASCADE,
   summary              TEXT        NOT NULL,      -- Zone 1 한 줄 요약
-  category             VARCHAR(50),               -- Zone 1 태그
+  category             VARCHAR(50),               -- Zone 1 태그 (legacy, deprecated — DROP 예정)
+  category_main        VARCHAR(50),               -- v4.1: 16종 고정 set 중 1개 (필터·집계용)
+  category_sub         VARCHAR(50),               -- v4.1: 자유 형식 10자 이내 (카드 표시용, NULL 허용)
   reading_time_min     SMALLINT    DEFAULT 2,     -- Zone 1 "읽기 N분"
   changes              JSONB       NOT NULL,      -- Zone 2 {current, revised, clause}
   affected             JSONB       NOT NULL,      -- Zone 2 {benefit, loss, direct[], indirect[]}
@@ -195,19 +197,53 @@ CREATE TABLE bill_ai_analysis (
   limitations          JSONB,                     -- Zone 5 분석 한계 (미구현)
   judgment_questions   JSONB       NOT NULL,      -- Zone 4 [{question, hint}]
   model                VARCHAR(50) NOT NULL,      -- 예: claude-haiku-4-5-20251001
-  prompt_version       VARCHAR(10) NOT NULL,      -- 예: v4 (v4-sample = 수동 시드)
+  prompt_version       VARCHAR(10) NOT NULL,      -- 'v4' (자유 카테고리) | 'v4.1' (16종 main+sub) | 'v4-sample' (수동 시드)
   tokens_input         INT,
   tokens_output        INT,
   cost_usd             NUMERIC(8,6),              -- 건당 비용 추적
-  needs_review         BOOLEAN     DEFAULT FALSE, -- 사실 오류 의심 플래그
+  needs_review         BOOLEAN     DEFAULT FALSE, -- 사실 오류 의심 플래그 (16종 외 카테고리·연도/기관 다수·limitations 3개+)
   review_status        VARCHAR(20) DEFAULT 'auto',-- auto|human_approved|human_rejected
   analyzed_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_at           TIMESTAMPTZ DEFAULT NOW(),
   updated_at           TIMESTAMPTZ DEFAULT NOW()
 );
--- 인덱스: prompt_version / needs_review(partial WHERE TRUE) / category
+-- 인덱스: prompt_version / needs_review(partial WHERE TRUE) / category / category_main
 -- 트리거: trg_bill_ai_analysis_updated_at
 ```
+
+**v4.1 카테고리 16종 고정 set** (`batch/billCategories.js` 에 정의·tie-breaker 모듈로 분리):
+```
+정치·행정 / 외교·통일 / 국방·안보 / 사법·치안
+산업·R&D  / 조세·재정 / 노동·고용 / 교육·인재
+환경·에너지 / 보건·의료 / 복지·돌봄 / 주거·국토
+농어촌·수산 / 문화·예술 / 안전·재난 / 유통·소비자
+```
+- `category_main` 은 16종 글자 그대로만 허용. 검증 실패 시 `needs_review=true` 강제
+- `category_sub` 예: "양자기술", "환경교육", "소상공인" — 카드에 "산업·R&D · 양자기술" 형태로 표시
+- 모호 케이스 결정 가이드: 직접적 변경 대상(수단보다 결과) → 주관 부처 → 일반 시민 검색 멘탈모델 순. 예: "환경교육법 → 환경·에너지", "소상공인 지원법 → 노동·고용", "양자과학기술법 → 산업·R&D"
+- legacy `category` 컬럼은 안정화 1주 후 DROP 예정
+
+### 분석 요청 테이블 (2026-04-25 신규)
+
+```sql
+-- 미분석 법안에 대한 사용자의 1인 1요청
+CREATE TABLE bill_analysis_requests (
+  id            BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  bill_id       VARCHAR(50)  NOT NULL REFERENCES bills(bill_id) ON DELETE CASCADE,
+  user_id       INT          NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  requested_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  UNIQUE (bill_id, user_id)
+);
+-- idx_bill_analysis_requests_bill / user / recent (DESC)
+
+-- 카운트 view (리스트 LEFT JOIN 시 사용)
+CREATE OR REPLACE VIEW bill_analysis_request_counts AS
+SELECT bill_id, COUNT(*)::int AS request_count, MAX(requested_at) AS last_requested_at
+  FROM bill_analysis_requests GROUP BY bill_id;
+```
+- 임계값(`ANALYSIS_REQUEST_THRESHOLD`, 기본 5) 도달 시 카드/위젯에 "🔥 우선 분석 대기" 표시 + 위젯에 "🎉 충분한 요청이 모였어요" 메시지
+- 운영자 우선순위 쿼리: `WHERE a.bill_id IS NULL` + `ORDER BY rc.request_count DESC` 로 다음 분석 큐 결정
+- 또는 UI 로: `/bill?has_analysis=N&request_status=any&sort=requested`
 
 ### codes 테이블 데이터 (BILL_TOPIC, 레거시)
 > 현재는 `bills.committee` 단일 기준으로 대체됨. BILL_TOPIC 코드는 유지만 하고 조회에는 미사용.
@@ -233,7 +269,10 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 `etc/ddl/` — 모든 스키마 변경이 여기 기록됨
 - `users_update.sql`, `comments.sql`, `politician_ratings.sql`,
   `bill_citizen_votes.sql`, `likes.sql`, `posts.sql`, `user_session.sql`,
-  `bill_ai_analysis.sql` (2026-04-24 신규 — 샘플 INSERT 포함)
+  `bill_ai_analysis.sql` (2026-04-24 신규 — 샘플 INSERT 포함),
+  `bill_analysis_requests.sql` (2026-04-25 — 분석 요청 테이블 + view)
+- `etc/ddl/migrations/` — 누적 변경
+  - `2026-04-26-bill-category-tier.sql` — `bill_ai_analysis` 에 `category_main`/`category_sub` 컬럼 추가
 
 ---
 
@@ -245,26 +284,39 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/` | `views/index.ejs` | 홈 (KPI, 주목 법안, 활발 의원, 월별 추이) |
 | `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터) |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
-| `/bill` | `bill/bill.ejs` | 법안 목록 (상태 스테퍼, 카테고리·정당 복수선택 사이드바, 페이징) |
-| `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·국민 찬반·본회의 표결·댓글) |
+| `/bill` | `bill/bill.ejs` | 법안 목록 (AI 분석 진행률 배너 + 통합 필터 카드 + 정렬 + 카테고리·정당 복수선택, 페이징) |
+| `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·요청 위젯·국민 찬반·본회의 표결·댓글) |
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
 | `/community/:id` | `community/detail.ejs` | 상세 (조회수·좋아요·댓글) |
+| `/my/analysis-requests` | `my/analysis_requests.ejs` | 마이페이지 — 내가 요청한 AI 분석 (`requireLogin`) |
 | `/about` | `about.ejs` | 사이트 소개 |
 | `/glossary` | `glossary.ejs` | 용어 설명 (목차 + 4섹션) |
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
 | `/auth/setup` | `auth/setup.ejs` | 신규 OAuth 닉네임·성별·연령대 설정 (필수) |
 
 ### `/bill/:id` 5-Zone AI 분석 UI
-`bill_ai_analysis` 테이블에 레코드가 있을 때만 렌더. 없으면 `.bill-basic-header` (메타 + 법안명) 로 대체.
-- **Zone 1 — 훅**: 메타 2줄(#번호·위원회·상태 / 대표발의·발의일·공동발의) + `<h1>` 법안명 + `<h2>` 한 줄 요약 (세리프 28px/900) + 태그(카테고리·읽기시간·상태)
+`bill_ai_analysis` 테이블에 레코드가 있을 때만 5-Zone 렌더. 없으면 `.bill-basic-header` (메타 + 법안명) + 분석 요청 위젯 노출.
+- **AI 분석 라벨** (분석 분기 공통, 2026-04-26): 분석 섹션 위 한 줄 — 분석 있음은 골드 톤(`is-done`) "🤖 AI 분석   AI가 생성한 분석으로 사실과 다를 수 있습니다   v4.1", 분석 없음은 회색 톤(`is-pending`) "🤖 AI 분석   아직 분석되지 않은 법안입니다". [ANALYSIS.md](./ANALYSIS.md) §7-장치4 디스클레이머 충족
+- **Zone 1 — 훅**: 메타 2줄(#번호·위원회·상태 / 대표발의·발의일·공동발의) + `<h1>` 법안명 + `<h2>` 한 줄 요약 (세리프 28px/900) + 태그 — 카테고리는 `category_main · category_sub` 결합 형식 (예: "산업·R&D · 양자기술")
 - **Zone 2 — 한눈에 보기**: 3카드 (바뀌는 것 / 혜택 / 손해) + "여기까지 읽으면 30%" 프로그레스
 - **Zone 3 — 쟁점**: `issues[]` accordion (첫 번째만 기본 펼침). type별 배지 — `pro=파랑 / con=주황 / gap=회색` + "70%" 프로그레스
 - **Zone 4 — 판단 질문**: `judgment_questions[]` 번호 매기기 + 골드톤 배경(`#FAF6EB`) + "찬반 투표하기" CTA → `#citizen-vote-section` smooth scroll
 - **Zone 5 — 참고 맥락·분석 한계**: 미구현. DB에 `context`/`limitations` 컬럼은 존재. "더 알아보기" 버튼은 Zone 5 추가 시 부활 예정.
 - **국회 원문 링크**: 헤더 카드 우측 상단에 배치 (`.zone-1-top > .original-link`)
 - **XSS 방어**: `JSON.stringify(analysis).replace(/</g, '\\u003c')` + `renderRichText()` 헬퍼로 `<strong>` 만 허용하는 선별 이스케이프
+
+### `/bill/:id` 분석 요청 위젯 (2026-04-25)
+미분석 법안에서만 노출. `bill-basic-header` 바로 아래 골드 그라디언트 카드.
+- 큰 숫자 카운터(세리프 32px) `<count> / <threshold>명` + 진행 바 (`linear-gradient(90deg, var(--accent), #D4A442)`)
+- 임계값(`requestThreshold`, 기본 5명) 도달 시 "🎉 충분한 요청이 모였어요. 곧 분석됩니다." 초록 박스
+- 비로그인: "로그인하고 분석 요청하기" → `/auth/login?next=<currentUrl>`
+- 로그인 + 미요청: "💡 이 법안 분석 요청하기" → `POST /bill/:id/request-analysis` AJAX
+- 로그인 + 이미 요청: "✓ 요청했어요" 비활성 버튼
+- AJAX 성공 시 카운트·진행 바 즉시 갱신 + 버튼 교체 (페이지 새로고침 없이)
+- `data-bill-id` / `data-count` / `data-threshold` / `data-has-requested` / `data-logged-in` 속성에 서버 상태 박아둠
+- `PB.mountAnalysisRequest({ containerId: 'analysis-request-widget' })` 헬퍼가 처리
 
 ### `/bill/:id` 본회의 표결 명단 모달 (2026-04-24)
 4개 박스(찬성/반대/기권/불참) 클릭 시 모달로 전체 명단 표시 — 상세 페이지 스크롤 부담 제거.
@@ -302,16 +354,22 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | GET / POST | `/api/likes` | 좋아요 토글/카운트 |
 | GET | `/api/bills/search?q=X` | 법안 검색 (커뮤니티 첨부용) |
 | GET | `/api/bills/trending?sort=recent\|close\|popular\|bipartisan` | 홈 주목할 법안 (정렬 탭 동적 교체) |
+| GET | `/api/bill/:id/analysis-status` | AI 분석 요청 상태 `{count, hasRequested, threshold}` |
+| POST | `/bill/:id/request-analysis` | AI 분석 요청 (requireLogin, 멱등). `ALREADY_ANALYZED` 면 400 |
 | POST | `/community` | 게시글 작성 |
 | PUT / DELETE | `/community/:id` | 수정/삭제 (본인만) |
 
 ### 법안 필터 URL 규약
 - `/bill?committee=행정안전위원회` — 단일 위원회
 - `/bill?committee=기획재정위원회,재정경제기획위원회` — **쉼표 분리 복수 매칭** (`string_to_array` 로 SQL IN 처리)
-- `/bill?party=더불어민주당,국민의힘` — **대표발의 정당 복수 필터** (2026-04-25 추가). `LEFT JOIN politicians p ON p.mona_cd = b.mona_cd` + `COALESCE(p.party_name, '기타/무소속') = ANY(...)`
-- committee + party 동시 적용 시 AND 매칭
-- 홈 카테고리 탭 "조세/재정", 사이드바 "기타/특별위원회" 묶음이 committee 복수 방식 사용
+- `/bill?party=더불어민주당,국민의힘` — **대표발의 정당 복수 필터** (2026-04-25). `LEFT JOIN politicians p ON p.mona_cd = b.mona_cd` + `COALESCE(p.party_name, '기타/무소속') = ANY(...)`
+- `/bill?has_analysis=Y` / `=N` — AI 분석 있는/없는 것만
+- `/bill?ai_category_main=조세·재정,산업·R&D` — AI main 카테고리 복수 (2026-04-26 v4.1). 구버전 `?ai_category=` 도 자동 매핑되어 호환
+- `/bill?request_status=any` / `=priority` — 미분석 + 요청 1명+ / 임계값 도달
+- `/bill?sort=recent` (default) / `=ai_priority` / `=requested`
+- 모두 AND 매칭. 통합 필터 카드 5항목은 (`has_analysis`, `request_status`) 페어 매핑으로 한 클릭에 두 키 동시 적용 (예: "💡 요청 있음" = `has_analysis=N&request_status=any`)
 - 상태 탭 카운트(`getStatusCounts`)도 committee/party 필터 모두 반영하여 탭 숫자 일관성 유지
+- 운영자 다음-분석-큐 URL: `/bill?has_analysis=N&request_status=any&sort=requested`
 
 ### 필터 사이드바 UX (의원·법안 공통, 2026-04-25)
 PC/모바일 동일 패턴으로 통일.
@@ -320,9 +378,22 @@ PC/모바일 동일 패턴으로 통일.
 - 취소(×/backdrop/ESC): 시트 열기 전 상태 복원 (politician 은 state 스냅샷, bill 은 `loadFromUrl()` 재실행)
 - **복수선택**:
   - politician: `state.sex/ageBucket/cmit/elect` 배열, 카테고리 내 OR · 카테고리 간 AND
-  - bill: `pendingCmt` / `pendingParty` Set, 적용 시 `?committee=A,B&party=X,Y` navigation. "기타/특별위원회" 는 minor 이름 쉼표 value 로 atomic 토글
-- 모바일(≤768px): `filter-sheet-btn` 이 검색 바 위 전체폭. 바텀시트 슬라이드업 + 백드롭
+  - bill: `pendingCmt` / `pendingParty` / `pendingAiCategory` Set, 적용 시 `?committee=A,B&party=X,Y&ai_category_main=X,Y` navigation. "기타/특별위원회" 는 minor 이름 쉼표 value 로 atomic 토글
+- **단일 선택 (enum)**: bill 의 통합 AI 분석 카드 — `pendingHasAnalysis` ('' | 'Y' | 'N') + `pendingRequestStatus` ('' | 'any' | 'priority') 두 변수가 한 항목 클릭에 페어로 동시 토글. 같은 항목 재클릭 시 둘 다 '' 로 복귀(전체)
+- 모바일(≤768px): `filter-sheet-btn` 이 검색 바 위 전체폭. 바텀시트 슬라이드업 + 백드롭. 활성 필터 카운트 뱃지엔 모든 필터 합산
 - `.sheet-pending` CSS 전역. 서버렌더 `.active` 는 JS init 에서 제거 후 `.sheet-pending` 으로 교체
+
+### 법안 리스트 사이드바 카드 구성 (2026-04-26)
+순서대로 4개 카드:
+1. **AI 분석** (통합) — 5항목 단일 라디오: `전체 / 🤖 있음 / 없음 / 💡 요청 있음 / 🔥 우선 분석 대기 (5명+)`. 카운트는 `getRequestStats` (미분석 한정 LEFT JOIN) 결과로 카드값 ↔ 클릭 결과 일치 보장
+2. **주제별** — `category_main` distinct 옵션, `aiCategories` 배열에 등장한 카테고리만 (분석 0건 카테고리는 노출 안 함)
+3. **카테고리** — 위원회 (100건+ 위원회 개별, 미만은 "기타/특별위원회" 그룹)
+4. **정당별 (대표발의)** — 7~8개 정당 + "기타/무소속"
+
+### 법안 리스트 진행률 배너 + 정렬 드롭다운 (2026-04-25)
+- **진행률 배너**: stepper 아래 카드 — "🤖 법안 N건 중 AI 분석 완료 M건" + 가로 막대(`progress-bar-fill`) + 퍼센트
+- **정렬 드롭다운**: 검색 바 옆 `<select onchange="this.form.submit()">` — `최신순(default) / 분석 있음 우선 / 요청 많은 순`. ai_priority/requested 만 분석 있는 카드를 위쪽에 띄움 (CASE WHEN ORDER BY)
+- **카드 강조**: 분석 있는 법안은 `.has-analysis { border-left: 3px solid var(--accent) }` + `🤖 AI 분석` 배지 + `bill-card-summary` (세리프 14px, 2줄 클램프) + `category_main · category_sub` 메타. 미분석 + 요청 임계값 도달 시 `🔥 우선 분석 대기` 배지. 미분석 + 요청 1명+ 시 메타에 "💡 AI 분석 N명 요청"
 
 ### 공용 미들웨어
 - `middlewares/auth.js`
@@ -352,6 +423,11 @@ PC/모바일 동일 패턴으로 통일.
   - Zone 3 accordion — 첫 번째만 기본 펼침, 클릭 시 `max-height` 트랜지션
   - Zone 4 "찬반 투표하기" → `scrollTargetId` (기본 `citizen-vote-section`) smooth scroll
   - `analysisData` falsy 시 컨테이너 `display:none` (EJS 조건부 렌더와 이중 안전장치)
+  - hookTag 카테고리는 `category_main · category_sub` 결합 (v4.1) — 구버전 `category` 도 fallback
+- `PB.mountAnalysisRequest({containerId})` — AI 분석 요청 위젯 (2026-04-25)
+  - `data-bill-id` / `data-count` / `data-threshold` / `data-has-requested` / `data-logged-in` 속성 읽음
+  - `POST /bill/:id/request-analysis` AJAX, 401 시 `/auth/login?next=` 리다이렉트
+  - 성공 시 카운트·진행 바 즉시 갱신, 버튼을 "✓ 요청했어요"로 교체, 임계값 도달 시 "🎉 충분한 요청이 모였어요" 메시지 추가
 - `PB.avatarSvg(name, size)` — 이니셜 SVG 아바타 (라이트 파스텔 8팔레트)
 - `PB.toChoseong(str)` / `PB.isChoseongOnly(q)` / `PB.matchesQuery(target, query)` — 한글 초성 검색 (2026-04-24)
   - 쿼리가 compat-jamo 자음(ㄱ-ㅎ)만이면 `toChoseong(target).includes(q)` 로 초성 부분일치, 그 외엔 일반 substring (영문은 `toLowerCase`)
@@ -371,11 +447,30 @@ PC/모바일 동일 패턴으로 통일.
 | `syncMissingBillDetails.js` | ALLBILL API | 상세 누락분 보강 |
 | `syncPhotos.js` | 크롤링 | 의원 프로필 사진 |
 | `updateCommittee.js` | 열린국회 API | `syncBills.js` 이전 레코드 committee 컬럼 보강 (pSize=1000, bulk VALUES UPDATE) |
+| `syncBillAiAnalysis.js` | pal.assembly.go.kr 크롤 + Claude Haiku 4.5 | AI 법안 분석 (v4.1, 16종 카테고리) |
+| `reclassifyCategories.js` | Claude Haiku 4.5 | 자유 카테고리 → v4.1 16종 main+sub 일괄 재분류 |
+| `billCategories.js` | (모듈) | 16종 카테고리·정의·tie-breaker 공유 (분석/재분류 배치가 import) |
 
 ### syncBills.js 결과
 - RST_MONA_CD → bills.mona_cd, PUBL_MONA_CD → bill_co_proposers
 - committee / committee_id 동시 INSERT + ON CONFLICT UPDATE
 - 16,817건 법안 + 217,568건 발의자 (75초)
+
+### syncBillAiAnalysis.js (2026-04-25 신규, 04-26 v4.1)
+**흐름**: 미분석 대상 조회 → `pal.assembly.go.kr/napal/lgsltpa/lgsltpaDone/view.do?lgsltPaId=<bill_id>` 본문 cheerio 파싱 → Haiku 분석 → `bill_ai_analysis` UPSERT
+- 인자: `--limit N` (기본 3) / `--bill-id ID...` 직접 지정
+- Phase 1 자동 선별: `proc_result_name IN ('원안가결','수정가결')` + 미분석만
+- 모델: `claude-haiku-4-5-20251001` / 가격: input $1.0, output $5.0, cache write $1.25, cache read $0.10 (per MTok)
+- prompt caching 적용 (`cache_control: ephemeral`) 단 Haiku 4.5 임계값 미달로 현재 system(~3,300 tok)에선 활성화 안 됨 (cache_w/cache_r=0). 4,500+ 으로 늘면 자동 활성
+- 요청 간 sleep 1500ms + 429 retry-after 대응
+- 후처리: `TYPO_MAP` 오타 치환, `validateCategoryMain` (16종 외 라벨이면 `needs_review=true`), `shouldReview` 휴리스틱(연도 3+ / 기관·법명 5+ / limitations 3+)
+- 비용 (v4.1): input ~5,170 tok, **1건당 ~$0.0172**. 가결 490건 추정 ~$8.4
+
+### reclassifyCategories.js (2026-04-26 신규)
+한 번의 Haiku 호출로 N건 일괄 재분류. v4 자유 카테고리 → v4.1 main+sub.
+- 인자: `--all` (v4.1 도 강제 재분류) / `--dry-run` (DB 안 씀)
+- `BEGIN`/`COMMIT` 트랜잭션, 16종 외면 `needs_review=true`
+- 결과: 12건 $0.0068 (1건당 $0.0006) 매우 싸다 — 일괄 호출이라 카테고리 결정 컨텍스트가 한 번만 들어가서
 
 > 폐기된 배치 파일(topicUpdate.js, updateByCommittee.js)은 [CHANGELOG.md](./CHANGELOG.md) 참조.
 
@@ -403,6 +498,9 @@ KAKAO_CLIENT_SECRET=                # Kakao 콘솔에서 "Client Secret 사용�
 OPEN_ASSEMBLY_API_KEY=
 ANTHROPIC_API_KEY=sk-ant-...
 ASSEMBLY_AGE=22
+
+# AI 분석 요청 임계값 (기본 5명 — 도달 시 "🔥 우선 분석 대기" 표시)
+ANALYSIS_REQUEST_THRESHOLD=5
 ```
 
 ### Git 안전 수칙
@@ -452,4 +550,11 @@ node batch/syncPoliticians.js
 node batch/syncBills.js
 node batch/syncVotes.js
 node batch/updateCommittee.js    # committee 컬럼 보강
+
+# AI 분석
+node batch/syncBillAiAnalysis.js                                # Phase 1 가결 + 미분석 3건
+node batch/syncBillAiAnalysis.js --limit 50                      # 50건
+node batch/syncBillAiAnalysis.js --bill-id PRC_X2Y... --bill-id PRC_A2B...   # 특정 법안
+node batch/reclassifyCategories.js --dry-run                     # 카테고리 재분류 미리보기
+node batch/reclassifyCategories.js                               # 실행
 ```

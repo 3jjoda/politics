@@ -4,6 +4,7 @@ import express from 'express';
 import InitController from '../controllers/InitController.js';
 import PoliticianController from '../controllers/PoliticianController.js';
 import BillController from '../controllers/BillController.js';
+import { requireLogin } from '../middlewares/auth.js';
 
 export default (db) => {
     const router = express.Router();
@@ -47,6 +48,12 @@ export default (db) => {
     // 법안 목록 / 상세
     router.get('/bill', billController.getListPage);
     router.get('/bill/:id', billController.getDetailPage);
+
+    // AI 분석 요청 (POST) — 로그인 필수
+    router.post('/bill/:id/request-analysis', requireLogin, billController.requestAnalysis);
+
+    // 마이페이지 — 내가 요청한 분석
+    router.get('/my/analysis-requests', requireLogin, billController.getMyAnalysisRequestsPage);
 
     return router;
 };

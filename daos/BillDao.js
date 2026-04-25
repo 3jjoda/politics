@@ -14,9 +14,24 @@ fs.readdirSync(queriesPath).forEach(file => {
 
 export default (db) => {
     return {
-        /* 법안 목록 (검색/필터/페이징) */
-        getList: async ({ search = null, status = null, committee = null, party = null, limit = 50, offset = 0 } = {}) => {
-            const { rows } = await db.query(queries.getList, [search, status, committee, limit, offset, party]);
+        /* 법안 목록 (검색/필터/정렬/페이징) */
+        getList: async ({
+            search = null,
+            status = null,
+            committee = null,
+            party = null,
+            hasAnalysis = null,        // 'Y' | 'N' | null
+            aiCategoryMain = null,     // 'A,B' | null  (v4.1 16종 main)
+            sort = 'recent',           // 'recent' | 'ai_priority' | 'requested'
+            requestStatus = null,      // 'any' | 'priority' | null
+            priorityThreshold = 5,
+            limit = 50,
+            offset = 0
+        } = {}) => {
+            const { rows } = await db.query(
+                queries.getList,
+                [search, status, committee, limit, offset, party, hasAnalysis, aiCategoryMain, sort, requestStatus, priorityThreshold]
+            );
             return rows;
         },
 
@@ -97,6 +112,48 @@ export default (db) => {
             const term = String(q || '').trim();
             if (!term) return [];
             const { rows } = await db.query(queries.search, [term]);
+            return rows;
+        },
+
+        /* AI 분석 - 카테고리 필터 옵션 */
+        getAiCategories: async () => {
+            const { rows } = await db.query(queries.getAiCategories);
+            return rows;
+        },
+
+        /* AI 분석 - 진행률 (천천히 변함, 5분 캐시 가치 큼) */
+        getAnalysisStats: async () => {
+            const { rows } = await db.query(queries.getAnalysisStats);
+            return rows[0];
+        },
+
+        /* 분석 요청 - any/priority 카운트 (자주 변함, 캐시 X) */
+        getRequestStats: async (threshold = 5) => {
+            const { rows } = await db.query(queries.getRequestStats, [threshold]);
+            return rows[0];
+        },
+
+        /* 분석 요청 - 카운트 */
+        getAnalysisRequestCount: async (billId) => {
+            const { rows } = await db.query(queries.getAnalysisRequestCount, [billId]);
+            return rows[0]?.count || 0;
+        },
+
+        /* 분석 요청 - 사용자 요청 여부 */
+        getUserAnalysisRequest: async (billId, userId) => {
+            const { rows } = await db.query(queries.getUserAnalysisRequest, [billId, userId]);
+            return rows[0] || null;
+        },
+
+        /* 분석 요청 - 생성 (UNIQUE 충돌 시 ON CONFLICT DO NOTHING) */
+        createAnalysisRequest: async (billId, userId) => {
+            const { rows } = await db.query(queries.createAnalysisRequest, [billId, userId]);
+            return rows[0] || null;  // null 이면 이미 존재
+        },
+
+        /* 분석 요청 - 내가 요청한 법안 목록 (마이페이지) */
+        getMyAnalysisRequests: async (userId) => {
+            const { rows } = await db.query(queries.getMyAnalysisRequests, [userId]);
             return rows;
         }
     };
