@@ -1,0 +1,195 @@
+<%
+  const genderLabel = ({ male: '남성', female: '여성', other: '그 외' })[user.gender] || '';
+  const ageLabel    = user.age_group ? user.age_group.replace('s', '대') : '';
+  const demoTag     = [ageLabel, genderLabel].filter(Boolean).join(' · ');
+%>
+
+<style>
+  .wel-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 56px) 24px 80px;
+    text-align: center;
+  }
+  .wel-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .wel-greeting {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 56px;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    margin: 0 0 8px;
+  }
+  .wel-greeting .nick {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 900;
+    font-size: 42px;
+    color: var(--accent);
+    letter-spacing: 0;
+  }
+  .wel-prompt {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1.55;
+    color: var(--text);
+    margin: 28px 0 18px;
+    word-break: keep-all;
+  }
+  .wel-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: #FAF6EB;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 28px;
+  }
+
+  .wel-bullets {
+    text-align: left;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin: 0 auto 28px;
+    max-width: 540px;
+  }
+  .wel-bullets > div {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 8px 0;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--sub);
+    word-break: keep-all;
+  }
+  .wel-bullets > div + div { border-top: 1px solid var(--border); }
+  .wel-bullets .dot {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--accent);
+  }
+  .wel-bullets strong { color: var(--text); }
+
+  .wel-mission {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--text);
+    margin: 28px 0 6px;
+    word-break: keep-all;
+  }
+  .wel-mission-sub {
+    font-size: 13px;
+    color: var(--sub);
+    margin-bottom: 32px;
+  }
+
+  .wel-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .wel-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 30px;
+    font-size: 15px;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s, border-color 0.15s;
+    font-family: inherit;
+  }
+  .wel-btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .wel-btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+  .wel-btn-secondary {
+    background: var(--bg2);
+    color: var(--text);
+    border-color: var(--border2);
+  }
+  .wel-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .wel-skip-note {
+    font-size: 12px;
+    color: var(--sub2);
+  }
+
+  @media (max-width: 768px) {
+    .wel-wrap { padding: calc(var(--nav-h) + 32px) 16px 60px; }
+    .wel-greeting { font-size: 40px; }
+    .wel-greeting .nick { font-size: 30px; }
+    .wel-prompt { font-size: 19px; }
+    .wel-actions { flex-direction: column; }
+    .wel-btn { width: 100%; max-width: 320px; margin: 0 auto; }
+  }
+</style>
+
+<div class="wel-wrap">
+  <div class="wel-eyebrow">📊 정치 바로미터</div>
+  <h1 class="wel-greeting">
+    <span class="nick"><%= user.nickname %></span>님,<br>
+    환영해요
+  </h1>
+
+  <p class="wel-prompt">🎯 5분만 시간 내주실 수 있나요?</p>
+  <span class="wel-time">⏱ 20문항 · 약 5분</span>
+
+  <div class="wel-bullets">
+    <div>
+      <span class="dot">·</span>
+      <span>20문항으로 당신의 정치 입장이 <strong>4축 좌표</strong>로 그려져요.</span>
+    </div>
+    <div>
+      <span class="dot">·</span>
+      <span>의원·법안 페이지에서 <strong>당신과 결이 비슷한 사람</strong>을 찾아드려요.</span>
+    </div>
+    <% if (demoTag) { %>
+    <div>
+      <span class="dot">·</span>
+      <span>같은 <strong><%= demoTag %></strong> 응답자 평균과 비교해 볼 수 있어요.</span>
+    </div>
+    <% } %>
+    <div>
+      <span class="dot">·</span>
+      <span>시간이 지나며 <strong>갱신</strong>되어 변화를 추적할 수 있어요.</span>
+    </div>
+  </div>
+
+  <p class="wel-mission">"내 생각이 잘못됐을 수도 있나?"</p>
+  <p class="wel-mission-sub">하고 한 번 멈춰보는 경험이에요.</p>
+
+  <form method="post" action="/auth/welcome" class="wel-actions">
+    <button type="submit" name="choice" value="play" class="wel-btn wel-btn-primary">
+      지금 풀기 (5분)
+    </button>
+    <button type="submit" name="choice" value="browse" class="wel-btn wel-btn-secondary">
+      둘러보기 먼저
+    </button>
+  </form>
+
+  <p class="wel-skip-note">스킵해도 언제든 메뉴의 "성향 진단"에서 풀 수 있어요</p>
+</div>

@@ -1,0 +1,434 @@
+<%
+  const econ = Number(axisScore.economy ?? 0);
+  const soci = Number(axisScore.social ?? 0);
+  const sec  = Number(axisScore.security ?? 0);
+  const inst = Number(axisScore.institution ?? 0);
+
+  // 임계값: 응답자 50명+ 부터 비교 의미. 그 미만은 비활성화 + 안내.
+  const OVERALL_THRESHOLD = 50;
+  const overallCount = overall ? Number(overall.user_count || 0) : 0;
+  const overallExists = Boolean(overall) && overallCount >= OVERALL_THRESHOLD;
+  const overallEcon = overall ? Number(overall.economy_avg ?? 0)     : 0;
+  const overallSoci = overall ? Number(overall.social_avg ?? 0)      : 0;
+  const overallSec  = overall ? Number(overall.security_avg ?? 0)    : 0;
+  const overallInst = overall ? Number(overall.institution_avg ?? 0) : 0;
+
+  const groupExists = group && groupTier !== 'absent';
+  const groupEcon = group ? Number(group.economy_avg ?? 0)     : 0;
+  const groupSoci = group ? Number(group.social_avg ?? 0)      : 0;
+  const groupSec  = group ? Number(group.security_avg ?? 0)    : 0;
+  const groupInst = group ? Number(group.institution_avg ?? 0) : 0;
+  const groupCount = group ? Number(group.user_count || 0) : 0;
+
+  // 그룹 라벨 — 추상화. 인구 정보(20대 남성)는 active 시 메타로만 별도 노출.
+  // 화면 노출 시 옆 사람에게 보이는 개인정보 우려 회피.
+  const buildGroupDetail = (key) => {
+    if (!key) return '';
+    const parts = {};
+    String(key).split(',').forEach(s => {
+      const [k, v] = s.split(':');
+      parts[k] = v;
+    });
+    const gender = ({ male: '남성', female: '여성', other: '그 외' })[parts.gender] || '';
+    const age = parts.age ? parts.age.replace('s', '대') : '';
+    return [age, gender].filter(Boolean).join(' ');
+  };
+  const groupDetail = buildGroupDetail(groupKey);
+
+  // 축별 한 줄 해석 — 강도 4단계
+  //   |점수| < 0.25 → 중도
+  //   0.25 ≤ |점수| < 0.5  → 미세하게
+  //   0.5  ≤ |점수| < 0.75 → 약간 뚜렷하게
+  //   0.75 ≤ |점수|        → 뚜렷하게
+  const axisLine = (axisKey, val) => {
+    const a = axes[axisKey];
+    const v = Math.abs(Number(val) || 0);
+    if (v < 0.25) return `${a.label} 축에서 중도입니다 — ${a.left}/${a.right} 양쪽 입장이 비슷합니다`;
+    const side = val > 0 ? a.right : a.left;
+    const intensity = v >= 0.75 ? '뚜렷하게'
+                    : v >= 0.5  ? '약간 뚜렷하게'
+                    :              '미세하게';
+    return `${a.label} 축에서 ${intensity} ${side} 쪽입니다`;
+  };
+%>
+
+<style>
+  .bg-cmp-wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 36px) 24px 80px;
+  }
+
+  .bg-cmp-head {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .bg-cmp-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .bg-cmp-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 44px;
+    color: var(--text);
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+  .bg-cmp-sub {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--sub);
+    margin-top: 8px;
+    word-break: keep-all;
+  }
+
+  /* 비교 토글 */
+  .bg-cmp-toggle {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .bg-cmp-toggle button {
+    padding: 8px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--sub);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .bg-cmp-toggle button:hover { border-color: var(--accent); color: var(--accent); }
+  .bg-cmp-toggle button.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .bg-cmp-toggle button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    color: var(--sub2);
+  }
+  .bg-cmp-toggle button:disabled:hover {
+    border-color: var(--border);
+    color: var(--sub2);
+  }
+  .bg-cmp-locked-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--sub2);
+    margin-bottom: 16px;
+  }
+
+  /* 다이아몬드 + 오버레이 */
+  .bg-cmp-diamond {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 32px 24px;
+    margin-bottom: 24px;
+  }
+  .bg-cmp-diamond-svg {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    display: block;
+    overflow: visible;
+  }
+  .cmp-grid       { fill: none; stroke: var(--border); stroke-width: 0.5; }
+  .cmp-axis-line  { stroke: var(--border2); stroke-width: 1; }
+  .cmp-fill-mine  { fill: rgba(184, 116, 12, 0.20); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+  .cmp-fill-cmp   {
+    fill: rgba(122, 128, 144, 0.10);
+    stroke: var(--sub2);
+    stroke-width: 1.2;
+    stroke-dasharray: 4 4;
+    stroke-linejoin: round;
+    transition: opacity 0.4s ease;
+  }
+  .cmp-dot-mine   { fill: var(--accent); }
+  .cmp-axis-label { fill: var(--sub); font-family: 'JetBrains Mono', monospace; font-size: 11px; text-anchor: middle; }
+  .cmp-axis-label.bottom { dominant-baseline: hanging; }
+
+  /* 자기 설명 — 다이아몬드 읽는 법 (펼침 카드와 동일) */
+  .cmp-diamond-help {
+    font-size: 12px;
+    color: var(--sub2);
+    text-align: center;
+    margin: 8px 0 0;
+    letter-spacing: 0.02em;
+    word-break: keep-all;
+  }
+
+  .cmp-legend {
+    display: flex;
+    gap: 18px;
+    justify-content: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .cmp-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .cmp-legend-swatch {
+    display: inline-block;
+    width: 18px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+  .cmp-legend-mine .cmp-legend-swatch { background: rgba(184,116,12,0.25); border-color: var(--accent); }
+  .cmp-legend-cmp  .cmp-legend-swatch { background: rgba(122,128,144,0.15); border-color: var(--sub2); border-style: dashed; }
+
+  /* 축별 해석 */
+  .bg-cmp-axes-list {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 20px;
+  }
+  .bg-cmp-axes-list > div {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--border);
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    word-break: keep-all;
+  }
+  .bg-cmp-axes-list > div:last-child { border-bottom: 0; }
+  .bg-cmp-axes-list .axis-name {
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--accent);
+    background: #FAF6EB;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-top: 2px;
+  }
+
+  /* 진행도 + 다음 */
+  .bg-cmp-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+  .bg-cmp-progress {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub2);
+  }
+  .bg-cmp-next-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .bg-cmp-next-cta:hover { background: var(--accent2); }
+
+  @media (max-width: 768px) {
+    .bg-cmp-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    .bg-cmp-title { font-size: 34px; }
+    .bg-cmp-toggle { gap: 6px; }
+    .bg-cmp-toggle button { font-size: 12px; padding: 7px 12px; }
+    .bg-cmp-foot { flex-direction: column; gap: 14px; align-items: stretch; }
+    .bg-cmp-next-cta { justify-content: center; }
+  }
+</style>
+
+<div class="bg-cmp-wrap">
+  <header class="bg-cmp-head">
+    <div class="bg-cmp-eyebrow">📊 단계 4 — 비교</div>
+    <h1 class="bg-cmp-title">당신의 위치</h1>
+    <p class="bg-cmp-sub">내 좌표는 분포 안의 한 점입니다. 기준을 바꿔가며 비교해 보세요.</p>
+  </header>
+
+  <!-- 비교 토글 — "내 좌표만" 토글 제거.
+       디폴트 active 는 첫 활성 토글 (overall 우선, 미달 시 group, 둘 다 미달이면 안 누름). -->
+  <%
+    const defaultCmp = overallExists ? 'overall'
+                     : groupExists   ? 'group'
+                     : '';
+  %>
+  <div class="bg-cmp-toggle" role="tablist">
+    <button type="button"
+      class="<%= defaultCmp === 'overall' ? 'active' : '' %>"
+      data-cmp="overall"
+      <%= overallExists ? '' : 'disabled' %>
+      role="tab"
+      aria-selected="<%= defaultCmp === 'overall' ? 'true' : 'false' %>"
+      title="<%= overallExists ? '전체 응답자 평균과 겹쳐 보기' : '응답자 ' + OVERALL_THRESHOLD + '명+ 부터 활성' %>">
+      전체 평균<% if (overall && overall.user_count) { %> (<%= overall.user_count %>명)<% } %>
+    </button>
+    <button type="button"
+      class="<%= defaultCmp === 'group' ? 'active' : '' %>"
+      data-cmp="group"
+      <%= groupExists ? '' : 'disabled' %>
+      role="tab"
+      aria-selected="<%= defaultCmp === 'group' ? 'true' : 'false' %>"
+      title="<%= groupExists ? '같은 그룹 평균과 겹쳐 보기' : '데이터가 충분히 모이면 표시됩니다' %>">
+      당신과 같은 그룹 평균<% if (groupExists) { %> (<%= groupCount %>명)<% } %>
+    </button>
+    <button type="button" disabled title="Phase 2 — 의원 거리 계산 후 활성">
+      비슷한 의원 (Phase 2)
+    </button>
+  </div>
+
+  <%# 임계값 안내 — overall 미달이 가장 큰 케이스. group 도 별도 안내. %>
+  <% if (!overallExists) { %>
+    <div class="bg-cmp-locked-note">
+      ⏳ 데이터가 충분하지 않습니다 (현재 <%= overallCount %>명 — <%= OVERALL_THRESHOLD %>명+ 부터 활성)
+    </div>
+  <% } else if (groupTier === 'absent') { %>
+    <div class="bg-cmp-locked-note">
+      <em>당신과 같은 그룹 응답자가 50명 이상 모이면 자동 활성됩니다 (현재 <%= groupCount %>명)</em>
+    </div>
+  <% } else if (groupTier === 'low') { %>
+    <div class="bg-cmp-locked-note">
+      ⚠ 응답자 <%= groupCount %>명 기준 — 정밀도 낮음 (200명+ 부터 안정)
+    </div>
+  <% } %>
+
+  <!-- 다이아몬드 -->
+  <div class="bg-cmp-diamond">
+    <% const cx = 180, cy = 180, R = 140; %>
+    <svg class="bg-cmp-diamond-svg" viewBox="0 0 360 360" id="cmp-svg" xmlns="http://www.w3.org/2000/svg">
+      <% [0.25, 0.50, 0.75, 1.00].forEach(scale => {
+           const r = R * scale;
+      %>
+        <polygon class="cmp-grid"
+          points="<%= cx %>,<%= cy - r %> <%= cx + r %>,<%= cy %> <%= cx %>,<%= cy + r %> <%= cx - r %>,<%= cy %>"/>
+      <% }); %>
+      <line class="cmp-axis-line" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
+      <line class="cmp-axis-line" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
+
+      <!-- 비교 면적 (overall/group) — 처음엔 hidden -->
+      <polygon class="cmp-fill-cmp" id="cmp-fill-cmp" style="opacity:0"
+        points="<%= cx %>,<%= cy %> <%= cx %>,<%= cy %> <%= cx %>,<%= cy %> <%= cx %>,<%= cy %>"/>
+
+      <!-- 내 면적 — 절대값 기반(강도 시각화). 부호는 점수 텍스트가 보존 -->
+      <polygon class="cmp-fill-mine"
+        points="<%= cx %>,<%= cy - R*Math.abs(sec) %> <%= cx + R*Math.abs(econ) %>,<%= cy %> <%= cx %>,<%= cy + R*Math.abs(inst) %> <%= cx - R*Math.abs(soci) %>,<%= cy %>"/>
+
+      <!-- 내 점 -->
+      <circle class="cmp-dot-mine" cx="<%= cx %>"                       cy="<%= cy - R*Math.abs(sec) %>" r="5"/>
+      <circle class="cmp-dot-mine" cx="<%= cx + R*Math.abs(econ) %>"    cy="<%= cy %>"                    r="5"/>
+      <circle class="cmp-dot-mine" cx="<%= cx %>"                       cy="<%= cy + R*Math.abs(inst) %>" r="5"/>
+      <circle class="cmp-dot-mine" cx="<%= cx - R*Math.abs(soci) %>"    cy="<%= cy %>"                    r="5"/>
+
+      <!-- 축 라벨 -->
+      <text class="cmp-axis-label"        x="<%= cx %>"            y="<%= cy - R - 12 %>"><%= axes.security.label %></text>
+      <text class="cmp-axis-label"        x="<%= cx + R + 26 %>"   y="<%= cy + 4 %>"><%= axes.economy.label %></text>
+      <text class="cmp-axis-label bottom" x="<%= cx %>"            y="<%= cy + R + 14 %>"><%= axes.institution.label %></text>
+      <text class="cmp-axis-label"        x="<%= cx - R - 26 %>"   y="<%= cy + 4 %>"><%= axes.social.label %></text>
+    </svg>
+
+    <!-- 자기 설명 — 다이아몬드 읽는 법 (펼침 카드와 동일 카피) -->
+    <div class="cmp-diamond-help">중심은 중도, 가장자리는 뚜렷한 입장</div>
+
+    <div class="cmp-legend">
+      <span class="cmp-legend-item cmp-legend-mine"><span class="cmp-legend-swatch"></span>내 좌표</span>
+      <span class="cmp-legend-item cmp-legend-cmp" id="cmp-legend-cmp" style="display:none"><span class="cmp-legend-swatch"></span><span id="cmp-legend-label">비교</span></span>
+    </div>
+    <%# 그룹 active 시 인구 정보 메타 — 추상 라벨 옆에 작게 노출 %>
+    <% if (groupDetail) { %>
+      <div id="cmp-group-detail" style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sub2);margin-top:6px;display:none">
+        같은 그룹 = <%= groupDetail %> 응답자 (<%= groupCount %>명)
+      </div>
+    <% } %>
+  </div>
+
+  <!-- 축별 한 줄 해석 -->
+  <div class="bg-cmp-axes-list">
+    <div><span class="axis-name">경제</span><span><%= axisLine('economy', econ) %></span></div>
+    <div><span class="axis-name">사회</span><span><%= axisLine('social', soci) %></span></div>
+    <div><span class="axis-name">안보</span><span><%= axisLine('security', sec) %></span></div>
+    <div><span class="axis-name">제도</span><span><%= axisLine('institution', inst) %></span></div>
+  </div>
+
+  <div class="bg-cmp-foot">
+    <span class="bg-cmp-progress">여기까지 봤어요 80%</span>
+    <a class="bg-cmp-next-cta" href="/balance-game/connect">연결 단계로 →</a>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SVG_CX = 180, SVG_CY = 180, SVG_R = 140;
+  const overall = <%- overallExists ? `{ economy: ${overallEcon}, social: ${overallSoci}, security: ${overallSec}, institution: ${overallInst} }` : 'null' %>;
+  const group   = <%- groupExists   ? `{ economy: ${groupEcon},   social: ${groupSoci},   security: ${groupSec},   institution: ${groupInst}   }` : 'null' %>;
+  const DEFAULT_CMP = <%- JSON.stringify(defaultCmp || '') %>;
+
+  const fillCmp = document.getElementById('cmp-fill-cmp');
+  const legendCmp = document.getElementById('cmp-legend-cmp');
+  const legendLabel = document.getElementById('cmp-legend-label');
+  const groupDetailEl = document.getElementById('cmp-group-detail');
+  const buttons = document.querySelectorAll('.bg-cmp-toggle button[data-cmp]');
+
+  const setComparison = (key) => {
+    let data = null;
+    let labelText = '';
+    if (key === 'overall' && overall) { data = overall; labelText = '전체 평균'; }
+    else if (key === 'group' && group) { data = group; labelText = '당신과 같은 그룹 평균'; }
+
+    if (!data) {
+      fillCmp.style.opacity = '0';
+      legendCmp.style.display = 'none';
+      if (groupDetailEl) groupDetailEl.style.display = 'none';
+      return;
+    }
+    // 절대값 기반(강도 시각화) — 다이아몬드 좌표 일관성
+    const pts = [
+      [SVG_CX,                                  SVG_CY - SVG_R * Math.abs(data.security)],
+      [SVG_CX + SVG_R * Math.abs(data.economy), SVG_CY],
+      [SVG_CX,                                  SVG_CY + SVG_R * Math.abs(data.institution)],
+      [SVG_CX - SVG_R * Math.abs(data.social),  SVG_CY]
+    ].map(([x, y]) => x.toFixed(2) + ',' + y.toFixed(2)).join(' ');
+    fillCmp.setAttribute('points', pts);
+    fillCmp.style.opacity = '1';
+    legendLabel.textContent = labelText;
+    legendCmp.style.display = 'inline-flex';
+    // group active 시에만 인구 정보 메타 노출
+    if (groupDetailEl) groupDetailEl.style.display = (key === 'group') ? 'block' : 'none';
+  };
+
+  buttons.forEach(btn => {
+    if (btn.disabled) return;
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      setComparison(btn.dataset.cmp);
+    });
+  });
+
+  // 페이지 진입 시 디폴트 비교 자동 적용 (서버에서 결정한 값)
+  if (DEFAULT_CMP) setComparison(DEFAULT_CMP);
+})();
+</script>

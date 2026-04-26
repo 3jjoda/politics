@@ -130,8 +130,12 @@ export default (db) => {
                 delete req.session.oauthPending;
                 req.logIn(user, (err) => {
                     if (err) return next(err);
-                    const redirectTo = resolveNext(req);
-                    res.redirect(redirectTo);
+                    // 신규 가입자는 환영 페이지로. 원래 가려던 next 는 세션에 보존돼
+                    // 환영 페이지의 [지금 풀기]/[둘러보기] 가 처리.
+                    if (req.query.next || (req.session && req.session.authNext)) {
+                        // 명시적 next 가 있으면 보존만 하고 welcome 으로
+                    }
+                    res.redirect('/auth/welcome');
                 });
             } catch (err) {
                 // UNIQUE 제약 동시 충돌 등
@@ -146,6 +150,41 @@ export default (db) => {
                 }
                 next(err);
             }
+        },
+
+        /* 환영 페이지 (가입 직후 1회 노출)
+           - 비로그인 → 홈
+           - welcomed_at 이미 NOT NULL → 홈 (1회 노출 보장)
+           - 게임 완료 유저 → 홈 (이미 카드 있는 사람) */
+        renderWelcome: async (req, res, next) => {
+            try {
+                const userId = req.session?.userId || (req.user && req.user.user_id);
+                if (!userId) return res.redirect('/');
+                const userRow = await authService.findById(userId);
+                if (!userRow) return res.redirect('/');
+                if (userRow.welcomed_at) return res.redirect('/');
+
+                res.render('auth/welcome', {
+                    pageTitle: '환영합니다 - 정치 바로미터',
+                    pageStyles: 'auth/welcome',
+                    currentUrl: '/auth/welcome',
+                    user: userRow
+                });
+            } catch (err) { next(err); }
+        },
+
+        /* 환영 페이지 액션 — POST /auth/welcome
+           body.choice: 'play' (지금 풀기) | 'browse' (둘러보기)
+           welcomed_at = NOW() 박고 redirect */
+        ackWelcome: async (req, res, next) => {
+            try {
+                const userId = req.session?.userId || (req.user && req.user.user_id);
+                if (!userId) return res.redirect('/');
+                await authService.markWelcomed(userId);
+                const choice = String(req.body?.choice || 'browse');
+                const target = choice === 'play' ? '/balance-game/respond?pack=general' : '/';
+                res.redirect(target);
+            } catch (err) { next(err); }
         },
 
         /* 닉네임 중복체크 API (클라이언트 실시간 체크용) */

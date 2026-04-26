@@ -34,10 +34,45 @@ ROADMAP의 "더 이상 당만 보고 투표하는 사람이 없도록"이 **행�
 |---|---|---|
 | **다축(4축) 측정** | 1축 환원이 정보를 잃는다 | 모든 유저 결과 |
 | **분포 비교** | 내 좌표는 분포 안의 한 점 | 결과 화면 |
-| **재검사·시간 궤적** | 사람은 바뀌고 입장도 바뀐다 | 카드·재검사 |
-| **매핑 공개** | 측정 자체가 가치 선택이다 | about 페이지 |
+| **누적·시간 궤적** | 사람은 바뀌고 입장도 바뀐다 | 카드·재검사·게임팩 누적 |
+| **매핑 투명성** | 측정 자체가 가치 선택이다 | 매핑 페이지 (조용한 노출) |
 
 이 4가지가 따로 존재하면 약하지만, 같이 작동하면 "내 입장이 절대적이지 않다"는 메시지가 굳어집니다. 게임이 끝났을 때 유저가 가져가는 가장 큰 인지 변화가 결과 좌표가 아니라 **"내가 어떻게 측정됐는지에 대한 자각"**이 되도록 설계합니다.
+
+### 게임의 구조: 누적 모델 + 게임팩 컬렉션
+
+게임은 **1회성 평가 도구가 아니라 시간 따라 누적되는 측정 시스템**입니다.
+
+```
+[정치 성향 = 4축 좌표 1개. 영구 관리.]
+
+게임팩 1: 정치 성향 종합 진단 (4축 20문항)  ← 입문 게임팩
+게임팩 2: 환경·기후 정책 (10문항)
+게임팩 3: 사법·검찰 개혁 (10문항)
+... (사회 이슈 따라 비정기적 추가)
+
+→ 모든 게임팩의 모든 문항이 같은 4축 위에 매핑
+→ 유저가 어떤 게임팩이든 풀면 자기 4축 좌표 누적 갱신
+→ 좌표는 한 사람당 하나. 응답이 쌓일수록 정밀도 ↑
+```
+
+**핵심 원칙**:
+- **지표는 하나** — 모든 게임팩이 같은 4축 좌표 하나만 갱신. 게임팩별 별도 축 없음. 유저 멘탈 모델 단순함 우선
+- **응답 단위 = 1문항** — 종합팩 20문항 다 풀어야 좌표 산출 X. 1문항 답할 때마다 좌표 미세 갱신
+- **게임팩은 콘텐츠 분류** — 같은 좌표를 다른 각도에서 채우는 도구. 환경 이슈 관심자가 환경팩부터 들어가는 발견 도구
+- **시간 따라 깊어짐** — 응답 5개일 때보다 30개일 때 더 정확. 자연스러운 재방문 동기
+
+**왜 누적 모델인가**:
+1. "내 생각이 잘못됐을 수도 있나?" 라는 미션은 반복적 자기 검토가 핵심. 한 번 검사로 끝나는 평가 도구 모델은 미션과 어긋남
+2. 정치 입장은 시점에 따라 변함. 영구 좌표가 시간 따라 갱신되는 구조가 현실에 가까움
+3. 재방문이 구조적으로 발생 — "이번 주 새 게임팩 풀러 옴" 같은 자연 동기
+4. 사회 이슈와 연동 가능 — 큰 법안 통과 시 관련 게임팩 추가 → 메인에 노출 → 유저 클릭
+
+**왜 게임팩 컬렉션인가**:
+1. "게임"이라는 단어에 정합 — 시험이 아니라 선택해서 즐기는 콘텐츠
+2. 한 게임팩 매핑 실수가 사이트 전체 무너뜨리지 않음 — 위험 분산
+3. 콘텐츠 생산이 합리적 — 비정기 확장. 영구 부담 없음
+4. 데이터가 입체적 — 같은 유저의 환경 입장 + 사법 입장 별도 추적 가능 (단, 좌표는 통합)
 
 ### 경쟁사·유사 서비스와의 차별점
 
@@ -66,12 +101,12 @@ ROADMAP의 "더 이상 당만 보고 투표하는 사람이 없도록"이 **행�
 
 ## 2. AI에게 맡길 것 vs 맡기면 안 될 것
 
-### ❌ AI에게 맡기면 안 되는 것
+### ❌ AI에게 맡기지 않는 것
 
-**질문-축 매핑 결정**
+**질문 매핑 결정 (4축 종합팩 20문항)**
 - "이 답변은 어느 축에 +1인가"는 **사람이 결정**
 - AI에 맡기면 호출마다 매핑이 흔들림 → 같은 답을 한 두 유저의 결과가 달라질 수 있음
-- 매핑은 about 페이지에 정적으로 공개되어야 하므로 결정론적이어야 함
+- 종합 진단은 게임의 **입문 게임팩**이라 매핑 정밀도가 가장 중요. 사용자 검토 완료 (v1)
 
 **결과 라벨링**
 - "당신은 진보입니다" 같은 단일 라벨 생성
@@ -79,13 +114,32 @@ ROADMAP의 "더 이상 당만 보고 투표하는 사람이 없도록"이 **행�
 
 ### ✅ AI에게 맡겨도 되는 것
 
-**결과 화면의 텍스트 생성**
-- 4축 좌표를 보고 "당신의 입장은 이렇게 정리됩니다" 식 풀어쓰기 (선택)
-- 비슷한 좌표의 의원이 어떤 활동을 했는지 요약 (의원 분석 결과 재사용)
-- 단, 이 경우에도 ANALYSIS.md 17개 원칙 그대로 적용 (정당 언급 X, 가치 판단 X 등)
+**법안-축 매핑 (D 레이어 의존)**
+- 매핑 비공개 결정으로 부담이 작아짐
+- AI 1차 매핑 후 사용자 검토 없이 그대로 사용 가능 (50건 기준)
+- 의원 좌표 정밀도가 약간 떨어질 수 있으나 D 레이어 작동에는 충분
+- 잘못된 매핑이 발견되면 그때 개별 수정
 
-**질문 보조 텍스트**
-- 각 문항의 양측 입장 한 줄 맥락 — 사람이 작성한 초안을 AI가 톤 조정 (균형 표현 강도 점검)
+**주제 게임팩 매핑 (보조 게임팩)**
+- 종합팩은 사용자 검토 필수, 주제팩은 AI 1차로 시작 가능
+- 주제팩이 종합팩 좌표에 미세 영향만 줌 (1문항 = +1/-1)
+- 잘못된 매핑이 누적돼도 좌표 흔들림 작음
+
+**결과 화면의 텍스트 생성** (선택)
+- 4축 좌표를 보고 "당신의 입장은 이렇게 정리됩니다" 식 풀어쓰기
+- ANALYSIS.md 17개 원칙 그대로 적용 (정당 언급 X, 가치 판단 X)
+
+**질문 보조 텍스트 다듬기**
+- 사람이 작성한 초안을 AI가 톤 조정 (균형 표현 강도 점검)
+
+### 의사결정 원칙
+
+매핑 비공개 결정으로 AI 활용 폭이 넓어졌습니다. 다만 **종합팩(입문 게임팩)만큼은 사람 결정·사람 검토 유지**. 이유:
+- 모든 신규 유저가 풀 게임이라 첫인상의 무게가 큼
+- 종합팩 매핑이 흔들리면 사용자 첫 좌표가 흔들림
+- "가장 중요한 측정 도구는 사람이 책임진다"는 원칙
+
+법안·주제팩은 AI 위임 OK. 종합팩만 사람.
 
 ---
 
@@ -157,35 +211,62 @@ ROADMAP의 "더 이상 당만 보고 투표하는 사람이 없도록"이 **행�
 
 ---
 
-## 5. 점수 계산 — 투명한 매핑
+## 5. 점수 계산 — 누적·투명한 매핑
 
-### 기본 구조
+### 누적 좌표 모델
 
-각 축은 -5 ~ +5 점 범위. 5문항 × 가중치 1점.
+각 축은 **응답 평균** 기반. 응답이 쌓일수록 평균이 안정화됨.
 
 ```
-경제 축:
-  문항 1 (최저임금): A=+1(개입), B=-1(시장)
-  문항 2 (부동산 세제): A=-1(시장), B=+1(개입)   ← 반전
-  문항 3 (대기업 규제): A=+1(개입), B=-1(시장)
-  문항 4 (노동시간): A=-1(시장), B=+1(개입)       ← 반전
-  문항 5 (공공의료): A=+1(개입), B=-1(시장)
-  
-유저 응답: A, B, A, B, A → +5 (완전 개입 쪽)
+경제 축 좌표 = (응답한 모든 경제 문항의 점수 합) / (응답한 경제 문항 수)
+
+예시:
+종합팩 경제 5문항 풂 → +1, +1, -1, +1, +1 → 평균 +0.6
+환경팩에 경제 관련 2문항 추가 풂 → +1, +1 → 누적 평균 +0.71 (7문항 평균)
 ```
 
-### 결과 표시
+이 방식의 특성:
+- **응답 1개도 좌표 산출 가능** (다만 신뢰도 낮음)
+- **응답이 늘수록 좌표 안정화** — 50문항 답한 좌표는 5문항 답한 좌표보다 흔들림 적음
+- **최근 응답이 자동 가중되지 않음** — 1년 전 응답과 오늘 응답이 같은 무게. 변화 추적은 카드 시간 비교로 별도 표시
+- **무관심 응답은 평균 계산에서 제외** — 점수에 안 들어가지만 "무관심 카운트"로 별도 추적
 
-- 축별 점수 → 다이아몬드 좌표
-- 보조 표시: "5문항 중 4개에서 개입 입장" — 면적이 아닌 **응답 분포**로 표현 (해석 여지 줄임)
-- 1차원 라벨("진보 80%") 절대 금지
+### 콜드스타트: 종합팩 입문 의무
 
-### 매핑 공개
+신규 유저는 **종합팩 20문항을 입문 게임으로 풂**:
+- 응답 5개로 좌표 그리면 D 레이어 (의원 거리) 의미 없음
+- 종합팩 = 4축 균형 보장 (각 축 5문항씩) → 첫 좌표 신뢰도 OK
+- 종합팩 풀고 나면 첫 카드 발급 → D 레이어 활성화
+- 그 후 자유롭게 다른 게임팩 추가하면 좌표 미세 갱신
 
-`/about/balance-game-mapping` 페이지에 전 문항 매핑을 표로 공개:
-- 문항 / 양측 입장 / 어느 축 / 어느 방향
-- 하단에 "매핑에 이의가 있으시면 [피드백 보내기]" 링크
-- 매핑은 prompt_version처럼 버전 추적 (`mapping_version` 컬럼)
+종합팩이 "필수"는 아님. 다만 안 풀면 D 레이어 비활성. 자연스러운 동기.
+
+### 매핑 공개 — 길 B (조용한 노출)
+
+매핑 페이지(`/balance-game/mapping`)는 **유지하되 메인에서 강조하지 않음**.
+
+- 결과 카드 하단에 작은 링크 "이 매핑은 어떻게 정해졌나요?" → 호기심 있는 유저만 진입
+- 게임 랜딩 페이지의 "매핑 미리 보기" 링크는 작게 유지
+- "매핑을 공개합니다" 같은 강한 메인 카피는 사용
+
+이유:
+- 매핑이 "측정 도구의 눈금자"이지 "사이트의 정치 입장 선언"이 아님
+- 강하게 노출하면 후자로 오해될 수 있음
+- 조용히 유지하면 정직성 시그널은 살리되 부담은 작음
+
+매핑 페이지 표시 내용:
+- 4축 종합팩 20문항 매핑
+- 다른 게임팩 매핑 (게임팩 추가될 때마다 섹션 추가)
+- 하단: "이 매핑은 사람이 결정한 결과물이며, 의견 차이가 있을 수 있습니다"
+
+법안 매핑은 노출 X (공개 의무 없음).
+
+### 매핑 버전 추적
+
+`mapping_version` 컬럼으로 매핑 변경 이력 관리:
+- 매핑 갱신 시 새 버전 발급 (v1 → v2)
+- 과거 응답은 응답 시점 매핑 기준으로 보존
+- ANALYSIS.md `prompt_version` 패턴과 동일
 
 ---
 
@@ -272,30 +353,104 @@ ROADMAP의 "정당 매칭 X, 의원 매칭 O" 원칙 적용.
 
 | 페이지 | D 레이어 표시 | 게임 미완료 유저 |
 |---|---|---|
-| **의원 카드/상세** | `🎯 0.7` 거리 배지 (4축 거리) | `🎯 진단 후 표시` 회색 배지 |
-| **법안 상세** | Zone 4 끝부분 "당신 좌표 기준 영향 가능성" 1줄 | 표시 안 함 |
-| **홈 "주목할 법안"** | 정렬 탭에 "🎯 당신과 결 비슷한 의원의 법안" 추가 | 탭 비활성화 + "진단 후 표시" |
+| **의원 카드** ✅ | `"나의 성향 진단과 N% 일치"` 한 줄 (4축 거리 → %, 분모 1.5) — 모든 의원 동일톤 | `"진단 후 일치도 표시"` 회색 이탤릭 |
+| **의원 상세 — 비교 펼침** ✅ | KPI 행 아래 펼침 컴포넌트 — 헤더(% 결론) + 바디(4축 다이아몬드·축별 해석 4줄). 첫 진입 자동 펼침 | "진단하러 가기 →" 회색 헤더, 펼침 비활성 |
+| **의원 페이지 필터·정렬** ✅ | 일치도 5단계 필터 + 일치도 높은/낮은 순 정렬 + URL 영속화 | 두 select 모두 disabled + tooltip |
+| **법안 상세** ⬜ | Zone 4 끝부분 "당신과 결 비슷한 의원이 더 많이 찬성/반대했어요" 1줄 | 표시 안 함 |
+| **홈 "주목할 법안"** ⬜ | 정렬 탭에 "🎯 당신과 결 비슷한 의원의 법안" 추가 | 탭 비활성화 + "진단 후 표시" |
 | **법안 목록** | (D-3, 베타 후) 좌표 거리순 정렬 옵션 | — |
 
 **D-1 (의원만) → D-2 (의원·법안·홈) → D-3 (전체 정렬)**: 단계적 확장. 베타 오픈 시점은 D-2까지. D-3는 데이터 보고 결정.
 
-### 미완료 유저 알림 — 중간형
+### 미완료 유저 알림 — 가입 직후 흡수형
 
-- **배지**: 의원·홈 등 D 레이어가 있을 자리에 회색 "📊 진단 후 표시" — 클릭 시 게임 페이지로
-- **1회 풀스크린 안내**: 첫 방문 후 둘러보다가 한 번 풀스크린 모달로 게임 권유 (이후 안 뜸, 닫기 가능, "다시 보지 않기" 옵션)
-- **마이페이지 카드**: 미완료 시 "아직 성향 진단 안 했어요" 카드. 완료 시 카드 갤러리로 교체
+가입 직후 환영 페이지가 게임 권유의 가장 강력한 자리. 둘러보는 중 풀스크린 띄우는 것보다 자연스러움.
 
-소극형(배지만)은 발견율 너무 낮고, 적극형(매번 모달)은 강요 느낌. 중간형이 "강제는 아니지만 한 번은 제대로 알린다"는 균형.
+**1. 가입 직후 환영 페이지 (메인)**
+
+OAuth → 닉네임·성별·나이대 입력 → **환영 페이지** → [지금 풀기] or [둘러보기]
+
+```
+[닉네임]님, 환영해요
+
+🎯 5분만 시간 내주실 수 있나요?
+
+20문항으로 당신의 정치 입장이 4축 좌표로 그려져요.
+
+그 좌표는:
+· 의원·법안 페이지에서 "당신과 결이 비슷한 사람"을 찾아드려요
+· 같은 [성별·나이대] 응답자 평균과 비교해 볼 수 있어요
+· 시간이 지나며 갱신되어 변화를 추적할 수 있어요
+
+"내 생각이 잘못됐을 수도 있나?"
+하고 한 번 멈춰보는 경험이에요.
+
+[지금 풀기 (5분)]   [둘러보기 먼저]
+
+스킵해도 언제든 메뉴에서 풀 수 있어요
+```
+
+성별·나이대를 막 입력한 직후라 "같은 [성별·나이대] 평균과 비교" 카피가 직접 와닿음.
+
+**2. 의원 카드 회색 배지 (Passive)**
+
+미완료 유저용 자리:
+- `📊 진단 후 표시`
+- 클릭 시 → `/balance-game?next={현재URL}`
+
+전 페이지에서 동일 톤·문구.
+
+**3. 마이페이지 카드 (Persistent)**
+
+마이페이지 진입 시 미완료 유저에게 노출:
+```
+┌────────────────────────────────────┐
+│  📊 아직 성향 진단을 안 했어요        │
+│                                    │
+│  20문항으로 4축 좌표를 그려보세요.    │
+│  사이트 곳곳에서 당신 좌표 기준         │
+│  추가 정보가 보이게 됩니다.            │
+│                                    │
+│  [지금 진단하기]                    │
+└────────────────────────────────────┘
+```
+
+완료 시 **카드 갤러리**로 자동 교체.
+
+**제거: 1회 풀스크린 안내**
+
+이전 설계의 "둘러본 지 30초 경과 시 풀스크린 모달"은 가입 직후 환영 페이지가 흡수. 둘러보는 중에 갑자기 모달 띄우는 침입성 제거.
+
+### 인구통계 비교 — 사이트 미션의 핵심 작동점
+
+가입 시 수집한 성별·나이대를 활용해 결과 비교 화면에서 그룹 평균과 비교:
+
+```
+경제 축
+   당신: 시장 -3
+   같은 20대 여성 평균: 개입 +1
+   → "사회는 비슷한데 경제는 많이 다르네 — 왜 그럴까?"
+```
+
+"전체 평균"보다 "같은 인구 그룹 평균"이 비교의 무게가 다름. 유저가 자기 정체성으로 받아들이는 분류와의 차이가 자기 검토 자극의 핵심.
+
+**임계값 처리** (베타 초기 노이즈 방지):
+- 그룹 응답자 < 50명: "데이터가 충분하지 않아 표시되지 않습니다"
+- 50~200명: 평균 표시 + "응답자 N명 기준 (정밀도 낮음)" 메타
+- 200명+: 평균 표시 + 신뢰 구간
+
+베타 초기엔 대부분 그룹이 < 50명이라 "전체 평균"만 작동. 시간이 지나며 자연스럽게 그룹별 평균 활성화 — 사이트가 데이터 따라 점점 깊어지는 자연스러운 진화.
 
 ### 매핑 버전 메타 라벨 (필수)
 
-D 레이어가 강해질수록 **"내 좌표가 객관적"이라는 착시**가 강해집니다. "당신과의 거리 0.7"이 숫자로 나오면 유저는 그걸 사실로 받아들이기 쉽지만, 사실은 매핑 기반 추정치입니다.
+D 레이어가 강해질수록 **"내 좌표가 객관적"이라는 착시**가 강해집니다. "53% 일치"가 숫자로 나오면 유저는 그걸 사실로 받아들이기 쉽지만, 사실은 매핑 기반 추정치입니다.
 
-모든 D 레이어 표시에 작은 메타 라벨 부착:
-- `🎯 0.7  📊 mapping v1` 형식
-- 의원 거리 배지·홈 탭·법안 정보 모두 동일
+모든 D 레이어 표시에 매핑 버전 부착:
+- 의원 카드: 호버/탭 툴팁에 `"당신 좌표와 4축 거리 N.NN. 매핑 v1 기준."`
+- 의원 상세: 카드형 박스 우측에 `매핑 v1 →` 링크 (`/balance-game/mapping`)
+- 홈 탭·법안 정보: "매핑 v1" 작은 메타 라벨
 - ANALYSIS.md 7-장치4 "AI가 생성한 분석으로 사실과 다를 수 있습니다" 디스클레이머와 같은 역할
-- 매핑 버전 클릭 시 about 매핑 공개 페이지로 이동
+- 매핑 버전 클릭 시 매핑 공개 페이지로 이동
 
 ### 의원 4축 좌표의 의존성
 
@@ -319,30 +474,37 @@ D-2 작동을 위해 **의원 4축 좌표가 사전 계산**되어 있어야 합
 
 ### Phase 1 — 베타 오픈 (게임 + D-2 일부)
 
-베타 오픈 시점부터 게임은 단독이 아니라 **사이트 통합 형태**로 출시. "눈에 보이는 게 있어야 유저가 참여한다"는 발견 가능성 원칙 적용.
+베타 오픈 시점부터 게임은 단독이 아니라 **사이트 통합 형태**로 출시. 입문 게임팩(종합 진단) + 가입 온보딩 + D-2 일부.
 
 **포함**:
-- 20문항 + 4축 다이아몬드 카드 결과
-- 매핑 공개 페이지 (`/about/balance-game-mapping`)
-- 매핑 공개된 법안 50~100건의 의원 표결 기반 **의원 4축 좌표 사전 계산**
-- D-2 일부: 의원 카드/상세 거리 배지, 홈 "당신과 결 비슷한 의원의 법안" 탭
-- 미완료 유저 중간형 알림 (배지 + 1회 풀스크린 + 마이페이지 카드)
+- 가입 흐름 확장: OAuth → 닉네임·성별·나이대 → **환영 페이지 (게임 권유)**
+- 입문 게임팩: 정치 성향 종합 진단 4축 20문항 (현재 만들어진 것)
+- 첫 카드 발급: 종합팩 풀고 나면 단계 3·4·5 (펼침·비교·연결)
+- 매핑 페이지 (길 B): 페이지 살리되 메인 강조 X
+- 매핑 공개된 법안 48건의 의원 표결 기반 **의원 4축 좌표 사전 계산** ✅
+- D-2: 의원 카드/상세 일치도 한 줄 ✅, 의원 페이지 일치도 필터·정렬 ✅, 홈 "당신과 결 비슷한 의원의 법안" 탭 ⬜
+- 미완료 유저 알림: 환영 페이지 + 회색 배지 + 마이페이지 카드 ✅
 
 **필수 사전 작업**:
-- `batch/calcPoliticianAxis.js` 신규 — 표결 → 4축 좌표 산출
-- 가결 법안 50~100건 사람이 4축 매핑 (Spreadsheet 또는 admin 화면)
-- DB: `balance_game_responses`, `balance_game_questions`, `politician_axis_score`
+- `batch/calcPoliticianAxis.js` ✅ — 표결 → 4축 좌표 산출 (현재 의원 294/295명, institution std 0.621)
+- 가결 법안 매핑 (`bill_axis_mapping`) ✅ — v1 48건 (사용자 1라운드 검토 반영)
+- `batch/calcGroupAxisAvg.js` 신규 — 인구 그룹별 평균 일배치
+- DB: `balance_game_packs`, `balance_game_questions`, `balance_game_responses`, `bill_axis_mapping`, `politician_axis_score`, `user_axis_score`
 
 비용: 0원 (AI 호출 없음, 매핑·계산 모두 정적/배치)
 
-### Phase 2 — 매칭 정밀화 + D-2 완성
+### Phase 2 — 게임팩 확장 + 인구통계 비교 활성
 
-- 가결 490건 v4.1 분석이 끝나면 분석 결과를 매핑 보조 자료로 활용 → 의원 좌표 정밀화
-- "비슷한 의원 TOP 3" 결과 화면 섹션 추가
-- 법안 상세 Zone 4 끝부분 "당신 좌표 기준 영향" 1줄 추가
-- D-2 완성
+베타 오픈 후 응답자가 임계값(그룹당 50명+) 도달하면 자연스럽게 활성화.
 
-### Phase 3 — 카드 보존 + 시간 궤적
+- 인구통계 비교 토글 (성별·나이대 평균과 겹쳐 보기)
+- 주제 게임팩 2~3개 추가 — AI 1차 매핑 (검토 옵션)
+  - 후보: 환경·기후 / 사법·검찰 / 노동·복지 / 젠더·가족 등
+  - 각 게임팩 10문항 정도. 같은 4축에 매핑
+- "비슷한 의원 TOP 3" 결과 화면 섹션 (Phase 1에 이미 있을 수도)
+- 법안 상세 Zone 4 끝부분 "당신 좌표 기준 영향" 1줄
+
+### Phase 3 — 카드 갤러리 + 시간 궤적
 
 이 Phase의 본질은 BM이 아니라 **"사람은 바뀐다"는 메시지의 구현**입니다. 재검사가 가능하다는 사실 자체가 "지금 내 입장이 영원하지 않다"라는 인식 변화 장치입니다.
 
@@ -539,86 +701,132 @@ UI_ANALYSIS.md가 법안 분석 5-Zone(훅·이해·쟁점·판단·전문)을 �
 ## 11. DB 스키마 (예정)
 
 ```sql
--- 응답 기록 (카드 = 한 행, 재검사해도 덮어쓰지 않고 새 행)
-CREATE TABLE balance_game_responses (
-  id              BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  user_id         INT          REFERENCES users(user_id) ON DELETE SET NULL,
-  -- 비로그인 응답도 허용 (NULL)
-  session_token   VARCHAR(64),
-  -- 비로그인 응답 식별용
-  
-  answers         JSONB        NOT NULL,
-  -- {"q1": "A", "q2": "C", ...}
-  
-  axis_score      JSONB        NOT NULL,
-  -- {"economy": 3, "social": -2, "security": 0, "institution": 4}
-  
-  axis_skipped    JSONB,
-  -- {"economy": 1, "social": 0, ...} - 관심없음 응답 카운트
-  
-  mapping_version VARCHAR(10)  NOT NULL,
-  -- 예: "v1" - 매핑 버전
-  
-  is_archived     BOOLEAN      NOT NULL DEFAULT FALSE,
-  -- 유저가 카드 갤러리에서 숨김 처리한 경우 (삭제 대신)
-  
+-- 게임팩 마스터 (누적 모델의 핵심)
+-- 종합팩 1번이 입문 게임팩. 나머지는 주제팩으로 비정기 추가.
+CREATE TABLE balance_game_packs (
+  id              VARCHAR(20)  PRIMARY KEY,        -- 'general', 'environment', 'judicial'...
+  title           VARCHAR(100) NOT NULL,           -- "정치 성향 종합 진단"
+  description     TEXT         NOT NULL,
+  question_count  SMALLINT     NOT NULL,
+  is_general      BOOLEAN      NOT NULL DEFAULT FALSE,  -- 입문 게임팩 표시
+  is_active       BOOLEAN      NOT NULL DEFAULT TRUE,
+  display_order   SMALLINT     NOT NULL DEFAULT 0,
   created_at      TIMESTAMPTZ  DEFAULT NOW()
 );
 
--- 한 유저의 모든 카드 시간순 조회
-CREATE INDEX idx_bg_responses_user_time
-  ON balance_game_responses(user_id, created_at DESC)
-  WHERE is_archived = FALSE;
-
-CREATE INDEX idx_bg_responses_mapping
-  ON balance_game_responses(mapping_version);
-
--- 재검사 간격 제한용 — 마지막 응답 시각 빠르게 조회
-CREATE INDEX idx_bg_responses_user_latest
-  ON balance_game_responses(user_id, created_at DESC);
-
--- 문항 마스터 (매핑 공개 페이지 + 매핑 변경 추적)
+-- 문항 마스터 (모든 게임팩의 모든 문항이 같은 4축 매핑)
 CREATE TABLE balance_game_questions (
-  id              VARCHAR(10)  PRIMARY KEY,        -- 'q1', 'q2'...
+  id              VARCHAR(20)  PRIMARY KEY,        -- 'q1', 'env_q1'...
+  pack_id         VARCHAR(20)  NOT NULL REFERENCES balance_game_packs(id),
   axis            VARCHAR(20)  NOT NULL,           -- 'economy'|'social'|'security'|'institution'
-  prompt          TEXT         NOT NULL,           -- 양측 맥락 문장
+  prompt          TEXT         NOT NULL,
   option_a_text   TEXT         NOT NULL,
-  option_a_score  SMALLINT     NOT NULL,           -- +1 or -1
+  option_a_score  SMALLINT     NOT NULL,
   option_b_text   TEXT         NOT NULL,
   option_b_score  SMALLINT     NOT NULL,
+  display_order   SMALLINT     NOT NULL,           -- 게임팩 내 순서
   is_active       BOOLEAN      NOT NULL DEFAULT TRUE,
   mapping_version VARCHAR(10)  NOT NULL,
   created_at      TIMESTAMPTZ  DEFAULT NOW(),
   updated_at      TIMESTAMPTZ  DEFAULT NOW()
 );
 
+CREATE INDEX idx_bg_questions_pack ON balance_game_questions(pack_id, display_order);
+
+-- 응답 기록 (응답 단위 = 1문항. append-only)
+-- 누적 모델: 1문항 답할 때마다 1행 추가.
+CREATE TABLE balance_game_responses (
+  id              BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id         INT          NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  -- 비로그인 응답 X (가입 = 게임 = 카드 한 패키지)
+  
+  question_id     VARCHAR(20)  NOT NULL REFERENCES balance_game_questions(id),
+  pack_id         VARCHAR(20)  NOT NULL REFERENCES balance_game_packs(id),
+  axis            VARCHAR(20)  NOT NULL,           -- 비정규화 (집계 효율)
+  
+  answer          CHAR(1)      NOT NULL,           -- 'A'|'B'|'C'
+  score           SMALLINT     NOT NULL DEFAULT 0, -- 'A'/'B' 점수, 'C'는 0
+  
+  mapping_version VARCHAR(10)  NOT NULL,
+  
+  created_at      TIMESTAMPTZ  DEFAULT NOW(),
+  
+  UNIQUE (user_id, question_id, mapping_version)
+  -- 같은 매핑 버전 내에서는 한 문항당 하나의 응답
+);
+
+-- 한 유저의 응답 시간순 (카드 시간 비교용)
+CREATE INDEX idx_bg_responses_user_time
+  ON balance_game_responses(user_id, created_at DESC);
+
+-- 그룹 평균 집계용 (axis별)
+CREATE INDEX idx_bg_responses_axis
+  ON balance_game_responses(axis, mapping_version);
+
+-- 유저 4축 좌표 (응답 누적 후 산출. 응답마다 갱신 또는 배치)
+CREATE TABLE user_axis_score (
+  user_id         INT          NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  mapping_version VARCHAR(10)  NOT NULL,
+  
+  economy         NUMERIC(4,2),   -- 평균 점수 -1.00 ~ +1.00
+  economy_count   SMALLINT NOT NULL DEFAULT 0,    -- 응답 수 (신뢰도 표시용)
+  social          NUMERIC(4,2),
+  social_count    SMALLINT NOT NULL DEFAULT 0,
+  security        NUMERIC(4,2),
+  security_count  SMALLINT NOT NULL DEFAULT 0,
+  institution     NUMERIC(4,2),
+  institution_count SMALLINT NOT NULL DEFAULT 0,
+  
+  total_responses SMALLINT     NOT NULL DEFAULT 0,
+  packs_completed VARCHAR(200),  -- 'general,environment' 같은 콤마 구분 (게임팩 완료 추적)
+  
+  computed_at     TIMESTAMPTZ  DEFAULT NOW(),
+  
+  PRIMARY KEY (user_id, mapping_version)
+);
+
+-- 인구 그룹별 평균 (Phase 2 인구통계 비교)
+CREATE TABLE group_axis_avg (
+  group_key       VARCHAR(50)  NOT NULL,           -- 'gender:F,age:20s' 같은 키
+  mapping_version VARCHAR(10)  NOT NULL,
+  
+  economy_avg     NUMERIC(4,2),
+  social_avg      NUMERIC(4,2),
+  security_avg    NUMERIC(4,2),
+  institution_avg NUMERIC(4,2),
+  
+  user_count      INT          NOT NULL,           -- 그룹 응답자 수 (임계값 판단)
+  computed_at     TIMESTAMPTZ  DEFAULT NOW(),
+  
+  PRIMARY KEY (group_key, mapping_version)
+);
+
 -- 법안-축 매핑 (D 레이어용 — 의원 좌표 계산의 입력)
--- 사람이 결정해서 채움. 매핑된 법안의 표결만 의원 좌표 계산에 사용.
+-- AI 1차 매핑. 50건 기준. 비공개 (UI 노출 X)
 CREATE TABLE bill_axis_mapping (
   bill_id         VARCHAR(50)  PRIMARY KEY REFERENCES bills(bill_id) ON DELETE CASCADE,
-  axis            VARCHAR(20)  NOT NULL,           -- 'economy'|'social'|'security'|'institution'
-  agree_score     SMALLINT     NOT NULL,           -- 찬성 = 어느 쪽 +1, 예: 시장 쪽이면 -1
-  disagree_score  SMALLINT     NOT NULL,           -- 반대 = 반대 방향
-  weight          NUMERIC(3,2) NOT NULL DEFAULT 1.00,  -- 매핑 강도 (모호한 법안은 0.5 등)
+  axis            VARCHAR(20)  NOT NULL,
+  agree_score     SMALLINT     NOT NULL,
+  disagree_score  SMALLINT     NOT NULL,
+  weight          NUMERIC(3,2) NOT NULL DEFAULT 1.00,
   mapping_version VARCHAR(10)  NOT NULL,
-  mapped_by       INT          REFERENCES users(user_id),  -- 누가 매핑했는지
+  mapped_by       VARCHAR(20)  NOT NULL DEFAULT 'ai_v1',  -- 'ai_v1' 또는 'human:user_id'
   notes           TEXT,
   created_at      TIMESTAMPTZ  DEFAULT NOW(),
   updated_at      TIMESTAMPTZ  DEFAULT NOW()
 );
 
 -- 의원 4축 좌표 (D 레이어 — 거리 배지·홈 탭에서 조회)
--- batch/calcPoliticianAxis.js 가 표결 + bill_axis_mapping 으로 계산해서 채움
 CREATE TABLE politician_axis_score (
   mona_cd         VARCHAR(50)  NOT NULL REFERENCES politicians(mona_cd) ON DELETE CASCADE,
   mapping_version VARCHAR(10)  NOT NULL,
   
-  economy         NUMERIC(4,2) NOT NULL,   -- -5.00 ~ +5.00
+  economy         NUMERIC(4,2) NOT NULL,
   social          NUMERIC(4,2) NOT NULL,
   security        NUMERIC(4,2) NOT NULL,
   institution     NUMERIC(4,2) NOT NULL,
   
-  vote_count_used INT          NOT NULL,   -- 계산에 사용된 표결 수 (신뢰도 표시용)
+  vote_count_used INT          NOT NULL,
   computed_at     TIMESTAMPTZ  DEFAULT NOW(),
   
   PRIMARY KEY (mona_cd, mapping_version)
@@ -630,31 +838,36 @@ CREATE INDEX idx_politician_axis_version
 
 ### 핵심 설계 결정
 
-`balance_game_responses`는 **append-only**입니다 (UPDATE 없음, DELETE는 `is_archived=TRUE`로 대체). 이게 카드 보존·시간 궤적·"사람은 바뀐다" 메시지를 스키마 차원에서 보장합니다.
+**`balance_game_responses`는 응답 단위가 1문항** — 누적 모델의 핵심. 종합팩 20문항 풀면 20행 추가. 환경팩 10문항 풀면 10행 추가. 합산 30행으로 좌표 계산.
 
-`mapping_version`이 핵심 추적 필드입니다. 매핑을 바꿀 때마다 새 버전을 발급하면 과거 결과는 그 버전 기준으로 해석되고, 신규 응답은 새 매핑으로 진행됩니다. ANALYSIS.md의 `prompt_version` 컨셉과 같은 패턴 — 시간이 지나도 데이터의 의미가 흔들리지 않도록 합니다.
+**`user_axis_score`는 캐시 테이블** — 응답 행에서 매번 평균 계산하면 비싸므로 응답 추가 시 갱신 또는 배치로 갱신. 응답 1개 추가 시 +1초 비용 OK.
+
+**`group_axis_avg`는 일배치** — 매일 새벽 인구 그룹별 평균 재계산. 임계값 미달 그룹은 NULL.
+
+**append-only** — 응답 행은 UPDATE/DELETE 없음. 시간 궤적 보존이 스키마 차원에서 보장.
+
+**`mapping_version`** — 매핑 갱신 시 새 버전 발급. 과거 응답·좌표는 그 버전 기준으로 보존.
 
 ---
 
-## 12. 새 게임 추가 시 체크리스트
+## 12. 새 게임팩 추가 시 체크리스트
 
-- [ ] 결과가 **단일 라벨**이 아니라 **다축 좌표**인가?
-- [ ] **1축 환원** 표시(진보 80% 등)가 없는가?
-- [ ] **정당 매칭**이 아닌 **의원 매칭**(또는 매칭 없음)인가?
-- [ ] 매핑이 **about 페이지에 공개**되는가?
-- [ ] 양측 입장의 **수사적 무게가 대칭**인가?
-- [ ] **"관심 없음" 옵션**이 모든 문항에 있는가?
-- [ ] **반전 문항**이 각 축에 섞여 있는가?
-- [ ] 한국 정치 데이터로 **backtest 가능**한가?
-- [ ] **`mapping_version`** 추적이 있는가?
-- [ ] 결과 화면에 **"매핑에 동의 안 함" 출구**가 있는가?
-- [ ] **개인 결과 비공개·집계만 공개** 원칙이 지켜지는가?
-- [ ] 결과가 **카드로 보존**되어 시간 궤적 추적이 가능한가?
-- [ ] **재검사 간격 제한**으로 측정 진정성이 보장되는가?
-- [ ] BM 진입점이 **분산**되어 있는가? (한 곳 의존 X)
-- [ ] **"위계(랭킹)"가 아닌 "분포"** 형식으로 비교를 제공하는가?
-- [ ] D 레이어에 **`mapping_version` 메타 라벨**이 부착되어 있는가? ("객관 착시" 방지)
-- [ ] 게임 미완료 유저에게 D 레이어가 **강제가 아닌 권유** 형식으로 노출되는가?
+새 주제 게임팩(환경·사법 등)을 추가할 때 확인:
+
+- [ ] 모든 문항이 **같은 4축**에 매핑되는가? (게임팩 자체 축 X)
+- [ ] 1축 환원 표시가 없는가? ("진보 80%" 등)
+- [ ] 정당 매칭이 아닌 의원 매칭(또는 매칭 없음)인가?
+- [ ] 양측 입장의 수사적 무게가 대칭인가?
+- [ ] "관심 없음" 옵션이 모든 문항에 있는가?
+- [ ] 같은 축 안에서 반전 문항이 섞여 있는가?
+- [ ] 한국 정치 데이터로 backtest 가능한가?
+- [ ] `mapping_version` 추적이 있는가?
+- [ ] 기존 매핑 페이지(`/balance-game/mapping`)에 게임팩 섹션 추가되었는가?
+- [ ] 개인 결과 비공개·집계만 공개 원칙이 지켜지는가?
+- [ ] D 레이어에 매핑 버전 메타 라벨이 부착되어 있는가?
+- [ ] 게임 미완료 유저에게 가입 직후·배지·마이페이지 카드로 권유되는가?
+- [ ] 응답이 누적되어 좌표가 미세 갱신되는가? (1세트 산출 모델 X)
+- [ ] 신규 게임팩이 종합팩 좌표를 적절한 무게로만 갱신하는가?
 
 ---
 
@@ -666,24 +879,26 @@ CREATE INDEX idx_politician_axis_version
 >
 > 흔들기가 목적이 아니라, 흔들고 다시 세우는 과정에서
 > 자기 입장이 진짜 자기 것이 되도록 만드는 것.
-> 부모·친구·유튜버를 따라 형성된 입장이 아니라,
-> 한 번 의심하고 다시 선택한 입장.
 >
 > 1축 라벨은 정보를 압축하는 게 아니라 정보를 잃는다.
 > 4축 좌표는 같은 "우" 안에서도 다른 사람을 구분한다.
 >
+> **게임은 1회성 평가가 아니라 누적 시스템이다.**
+> 응답 5개일 때보다 30개일 때 좌표가 더 정확하다.
+> 게임팩은 같은 좌표를 다른 각도에서 채우는 도구일 뿐,
+> 게임팩마다 다른 사람이 되는 게 아니다.
+>
 > 매핑이 객관적일 수는 없다. 하지만 매핑이 투명할 수는 있다.
-> 어떤 답이 어디로 가는지를 공개하는 것이,
-> 중립을 자처하는 것보다 정직하다.
+> 매핑은 사이트의 정치 입장 선언이 아니라, 측정 도구의 눈금자다.
+> 강조 없이 조용히 공개되어 있는 것이 정직한 자세다.
 >
-> 카드는 라벨이 아니라 좌표 + 분포 + 시간이다.
-> 라벨은 자기 인식을 정지시키지만,
-> 좌표와 분포는 매번 새로 해석을 요구한다.
+> 가입 직후가 게임 권유의 가장 강력한 자리다.
+> 둘러보다가 갑자기 모달 띄우는 것보다,
+> 자기 정의(닉네임·성별·나이대)를 막 내린 직후에 자연스럽게 권유한다.
 >
-> 재검사가 가능하다는 사실 자체가
-> "지금 내 입장이 영원하지 않다"는 메시지다.
-> 사람은 바뀐다. 그 가능성을 시스템이 인정해야
-> 유저도 자기 변화를 인정할 수 있다.
+> 같은 인구 그룹과의 비교가 사이트 미션의 핵심 작동점이다.
+> "전체 평균"보다 "같은 20대 여성 평균"이
+> 자기 검토 자극의 무게가 다르다.
 
 ---
 

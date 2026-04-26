@@ -1,3 +1,4 @@
-SELECT user_id, email, nickname, provider, provider_id, created_at
+SELECT user_id, email, nickname, provider, provider_id, created_at,
+       gender, age_group, welcomed_at
   FROM users
  WHERE user_id = $1

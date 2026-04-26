@@ -46,6 +46,10 @@ export default (db) => {
     router.get('/setup',   authController.renderSetup);
     router.post('/setup',  authController.submitSetup);
 
+    /* 환영 페이지 (가입 직후 1회) */
+    router.get('/welcome',  authController.renderWelcome);
+    router.post('/welcome', authController.ackWelcome);
+
     /* Google */
     router.get('/google',
         (req, res, next) => {

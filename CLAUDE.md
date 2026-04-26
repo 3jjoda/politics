@@ -14,6 +14,7 @@
   - [UI_ANALYSIS.md](./UI_ANALYSIS.md) — AI 분석 UI 표시 원칙
   - [BALANCEGAME.md](./BALANCEGAME.md) — 정치 성향 밸런스 게임 설계 원칙 (4축·매핑·D 레이어)
   - [UI_BALANCEGAME.md](./UI_BALANCEGAME.md) — 밸런스 게임 5단계 UI 설계 원칙
+  - [BILL_AXIS_MAPPING_GUIDE.md](./BILL_AXIS_MAPPING_GUIDE.md) — 법안-축 매핑 가이드라인 (AI 1차 매핑 작업 지침)
 
 ---
 
@@ -108,6 +109,7 @@ CREATE TABLE users (
   provider_id VARCHAR(255),
   gender      VARCHAR(10)  NOT NULL,         -- 'male' | 'female' | 'other'
   age_group   VARCHAR(10)  NOT NULL,         -- '10s' ~ '60s'
+  welcomed_at TIMESTAMPTZ,                   -- 가입 직후 환영 페이지 1회 노출 (2026-04-26)
   created_at  TIMESTAMPTZ  DEFAULT NOW()
 );
 CREATE UNIQUE INDEX ux_users_provider
@@ -276,7 +278,11 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   `bill_analysis_requests.sql` (2026-04-25 — 분석 요청 테이블 + view)
 - `etc/ddl/migrations/` — 누적 변경
   - `2026-04-26-bill-category-tier.sql` — `bill_ai_analysis` 에 `category_main`/`category_sub` 컬럼 추가
-  - `2026-04-26-balance-game.sql` — 밸런스 게임 4테이블 (`balance_game_responses` append-only / `balance_game_questions` / `bill_axis_mapping` / `politician_axis_score`). [BALANCEGAME.md](./BALANCEGAME.md) 참조
+  - `2026-04-26-balance-game.sql` — 밸런스 게임 4테이블 1차 (이후 cumulative 마이그레이션이 응답 테이블 재설계)
+  - `2026-04-26-balance-game-cumulative.sql` — **누적 모델 v2**. `balance_game_packs` / `user_axis_score` / `group_axis_avg` 신규, `balance_game_responses` 1문항 단위 재설계, `balance_game_questions` 에 `pack_id`/`display_order`, `bill_axis_mapping.mapped_by` 타입 변경, `users.welcomed_at`. 종합팩 'general' + 20문항 시드 포함
+- `etc/ddl/seeds/` — 데이터 시드
+  - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
+- `balance_game_seed_v1.sql` (root) — 밸런스 게임 60문항 시드 (종합 20 + 노동 10 + 부동산 10 + 안보 10 + 젠더 10). 별도 받아온 외부 시드 파일이라 root 에 위치
 
 ---
 
@@ -295,9 +301,13 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
 | `/community/:id` | `community/detail.ejs` | 상세 (조회수·좋아요·댓글) |
 | `/my/analysis-requests` | `my/analysis_requests.ejs` | 마이페이지 — 내가 요청한 AI 분석 (`requireLogin`) |
-| `/balance-game` | `balance/invite.ejs` | 성향 진단 — 단계 1 초대 (3가지 약속 카드 + 시작 버튼) |
-| `/balance-game/respond` | `balance/respond.ejs` | 단계 2 응답 (한 화면 한 문항, 진행도, A/B/C, 키보드 1·2·3·←, mock 문항) |
-| `/balance-game/mapping` | `balance/mapping_preview.ejs` | 매핑 미리 보기 (4축별 문항·점수 공개) |
+| `/balance-game` | `balance/invite.ejs` | 성향 진단 — 게임팩 컬렉션 (입문 게임팩 + 주제팩 placeholder) |
+| `/balance-game/respond` | `balance/respond.ejs` | 단계 2 응답 (한 화면 한 문항, 즉시 서버 저장, 이어하기, 키보드 1·2·3·←) |
+| `/balance-game/reveal` | `balance/reveal.ejs` | 단계 3 펼침 — 13초 클라이맥스 애니메이션, 다이아몬드 + 카드 메타 |
+| `/balance-game/compare` | `balance/compare.ejs` | 단계 4 비교 — 분포 다이아몬드 + 토글(전체·인구그룹·의원) + 임계값 처리 |
+| `/balance-game/connect` | `balance/connect.ejs` | 단계 5 연결 — D 레이어 안내 + 출구 5종 |
+| `/balance-game/mapping` | `balance/mapping_preview.ejs` | 매핑 미리 보기 (DB 조회, 게임팩별 섹션) |
+| `/auth/welcome` | `auth/welcome.ejs` | 가입 직후 환영 페이지 (1회 노출, [지금 풀기]/[둘러보기]) |
 | `/about` | `about.ejs` | 사이트 소개 |
 | `/glossary` | `glossary.ejs` | 용어 설명 (목차 + 4섹션) |
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
@@ -411,7 +421,38 @@ PC/모바일 동일 패턴으로 통일.
   - `formatRelativeKo(date)` — 분/시간/일/주/달 단위 한국어 상대시간
   - nav 배지(`views/layout.ejs` `.pb-nav-badge`)가 "● 법안 N시간 전 갱신" 렌더에 사용. 모바일(≤768px)은 숨김. `syncBills.js` 의 `ON CONFLICT ... updated_at = NOW()` 가 시각 소스 → 크론 배치가 배지를 실시간으로 갱신
 - `middlewares/balanceGame.js` (2026-04-26)
-  - `injectBalanceGameStatus(db)` — `res.locals.balanceGameCompleted` boolean 주입. 비로그인·응답 0건 → false (= 카드에 회색 배지 노출), 응답 1건+ → true. 로그인 유저 한정으로 `balance_game_responses` 1행 EXISTS 조회. 의원 카드(`politician.ejs` 그리드·리스트 양쪽)의 `📊 진단 후 표시` 회색 배지 + 향후 홈 탭 비활성·법안 상세 Zone 4 끝 1줄 등 D 레이어 자리에 일관 적용 예정
+  - `injectBalanceGameStatus(db)` — 세 값 주입:
+    - `res.locals.balanceGameCompleted` boolean — **누적 모델 기준**: `user_axis_score.packs_completed` 에 `'general'` 포함 → true. 그 외(비로그인·종합팩 미완료·부분 풀이) → false
+    - `res.locals.userAxis` `{economy, social, security, institution} | null` — 완료 유저의 4축 좌표
+    - `res.locals.userDistanceQuartiles` `{q1, q2, q3} | null` — 의원 295명 거리 분포의 25/50/75 분위수. 단일 `PERCENTILE_CONT` 쿼리 (~수ms), 게임 완료 유저 한정
+  - **의원 상세 "당신과의 비교" 펼침 컴포넌트** (객관 착시 방지·D 레이어 본체, 2026-04-26):
+    - 위치: KPI 행 바로 아래 (`#tab-overview` 안). 이전 "일치도 한 줄"(`profile-match-row`) + "비교 섹션"(`bg-vs-section`) 둘 다 흡수
+    - **헤더** (`bg-vs-collapse-header`, 항상 노출, 골드 톤 그라디언트): "나의 성향 진단과 **N%** 일치 · 매핑 v1 → · ▼"
+      - 매핑 링크는 `stopPropagation` 으로 토글과 분리 (`/balance-game/mapping`)
+      - 헤더 클릭 시 바디 토글 (`data-open` true/false 스왑, ▼ 90도 회전 + max-height 0.3s 애니메이션)
+    - **바디** (`bg-vs-collapse-body`, 첫 진입 자동 펼침): flex column 가운데 정렬 — 다이아몬드 위 → border-top → 축별 해석 4줄 아래 (max-width 520px). 헤더에 이미 일치도 % 가 있어 **전체 일치도 박스는 제거** (헤더=결론, 바디=분해, 결론 반복 X)
+    - 다이아몬드 (reveal/compare 패턴): 사용자 골드 + 의원 회색 점선 두 polygon 겹침. 좌표 수치는 SVG `<title>` 호버 툴팁 (라벨 겹침 회피). 일치도(%) = `max(0, (1 - d/1.5) × 100)`
+    - 축별 해석 (Noto Serif KR): 강도 4단계 (`<0.25 거의 같음 / 0.75 약간 / 1.25 뚜렷 / 그 이상 정반대·큰 차이`) × 방향 (`같은 방향 (둘 다 {SIDE} 쪽) / 반대 방향 / 한쪽 중도 근처`). SIDE: economy 시장/개입, social 전통/자율, security 동맹/자주, institution 안정/개혁
+    - **Fallback** (펼침 비활성, 헤더만 회색):
+      - 미완료 유저 → `is-pending` "성향 진단 후 표시됩니다 / 진단하러 가기 →" `/balance-game?next=` 복귀
+      - 미산출 의원 (1명) → `is-missing` "⚠️ 분석 데이터 부족 / 표결 참여 부족"
+    - 반응형: 데스크톱 320px 다이아몬드 + 1fr 해석 (2열) / 모바일 ≤768px 1열
+  - **의원 페이지 일치도 필터·정렬** (D 레이어 본체, 2026-04-26):
+    - `#pol-match-filter` 드롭다운: 전체 / 70%·60%·50% 이상 / 50% 미만 (5옵션). 미완료 유저는 `disabled` + tooltip "성향 진단 후 활성됩니다"
+    - `#pol-sort` 추가 옵션: `match-desc` (일치도 높은 순) / `match-asc` (일치도 낮은 순 — 정반대 의원 발견). 미완료 유저는 option `disabled`
+    - 좌표 미산출 의원: 필터 적용 시 제외 / 정렬 시 항상 마지막
+    - **URL 영속화**: `loadFromUrl()` / `saveToUrl()` history.replaceState (클라이언트 사이드 reload 없음). 키: `party`, `committee`, `elect`, `sex`, `age`, `q`, `sort`, `match`. 배열은 쉼표 구분
+    - `data-match-pct` 속성으로 카드별 일치도(%) 서버 사전 계산 → JS 필터/정렬에서 즉시 사용
+  - 의원 카드 D 레이어 (politician.ejs 그리드·리스트 + politician_detail.ejs + balance/connect.ejs 미리보기):
+    - 거리 = `sqrt(Σ(u.axis - p.axis)²) / 2`. 일치도(%) = `max(0, (1 - d/1.5) × 100)` — 분모 1.5 (실측 거리 분포 보정, "겹치는 정도 = % 일치도" 직관 정합). 실측 [0.61, 1.49] → [1%, 59%]
+    - **텍스트 통일**: `"나의 성향 진단과 N% 일치"` 한 줄. 모든 의원 동일톤 (이모지·라벨·거리값·v1 메타·tier 차등·골드 강조 모두 제거)
+    - 두 라운드 연속 "차등 잘 안 보임" 피드백 → 시각 차등 자체가 정보 전달 못 한다고 결론. % 숫자 자체로 강도 명확
+    - **위치** ("정체 → 활동 → 분석"): 그리드 카드는 `pol-overlay > pol-stats-line` 아래 (발의·공동 카운트 바로 아래) / 상세 페이지는 KPI 행 아래 (`profile-match-row` 카드형, 우측에 `매핑 v1 →` `/balance-game/mapping` 링크)
+    - 호버/탭 툴팁: `"당신 좌표와 4축 거리 N.NN. 매핑 v1 기준."`
+    - 미완료/비로그인 → `"진단 후 일치도 표시"` (회색·이탤릭). 상세는 `<a href="/balance-game">` 카드 전체 클릭
+    - 분위수(`userDistanceQuartiles`) 미들웨어 인프라는 유지 — UI 차등은 안 쓰지만 향후 단계 5 "비슷한 의원 TOP 3" 등에서 재사용
+    - `getListWithStats.sql` / `getDetail.sql` 가 `LEFT JOIN politician_axis_score (mapping_version='v1')` 로 axis_* 컬럼 노출. 좌표 미산출(표결 1건 미만) 1명은 일치도 미표시 (배지 자체가 안 나옴)
+    - 컴포넌트: `.pol-match-line` (그리드+리스트) / `.profile-match-row` (상세) / `.bg-d-card-preview .pv-match` (connect 미리보기)
 
 ---
 
@@ -459,6 +500,8 @@ PC/모바일 동일 패턴으로 통일.
 | `syncBillAiAnalysis.js` | pal.assembly.go.kr 크롤 + Claude Haiku 4.5 | AI 법안 분석 (v4.1, 16종 카테고리) |
 | `reclassifyCategories.js` | Claude Haiku 4.5 | 자유 카테고리 → v4.1 16종 main+sub 일괄 재분류 |
 | `billCategories.js` | (모듈) | 16종 카테고리·정의·tie-breaker 공유 (분석/재분류 배치가 import) |
+| `calcGroupAxisAvg.js` | DB 집계 | 인구 그룹별 4축 평균 일배치 (밸런스 게임 단계 4 비교용). 'all' + (gender × age_group), user_count >= 50 만 평균 채움 |
+| `calcPoliticianAxis.js` | DB 집계 | `bill_axis_mapping × bill_votes` → `politician_axis_score`. 가중평균 (찬성→agree_score / 반대→disagree_score, 기권/불참 제외). 인자 `--version v1` `--min-votes 1`. 분포 히스토그램 + 정당별 평균 검증 출력 |
 
 ### syncBills.js 결과
 - RST_MONA_CD → bills.mona_cd, PUBL_MONA_CD → bill_co_proposers
@@ -566,4 +609,8 @@ node batch/syncBillAiAnalysis.js --limit 50                      # 50건
 node batch/syncBillAiAnalysis.js --bill-id PRC_X2Y... --bill-id PRC_A2B...   # 특정 법안
 node batch/reclassifyCategories.js --dry-run                     # 카테고리 재분류 미리보기
 node batch/reclassifyCategories.js                               # 실행
+
+# 밸런스 게임
+node batch/calcGroupAxisAvg.js                                   # 인구 그룹별 평균 (매일 새벽)
+node batch/calcPoliticianAxis.js                                 # 의원 4축 좌표 (mapping/표결 변경 시)
 ```

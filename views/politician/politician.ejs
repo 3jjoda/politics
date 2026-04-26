@@ -20,6 +20,28 @@
     if (name.indexOf('진보') > -1) return 'party-jinbo';
     return 'party-etc';
   };
+
+  // D 레이어 일치도 배지 (게임 완료 + 의원 좌표 있음)
+  // 텍스트는 거리 → 일치도(%) 변환만 노출. 시각 차등·이모지·라벨·v1·거리값 모두 제거 (상세 정보는 툴팁으로)
+  const userAxis = locals.userAxis || null;
+  const distanceTo = (p) => {
+    if (!userAxis || p.axis_economy === null || p.axis_economy === undefined) return null;
+    const sum =
+      (userAxis.economy     - parseFloat(p.axis_economy))     ** 2 +
+      (userAxis.social      - parseFloat(p.axis_social))      ** 2 +
+      (userAxis.security    - parseFloat(p.axis_security))    ** 2 +
+      (userAxis.institution - parseFloat(p.axis_institution)) ** 2;
+    return Math.sqrt(sum) / 2;
+  };
+  // 일치도(%) — 분모 1.5: 실제 의원 거리 분포가 이론적 최대 2.0 에 절대 도달 못 함
+  // 사용자 직관 ("다이아몬드 거의 안 겹치는 의원" → 5~10%)과 정합되도록 보정
+  // similarity = max(0, (1 - d/1.5) × 100)
+  //   d=0.0  → 100% / d=0.61 (가장 가까움) → 59% / d=1.40 → 7% / d≥1.5 → 0%
+  const similarityOf = (d) => {
+    if (d === null || d === undefined) return null;
+    return Math.max(0, Math.round((1 - d / 1.5) * 100));
+  };
+  const matchTitle = (d) => `당신 좌표와 4축 거리 ${d.toFixed(2)}. 매핑 v1 기준.`;
 %>
 
 <style>
@@ -163,6 +185,15 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237B8DAB' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
+  }
+  .filter-select:disabled {
+    color: var(--sub2);
+    background-color: var(--bg3);
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+  .filter-select option:disabled {
+    color: var(--sub2);
   }
 
   .filter-toggle {
@@ -534,6 +565,23 @@
     margin-left: 3px;
     text-shadow: 0 1px 3px rgba(0,0,0,0.8);
   }
+  /* D 레이어 일치도 한 줄 — 카운트 아래, 모든 의원 동일톤 */
+  .pol-overlay .pol-match-line {
+    margin-top: 6px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  .pol-overlay .pol-match-line strong {
+    font-weight: 700;
+    color: #FFD77A;
+  }
+  .pol-overlay .pol-match-line.is-pending {
+    color: rgba(255,255,255,0.55);
+    font-style: italic;
+  }
 
   /* LIST */
   .politicians-list { display: flex; flex-direction: column; gap: 8px; }
@@ -580,6 +628,21 @@
     font-weight: 400;
     color: var(--sub2);
     margin-right: 4px;
+  }
+  /* D 레이어 일치도 한 줄 — 리스트 뷰 (밝은 배경) */
+  .pol-list-item .pol-match-line {
+    font-size: 11px;
+    color: var(--sub);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .pol-list-item .pol-match-line strong {
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .pol-list-item .pol-match-line.is-pending {
+    color: var(--sub2);
+    font-style: italic;
   }
 
   .list-header {
@@ -861,10 +924,20 @@
 
     <!-- RIGHT: 정렬 + 검색 + 총원 (count 는 검색 옆으로) -->
     <div class="filter-right">
+      <% const _bgDone = (locals.balanceGameCompleted === true); %>
+      <select id="pol-match-filter" class="filter-select"<% if (!_bgDone) { %> disabled title="성향 진단 후 활성됩니다"<% } %>>
+        <option value="">일치도: 전체</option>
+        <option value="gte70">70% 이상</option>
+        <option value="gte60">60% 이상</option>
+        <option value="gte50">50% 이상</option>
+        <option value="lt50">50% 미만</option>
+      </select>
       <select id="pol-sort" class="filter-select">
         <option value="propose">정렬: 발의 많은순</option>
         <option value="name">정렬: 이름순</option>
         <option value="party">정렬: 정당순</option>
+        <option value="match-desc"<% if (!_bgDone) { %> disabled<% } %>>정렬: 일치도 높은 순</option>
+        <option value="match-asc"<% if (!_bgDone) { %> disabled<% } %>>정렬: 일치도 낮은 순</option>
       </select>
       <div class="search-wrap">
         <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1037,7 +1110,8 @@
              data-elect="<%= p.elect_gbn_nm || '' %>"
              data-sex="<%= p.sex_gbn_nm || '' %>"
              data-age-bucket="<%= p.age_bucket || '' %>"
-             data-propose="<%= p.propose_cnt || 0 %>">
+             data-propose="<%= p.propose_cnt || 0 %>"
+             data-match-pct="<% const _mp = similarityOf(distanceTo(p)); %><%= _mp === null ? '' : _mp %>">
             <% if (p.photo_url) { %>
               <img src="<%= p.photo_url %>" alt="<%= p.name %>" class="pol-photo-img" loading="lazy">
             <% } else { %>
@@ -1049,9 +1123,6 @@
               <% if (p.elect_gbn_nm) { %>
                 <span class="pol-elect-badge"><%= p.elect_gbn_nm %></span>
               <% } %>
-              <% if (locals.balanceGameCompleted === false) { %>
-                <span class="bg-pending-badge" title="성향 진단 후 당신과의 거리가 표시됩니다">📊 진단 후 표시</span>
-              <% } %>
             </div>
 
             <div class="pol-overlay">
@@ -1061,6 +1132,15 @@
                 <span><span class="num"><%= p.propose_cnt %></span><span class="label">발의</span></span>
                 <span><span class="num"><%= p.co_propose_cnt %></span><span class="label">공동</span></span>
               </div>
+              <%
+                const _d = distanceTo(p);
+                const _sim = similarityOf(_d);
+              %>
+              <% if (locals.balanceGameCompleted === true && _sim !== null) { %>
+                <div class="pol-match-line" title="<%= matchTitle(_d) %>">나의 성향 진단과 <strong><%= _sim %>%</strong> 일치</div>
+              <% } else if (locals.balanceGameCompleted === false) { %>
+                <div class="pol-match-line is-pending" title="성향 진단 후 당신과의 일치도가 표시됩니다">진단 후 일치도 표시</div>
+              <% } %>
             </div>
           </a>
         <% }); %>
@@ -1091,7 +1171,8 @@
              data-elect="<%= p.elect_gbn_nm || '' %>"
              data-sex="<%= p.sex_gbn_nm || '' %>"
              data-age-bucket="<%= p.age_bucket || '' %>"
-             data-propose="<%= p.propose_cnt || 0 %>">
+             data-propose="<%= p.propose_cnt || 0 %>"
+             data-match-pct="<% const _mpL = similarityOf(distanceTo(p)); %><%= _mpL === null ? '' : _mpL %>">
             <div class="pol-list-avatar">
               <%- avatarHtml(p.name, p.photo_url, 40) %>
             </div>
@@ -1105,8 +1186,14 @@
             <div class="pol-list-num"><span class="pol-list-num-label">발의</span><%= p.propose_cnt %></div>
             <div class="pol-list-num"><span class="pol-list-num-label">공동</span><%= p.co_propose_cnt %></div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-              <% if (locals.balanceGameCompleted === false) { %>
-                <span class="bg-pending-badge" title="성향 진단 후 당신과의 거리가 표시됩니다">📊 진단 후 표시</span>
+              <%
+                const _dl = distanceTo(p);
+                const _siml = similarityOf(_dl);
+              %>
+              <% if (locals.balanceGameCompleted === true && _siml !== null) { %>
+                <span class="pol-match-line" title="<%= matchTitle(_dl) %>">나의 성향 진단과 <strong><%= _siml %>%</strong> 일치</span>
+              <% } else if (locals.balanceGameCompleted === false) { %>
+                <span class="pol-match-line is-pending" title="성향 진단 후 당신과의 일치도가 표시됩니다">진단 후 일치도 표시</span>
               <% } %>
               <span style="font-size:11px;color:var(--accent)">상세 →</span>
             </div>
@@ -1121,11 +1208,27 @@
 <script>
 (() => {
   // party 는 상단 탭(단일), 나머지는 사이드바 복수선택 배열
-  const state = { party: '', cmit: [], elect: [], sex: [], ageBucket: [], q: '', sort: 'propose' };
+  // match: '' | 'gte70' | 'gte60' | 'gte50' | 'lt50'
+  // sort: 'propose' | 'name' | 'party' | 'match-desc' | 'match-asc'
+  const state = { party: '', cmit: [], elect: [], sex: [], ageBucket: [], q: '', sort: 'propose', match: '' };
+  const bgDone = <%= locals.balanceGameCompleted === true ? 'true' : 'false' %>;
 
   const gridContainer = document.getElementById('grid-container');
   const listContainer = document.getElementById('list-container');
   const countEl = document.getElementById('filter-count');
+
+  // 일치도 필터 임계값
+  const matchPasses = (pctStr, mode) => {
+    if (!mode) return true;
+    if (pctStr === '' || pctStr === undefined || pctStr === null) return false; // 좌표 미산출 → 필터 적용 시 제외
+    const pct = parseInt(pctStr, 10);
+    if (isNaN(pct)) return false;
+    if (mode === 'gte70') return pct >= 70;
+    if (mode === 'gte60') return pct >= 60;
+    if (mode === 'gte50') return pct >= 50;
+    if (mode === 'lt50')  return pct <  50;
+    return true;
+  };
 
   const applyFilter = () => {
     const q = state.q.trim();
@@ -1139,6 +1242,7 @@
       const elect = el.dataset.elect || '';
       const sex   = el.dataset.sex || '';
       const age   = el.dataset.ageBucket || '';
+      const matchPct = el.dataset.matchPct || '';
 
       // 이름·지역구 — 직접 부분일치 + 한글 초성 매칭 (PB.matchesQuery)
       const textHit = !q || (window.PB && (PB.matchesQuery(name, q) || PB.matchesQuery(district, q)));
@@ -1147,7 +1251,8 @@
         (state.cmit.length === 0       || state.cmit.includes(cmit)) &&
         (state.elect.length === 0      || state.elect.includes(elect)) &&
         (state.sex.length === 0        || state.sex.includes(sex)) &&
-        (state.ageBucket.length === 0  || state.ageBucket.includes(age));
+        (state.ageBucket.length === 0  || state.ageBucket.includes(age)) &&
+        matchPasses(matchPct, state.match);
 
       el.style.display = matches ? '' : 'none';
       return matches;
@@ -1159,8 +1264,21 @@
     gridItems.forEach(filterCard);
     listItems.forEach(filterCard);
 
-    // Sort
+    // Sort — 일치도 정렬 시 좌표 미산출(빈 문자열) 의원은 항상 마지막
+    const matchKey = (el) => {
+      const v = el.dataset.matchPct;
+      if (v === '' || v === undefined || v === null) return null;
+      const n = parseInt(v, 10);
+      return isNaN(n) ? null : n;
+    };
     const sortFn = (a, b) => {
+      if (state.sort === 'match-desc' || state.sort === 'match-asc') {
+        const ma = matchKey(a), mb = matchKey(b);
+        if (ma === null && mb === null) return 0;
+        if (ma === null) return 1;   // a 마지막
+        if (mb === null) return -1;  // b 마지막
+        return state.sort === 'match-desc' ? (mb - ma) : (ma - mb);
+      }
       if (state.sort === 'name')  return (a.dataset.name || '').localeCompare(b.dataset.name || '', 'ko');
       if (state.sort === 'party') return (a.dataset.party || '').localeCompare(b.dataset.party || '', 'ko');
       return (parseInt(b.dataset.propose, 10) || 0) - (parseInt(a.dataset.propose, 10) || 0);
@@ -1180,6 +1298,51 @@
       if (active > 0) { badge.textContent = String(active); badge.hidden = false; }
       else { badge.hidden = true; }
     }
+
+    saveToUrl();
+  };
+
+  // ===== URL 영속화 =====
+  // 모든 필터·정렬 상태를 URL 쿼리에 반영. 새로고침 시 복원, 결과 공유 가능.
+  // 배열 필드는 쉼표 분리, party 는 단일 값, q/match/sort 는 그대로
+  const saveToUrl = () => {
+    const params = new URLSearchParams();
+    if (state.party) params.set('party', state.party);
+    if (state.cmit.length)      params.set('committee',  state.cmit.join(','));
+    if (state.elect.length)     params.set('elect',      state.elect.join(','));
+    if (state.sex.length)       params.set('sex',        state.sex.join(','));
+    if (state.ageBucket.length) params.set('age',        state.ageBucket.join(','));
+    if (state.q)                params.set('q',          state.q);
+    if (state.sort && state.sort !== 'propose') params.set('sort',  state.sort);
+    if (state.match)            params.set('match',      state.match);
+    const qs = params.toString();
+    const url = window.location.pathname + (qs ? '?' + qs : '');
+    window.history.replaceState({}, '', url);
+  };
+  const loadFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    state.party     = params.get('party') || '';
+    state.cmit      = (params.get('committee') || '').split(',').filter(Boolean);
+    state.elect     = (params.get('elect')     || '').split(',').filter(Boolean);
+    state.sex       = (params.get('sex')       || '').split(',').filter(Boolean);
+    state.ageBucket = (params.get('age')       || '').split(',').filter(Boolean);
+    state.q         = params.get('q') || '';
+    const sortParam = params.get('sort') || 'propose';
+    // 게임 미완료 시 일치도 정렬은 무시 (기본값으로 fallback)
+    state.sort = (!bgDone && (sortParam === 'match-desc' || sortParam === 'match-asc')) ? 'propose' : sortParam;
+    state.match = bgDone ? (params.get('match') || '') : '';
+
+    // UI 동기화
+    const sortSel = document.getElementById('pol-sort');
+    if (sortSel) sortSel.value = state.sort;
+    const matchSel = document.getElementById('pol-match-filter');
+    if (matchSel) matchSel.value = state.match;
+    const searchInput = document.getElementById('pol-search');
+    if (searchInput) searchInput.value = state.q;
+    document.querySelectorAll('.party-tab').forEach(tab => {
+      tab.classList.toggle('active', (tab.dataset.party || '') === state.party);
+    });
+    syncVisualsFromState();
   };
 
   // 필터 시트 — 시트 오픈 중엔 applyFilter() 지연, 적용 시에만 커밋
@@ -1257,6 +1420,14 @@
     state.sort = e.target.value;
     applyFilter();
   });
+  // Match filter
+  const matchFilterEl = document.getElementById('pol-match-filter');
+  if (matchFilterEl) {
+    matchFilterEl.addEventListener('change', (e) => {
+      state.match = e.target.value;
+      applyFilter();
+    });
+  }
   // Party tabs
   document.querySelectorAll('.party-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1327,6 +1498,8 @@
     gridView.style.display = 'none'; listView.style.display = '';
   });
 
+  // 초기 — URL → state → UI 동기화 → 필터 적용
+  loadFromUrl();
   applyFilter();
 })();
 </script>

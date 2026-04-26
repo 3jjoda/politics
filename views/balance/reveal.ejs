@@ -1,0 +1,380 @@
+<%
+  const escape = (s) => JSON.stringify(s).replace(/</g, '\\u003c');
+  const econ  = Number(axisScore.economy ?? 0);
+  const soci  = Number(axisScore.social ?? 0);
+  const sec   = Number(axisScore.security ?? 0);
+  const inst  = Number(axisScore.institution ?? 0);
+  const fmtDate = (() => {
+    const d = new Date(axisScore.computed_at || Date.now());
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}.${m}.${dd}`;
+  })();
+%>
+
+<style>
+  /* ========================================
+     단계 3 — 펼침 (Reveal)
+     13초 시퀀스: 로딩 3 + 다이아몬드 5 + 카드 형성 5
+  ======================================== */
+  .bg-reveal-wrap {
+    min-height: calc(100vh - var(--nav-h));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  /* 로딩 시퀀스 (Phase A — 3초) */
+  .reveal-loading {
+    text-align: center;
+  }
+  .reveal-loading-text {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 500;
+    font-size: 18px;
+    color: var(--sub);
+    margin-bottom: 32px;
+    letter-spacing: 0.04em;
+  }
+  .reveal-axis-typewriter {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--accent);
+  }
+  .reveal-axis-typewriter span {
+    opacity: 0;
+    animation: revealAxisLine 0.6s ease forwards;
+  }
+  .reveal-axis-typewriter span:nth-child(1) { animation-delay: 0.0s; }
+  .reveal-axis-typewriter span:nth-child(2) { animation-delay: 0.6s; }
+  .reveal-axis-typewriter span:nth-child(3) { animation-delay: 1.2s; }
+  .reveal-axis-typewriter span:nth-child(4) { animation-delay: 1.8s; }
+  @keyframes revealAxisLine {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 카드 (Phase B + C) */
+  .reveal-card {
+    background: var(--bg2);
+    border: 2px solid var(--accent);
+    border-radius: 22px;
+    padding: 36px 36px 28px;
+    max-width: 520px;
+    width: 100%;
+    box-shadow: 0 8px 28px rgba(184,116,12,0.12);
+    text-align: center;
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal-card.visible {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .reveal-card-title {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 900;
+    font-size: 28px;
+    color: var(--text);
+    margin: 0 0 4px;
+    letter-spacing: 0.02em;
+  }
+  .reveal-card-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 24px;
+    letter-spacing: 0.06em;
+  }
+
+  .reveal-diamond-wrap {
+    position: relative;
+    width: 360px;
+    height: 360px;
+    margin: 0 auto 8px;
+  }
+  .reveal-diamond-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .reveal-diamond-axis-line {
+    stroke: var(--border2);
+    stroke-width: 1;
+  }
+  .reveal-diamond-grid {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 0.5;
+  }
+  .reveal-diamond-fill {
+    fill: rgba(184, 116, 12, 0.18);
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    transition: opacity 1.2s ease;
+    opacity: 0;
+  }
+  .reveal-diamond-fill.visible { opacity: 1; }
+  .reveal-diamond-dot {
+    fill: var(--accent);
+    opacity: 0;
+    transform-origin: center;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .reveal-diamond-dot.visible { opacity: 1; }
+  .reveal-axis-label {
+    fill: var(--sub);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-anchor: middle;
+  }
+  .reveal-axis-label.bottom { dominant-baseline: hanging; }
+  .reveal-axis-score {
+    fill: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    text-anchor: middle;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .reveal-axis-score.visible { opacity: 1; }
+
+  /* 자기 설명 한 줄 — 다이아몬드 읽는 법 안내 */
+  .reveal-diamond-help {
+    font-size: 12px;
+    color: var(--sub2);
+    text-align: center;
+    margin: 0 0 14px;
+    letter-spacing: 0.02em;
+    word-break: keep-all;
+  }
+
+  /* 메타 정보 (Phase C) */
+  .reveal-meta {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  .reveal-meta.visible { opacity: 1; }
+  .reveal-meta b { color: var(--text); }
+  .reveal-meta .sep { color: var(--border2); }
+
+  .reveal-distribution {
+    margin-top: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub);
+    opacity: 0;
+    transition: opacity 0.6s ease 0.2s;
+  }
+  .reveal-distribution.visible { opacity: 1; }
+  .reveal-distribution b { color: var(--accent); }
+
+  /* 다음 단계 안내 */
+  .reveal-next {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.6s ease 0.4s;
+  }
+  .reveal-next.visible { opacity: 1; }
+  .reveal-next-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .reveal-next-cta:hover { background: var(--accent2); transform: translateY(-1px); }
+
+  @media (max-width: 768px) {
+    .reveal-card { padding: 28px 22px; }
+    .reveal-card-title { font-size: 24px; }
+    .reveal-diamond-wrap { width: 280px; height: 280px; }
+    .reveal-axis-label { font-size: 10px; }
+  }
+</style>
+
+<div class="bg-reveal-wrap">
+  <!-- Phase A: 로딩 (3초) — 처음 본 유저만 -->
+  <div class="reveal-loading" id="reveal-loading">
+    <div class="reveal-loading-text">당신의 좌표를 그리는 중…</div>
+    <div class="reveal-axis-typewriter">
+      <span>· 경제</span>
+      <span>· 사회·문화</span>
+      <span>· 안보·외교</span>
+      <span>· 정치제도</span>
+    </div>
+  </div>
+
+  <!-- Phase B + C: 카드 + 메타 -->
+  <div class="reveal-card" id="reveal-card" hidden>
+    <h1 class="reveal-card-title">당신의 카드입니다</h1>
+    <div class="reveal-card-sub">📊 mapping <%= mappingVersion %> · <%= fmtDate %></div>
+
+    <div class="reveal-diamond-wrap">
+      <svg class="reveal-diamond-svg" viewBox="0 0 360 360" id="reveal-diamond-svg" xmlns="http://www.w3.org/2000/svg">
+        <!-- 그리드: 최대 좌표를 ±1.0 으로 두고 4단계 (0.25/0.5/0.75/1.0)
+             viewBox 360x360 에 cx/cy 180·R 130 — 외곽 마진 50px 확보로 라벨↔수치 분리 보장 -->
+        <% const cx = 180, cy = 180, R = 130; %>
+        <% [0.25, 0.50, 0.75, 1.00].forEach(scale => {
+             const r = R * scale;
+             const top    = `${cx},${cy - r}`;
+             const right  = `${cx + r},${cy}`;
+             const bottom = `${cx},${cy + r}`;
+             const left   = `${cx - r},${cy}`;
+        %>
+          <polygon class="reveal-diamond-grid" points="<%= top %> <%= right %> <%= bottom %> <%= left %>"/>
+        <% }); %>
+        <!-- 4축 가이드라인 -->
+        <line class="reveal-diamond-axis-line" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
+        <line class="reveal-diamond-axis-line" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
+
+        <!-- 축 좌표 점 — 절대값 기반(강도 시각화)
+             강한 입장(|점수|=1)이 외곽에, 약한 입장(|점수|≈0)이 중심 근처.
+             부호(방향)는 점수 텍스트(-1.00 등)와 축 라벨로 보존. -->
+        <%
+          const points = [
+            { axis: 'security',    val: sec,  x: cx,                         y: cy - R * Math.abs(sec)  },  // 위 (안보)
+            { axis: 'economy',     val: econ, x: cx + R * Math.abs(econ),    y: cy                       },  // 오른 (경제)
+            { axis: 'institution', val: inst, x: cx,                         y: cy + R * Math.abs(inst) },  // 아래 (제도)
+            { axis: 'social',      val: soci, x: cx - R * Math.abs(soci),    y: cy                       }   // 왼 (사회)
+          ];
+        %>
+        <!-- 면적 -->
+        <polygon class="reveal-diamond-fill" id="reveal-fill"
+          points="<%= points.map(p => `${p.x},${p.y}`).join(' ') %>"/>
+
+        <!-- 점 -->
+        <% points.forEach((p, i) => { %>
+          <circle class="reveal-diamond-dot" data-i="<%= i %>" cx="<%= p.x %>" cy="<%= p.y %>" r="6"/>
+        <% }); %>
+
+        <!-- 축 라벨 + 수치 — 4축 일관 패턴: 라벨이 위, 수치가 아래로 20px 간격 분리 -->
+        <!-- security (위) -->
+        <text class="reveal-axis-label"            x="<%= cx %>"          y="<%= cy - R - 32 %>"><%= axes.security.label %></text>
+        <text class="reveal-axis-score" data-i="0" x="<%= cx %>"          y="<%= cy - R - 12 %>"><%= sec.toFixed(2) %></text>
+
+        <!-- economy (오른쪽) -->
+        <text class="reveal-axis-label"            x="<%= cx + R + 30 %>" y="<%= cy - 10 %>"><%= axes.economy.label %></text>
+        <text class="reveal-axis-score" data-i="1" x="<%= cx + R + 30 %>" y="<%= cy + 10 %>"><%= econ.toFixed(2) %></text>
+
+        <!-- institution (아래) — 라벨 위 / 수치 아래, 20px 간격 -->
+        <text class="reveal-axis-label bottom"     x="<%= cx %>"          y="<%= cy + R + 16 %>"><%= axes.institution.label %></text>
+        <text class="reveal-axis-score" data-i="2" x="<%= cx %>"          y="<%= cy + R + 36 %>"><%= inst.toFixed(2) %></text>
+
+        <!-- social (왼쪽) -->
+        <text class="reveal-axis-label"            x="<%= cx - R - 30 %>" y="<%= cy - 10 %>"><%= axes.social.label %></text>
+        <text class="reveal-axis-score" data-i="3" x="<%= cx - R - 30 %>" y="<%= cy + 10 %>"><%= soci.toFixed(2) %></text>
+      </svg>
+    </div>
+
+    <!-- 자기 설명 — 카드가 단독 노출(공유·갤러리)될 때도 다이아몬드 의미 유지 -->
+    <div class="reveal-diamond-help">중심은 중도, 가장자리는 뚜렷한 입장</div>
+
+    <div class="reveal-meta" id="reveal-meta">
+      <span>응답 <b><%= axisScore.total_responses %></b></span>
+    </div>
+
+    <div class="reveal-distribution" id="reveal-dist">
+      <% const leftCnt = Number(distribution.left_count), rightCnt = Number(distribution.right_count), skipCnt = Number(distribution.skip_count); %>
+      −1 응답 <b><%= leftCnt %></b> · +1 응답 <b><%= rightCnt %></b> · 무관심 <b><%= skipCnt %></b>
+    </div>
+
+    <div class="reveal-next" id="reveal-next">
+      <a class="reveal-next-cta" href="/balance-game/compare">비교 단계로 →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const REVEAL_KEY = 'pb.balanceGame.revealed.<%= mappingVersion %>';
+  const loadingEl = document.getElementById('reveal-loading');
+  const cardEl    = document.getElementById('reveal-card');
+  const fillEl    = document.getElementById('reveal-fill');
+  const dotEls    = document.querySelectorAll('.reveal-diamond-dot');
+  const scoreEls  = document.querySelectorAll('.reveal-axis-score');
+  const metaEl    = document.getElementById('reveal-meta');
+  const distEl    = document.getElementById('reveal-dist');
+  const nextEl    = document.getElementById('reveal-next');
+
+  const seenBefore = (() => {
+    try { return sessionStorage.getItem(REVEAL_KEY) === '1'; } catch (e) { return false; }
+  })();
+  const markSeen = () => {
+    try { sessionStorage.setItem(REVEAL_KEY, '1'); } catch (e) {}
+  };
+
+  const showCardImmediate = () => {
+    loadingEl.style.display = 'none';
+    cardEl.hidden = false;
+    cardEl.classList.add('visible');
+    dotEls.forEach(d => d.classList.add('visible'));
+    scoreEls.forEach(s => s.classList.add('visible'));
+    fillEl.classList.add('visible');
+    metaEl.classList.add('visible');
+    distEl.classList.add('visible');
+    nextEl.classList.add('visible');
+  };
+
+  const playFullSequence = () => {
+    // Phase A: 로딩 3초 (CSS 애니메이션이 알아서)
+    setTimeout(() => {
+      loadingEl.style.display = 'none';
+      cardEl.hidden = false;
+      requestAnimationFrame(() => cardEl.classList.add('visible'));
+    }, 3000);
+
+    // Phase B: 다이아몬드 등장 — 점 하나씩 (3.6 / 4.0 / 4.4 / 4.8)
+    const dotDelays = [3600, 4000, 4400, 4800];
+    dotEls.forEach((dot, i) => {
+      setTimeout(() => {
+        dot.classList.add('visible');
+        const score = scoreEls[i];
+        if (score) score.classList.add('visible');
+      }, dotDelays[i]);
+    });
+    // 면적 채우기 (5.4초)
+    setTimeout(() => fillEl.classList.add('visible'), 5400);
+
+    // Phase C: 메타 + 분포 + 다음 안내 (8.0 / 9.0 / 10.0)
+    setTimeout(() => metaEl.classList.add('visible'), 8000);
+    setTimeout(() => distEl.classList.add('visible'), 9000);
+    setTimeout(() => nextEl.classList.add('visible'), 10000);
+  };
+
+  if (seenBefore) {
+    showCardImmediate();
+  } else {
+    playFullSequence();
+    // 13초 시퀀스 끝 직전에 표시
+    setTimeout(markSeen, 12000);
+  }
+})();
+</script>

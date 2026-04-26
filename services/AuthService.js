@@ -60,6 +60,14 @@ export default (db) => {
 
         findById: (userId) => userDao.findById(userId),
 
+        /* 환영 페이지 1회 노출 마커 — welcomed_at = NOW() */
+        markWelcomed: async (userId) => {
+            await db.query(
+                `UPDATE users SET welcomed_at = NOW() WHERE user_id = $1 AND welcomed_at IS NULL`,
+                [userId]
+            );
+        },
+
         /* 회원 탈퇴 (익명화) */
         withdraw: async (userId) => {
             const result = await userDao.withdraw(userId);

@@ -57,9 +57,12 @@ export default (db) => {
     // 마이페이지 — 내가 요청한 분석
     router.get('/my/analysis-requests', requireLogin, billController.getMyAnalysisRequestsPage);
 
-    // 성향 진단 (밸런스 게임) — 단계 1·2 골격
+    // 성향 진단 (밸런스 게임) — 5단계 + 매핑 페이지
     router.get('/balance-game',          balanceGameController.getInvitePage);
     router.get('/balance-game/respond',  balanceGameController.getRespondPage);
+    router.get('/balance-game/reveal',   balanceGameController.getRevealPage);
+    router.get('/balance-game/compare',  balanceGameController.getComparePage);
+    router.get('/balance-game/connect',  balanceGameController.getConnectPage);
     router.get('/balance-game/mapping',  balanceGameController.getMappingPreviewPage);
 
     return router;

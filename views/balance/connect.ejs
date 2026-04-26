@@ -1,0 +1,281 @@
+<style>
+  .bg-conn-wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 36px) 24px 80px;
+  }
+  .bg-conn-head {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .bg-conn-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .bg-conn-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 44px;
+    color: var(--text);
+    margin: 0 0 8px;
+    letter-spacing: 0.02em;
+  }
+  .bg-conn-sub {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--sub);
+    word-break: keep-all;
+  }
+
+  /* D 레이어 안내 카드 */
+  .bg-d-card {
+    background: linear-gradient(135deg, #FAF6EB 0%, var(--bg2) 100%);
+    border: 1px solid var(--accent);
+    border-radius: 16px;
+    padding: 28px 30px;
+    margin-bottom: 32px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .bg-d-card-text { flex: 1; min-width: 220px; }
+  .bg-d-card-title {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--text);
+    margin: 0 0 8px;
+    word-break: keep-all;
+  }
+  .bg-d-card-desc {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--sub);
+    word-break: keep-all;
+  }
+  .bg-d-card-desc strong { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .bg-d-card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    margin-top: 12px;
+    transition: background 0.15s, transform 0.15s;
+  }
+  .bg-d-card-cta:hover { background: var(--accent2); transform: translateY(-1px); }
+
+  /* 의원 카드 미니 미리보기 — placeholder 임을 시각적으로 명시
+     점선 테두리 + 상단 "예시" 라벨 + 채도 낮은 톤 */
+  .bg-d-card-preview {
+    flex-shrink: 0;
+    width: 220px;
+    background: var(--bg);
+    border: 1.5px dashed var(--border2);
+    border-radius: 12px;
+    padding: 22px 16px 14px;
+    position: relative;
+    opacity: 0.85;
+  }
+  .bg-d-card-preview::before {
+    content: '예시';
+    position: absolute;
+    top: -10px;
+    left: 14px;
+    padding: 2px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--sub);
+    letter-spacing: 0.05em;
+  }
+  .bg-d-card-preview .pv-row1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+    justify-content: space-between;
+  }
+  .bg-d-card-preview .pv-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--sub);     /* 채도 낮춤 — 실제 의원처럼 보이지 않게 */
+  }
+  .bg-d-card-preview .pv-meta {
+    font-size: 11px;
+    color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bg-d-card-preview .pv-match {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--sub);
+    font-weight: 500;
+  }
+  .bg-d-card-preview .pv-match strong {
+    font-weight: 800;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .bg-d-card-preview .pv-mapping {
+    font-size: 10px;
+    color: var(--sub2);
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* 출구 5종 — 같은 크기 */
+  .bg-conn-exits-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 24px 0 12px;
+    letter-spacing: 0.04em;
+  }
+  .bg-conn-exits {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+  }
+  .bg-conn-exit {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 14px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 13px;
+    transition: border-color 0.15s, transform 0.15s;
+    word-break: keep-all;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .bg-conn-exit:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .bg-conn-exit .icon { font-size: 22px; }
+  .bg-conn-exit .label { font-weight: 600; }
+  .bg-conn-exit .sub { font-size: 11px; color: var(--sub2); }
+  .bg-conn-exit.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .bg-conn-exit.disabled:hover { border-color: var(--border); transform: none; }
+
+  .bg-conn-foot {
+    margin-top: 32px;
+    padding: 18px 22px;
+    background: var(--bg3);
+    border: 1px dashed var(--border2);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--sub);
+    line-height: 1.7;
+    word-break: keep-all;
+  }
+  .bg-conn-foot strong { color: var(--text); }
+
+  @media (max-width: 768px) {
+    .bg-conn-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    .bg-conn-title { font-size: 34px; }
+    .bg-d-card { padding: 20px; }
+    .bg-d-card-preview { width: 100%; }
+    .bg-conn-exits { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="bg-conn-wrap">
+  <header class="bg-conn-head">
+    <div class="bg-conn-eyebrow">📊 단계 5 — 연결</div>
+    <h1 class="bg-conn-title">진단 완료</h1>
+    <p class="bg-conn-sub">이제 사이트 곳곳에서 <strong>당신 좌표 기준</strong>의 추가 정보가 보입니다.</p>
+  </header>
+
+  <!-- D 레이어 안내 카드 -->
+  <section class="bg-d-card">
+    <div class="bg-d-card-text">
+      <h2 class="bg-d-card-title">의원·법안 페이지가 달라집니다</h2>
+      <p class="bg-d-card-desc">
+        의원 카드의 발의·공동 카운트 아래에
+        <strong>"나의 성향 진단과 N% 일치"</strong> 한 줄이 추가됩니다.
+        4축 거리 기반이며, 일치도는 <strong>매핑 <%= mappingVersion %></strong> 기준입니다.
+        매핑 정보는 의원 상세 페이지의 매핑 링크에서 확인할 수 있습니다.
+      </p>
+      <a href="/politician" class="bg-d-card-cta">사이트 둘러보기 →</a>
+    </div>
+    <div class="bg-d-card-preview" aria-hidden="true">
+      <div class="pv-row1">
+        <span class="pv-name">○○ 의원</span>
+      </div>
+      <div class="pv-meta">대표발의 12 · 표결참여 87%</div>
+      <div class="pv-match">나의 성향 진단과 <strong>62%</strong> 일치</div>
+      <div class="pv-mapping">매핑 <%= mappingVersion %></div>
+    </div>
+  </section>
+
+  <!-- 출구 5종 — 같은 크기 -->
+  <h2 class="bg-conn-exits-title">다음으로</h2>
+  <div class="bg-conn-exits">
+    <a class="bg-conn-exit" href="/balance-game/mapping">
+      <span class="icon">🗺</span>
+      <span class="label">매핑 보기</span>
+      <span class="sub">측정 도구</span>
+    </a>
+    <button type="button" class="bg-conn-exit" id="bg-share-btn">
+      <span class="icon">🔗</span>
+      <span class="label">결과 공유</span>
+      <span class="sub">URL 복사</span>
+    </button>
+    <a class="bg-conn-exit" href="/balance-game/respond?pack=general">
+      <span class="icon">🔄</span>
+      <span class="label">다시 풀기</span>
+      <span class="sub">응답 갱신</span>
+    </a>
+    <a class="bg-conn-exit" href="/">
+      <span class="icon">🏠</span>
+      <span class="label">메인으로</span>
+      <span class="sub">홈 화면</span>
+    </a>
+    <span class="bg-conn-exit disabled" title="카드 갤러리 — 준비 중">
+      <span class="icon">🗂</span>
+      <span class="label">카드 갤러리</span>
+      <span class="sub">준비 중</span>
+    </span>
+  </div>
+
+  <p class="bg-conn-foot">
+    <strong>내 결과는 비공개입니다.</strong> 통계 집계용으로만 저장되며 개인 식별 정보와 분리됩니다.
+    재검사로 갱신해도 과거 응답은 mapping_version 별로 보존됩니다.
+  </p>
+</div>
+
+<script>
+(() => {
+  const shareBtn = document.getElementById('bg-share-btn');
+  shareBtn?.addEventListener('click', async () => {
+    const url = window.location.origin + '/balance-game';
+    try {
+      await navigator.clipboard.writeText(url);
+      const orig = shareBtn.querySelector('.label').textContent;
+      shareBtn.querySelector('.label').textContent = '복사됨 ✓';
+      setTimeout(() => { shareBtn.querySelector('.label').textContent = orig; }, 1500);
+    } catch (e) {
+      alert('URL 복사 실패. 수동으로 복사해주세요: ' + url);
+    }
+  });
+})();
+</script>

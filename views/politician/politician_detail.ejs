@@ -237,6 +237,258 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
+  /* ===== 당신과의 비교 (D 레이어 본체, 펼침 컴포넌트) =====
+     KPI 행 바로 아래에 위치. 헤더(닫힌 상태)가 카드의 일치도 한 줄을 흡수.
+     첫 진입 시 자동 펼침 (사용자가 카드 일치도 보고 진입했으므로 자연 첫 인상). */
+  .bg-vs-collapsible {
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 12px 0 24px;
+    background: var(--bg2);
+  }
+  .bg-vs-collapse-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: linear-gradient(90deg, #FAF1DA, #F4E4BD);
+    border: 0;
+    border-radius: 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--text);
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .bg-vs-collapse-header:hover { background: linear-gradient(90deg, #F4E4BD, #ECD394); }
+  .bg-vs-collapse-text {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .bg-vs-collapse-text strong {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent2);
+    margin: 0 2px;
+  }
+  .bg-vs-collapse-mapping {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .bg-vs-collapse-mapping:hover { background: rgba(255,255,255,0.6); }
+  .bg-vs-collapse-icon {
+    color: var(--accent2);
+    font-size: 12px;
+    font-weight: 700;
+    transition: transform 0.3s ease;
+    width: 14px;
+    text-align: center;
+  }
+  .bg-vs-collapsible[data-open="false"] .bg-vs-collapse-icon { transform: rotate(-90deg); }
+
+  /* fallback states (미완료/미산출) — 헤더만, 펼침 없음 */
+  .bg-vs-collapse-header.is-pending,
+  .bg-vs-collapse-header.is-missing {
+    background: var(--bg3);
+    color: var(--sub);
+    cursor: pointer;
+  }
+  .bg-vs-collapse-header.is-pending .bg-vs-collapse-text,
+  .bg-vs-collapse-header.is-missing .bg-vs-collapse-text {
+    font-style: italic;
+  }
+  .bg-vs-collapse-header.is-pending .bg-vs-collapse-mapping,
+  .bg-vs-collapse-header.is-missing .bg-vs-collapse-mapping {
+    color: var(--accent);
+    font-style: normal;
+  }
+  .bg-vs-collapse-header.is-missing { cursor: default; }
+
+  /* 펼침 바디 — height 애니메이션 */
+  .bg-vs-collapse-body {
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease, border-top-width 0.3s ease;
+    max-height: 1200px;
+    padding: 22px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .bg-vs-collapsible[data-open="false"] .bg-vs-collapse-body {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
+  }
+
+  /* (legacy bg-vs-header — 다른 곳에서 호환용) */
+  .bg-vs-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .bg-vs-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+  }
+  .bg-vs-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .bg-vs-meta:hover { color: var(--accent); }
+
+  /* fallback (미완료/미산출) */
+  .bg-vs-locked {
+    text-align: center;
+    padding: 36px 20px;
+    background: var(--bg3);
+    border-radius: 10px;
+    color: var(--sub);
+  }
+  .bg-vs-locked-icon { font-size: 28px; margin-bottom: 8px; }
+  .bg-vs-locked-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .bg-vs-locked-desc { font-size: 13px; line-height: 1.6; max-width: 440px; margin: 0 auto 14px; word-break: keep-all; }
+  .bg-vs-locked-cta {
+    display: inline-block;
+    padding: 10px 20px;
+    background: var(--accent);
+    color: white;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .bg-vs-locked-cta:hover { background: var(--accent2); }
+
+  /* 본체 — 가운데 정렬 세로 흐름 (다이아몬드 위 → 축별 해석 아래) */
+  .bg-vs-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  .bg-vs-diamond-wrap { width: 320px; }
+  .bg-vs-diamond { width: 100%; height: 320px; overflow: visible; }
+  .bg-vs-grid { fill: none; stroke: var(--border); stroke-width: 0.5; }
+  .bg-vs-axis-line { stroke: var(--border2); stroke-width: 1; }
+  .bg-vs-fill-pol {
+    fill: rgba(122,128,144,0.18);
+    stroke: var(--sub2);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    stroke-linejoin: round;
+  }
+  .bg-vs-fill-mine {
+    fill: rgba(184,116,12,0.22);
+    stroke: var(--accent);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+  }
+  .bg-vs-dot-pol  { fill: var(--sub2); }
+  .bg-vs-dot-mine { fill: var(--accent); }
+  .bg-vs-axis-label {
+    fill: var(--sub);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-anchor: middle;
+  }
+  .bg-vs-axis-label.bottom { dominant-baseline: hanging; }
+  .bg-vs-axis-num-pol {
+    fill: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-anchor: middle;
+  }
+  .bg-vs-diamond-help {
+    text-align: center;
+    font-size: 11px;
+    color: var(--sub2);
+    margin-top: 4px;
+  }
+  .bg-vs-legend {
+    display: flex;
+    gap: 18px;
+    justify-content: center;
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--sub);
+    flex-wrap: wrap;
+  }
+  .bg-vs-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .bg-vs-legend-swatch {
+    display: inline-block;
+    width: 18px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+  .bg-vs-legend-mine .bg-vs-legend-swatch { background: rgba(184,116,12,0.22); border-color: var(--accent); }
+  .bg-vs-legend-pol  .bg-vs-legend-swatch { background: rgba(122,128,144,0.18); border-color: var(--sub2); border-style: dashed; }
+
+  .bg-vs-axes {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+  .bg-vs-axes > div {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--text);
+    word-break: keep-all;
+  }
+  .bg-vs-axes > div:last-child { border-bottom: 0; padding-bottom: 0; }
+  .bg-vs-axes .axis-name {
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--accent);
+    background: #FAF6EB;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-top: 2px;
+    min-width: 64px;
+    text-align: center;
+  }
+
+  /* (전체 일치도 박스는 헤더 % 와 중복이라 제거됨 - 12차) */
+
+  @media (max-width: 768px) {
+    .bg-vs-body { gap: 14px; }
+    .bg-vs-diamond-wrap { width: 100%; max-width: 320px; }
+    .bg-vs-diamond { height: 320px; }
+    .bg-vs-axes { font-size: 13px; }
+  }
+
   /* Tabs */
   .tab-bar {
     position: sticky;
@@ -1035,6 +1287,146 @@
         </div>
       </div>
 
+      <!-- ===== 당신과의 비교 (D 레이어 본체, 펼침 컴포넌트) =====
+           헤더(닫힌 상태) = 카드의 일치도 한 줄을 흡수.
+           바디(펼친 상태) = 4축 다이아몬드 + 축별 해석 + 전체 일치도 박스.
+           첫 진입 시 자동 펼침 (사용자가 카드의 일치도 보고 들어왔으므로 자연 첫 인상). -->
+      <%
+        const _userAxis = locals.userAxis || null;
+        let _detailDist = null;
+        let _detailSim = null;
+        if (_userAxis && politician.axis_economy !== null && politician.axis_economy !== undefined) {
+          const _s =
+            (_userAxis.economy     - parseFloat(politician.axis_economy))     ** 2 +
+            (_userAxis.social      - parseFloat(politician.axis_social))      ** 2 +
+            (_userAxis.security    - parseFloat(politician.axis_security))    ** 2 +
+            (_userAxis.institution - parseFloat(politician.axis_institution)) ** 2;
+          _detailDist = Math.sqrt(_s) / 2;
+          // 일치도 분모 1.5 (politician.ejs 와 동일 — 실측 거리 분포 보정)
+          _detailSim = Math.max(0, Math.round((1 - _detailDist / 1.5) * 100));
+        }
+        const _detailTitle = _detailDist !== null
+          ? `당신 좌표와 4축 거리 ${_detailDist.toFixed(2)}. 매핑 ${politician.axis_version} 기준.`
+          : '';
+      %>
+
+      <% if (locals.balanceGameCompleted === true && _detailSim !== null) {
+        // === 본체 — 사용자·의원 좌표 + 4축 해석 (펼침 가능) ===
+        const ua = _userAxis;
+        const pa = {
+          economy:     parseFloat(politician.axis_economy),
+          social:      parseFloat(politician.axis_social),
+          security:    parseFloat(politician.axis_security),
+          institution: parseFloat(politician.axis_institution),
+        };
+        const cx = 180, cy = 180, R = 130;
+        const pt = (val, dir) => {
+          const r = R * Math.abs(val);
+          if (dir === 'top')    return { x: cx,         y: cy - r };
+          if (dir === 'right')  return { x: cx + r,     y: cy     };
+          if (dir === 'bottom') return { x: cx,         y: cy + r };
+          return                       { x: cx - r,     y: cy     };
+        };
+        const myPts = [pt(ua.security,'top'),    pt(ua.economy,'right'),  pt(ua.institution,'bottom'),  pt(ua.social,'left')];
+        const poPts = [pt(pa.security,'top'),    pt(pa.economy,'right'),  pt(pa.institution,'bottom'),  pt(pa.social,'left')];
+        const polyStr = pts => pts.map(p => `${p.x},${p.y}`).join(' ');
+
+        const SIDE = {
+          economy:     { L: '시장', R: '개입' },
+          social:      { L: '전통', R: '자율' },
+          security:    { L: '동맹', R: '자주' },
+          institution: { L: '안정', R: '개혁' },
+        };
+        const interpret = (axis, uV, pV) => {
+          const diff = Math.abs(uV - pV);
+          let intensity;
+          if      (diff < 0.25) intensity = '거의 같음';
+          else if (diff < 0.75) intensity = '약간 차이';
+          else if (diff < 1.25) intensity = '뚜렷한 차이';
+          else                  intensity = (uV * pV < 0) ? '정반대 입장' : '큰 차이';
+          const uMid = Math.abs(uV) < 0.1, pMid = Math.abs(pV) < 0.1;
+          let direction;
+          if (uMid && pMid)        direction = '둘 다 중도 근처';
+          else if (uMid || pMid)   direction = '한쪽 중도 근처';
+          else if (uV > 0 && pV > 0) direction = `같은 방향 (둘 다 ${SIDE[axis].R} 쪽)`;
+          else if (uV < 0 && pV < 0) direction = `같은 방향 (둘 다 ${SIDE[axis].L} 쪽)`;
+          else                       direction = '반대 방향';
+          return `${direction}, ${intensity}`;
+        };
+        const fmt = (n) => (n >= 0 ? '+' : '') + n.toFixed(2);
+        const POL_AXES = [
+          { name:'안보·외교', val: pa.security },
+          { name:'경제',     val: pa.economy },
+          { name:'정치제도', val: pa.institution },
+          { name:'사회·문화', val: pa.social },
+        ];
+        const ME_AXES = [
+          { val: ua.security }, { val: ua.economy }, { val: ua.institution }, { val: ua.social },
+        ];
+      %>
+        <div class="bg-vs-collapsible" id="bg-vs-collapsible" data-open="true">
+          <button type="button" class="bg-vs-collapse-header" id="bg-vs-collapse-header" aria-expanded="true" title="<%= _detailTitle %>">
+            <span class="bg-vs-collapse-text">나의 성향 진단과 <strong><%= _detailSim %>%</strong> 일치</span>
+            <a href="/balance-game/mapping" class="bg-vs-collapse-mapping" onclick="event.stopPropagation()" title="매핑이 갱신되면 분석 결과가 달라질 수 있어요">매핑 <%= politician.axis_version %> →</a>
+            <span class="bg-vs-collapse-icon" aria-hidden="true">▼</span>
+          </button>
+          <div class="bg-vs-collapse-body" id="bg-vs-collapse-body">
+            <div class="bg-vs-body">
+              <div class="bg-vs-diamond-wrap">
+                <svg class="bg-vs-diamond" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
+                  <% [0.25, 0.50, 0.75, 1.00].forEach(scale => {
+                       const r = R * scale;
+                  %>
+                    <polygon class="bg-vs-grid"
+                      points="<%= cx %>,<%= cy - r %> <%= cx + r %>,<%= cy %> <%= cx %>,<%= cy + r %> <%= cx - r %>,<%= cy %>"/>
+                  <% }); %>
+                  <line class="bg-vs-axis-line" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
+                  <line class="bg-vs-axis-line" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
+                  <polygon class="bg-vs-fill-pol" points="<%= polyStr(poPts) %>"/>
+                  <polygon class="bg-vs-fill-mine" points="<%= polyStr(myPts) %>"/>
+                  <% poPts.forEach((p, i) => { %>
+                    <circle class="bg-vs-dot-pol" cx="<%= p.x %>" cy="<%= p.y %>" r="4">
+                      <title>의원 <%= POL_AXES[i].name %> <%= fmt(POL_AXES[i].val) %></title>
+                    </circle>
+                  <% }); %>
+                  <% myPts.forEach((p, i) => { %>
+                    <circle class="bg-vs-dot-mine" cx="<%= p.x %>" cy="<%= p.y %>" r="4">
+                      <title>나 <%= POL_AXES[i].name %> <%= fmt(ME_AXES[i].val) %></title>
+                    </circle>
+                  <% }); %>
+                  <text class="bg-vs-axis-label"        x="<%= cx %>"          y="<%= cy - R - 14 %>">안보·외교</text>
+                  <text class="bg-vs-axis-label"        x="<%= cx + R + 28 %>" y="<%= cy + 4 %>">경제</text>
+                  <text class="bg-vs-axis-label bottom" x="<%= cx %>"          y="<%= cy + R + 14 %>">정치제도</text>
+                  <text class="bg-vs-axis-label"        x="<%= cx - R - 28 %>" y="<%= cy + 4 %>">사회·문화</text>
+                </svg>
+                <div class="bg-vs-diamond-help">중심은 중도, 가장자리는 뚜렷한 입장</div>
+                <div class="bg-vs-legend">
+                  <span class="bg-vs-legend-item bg-vs-legend-mine"><span class="bg-vs-legend-swatch"></span>나의 좌표</span>
+                  <span class="bg-vs-legend-item bg-vs-legend-pol"><span class="bg-vs-legend-swatch"></span><%= politician.name %> 의원</span>
+                </div>
+              </div>
+              <div class="bg-vs-axes">
+                <div><span class="axis-name">경제</span><span class="axis-line"><%= interpret('economy', ua.economy, pa.economy) %></span></div>
+                <div><span class="axis-name">사회·문화</span><span class="axis-line"><%= interpret('social', ua.social, pa.social) %></span></div>
+                <div><span class="axis-name">안보·외교</span><span class="axis-line"><%= interpret('security', ua.security, pa.security) %></span></div>
+                <div><span class="axis-name">정치제도</span><span class="axis-line"><%= interpret('institution', ua.institution, pa.institution) %></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } else if (locals.balanceGameCompleted === false) { %>
+        <a href="/balance-game?next=<%= encodeURIComponent(locals.currentUrl || '/politician/' + politician.mona_cd) %>" class="bg-vs-collapse-header is-pending">
+          <span class="bg-vs-collapse-text">성향 진단 후 표시됩니다</span>
+          <span class="bg-vs-collapse-mapping">진단하러 가기 →</span>
+        </a>
+      <% } else { %>
+        <%# 게임 완료지만 의원 좌표 미산출 %>
+        <div class="bg-vs-collapse-header is-missing" title="이 의원의 표결 참여 기록이 부족하여 4축 좌표를 산출할 수 없습니다">
+          <span class="bg-vs-collapse-text">⚠️ 분석 데이터 부족</span>
+          <span class="bg-vs-collapse-mapping">표결 참여 부족</span>
+        </div>
+      <% } %>
+
       <div class="overview-grid">
         <!-- 레이더 (4축 다이아몬드) -->
         <div class="card">
@@ -1233,6 +1625,7 @@
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- ===== 국민 평가 탭 ===== -->
@@ -1274,6 +1667,19 @@
   if (location.hash === '#comments') {
     const btn = document.querySelector('[data-tab="comments"]');
     if (btn) btn.click();
+  }
+
+  // "당신과의 비교" 펼침 토글 — 첫 진입은 자동 펼침 (data-open="true" 서버렌더)
+  // 헤더 클릭 시 토글, 매핑 링크 클릭은 stopPropagation 으로 토글 안 됨
+  const vsWrap   = document.getElementById('bg-vs-collapsible');
+  const vsHeader = document.getElementById('bg-vs-collapse-header');
+  if (vsWrap && vsHeader) {
+    vsHeader.addEventListener('click', () => {
+      const open = vsWrap.dataset.open !== 'false';
+      const next = open ? 'false' : 'true';
+      vsWrap.dataset.open = next;
+      vsHeader.setAttribute('aria-expanded', next);
+    });
   }
 
   // Bill filter tabs — 필터 상태는 dataset.filtered 로만 추적 (display 와 분리)

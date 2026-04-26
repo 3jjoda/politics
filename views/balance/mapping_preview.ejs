@@ -168,14 +168,21 @@
         </span>
       </div>
 
-      <% axisQs.forEach(q => { %>
+      <% axisQs.forEach(q => {
+           const opts = [
+             { id: 'A', text: q.option_a_text, score: q.option_a_score },
+             { id: 'B', text: q.option_b_text, score: q.option_b_score },
+             { id: 'C', text: '잘 모르겠다 / 관심 없음', score: 0 }
+           ];
+      %>
         <div class="bg-map-q">
           <div class="bg-map-q-head">
             <span class="bg-map-q-id"><%= q.id %></span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--sub2);margin-left:auto"><%= q.pack_id %></span>
           </div>
           <div class="bg-map-q-prompt"><%= q.prompt %></div>
           <ul class="bg-map-q-options">
-            <% q.options.forEach(opt => {
+            <% opts.forEach(opt => {
                  const cls = opt.score > 0 ? 'pos' : opt.score < 0 ? 'neg' : 'zero';
                  const sign = opt.score > 0 ? '+' : opt.score < 0 ? '' : '±';
             %>

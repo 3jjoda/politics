@@ -37,6 +37,12 @@ SELECT pol.politician_id
        END AS age_bucket
      , COALESCE(b.propose_cnt, 0)     AS propose_cnt
      , COALESCE(cp.co_propose_cnt, 0) AS co_propose_cnt
+     , pa.economy::float8     AS axis_economy
+     , pa.social::float8      AS axis_social
+     , pa.security::float8    AS axis_security
+     , pa.institution::float8 AS axis_institution
+     , pa.mapping_version     AS axis_version
+     , pa.vote_count_used     AS axis_vote_count
   FROM pol
   LEFT JOIN (
       SELECT mona_cd, COUNT(*) AS propose_cnt
@@ -50,4 +56,6 @@ SELECT pol.politician_id
        WHERE proposer_yn = FALSE
        GROUP BY mona_cd
   ) cp ON cp.mona_cd = pol.mona_cd
+  LEFT JOIN politician_axis_score pa
+    ON pa.mona_cd = pol.mona_cd AND pa.mapping_version = 'v1'
  ORDER BY pol.name
