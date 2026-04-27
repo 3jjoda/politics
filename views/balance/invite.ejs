@@ -139,6 +139,7 @@
     position: relative;
   }
   .bg-pack-feature-cta:hover { background: var(--accent2); transform: translateY(-1px); }
+  .bg-pack-feature-cta + .bg-pack-feature-cta { margin-left: 8px; }
   .bg-pack-feature-cta.secondary {
     background: var(--bg2);
     color: var(--accent);
@@ -205,6 +206,7 @@
     .bg-pack-feature { padding: 24px 22px; }
     .bg-pack-feature-title { font-size: 24px; }
     .bg-pack-feature-cta { width: 100%; justify-content: center; }
+    .bg-pack-feature-cta + .bg-pack-feature-cta { margin-left: 0; margin-top: 10px; }
   }
 </style>
 
@@ -255,7 +257,7 @@
         </a>
       <% } else { %>
         <a href="/balance-game/reveal" class="bg-pack-feature-cta">카드 보기 →</a>
-        <a href="/balance-game/respond?pack=<%= generalPack.id %>" class="bg-pack-feature-cta secondary" style="margin-left:8px">다시 풀기</a>
+        <a href="/balance-game/respond?pack=<%= generalPack.id %>" class="bg-pack-feature-cta secondary">다시 풀기</a>
       <% } %>
     </article>
   <% } %>
