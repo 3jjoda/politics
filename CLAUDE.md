@@ -314,15 +314,53 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
 | `/auth/setup` | `auth/setup.ejs` | 신규 OAuth 닉네임·성별·연령대 설정 (필수) |
 
-### `/bill/:id` 5-Zone AI 분석 UI
-`bill_ai_analysis` 테이블에 레코드가 있을 때만 5-Zone 렌더. 없으면 `.bill-basic-header` (메타 + 법안명) + 분석 요청 위젯 노출.
-- **AI 분석 라벨** (분석 분기 공통, 2026-04-26): 분석 섹션 위 한 줄 — 분석 있음은 골드 톤(`is-done`) "🤖 AI 분석   AI가 생성한 분석으로 사실과 다를 수 있습니다   v4.1", 분석 없음은 회색 톤(`is-pending`) "🤖 AI 분석   아직 분석되지 않은 법안입니다". [ANALYSIS.md](./ANALYSIS.md) §7-장치4 디스클레이머 충족
-- **Zone 1 — 훅**: 메타 2줄(#번호·위원회·상태 / 대표발의·발의일·공동발의) + `<h1>` 법안명 + `<h2>` 한 줄 요약 (세리프 28px/900) + 태그 — 카테고리는 `category_main · category_sub` 결합 형식 (예: "산업·R&D · 양자기술")
-- **Zone 2 — 한눈에 보기**: 3카드 (바뀌는 것 / 혜택 / 손해) + "여기까지 읽으면 30%" 프로그레스
-- **Zone 3 — 쟁점**: `issues[]` accordion (첫 번째만 기본 펼침). type별 배지 — `pro=파랑 / con=주황 / gap=회색` + "70%" 프로그레스
-- **Zone 4 — 판단 질문**: `judgment_questions[]` 번호 매기기 + 골드톤 배경(`#FAF6EB`) + "찬반 투표하기" CTA → `#citizen-vote-section` smooth scroll
-- **Zone 5 — 참고 맥락·분석 한계**: 미구현. DB에 `context`/`limitations` 컬럼은 존재. "더 알아보기" 버튼은 Zone 5 추가 시 부활 예정.
-- **국회 원문 링크**: 헤더 카드 우측 상단에 배치 (`.zone-1-top > .original-link`)
+### `/bill/:id` 5-Zone AI 분석 UI (2026-04-27 전면 리디자인)
+`bill_ai_analysis` 테이블에 레코드가 있을 때만 5-Zone 렌더. 없으면 `.bill-basic-header` (옛 디자인 — 메타 + 법안명) + 분석 요청 위젯 노출.
+
+**디자인 토큰** (분석 섹션 전용 — `.bill-ai-analysis` 스코프):
+- 컬러: `--ba-ink #0F1B1F` (본문) / `--ba-sub #374151` (보조) / `--ba-meta #6B7280` (메타) / `--ba-gold #8F5800` (강조 단일색, 머스타드)
+- 카드: `--ba-card-bg #FAFAF7` / `--ba-card-border #E8E5DC` / radius 16px / padding 32px
+- 폰트: `Pretendard Variable` (본문 18px / weight 450 / line-height 1.75) / `Noto Serif KR` (헤드라인) / `JetBrains Mono` (메타 letter-spacing 0.18~0.22em)
+- 강조: `<strong>`/`<em>` → weight 700 + `text-decoration: underline` 골드 (offset 6px / thickness 2px)
+- **정치색 배제**: 빨강/파랑/초록을 입장 라벨에 쓰지 않음. 위계는 타이포·여백·위치로만
+
+**레이아웃** (`.ba-shell` 1240px = 180 좌마진노트 거터 + 880 콘텐츠 + 180 우인덱스 거터):
+- bd-wrap(960px) 제약을 깨고 100vw 로 break out (`margin-left: calc(50% - 50vw)`)
+- 콘텐츠 `.ba-content` max-width 880px (롱폼 정독 폭)
+- 섹션 간격 64px, 모바일 48px
+
+- **AI 분석 라벨** (분석 분기 공통, 2026-04-26): 분석 섹션 위 한 줄 — 분석 있음은 골드 톤(`is-done`), 없음은 회색 톤(`is-pending`). [ANALYSIS.md](./ANALYSIS.md) §7-장치4 디스클레이머 충족
+- **Zone 1 — 메타 + 헤드라인** (`#ba-summary`):
+  - 메타 1줄 `#번호 · 위원회 · 결과` (mono 12px, letter-spacing 0.22em, `--ba-meta`)
+  - 메타 2줄 `대표발의 X · 발의일 Y · 공동발의 N인` (같은 mono 톤)
+  - 법안 원제목 `<h1>` 세리프 700 / 24px (작게)
+  - 한 줄 요약 `<h2>` 세리프 900 / **44px** / line-height 1.15 + **좌측 4px 골드바 only** (박스/배경 X)
+  - 태그라인: 카테고리·읽기시간·결과를 텍스트 메타로 (`환경·에너지·기후기술 · 읽기 2분 · 수정가결`, 14px `--ba-meta`)
+  - 국회 원문 링크 (mono 12px, currentColor 보더라인)
+- **Zone 2 — 핵심 변화 3카드** (`#ba-changes`):
+  - **비대칭 grid 8fr / 4fr / 4fr** (큰카드 18px / 작은카드 16px)
+  - 좌측 4px 컬러바로 카드 구분 (모두 같은 #FAFAF7 배경):
+    - `바뀌는 것` → `--ba-gold` 골드
+    - `혜택받는 사람` → `--ba-ink` 차콜
+    - `손해보는 곳` → `--ba-meta` 그레이
+  - 이모지 전체 제거. 라벨은 mono 12px uppercase
+- **Zone 3 — 분석** (`#ba-analysis`, 토글 폐기):
+  - 항목별 `<article>` = H3(세리프 24px) + 본문 (펼침 기본)
+  - 라벨(`찬성 논리`/`반대 우려`/`법안 빈틈`)은 카드 좌측 외부 **마진노트** (`position: absolute; left: -180px; width: 160px; text-align: right; mono 12px --ba-meta`)
+  - 색상 배지·아코디언·"여기까지 70%" 프로그레스 모두 제거
+  - 1240px 미만에서 마진노트 인라인으로 폴백
+- **Zone 4 — 우측 sticky 인덱스** (`.ba-index`):
+  - sticky `top: var(--nav-h) + 32px`, 우측 거터 (180px) 안 좌측 1px 가이드 라인 + 8px 점
+  - 항목: `요약 / 핵심 변화 / 분석 / 질문` (issues/questions 없으면 자동 생략)
+  - 활성 항목만 `--ba-gold` 색 + 점 1.2배 scale
+  - IntersectionObserver 로 가장 잘 보이는 섹션 자동 강조, 클릭 시 `scrollTo` smooth (offset 100px)
+  - 1240px 미만 자동 숨김
+- **Zone 5 — 질문** (`#ba-questions`, 옛 Zone 4):
+  - 골드톤 박스 제거 → 단일 컬럼 본문에 통합
+  - 번호 배지: 28px 원형, **외곽선만** (1.5px solid `--ba-gold`), mono 12px 700
+  - 질문 본문 세리프 18px / 700 + 보조 라벨(`q.hint`) mono 12px `--ba-meta`
+  - CTA `<button>` 차콜 배경 → 골드 hover (이전 골드 → 차콜 hover 반대)
+- **국회 원문 링크**: Zone 1 태그라인 아래 텍스트 링크로
 - **XSS 방어**: `JSON.stringify(analysis).replace(/</g, '\\u003c')` + `renderRichText()` 헬퍼로 `<strong>` 만 허용하는 선별 이스케이프
 
 ### `/bill/:id` 분석 요청 위젯 (2026-04-25)

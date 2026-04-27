@@ -649,147 +649,168 @@
     const issues = Array.isArray(a.issues) ? a.issues : [];
     const questions = Array.isArray(a.judgment_questions) ? a.judgment_questions : [];
 
-    // 메타 2줄 — 1줄: 식별자 | 2줄: 발의 정보
-    const joinMeta = (parts) =>
-      parts.filter(Boolean).reduce((acc, p, i) => acc + (i ? '<span class="sep">·</span>' : '') + p, '');
-
-    const line1Parts = [];
-    if (bill.bill_no)   line1Parts.push(`<span>#${PB.escapeHtml(bill.bill_no)}</span>`);
-    if (bill.committee) line1Parts.push(`<span>${PB.escapeHtml(bill.committee)}</span>`);
-    line1Parts.push(`<span>${PB.escapeHtml(bill.status || '계류')}</span>`);
+    const joinDot = (parts) =>
+      parts.filter(Boolean).reduce((acc, p, i) => acc + (i ? '<span class="ba-sep">·</span>' : '') + p, '');
 
     const fmtDate = (s) => String(s || '').replace(/-/g, '.');
-    const line2Parts = [];
+
+    /* 메타 1줄: #번호 · 위원회 · 결과 */
+    const metaIdParts = [];
+    if (bill.bill_no)   metaIdParts.push(`<span>#${PB.escapeHtml(bill.bill_no)}</span>`);
+    if (bill.committee) metaIdParts.push(`<span>${PB.escapeHtml(bill.committee)}</span>`);
+    metaIdParts.push(`<span>${PB.escapeHtml(bill.status || '계류')}</span>`);
+
+    /* 메타 2줄: 대표발의/일자/공동발의 */
+    const metaProposerParts = [];
     if (bill.proposer) {
       const proposerHtml = bill.proposer_mona_cd
         ? `<a href="/politician/${encodeURIComponent(bill.proposer_mona_cd)}">${PB.escapeHtml(bill.proposer)}</a>`
         : PB.escapeHtml(bill.proposer);
       const coRepSuffix = Number(bill.co_rep_count) > 1
-        ? ` 외 ${Number(bill.co_rep_count) - 1}인 공동대표`
+        ? ` 외 ${Number(bill.co_rep_count) - 1}인`
         : '';
-      line2Parts.push(`<span>대표발의 ${proposerHtml}${coRepSuffix}</span>`);
+      metaProposerParts.push(`<span>대표발의 ${proposerHtml}${coRepSuffix}</span>`);
     }
-    if (bill.propose_dt) line2Parts.push(`<span>발의일 ${PB.escapeHtml(fmtDate(bill.propose_dt))}</span>`);
-    if (bill.co_proposer_count) line2Parts.push(`<span>공동발의 ${Number(bill.co_proposer_count)}인</span>`);
+    if (bill.propose_dt) metaProposerParts.push(`<span>발의일 ${PB.escapeHtml(fmtDate(bill.propose_dt))}</span>`);
+    if (bill.co_proposer_count) metaProposerParts.push(`<span>공동발의 ${Number(bill.co_proposer_count)}인</span>`);
 
-    const hookTags = [];
-    // v4.1: category_main + category_sub 우선, 구버전 fallback (a.category)
+    /* 카테고리/읽기/결과 텍스트 메타 (배지 → 텍스트로) */
+    const taglineParts = [];
     const catMain = a.category_main || a.category || '';
     const catSub  = a.category_sub  || '';
-    if (catMain) {
-      const label = catSub ? `${catMain} · ${catSub}` : catMain;
-      hookTags.push(`<span class="hook-tag tag-accent">${PB.escapeHtml(label)}</span>`);
-    }
-    if (a.reading_time_min) hookTags.push(`<span class="hook-tag">읽기 ${Number(a.reading_time_min)}분</span>`);
-    if (bill.status) hookTags.push(`<span class="hook-tag">${PB.escapeHtml(bill.status)}</span>`);
+    if (catMain) taglineParts.push(`<span>${PB.escapeHtml(catSub ? `${catMain} · ${catSub}` : catMain)}</span>`);
+    if (a.reading_time_min) taglineParts.push(`<span>읽기 ${Number(a.reading_time_min)}분</span>`);
+    if (bill.status) taglineParts.push(`<span>${PB.escapeHtml(bill.status)}</span>`);
 
+    /* Zone 2 본문 */
     const changesHtml = changes.revised
-      ? `${renderRichText(changes.revised)}${changes.current ? `<div class="analysis-card-sub">현행: ${renderRichText(changes.current)}</div>` : ''}`
-      : '<span class="pb-muted">정보 없음</span>';
-
+      ? `${renderRichText(changes.revised)}${changes.current ? `<div class="ba-card-sub">현행: ${renderRichText(changes.current)}</div>` : ''}`
+      : '<span class="ba-muted">정보 없음</span>';
     const benefitText = affected.benefit
       || (Array.isArray(affected.direct) ? affected.direct.slice(0, 3).join(', ') : '');
     const lossText = affected.loss
       || (Array.isArray(affected.indirect) ? affected.indirect.slice(0, 3).join(', ') : '');
 
-    const issueItemsHtml = issues.map((is, idx) => {
+    /* Zone 3 — 항목별 H3 + 본문 + 좌측 마진노트 */
+    const issueItemsHtml = issues.map((is) => {
       const type = (is.type === 'pro' || is.type === 'con' || is.type === 'gap') ? is.type : 'gap';
       const label = ISSUE_LABEL[type];
-      const expanded = idx === 0;
       return `
-        <div class="issue-item ${expanded ? 'expanded' : ''}" data-idx="${idx}">
-          <div class="issue-head">
-            <span class="issue-badge issue-badge-${type}">${PB.escapeHtml(label)}</span>
-            <div class="issue-title">${PB.escapeHtml(is.title || '')}</div>
-            <span class="issue-toggle">${expanded ? '↑ 접기' : '↓ 펼치기'}</span>
-          </div>
-          <div class="issue-body">${renderRichText(is.body || '')}</div>
-        </div>
+        <article class="ba-issue ba-issue-${type}">
+          <div class="ba-margin-note">${PB.escapeHtml(label)}</div>
+          <h3 class="ba-issue-title">${PB.escapeHtml(is.title || '')}</h3>
+          <div class="ba-issue-body">${renderRichText(is.body || '')}</div>
+        </article>
       `;
     }).join('');
 
+    /* Zone 5 — 질문 */
     const questionsHtml = questions.map((q) => {
       const text = typeof q === 'string' ? q : (q.question || '');
-      const hint = typeof q === 'object' && q.hint ? `<span class="judgment-hint">${PB.escapeHtml(q.hint)}</span>` : '';
-      return `<li>${PB.escapeHtml(text)}${hint}</li>`;
+      const hint = typeof q === 'object' && q.hint ? `<p class="ba-q-hint">${PB.escapeHtml(q.hint)}</p>` : '';
+      return `<li><span class="ba-q-num"></span><div class="ba-q-content"><p class="ba-q-text">${PB.escapeHtml(text)}</p>${hint}</div></li>`;
     }).join('');
 
     const originalLinkHtml = bill.link_url
-      ? `<a href="${PB.escapeHtml(bill.link_url)}" target="_blank" rel="noopener" class="original-link">국회 원문 ↗</a>`
+      ? `<a href="${PB.escapeHtml(bill.link_url)}" target="_blank" rel="noopener" class="ba-original-link">국회 원문 ↗</a>`
       : '';
 
     root.innerHTML = `
-      <div class="analysis-zone-1">
-        <div class="zone-1-top">
-          <div class="meta-col">
-            <div class="analysis-hook-meta">${joinMeta(line1Parts)}</div>
-            ${line2Parts.length ? `<div class="analysis-hook-meta">${joinMeta(line2Parts)}</div>` : ''}
-          </div>
-          ${originalLinkHtml}
-        </div>
-        ${bill.bill_name ? `<h1 class="analysis-hook-title">${PB.escapeHtml(bill.bill_name)}</h1>` : ''}
-        <h2 class="analysis-hook-summary">${renderRichText(a.summary || '')}</h2>
-        ${hookTags.length ? `<div class="analysis-hook-tags">${hookTags.join('')}</div>` : ''}
+      <div class="ba-shell">
+        <article class="ba-content">
+          <!-- Zone 1: 메타 + 헤드라인 -->
+          <section class="ba-zone ba-z1" id="ba-summary">
+            <div class="ba-meta-line">${joinDot(metaIdParts)}</div>
+            ${metaProposerParts.length ? `<div class="ba-meta-line ba-meta-line-sub">${joinDot(metaProposerParts)}</div>` : ''}
+            ${bill.bill_name ? `<h1 class="ba-bill-name">${PB.escapeHtml(bill.bill_name)}</h1>` : ''}
+            <h2 class="ba-summary">${renderRichText(a.summary || '')}</h2>
+            ${taglineParts.length ? `<div class="ba-tagline">${joinDot(taglineParts)}</div>` : ''}
+            ${originalLinkHtml ? `<div class="ba-source-line">${originalLinkHtml}</div>` : ''}
+          </section>
+
+          <!-- Zone 2: 핵심 변화 (8 / 4 / 4 비대칭) -->
+          <section class="ba-zone ba-z2" id="ba-changes">
+            <div class="ba-cards">
+              <div class="ba-card ba-card-changes">
+                <div class="ba-card-label">바뀌는 것</div>
+                <div class="ba-card-body">${changesHtml}</div>
+              </div>
+              <div class="ba-card ba-card-benefit ${benefitText ? '' : 'ba-card-empty'}">
+                <div class="ba-card-label">혜택받는 사람</div>
+                <div class="ba-card-body">${benefitText ? renderRichText(benefitText) : '<span class="ba-muted">직접적 혜택 없음</span>'}</div>
+              </div>
+              <div class="ba-card ba-card-loss ${lossText ? '' : 'ba-card-empty'}">
+                <div class="ba-card-label">손해보는 곳</div>
+                <div class="ba-card-body">${lossText ? renderRichText(lossText) : '<span class="ba-muted">직접적 손해 없음</span>'}</div>
+              </div>
+            </div>
+          </section>
+
+          ${issues.length ? `
+          <!-- Zone 3: 분석 -->
+          <section class="ba-zone ba-z3" id="ba-analysis">
+            ${issueItemsHtml}
+          </section>` : ''}
+
+          ${questions.length ? `
+          <!-- Zone 5: 질문 -->
+          <section class="ba-zone ba-z5" id="ba-questions">
+            <h2 class="ba-section-h">이 법안, 어떻게 생각하세요?</h2>
+            <p class="ba-section-hint">답이 없는 질문들이에요. 투표 전 한 번만 생각해보세요.</p>
+            <ol class="ba-questions">${questionsHtml}</ol>
+            <div class="ba-cta">
+              <button type="button" class="ba-cta-primary" data-action="scroll-to-vote">찬반 투표하기</button>
+            </div>
+          </section>` : ''}
+        </article>
+
+        <!-- Zone 4: 우측 sticky 인덱스 -->
+        <nav class="ba-index" aria-label="섹션 인덱스">
+          <a class="ba-index-item" href="#ba-summary"     data-index="ba-summary">요약</a>
+          <a class="ba-index-item" href="#ba-changes"     data-index="ba-changes">핵심 변화</a>
+          ${issues.length    ? '<a class="ba-index-item" href="#ba-analysis"  data-index="ba-analysis">분석</a>' : ''}
+          ${questions.length ? '<a class="ba-index-item" href="#ba-questions" data-index="ba-questions">질문</a>' : ''}
+        </nav>
       </div>
-
-      <div class="analysis-zone-2">
-        <div class="analysis-card">
-          <div class="analysis-card-label"><span class="card-emoji">🔄</span>바뀌는 것</div>
-          <div class="analysis-card-body">${changesHtml}</div>
-        </div>
-        <div class="analysis-card">
-          <div class="analysis-card-label"><span class="card-emoji">👍</span>혜택받는 사람</div>
-          <div class="analysis-card-body">${benefitText ? renderRichText(benefitText) : '<span class="pb-muted">정보 없음</span>'}</div>
-        </div>
-        <div class="analysis-card">
-          <div class="analysis-card-label"><span class="card-emoji">⚠️</span>손해보는 곳</div>
-          <div class="analysis-card-body">${lossText ? renderRichText(lossText) : '<span class="pb-muted">정보 없음</span>'}</div>
-        </div>
-        <div class="analysis-zone-2-progress">
-          <span>여기까지 읽으면 30%</span>
-          <div class="progress-track"><div class="progress-fill"></div></div>
-        </div>
-      </div>
-
-      ${issues.length ? `
-      <div class="analysis-zone-3">
-        <div class="analysis-zone-3-title">쟁점</div>
-        ${issueItemsHtml}
-        <div class="analysis-zone-3-progress">
-          <span>여기까지 읽으면 70%</span>
-          <div class="progress-track"><div class="progress-fill"></div></div>
-        </div>
-      </div>` : ''}
-
-      ${questions.length ? `
-      <div class="analysis-zone-4">
-        <div class="analysis-zone-4-title">💭 이 법안, 어떻게 생각하세요?</div>
-        <div class="analysis-zone-4-hint">답이 없는 질문들이에요. 투표 전 한 번만 생각해보세요.</div>
-        <ol class="judgment-list">${questionsHtml}</ol>
-        <div class="analysis-cta">
-          <button type="button" class="cta-primary" data-action="scroll-to-vote">찬반 투표하기</button>
-        </div>
-      </div>` : ''}
     `;
 
-    // Zone 3 accordion
-    root.querySelectorAll('.issue-head').forEach((head) => {
-      head.addEventListener('click', () => {
-        const item = head.closest('.issue-item');
-        if (!item) return;
-        const expanded = item.classList.toggle('expanded');
-        const toggle = head.querySelector('.issue-toggle');
-        if (toggle) toggle.textContent = expanded ? '↑ 접기' : '↓ 펼치기';
-      });
-    });
-
-    // Zone 4 CTA — 국민 찬반 섹션으로 스크롤
+    // Zone 5 CTA — 국민 찬반 섹션으로 스크롤
     const ctaVote = root.querySelector('[data-action="scroll-to-vote"]');
     if (ctaVote) {
       ctaVote.addEventListener('click', () => {
         const target = document.getElementById(scrollTargetId);
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+    }
+
+    // Zone 4 인덱스 — 클릭 스크롤 + 현재 섹션 강조 (IntersectionObserver)
+    const indexLinks = root.querySelectorAll('.ba-index-item');
+    indexLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        const id = link.dataset.index;
+        const target = document.getElementById(id);
+        if (target) {
+          e.preventDefault();
+          window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
+        }
+      });
+    });
+    const setActive = (id) => {
+      indexLinks.forEach(l => l.classList.toggle('is-active', l.dataset.index === id));
+    };
+    if ('IntersectionObserver' in window) {
+      const sections = root.querySelectorAll('.ba-zone');
+      const visible = new Map();
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) visible.set(entry.target.id, entry.intersectionRatio);
+          else visible.delete(entry.target.id);
+        });
+        let topId = null, topRatio = -1;
+        visible.forEach((ratio, id) => { if (ratio > topRatio) { topRatio = ratio; topId = id; } });
+        if (topId) setActive(topId);
+      }, { rootMargin: '-100px 0px -50% 0px', threshold: [0, 0.25, 0.5, 1] });
+      sections.forEach(s => io.observe(s));
     }
   };
 

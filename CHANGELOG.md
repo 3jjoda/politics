@@ -5,6 +5,34 @@
 
 ---
 
+## 2026-04-27 — 5-Zone AI 분석 UI 전면 리디자인
+
+### 1. 디자인 토큰 분리
+- `.bill-ai-analysis` 스코프에 `--ba-*` 토큰 4계층 (ink/sub/meta/gold) — 정치색(빨강·파랑·초록) 배제, **머스타드 골드 #8F5800 단일 강조색**
+- 폰트: Pretendard Variable 추가 (jsdelivr dynamic-subset, layout.ejs preconnect 포함)
+- 본문 18px / weight 450 / line-height 1.75 (롱폼 정독)
+
+### 2. 레이아웃 break-out
+- bd-wrap(960px) 제약을 깨고 100vw `.ba-shell` (1240px = 180 좌마진노트 + 880 콘텐츠 + 180 우인덱스 거터)
+- 콘텐츠 영역 `.ba-content` max-width 880px
+
+### 3. Zone 별 변경
+- **Zone 1**: 한 줄 요약 28→**44px**, 박스 제거 → 좌측 4px 골드바 only. 카테고리/읽기/결과 알약 배지 → 텍스트 메타라인 (14px). 이모지 제거
+- **Zone 2**: 균등 grid(1·1·1) → **비대칭 8 / 4 / 4**. 좌측 4px 컬러바로 카드 구분 (골드/차콜/그레이). "여기까지 30%" 프로그레스 제거
+- **Zone 3**: 토글 아코디언 폐기 → H3 + 본문(펼침 기본). pro/con/gap 배지 제거, 좌측 외부 **마진노트** (mono 12px) 로 카테고리 표시
+- **Zone 4** (신규): 우측 sticky 인덱스 (요약/핵심 변화/분석/질문) — IntersectionObserver 활성 강조
+- **Zone 5** (옛 Zone 4): 골드톤 박스 제거 → 본문 통합. 번호 배지 채움 → **외곽선만**
+
+### 4. 정치색 배제 원칙
+- 빨강/파랑/초록을 입장 라벨에 안 씀
+- 위계는 타이포그래피·여백·위치로만 구분
+- 강조색은 머스타드 골드 한 가지
+
+### 5. 사용된 옛 CSS
+- `.analysis-zone-*`, `.analysis-card`, `.issue-*`, `.judgment-*` 등 옛 클래스는 분석 없는 분기(`.bill-basic-header`)와 공유되는 일부만 유지 — 미사용 dead CSS 는 차후 정리
+
+---
+
 ## 2026-04-27 — 마이페이지 (`/my`) v1
 
 ### 1. 통합 마이페이지 신설
