@@ -494,15 +494,19 @@
       <div class="ax-card">
         <div class="ax-diamond-wrap">
           <%
+            // reveal.ejs 와 동일 매핑:
+            //   위=안보(security), 우=경제(economy), 아래=제도(institution), 왼=사회(social)
+            // 거리는 Math.abs() — 강도만 외곽으로, 부호(찬/반)는 수치 텍스트로 표시
             const cx = 110, cy = 110, R = 80;
-            const top    = { x: cx,           y: cy - R * Math.abs(soci) / 1.0 * (soci >= 0 ? 1 : -1) + (soci >= 0 ? 0 : 0) };
-            // 다이아몬드는 ±1.0 클램프
-            const clampVis = (v) => Math.max(-1, Math.min(1, Number(v) || 0));
-            const cE = clampVis(econ), cS = clampVis(soci), cSe = clampVis(sec), cI = clampVis(inst);
-            const ptTop    = { x: cx,                  y: cy - R * cS };  // social
-            const ptRight  = { x: cx + R * cE,         y: cy };           // economy
-            const ptBottom = { x: cx,                  y: cy + R * cSe }; // security
-            const ptLeft   = { x: cx - R * cI,         y: cy };           // institution
+            const clampVis = (v) => Math.max(0, Math.min(1, Math.abs(Number(v) || 0)));
+            const aE  = clampVis(econ);
+            const aS  = clampVis(soci);
+            const aSe = clampVis(sec);
+            const aI  = clampVis(inst);
+            const ptTop    = { x: cx,              y: cy - R * aSe }; // 위 — security
+            const ptRight  = { x: cx + R * aE,     y: cy };           // 우 — economy
+            const ptBottom = { x: cx,              y: cy + R * aI };  // 아래 — institution
+            const ptLeft   = { x: cx - R * aS,     y: cy };           // 왼 — social
             const fillPts  = [ptTop, ptRight, ptBottom, ptLeft]
                               .map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
           %>
@@ -520,10 +524,10 @@
               <circle class="ax-dot" cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="3.5"/>
             <% }); %>
 
-            <text class="ax-label"        x="<%= cx %>"        y="<%= cy - R - 6 %>">사회</text>
-            <text class="ax-label bottom" x="<%= cx %>"        y="<%= cy + R + 6 %>">안보</text>
+            <text class="ax-label"        x="<%= cx %>"          y="<%= cy - R - 6 %>">안보</text>
+            <text class="ax-label bottom" x="<%= cx %>"          y="<%= cy + R + 6 %>">제도</text>
             <text class="ax-label"        x="<%= cx + R + 14 %>" y="<%= cy + 4 %>">경제</text>
-            <text class="ax-label"        x="<%= cx - R - 14 %>" y="<%= cy + 4 %>">제도</text>
+            <text class="ax-label"        x="<%= cx - R - 14 %>" y="<%= cy + 4 %>">사회</text>
           </svg>
         </div>
         <div class="ax-info">
