@@ -761,12 +761,10 @@
   }
 
   @media (max-width: 1024px) {
-    .content-wrap { grid-template-columns: 1fr; }
-    .sidebar { position: static; }
-    .sidebar-list { max-height: 200px; }
     .stats-row { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 768px) {
+    .content-wrap { grid-template-columns: 1fr; padding: 16px; }
     .filter-toggle { display: none; }
     #grid-view { display: none !important; }
     #list-view { display: block !important; }
