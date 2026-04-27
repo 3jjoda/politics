@@ -581,12 +581,8 @@
           <div class="cv-total">총 <strong>${total}</strong>명 참여</div>
         </div>
         <div class="cv-actions">
-          <button class="cv-btn cv-btn-agree    ${my === 'agree'    ? 'active' : ''}" data-vote="agree">
-            👍 찬성
-          </button>
-          <button class="cv-btn cv-btn-disagree ${my === 'disagree' ? 'active' : ''}" data-vote="disagree">
-            👎 반대
-          </button>
+          <button class="cv-btn cv-btn-agree    ${my === 'agree'    ? 'active' : ''}" data-vote="agree">찬성</button>
+          <button class="cv-btn cv-btn-disagree ${my === 'disagree' ? 'active' : ''}" data-vote="disagree">반대</button>
           ${my ? `<span class="cv-my-hint">내 투표: <strong>${my === 'agree' ? '찬성' : '반대'}</strong> (다시 누르면 변경)</span>` : ''}
         </div>
       `;
@@ -642,6 +638,7 @@
     if (!a) { root.style.display = 'none'; return; }
 
     const bill = opts.bill || {};
+    const proposers = Array.isArray(opts.proposers) ? opts.proposers : [];
     const scrollTargetId = opts.scrollTargetId || 'citizen-vote-section';
 
     const changes = a.changes || {};
@@ -660,19 +657,98 @@
     if (bill.committee) metaIdParts.push(`<span>${PB.escapeHtml(bill.committee)}</span>`);
     metaIdParts.push(`<span>${PB.escapeHtml(bill.status || '계류')}</span>`);
 
-    /* 메타 2줄: 대표발의/일자/공동발의 */
+    /* 메타 2줄: 발의일 — "공동발의 N인" 은 아바타 스택이 그 정보 대체하므로 제거.
+       대표발의 한 줄도 스택 라벨에 포함되므로 제거. */
     const metaProposerParts = [];
-    if (bill.proposer) {
-      const proposerHtml = bill.proposer_mona_cd
-        ? `<a href="/politician/${encodeURIComponent(bill.proposer_mona_cd)}">${PB.escapeHtml(bill.proposer)}</a>`
-        : PB.escapeHtml(bill.proposer);
-      const coRepSuffix = Number(bill.co_rep_count) > 1
-        ? ` 외 ${Number(bill.co_rep_count) - 1}인`
-        : '';
-      metaProposerParts.push(`<span>대표발의 ${proposerHtml}${coRepSuffix}</span>`);
-    }
     if (bill.propose_dt) metaProposerParts.push(`<span>발의일 ${PB.escapeHtml(fmtDate(bill.propose_dt))}</span>`);
-    if (bill.co_proposer_count) metaProposerParts.push(`<span>공동발의 ${Number(bill.co_proposer_count)}인</span>`);
+
+    /* 발의자 컴팩트 스택 — 대표 + 9명 까지 표시, 정당 분포 텍스트, 펼침 토글 */
+    const buildProposerStack = () => {
+      if (!proposers.length) return '';
+      const total = proposers.length;
+      const reps = proposers.filter(p => p.is_rep);
+      const others = proposers.filter(p => !p.is_rep);
+      const repPrimary = reps[0] || others[0];
+
+      // 정당 분포 — 카운트 desc, 이름 sort 폴백
+      const partyCount = new Map();
+      proposers.forEach(p => {
+        const k = p.party_name || '무소속';
+        partyCount.set(k, (partyCount.get(k) || 0) + 1);
+      });
+      const partyArr = [...partyCount.entries()].sort((a, b) => b[1] - a[1]);
+      let partyText;
+      if (partyArr.length === 1) partyText = `모두 ${partyArr[0][0]}`;
+      else partyText = partyArr.map(([n, c]) => `${n} ${c}`).join(', ');
+
+      // 라벨: "{대표명} 외 {N}인 · {정당분포}"
+      const repName = repPrimary && repPrimary.name ? repPrimary.name : '대표';
+      const repHref = repPrimary && repPrimary.mona_cd ? `/politician/${encodeURIComponent(repPrimary.mona_cd)}` : null;
+      const repNameHtml = repHref
+        ? `<a class="ba-pp-rep-name" href="${repHref}">${PB.escapeHtml(repName)}</a>`
+        : `<strong class="ba-pp-rep-name">${PB.escapeHtml(repName)}</strong>`;
+      const othersCount = total - 1;
+      const labelHtml = `
+        ${repNameHtml}${othersCount > 0 ? `<span class="ba-pp-others"> 외 ${othersCount}인</span>` : ''}
+        <span class="ba-pp-sep"> · </span>
+        <span class="ba-pp-parties">${PB.escapeHtml(partyText)}</span>
+      `;
+
+      // 컴팩트 스택 — 대표 1 + 비대표 9 (총 10)
+      const stackList = [];
+      if (repPrimary) stackList.push(repPrimary);
+      others.forEach(o => { if (stackList.length < 10) stackList.push(o); });
+      const renderStackItem = (p, isRep) => {
+        const titleAttr = `${PB.escapeHtml(p.name || '(퇴임)')}${p.party_name ? ' (' + PB.escapeHtml(p.party_name) + ')' : ''}`;
+        const inner = p.photo
+          ? `<img src="${PB.escapeHtml(p.photo)}" alt="">`
+          : `<span class="ba-pp-stack-initial">${PB.escapeHtml((p.name || '?').slice(0, 1))}</span>`;
+        const cls = ['ba-pp-stack-item'];
+        if (isRep) cls.push('is-rep');
+        if (!p.name) cls.push('is-retired');
+        const wrapTag = p.mona_cd ? 'a' : 'span';
+        const hrefAttr = p.mona_cd ? ` href="/politician/${encodeURIComponent(p.mona_cd)}"` : '';
+        return `<${wrapTag} class="${cls.join(' ')}" title="${titleAttr}"${hrefAttr}>${inner}</${wrapTag}>`;
+      };
+      const stackHtml = stackList.map((p, i) => renderStackItem(p, i === 0)).join('');
+
+      // 펼친 그리드 카드
+      const cardsHtml = proposers.map(p => {
+        const cls = ['ba-pp-card'];
+        if (p.is_rep) cls.push('is-rep');
+        if (!p.name) cls.push('is-retired');
+        const inner = p.photo
+          ? `<img src="${PB.escapeHtml(p.photo)}" alt="">`
+          : `<span class="ba-pp-stack-initial">${PB.escapeHtml((p.name || '?').slice(0, 1))}</span>`;
+        const repTag = p.is_rep ? `<span class="ba-pp-card-rep-tag">대표</span>` : '';
+        const tag = p.mona_cd ? 'a' : 'div';
+        const hrefAttr = p.mona_cd ? ` href="/politician/${encodeURIComponent(p.mona_cd)}"` : '';
+        return `
+          <${tag} class="${cls.join(' ')}"${hrefAttr}>
+            <span class="ba-pp-card-avatar">${inner}</span>
+            <div class="ba-pp-card-meta">
+              <div class="ba-pp-card-name">${PB.escapeHtml(p.name || '(퇴임)')}${repTag}</div>
+              <div class="ba-pp-card-party">${PB.escapeHtml(p.party_name || '—')}</div>
+            </div>
+          </${tag}>
+        `;
+      }).join('');
+
+      return `
+        <div class="ba-proposers" data-expanded="false">
+          <div class="ba-proposers-bar">
+            <div class="ba-proposers-stack">${stackHtml}</div>
+            <div class="ba-proposers-label">${labelHtml}</div>
+            <button type="button" class="ba-pp-toggle" data-action="toggle-proposers">
+              <span class="ba-pp-toggle-text">전체 보기</span>
+              <span class="ba-pp-toggle-arrow">▾</span>
+            </button>
+          </div>
+          <div class="ba-proposers-grid">${cardsHtml}</div>
+        </div>
+      `;
+    };
+    const proposerStackHtml = buildProposerStack();
 
     /* 카테고리/읽기/결과 텍스트 메타 (배지 → 텍스트로) */
     const taglineParts = [];
@@ -718,10 +794,11 @@
     root.innerHTML = `
       <div class="ba-shell">
         <article class="ba-content">
-          <!-- Zone 1: 메타 + 헤드라인 -->
+          <!-- Zone 1: 메타 + 헤드라인 (+ 발의자 컴팩트 스택) -->
           <section class="ba-zone ba-z1" id="ba-summary">
             <div class="ba-meta-line">${joinDot(metaIdParts)}</div>
             ${metaProposerParts.length ? `<div class="ba-meta-line ba-meta-line-sub">${joinDot(metaProposerParts)}</div>` : ''}
+            ${proposerStackHtml}
             ${bill.bill_name ? `<h1 class="ba-bill-name">${PB.escapeHtml(bill.bill_name)}</h1>` : ''}
             <h2 class="ba-summary">${renderRichText(a.summary || '')}</h2>
             ${taglineParts.length ? `<div class="ba-tagline">${joinDot(taglineParts)}</div>` : ''}
@@ -753,7 +830,7 @@
           </section>` : ''}
 
           ${questions.length ? `
-          <!-- Zone 5: 질문 -->
+          <!-- Zone 5: 함께 생각 -->
           <section class="ba-zone ba-z5" id="ba-questions">
             <h2 class="ba-section-h">이 법안, 어떻게 생각하세요?</h2>
             <p class="ba-section-hint">답이 없는 질문들이에요. 투표 전 한 번만 생각해보세요.</p>
@@ -763,14 +840,6 @@
             </div>
           </section>` : ''}
         </article>
-
-        <!-- Zone 4: 우측 sticky 인덱스 -->
-        <nav class="ba-index" aria-label="섹션 인덱스">
-          <a class="ba-index-item" href="#ba-summary"     data-index="ba-summary">요약</a>
-          <a class="ba-index-item" href="#ba-changes"     data-index="ba-changes">핵심 변화</a>
-          ${issues.length    ? '<a class="ba-index-item" href="#ba-analysis"  data-index="ba-analysis">분석</a>' : ''}
-          ${questions.length ? '<a class="ba-index-item" href="#ba-questions" data-index="ba-questions">질문</a>' : ''}
-        </nav>
       </div>
     `;
 
@@ -783,34 +852,20 @@
       });
     }
 
-    // Zone 4 인덱스 — 클릭 스크롤 + 현재 섹션 강조 (IntersectionObserver)
-    const indexLinks = root.querySelectorAll('.ba-index-item');
-    indexLinks.forEach(link => {
-      link.addEventListener('click', (e) => {
-        const id = link.dataset.index;
-        const target = document.getElementById(id);
-        if (target) {
-          e.preventDefault();
-          window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
-        }
+    // Zone 1 발의자 스택 — 전체 보기 토글 (data-expanded 한 곳에서만 제어)
+    const ppToggle = root.querySelector('[data-action="toggle-proposers"]');
+    if (ppToggle) {
+      ppToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const wrap = ppToggle.closest('.ba-proposers');
+        if (!wrap) return;
+        const wasExpanded = wrap.dataset.expanded === 'true';
+        wrap.dataset.expanded = (!wasExpanded).toString();
+        const arrow = wrap.querySelector('.ba-pp-toggle-arrow');
+        const txt   = wrap.querySelector('.ba-pp-toggle-text');
+        if (arrow) arrow.textContent = wasExpanded ? '▾' : '▴';
+        if (txt)   txt.textContent   = wasExpanded ? '전체 보기' : '접기';
       });
-    });
-    const setActive = (id) => {
-      indexLinks.forEach(l => l.classList.toggle('is-active', l.dataset.index === id));
-    };
-    if ('IntersectionObserver' in window) {
-      const sections = root.querySelectorAll('.ba-zone');
-      const visible = new Map();
-      const io = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) visible.set(entry.target.id, entry.intersectionRatio);
-          else visible.delete(entry.target.id);
-        });
-        let topId = null, topRatio = -1;
-        visible.forEach((ratio, id) => { if (ratio > topRatio) { topRatio = ratio; topId = id; } });
-        if (topId) setActive(topId);
-      }, { rootMargin: '-100px 0px -50% 0px', threshold: [0, 0.25, 0.5, 1] });
-      sections.forEach(s => io.observe(s));
     }
   };
 

@@ -330,9 +330,15 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - 섹션 간격 64px, 모바일 48px
 
 - **AI 분석 라벨** (분석 분기 공통, 2026-04-26): 분석 섹션 위 한 줄 — 분석 있음은 골드 톤(`is-done`), 없음은 회색 톤(`is-pending`). [ANALYSIS.md](./ANALYSIS.md) §7-장치4 디스클레이머 충족
-- **Zone 1 — 메타 + 헤드라인** (`#ba-summary`):
+- **Zone 1 — 메타 + 헤드라인 + 발의자 스택** (`#ba-summary`):
   - 메타 1줄 `#번호 · 위원회 · 결과` (mono 12px, letter-spacing 0.22em, `--ba-meta`)
-  - 메타 2줄 `대표발의 X · 발의일 Y · 공동발의 N인` (같은 mono 톤)
+  - 메타 2줄 `발의일 YYYY.MM.DD` 만 (대표발의자/공동발의 N인 은 발의자 스택이 대체)
+  - **발의자 컴팩트 스택** (`.ba-proposers`, 2026-04-27 신규):
+    - 좌: 가로 아바타 스택 (대표 32px·골드 외곽선 / 그 외 24px·overlap), 최대 10명
+    - 가운데: `{대표명} 외 N인 · {정당분포}` 라벨 (1정당이면 "모두 X", 다정당이면 "X 7, Y 3")
+    - 우: "전체 보기 ▾" 토글 → 5열 카드 그리드 펼침 (대표 카드만 골드 외곽선 + 작은 "대표" 라벨)
+    - 정당색 사용 안 함 (정치색 회피). 강조는 골드 단일색
+    - 모바일 ≤768: 아바타 축소(28/22), 라벨·토글 다음 줄, 그리드 5→2열
   - 법안 원제목 `<h1>` 세리프 700 / 24px (작게)
   - 한 줄 요약 `<h2>` 세리프 900 / **44px** / line-height 1.15 + **좌측 4px 골드바 only** (박스/배경 X)
   - 태그라인: 카테고리·읽기시간·결과를 텍스트 메타로 (`환경·에너지·기후기술 · 읽기 2분 · 수정가결`, 14px `--ba-meta`)
@@ -349,12 +355,14 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - 라벨(`찬성 논리`/`반대 우려`/`법안 빈틈`)은 카드 좌측 외부 **마진노트** (`position: absolute; left: -180px; width: 160px; text-align: right; mono 12px --ba-meta`)
   - 색상 배지·아코디언·"여기까지 70%" 프로그레스 모두 제거
   - 1240px 미만에서 마진노트 인라인으로 폴백
-- **Zone 4 — 우측 sticky 인덱스** (`.ba-index`):
-  - sticky `top: var(--nav-h) + 32px`, 우측 거터 (180px) 안 좌측 1px 가이드 라인 + 8px 점
-  - 항목: `요약 / 핵심 변화 / 분석 / 질문` (issues/questions 없으면 자동 생략)
-  - 활성 항목만 `--ba-gold` 색 + 점 1.2배 scale
-  - IntersectionObserver 로 가장 잘 보이는 섹션 자동 강조, 클릭 시 `scrollTo` smooth (offset 100px)
-  - 1240px 미만 자동 숨김
+- **Zone 4 — 페이지 레벨 sticky 인덱스** (`.pb-section-index`, 2026-04-27 페이지 레벨로 끌어올림):
+  - `position: fixed; top: var(--nav-h) + 32px; right: 32px; width: 200px`
+  - **두 그룹** — `AI 분석` (요약/핵심 변화/분석/함께 생각) + `참여` (국민 찬반/본회의 표결/발의자/의견)
+  - 그룹 라벨: mono 10px / letter-spacing 0.22em / `#A8A095` uppercase
+  - 항목: 12px / 8px 도트 (외곽선 `#C8C0AA` → 활성 채움 `#8F5800` + 4px glow)
+  - 데이터 카운트(찬반·발의자·의견) 우측 정렬, 페이지 로드 후 `PB.fetch` 로 동적 채움
+  - IntersectionObserver 자동 활성, 클릭 smooth scroll (offset 80px)
+  - 1240px 미만 자동 숨김 → 모바일 floating jumpbar (`.pb-mobile-jumpbar`) 로 대체
 - **Zone 5 — 질문** (`#ba-questions`, 옛 Zone 4):
   - 골드톤 박스 제거 → 단일 컬럼 본문에 통합
   - 번호 배지: 28px 원형, **외곽선만** (1.5px solid `--ba-gold`), mono 12px 700
@@ -362,6 +370,15 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - CTA `<button>` 차콜 배경 → 골드 hover (이전 골드 → 차콜 hover 반대)
 - **국회 원문 링크**: Zone 1 태그라인 아래 텍스트 링크로
 - **XSS 방어**: `JSON.stringify(analysis).replace(/</g, '\\u003c')` + `renderRichText()` 헬퍼로 `<strong>` 만 허용하는 선별 이스케이프
+
+### `/bill/:id` 참여 섹션 디자인 통합 (Zone 7~11, 2026-04-27)
+5-Zone 토큰을 그대로 이어받아 참여 섹션도 같은 시스템.
+
+- **Zone 7 — 챕터 디바이더** (`.ba-chapter`): 분석 끝 ↔ 참여 시작 사이 풀폭 브레이크. 상단 1px 보더 + 캡션 (`02 정독 끝` / `03 당신의 차례 →`, mono 11px). 메인 헤딩 세리프 900 / 36px "이제 당신이 답할 차례입니다"
+- **Zone 8 — 국민 찬반** (`#citizen-vote-section .pb-part`): cv-bar 12px / 차콜+골드. CTA 두 버튼 동일 무게 흰 배경. 위치(좌/우) 로만 입장 구분 — 이모지 제거
+- **Zone 9 — 본회의 표결** (`#part-floor-vote`): 데이터 없을 때 italic `#9B9486` empty state. 있을 때 4-박스 vote-dashboard 톤만 통일 (정당색은 객관 데이터라 그대로)
+- ~~**Zone 10 — 발의자**~~: **2026-04-27 폐기** — 발의자는 메타데이터의 일부라 Zone 1 헤더 컴팩트 스택으로 통합됨. 참여 영역에서 분리
+- **Zone 11 — 댓글** (`#part-comments`): 정렬 토글 알약 → 텍스트 underline. 카드 흰 배경 / `#E8E5DC` / radius 10. 닉네임 700, 본문 14/1.7. 좋아요 활성 골드
 
 ### `/bill/:id` 분석 요청 위젯 (2026-04-25)
 미분석 법안에서만 노출. `bill-basic-header` 바로 아래 골드 그라디언트 카드.

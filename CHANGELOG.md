@@ -5,6 +5,105 @@
 
 ---
 
+## 2026-04-27 — 발의자 → Zone 1 헤더 컴팩트 스택 통합
+
+발의자는 법안 메타데이터의 일부 → 참여 섹션에서 분리해서 헤더 메타라인 직하로 옮김.
+
+### 1. 위치 이동
+- 참여 영역의 `<section id="part-proposers">` 전체 제거
+- 우측 sticky 인덱스에서 "발의자" 항목 제거
+- Zone 1 메타라인의 "공동발의 N인" 텍스트 제거 (아바타 개수가 그 정보 대체)
+- 새 위치: 메타1줄 → 메타2줄(발의일) → **`.ba-proposers` 컴팩트 스택** → `<h1>` 법안명 → `<h2>` 한 줄 요약
+
+### 2. 컴팩트 스택 (`.ba-proposers-bar`)
+- 좌측 가로 아바타 스택 (overlap, 대표+9명 까지)
+  - 대표 32px, 1.5px 골드 외곽선 + 2px `#F3F1EA` outer glow, z-index 2
+  - 그 외 24px, 1.5px `#F3F1EA` 외곽선, marginLeft -6 (겹침)
+  - 사진 없으면 이름 첫 글자 (`Pretendard 600 #6B7280`)
+  - 호버 시 이름·정당 툴팁
+- 가운데 라벨 (`13px / 1.5`):
+  - `{대표명} 외 {N}인 · {정당분포}` 포맷
+  - 대표명 `--ba-ink + 700` (링크), 외 N인 `#8B8578`, 정당분포 `--ba-meta`
+  - 정당분포: 1개 정당이면 "모두 X", 여러 개면 "X 7, Y 3" (count desc)
+- 우측 "전체 보기 ▾" 토글 (mono 11px, 0.08em, 골드, dashed underline `#C8A24A`)
+
+### 3. 펼친 카드 그리드 (`.ba-proposers-grid`)
+- `display:none → grid` 토글, 5열 grid + dashed bg 컨테이너 (`rgba(255,255,255,0.5)` + `#D9D3C3` dashed)
+- 카드: 흰 배경 / 1px `#E8E5DC` / radius 8 / padding 10·12 / 24px 아바타
+- **대표만 1.5px 골드 외곽선** + 이름 옆 `대표` 라벨 (mono 9px, 0.1em, 골드 700)
+- 정당명 텍스트만 (10px `#8B8578`) — 정당색 배경/보더 절대 안 씀
+
+### 4. 정치색 회피 원칙 유지
+- 헤더 스택, 펼친 카드 모두 정당색 배경/외곽선 사용 금지
+- 강조는 `--ba-gold` 한 가지 (대표발의자 표시용)
+
+### 5. 모바일 (≤768)
+- 아바타 축소: 대표 28 / 그 외 22, marginLeft -5
+- 라벨·"전체 보기" `flex-basis: 100% + order` 로 다음 줄로 떨어뜨림
+- 펼친 그리드 5열 → 2열
+
+### 6. 데이터 흐름
+- `window.__BILL_PROPOSERS__` JSON 주입 → `mountBillAnalysis(opts.proposers)` 로 전달
+- `coProposers` 서버 객체 그대로 매핑: `{mona_cd, name, party_name, photo, is_rep}`
+
+---
+
+## 2026-04-27 — 법안 상세 참여 섹션 디자인 시스템 통합 (Zone 6~11)
+
+### 1. 페이지 레벨 섹션 인덱스 (Zone 6)
+- 5-Zone 안에 있던 `.ba-index` 를 페이지 레벨 `.pb-section-index` 로 끌어올림 (`position: fixed; top: nav-h+32; right: 32; width: 200`)
+- **두 그룹** 분리 — `AI 분석` (요약/핵심 변화/분석/함께 생각) + `참여` (국민 찬반/본회의 표결/발의자/의견)
+- 그룹 라벨: mono 10px / letter-spacing 0.22em / `#A8A095` uppercase
+- 항목: Pretendard 12px / 7px 패딩 / 8px 도트 (외곽선 #C8C0AA → 활성 채움 #8F5800 + 4px 글로우)
+- 데이터 카운트(찬반·발의자·의견) 우측 정렬, 10px `#A8A095` — 페이지 로드 후 PB.fetch 로 동적 채움
+- IntersectionObserver 자동 활성, 클릭 smooth scroll (offset 80)
+- 1240px 미만 자동 숨김
+
+### 2. Zone 7 챕터 디바이더 (정독 → 참여)
+- `.ba-chapter` — bd-wrap 폭에서 `margin: 120px -40px 48px` 로 살짝 확장
+- 상단 1px 보더 + 좌우 캡션 (`02 정독 끝` / `03 당신의 차례 →`, mono 11px)
+- 메인 헤딩 Noto Serif 900 / 36px / "이제 당신이 답할 차례입니다"
+- 서브 15px `#6B7280` / "법안에 찬반을 표시하고, 다른 시민들의 의견을 읽어보세요"
+
+### 3. 공용 `.pb-part` 컨테이너 (Zone 8~11)
+- 배경 `#FAFAF7` / 1px `#E8E5DC` / radius 16 / padding 32
+- 헤드: 세리프 700 / 22px (`.pb-part-h`) + 보조설명 13px `#6B7280` (`.pb-part-sub`)
+
+### 4. Zone 8 — 국민 찬반 (정치색 회피)
+- `cv-bar` 36 → 12px / radius 6 / 색상 정치 파랑·갈색 → **차콜 #0F1B1F + 골드 #8F5800**
+- 막대 안 % 텍스트 제거 → 범례에서 양 끝 정렬로 `찬성 N · X%` / `반대 N · Y%`
+- CTA 두 버튼 동일 무게 — 흰 배경 / 1px `#D9D3C3` / radius 10. 활성만 차콜 채움 + 흰 글자
+- **이모지 (👍 👎) 제거**, 위치(좌/우) 로만 입장 구분
+
+### 5. Zone 9 — 본회의 표결
+- 데이터 없을 때: `.pb-part-empty` italic `#9B9486` "본회의 표결 데이터가 아직 수집되지 않았습니다"
+- 데이터 있을 때: 기존 vote-dashboard 4박스. 박스 톤만 흰 배경 + `#E8E5DC` 보더로 통일 (정당색 자체는 객관 데이터라 그대로 유지)
+
+### 6. Zone 10 — 발의자 5열 그리드
+- `.pb-proposers-grid` `repeat(5, 1fr)`, gap 8 / 카드 padding 12 / 32px 아바타
+- **대표만 1.5px 골드 외곽선** = 대표발의자 시각 표시. **"(대표)" 텍스트 제거**
+- 1024px 4열 / 768px 2열
+
+### 7. Zone 11 — 댓글
+- 정렬 토글 알약(보더+패딩) → **텍스트 underline 버튼** (활성 골드 underline, 비활성 `#8B8578`)
+- 카드 흰 배경 / 1px `#E8E5DC` / radius 10 / padding 16
+- 닉네임 700, 시각 12px `#8B8578`, 본문 14px / line-height 1.7
+- 좋아요 활성: 골드 `#8F5800`
+
+### 8. 모바일 floating jump bar
+- 하단 fixed (`bottom: 16, left/right 16, height 52, radius 26`) + `rgba(15,27,31,0.92)` + backdrop-blur
+- 4 핵심 탭 (요약·분석·찬반·의견) + 우측 36px 골드 ↑ 버튼 (페이지 맨 위로)
+- 스크롤 다운 시 등장(translateY 0), 업/맨위/풋터 근처에서 숨김
+- 1240px 이상 (데스크톱) 숨김
+
+### 9. 제거된 것
+- `?` 도움말 아이콘 (제목 옆, 정보가 본문에 충분)
+- 찬반 버튼 이모지 👍/👎
+- 분석 요청 위젯 헤더/CTA 이모지 🤔 💡 🎉
+- "(대표)" 텍스트 라벨 (골드 외곽선으로 대체)
+
+---
+
 ## 2026-04-27 — 5-Zone AI 분석 UI 전면 리디자인
 
 ### 1. 디자인 토큰 분리

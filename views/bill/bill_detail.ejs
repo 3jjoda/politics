@@ -323,7 +323,7 @@
     margin-bottom: 32px;
   }
 
-  /* ===== Shell: 1240px = 180 좌마진노트 거터 + 880 콘텐츠 + 180 인덱스 거터 ===== */
+  /* ===== Shell: 1240px = 180 좌마진노트 거터 + 880 콘텐츠 + 180 우거터(인덱스 회피) ===== */
   .ba-shell {
     max-width: 1240px;
     margin: 0 auto;
@@ -380,6 +380,177 @@
   .ba-z1 .ba-meta-line a { color: var(--ba-meta); text-decoration: none; }
   .ba-z1 .ba-meta-line a:hover { color: var(--ba-gold); }
   .ba-z1 .ba-meta-line-sub { margin-bottom: 24px; }
+
+  /* ===== Zone 1 — 발의자 컴팩트 스택 (메타라인 직하) ===== */
+  .ba-proposers {
+    margin: 8px 0 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #E8E5DC;
+  }
+  .ba-proposers-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .ba-proposers-stack {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .ba-pp-stack-item {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #F3F1EA;
+    border: 1.5px solid #F3F1EA;
+    margin-left: -6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--ba-sans);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ba-meta);
+    text-decoration: none;
+    flex-shrink: 0;
+    box-sizing: content-box;
+    transition: transform 0.15s, z-index 0.15s;
+  }
+  .ba-pp-stack-item:first-child { margin-left: 0; }
+  .ba-pp-stack-item.is-rep {
+    width: 32px; height: 32px;
+    border: 1.5px solid var(--ba-gold);
+    box-shadow: 0 0 0 2px #F3F1EA;
+    z-index: 2;
+    margin-left: 0;
+  }
+  .ba-pp-stack-item img,
+  .ba-pp-stack-item svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .ba-pp-stack-item:hover { transform: translateY(-1px); z-index: 3; }
+  .ba-pp-stack-initial { display: inline-block; line-height: 1; }
+  .ba-proposers-label {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--ba-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ba-meta);
+  }
+  .ba-pp-rep-name {
+    color: var(--ba-ink);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .ba-pp-rep-name:hover { text-decoration: underline; text-decoration-color: var(--ba-gold); text-underline-offset: 4px; }
+  .ba-pp-others { color: #8B8578; }
+  .ba-pp-sep    { color: #C8C0AA; }
+  .ba-pp-parties { color: var(--ba-meta); }
+  .ba-pp-toggle {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    padding: 2px 0 3px;
+    color: var(--ba-gold);
+    font-family: var(--ba-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    border-bottom: 1px dashed #C8A24A;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .ba-pp-toggle:hover { color: #6E4400; border-bottom-color: var(--ba-gold); }
+  .ba-pp-toggle-arrow { font-size: 10px; transform: translateY(-1px); }
+
+  /* 펼친 카드 그리드 — data-expanded="true" 일 때만 노출 (display:grid 가 [hidden] 을 덮어쓰는 문제 회피) */
+  .ba-proposers-grid { display: none; }
+  .ba-proposers[data-expanded="true"] .ba-proposers-grid {
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(255,255,255,0.5);
+    border: 1px dashed #D9D3C3;
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .ba-pp-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #FFFFFF;
+    border: 1px solid #E8E5DC;
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--ba-ink);
+    transition: border-color 0.15s, transform 0.15s;
+    min-width: 0;
+  }
+  .ba-pp-card:hover { border-color: var(--ba-gold); transform: translateY(-1px); }
+  .ba-pp-card.is-rep { border: 1.5px solid var(--ba-gold); }
+  .ba-pp-card.is-retired {
+    color: #9B9486;
+    font-style: italic;
+    cursor: default;
+    background: #F3F1EA;
+  }
+  .ba-pp-card-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #F3F1EA;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--ba-sans);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--ba-meta);
+  }
+  .ba-pp-card-avatar img, .ba-pp-card-avatar svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+  .ba-pp-card-meta { min-width: 0; flex: 1; }
+  .ba-pp-card-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ba-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .ba-pp-card-rep-tag {
+    font-family: var(--ba-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--ba-gold);
+    font-weight: 700;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .ba-pp-card-party {
+    font-size: 10px;
+    color: #8B8578;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ===== 모바일 (≤768) — 아바타 축소, 그리드 5→2열, 라벨 줄바꿈 ===== */
+  @media (max-width: 768px) {
+    .ba-pp-stack-item    { width: 22px; height: 22px; margin-left: -5px; }
+    .ba-pp-stack-item.is-rep { width: 28px; height: 28px; margin-left: 0; }
+    .ba-proposers-label  { flex-basis: 100%; order: 3; }
+    .ba-pp-toggle        { flex-basis: 100%; order: 4; justify-content: flex-start; }
+    .ba-proposers-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
 
   .ba-bill-name {
     font-family: var(--ba-serif);
@@ -593,62 +764,16 @@
   }
   .ba-cta-primary:hover { background: var(--ba-gold); }
 
-  /* ===== Zone 4: 우측 sticky 인덱스 ===== */
-  .ba-index {
-    grid-column: 3 / 4;
-    position: sticky;
-    top: calc(var(--nav-h) + 32px);
-    align-self: start;
-    padding: 0 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    /* 좌측에 1px 가이드 라인 */
-    border-left: 1px solid var(--ba-card-border);
-    margin-left: 24px;
-  }
-  .ba-index-item {
-    position: relative;
-    padding: 12px 0 12px 22px;
-    font-family: var(--ba-sans);
-    font-size: 14px;
-    font-weight: 450;
-    color: var(--ba-meta);
-    text-decoration: none;
-    line-height: 1.4;
-    transition: color 0.15s;
-  }
-  .ba-index-item::before {
-    content: '';
-    position: absolute;
-    left: -5px;          /* 가이드 라인 위에 점이 올라타게 */
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--ba-card-border);
-    transition: background 0.15s, transform 0.15s;
-  }
-  .ba-index-item:hover { color: var(--ba-ink); }
-  .ba-index-item.is-active {
-    color: var(--ba-gold);
-    font-weight: 600;
-  }
-  .ba-index-item.is-active::before {
-    background: var(--ba-gold);
-    transform: translateY(-50%) scale(1.2);
-  }
+  /* Zone 4 인덱스는 페이지 레벨 .pb-section-index 로 이동 (참여 섹션까지 포함) */
 
   /* ===== 반응형 ===== */
   @media (max-width: 1240px) {
-    /* 우측 인덱스 숨김, 콘텐츠 가운데 정렬 */
+    /* 우측 거터 회수 — 콘텐츠 가운데 정렬 */
     .ba-shell {
       grid-template-columns: minmax(0, 880px);
       padding: 0 24px;
     }
     .ba-content { grid-column: 1 / -1; }
-    .ba-index { display: none; }
     /* 마진노트 인라인으로 폴백 */
     .ba-margin-note {
       position: static;
@@ -1055,6 +1180,438 @@
     .request-count-display { font-size: 24px; }
   }
 
+  /* =================================================================
+     Zone 6~11 — 참여 섹션 디자인 시스템 통합
+     ba-* 토큰 (5-Zone) 그대로 재사용
+     ================================================================= */
+
+  /* ===== Zone 7: 챕터 디바이더 ===== */
+  .ba-chapter {
+    margin: 120px -40px 48px;
+    padding-top: 32px;
+    border-top: 1px solid #E8E5DC;
+    text-align: center;
+  }
+  .ba-chapter-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    color: #8B8578;
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    padding: 0 8px;
+  }
+  .ba-chapter-h {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 900;
+    font-size: 36px;
+    line-height: 1.25;
+    color: #0F1B1F;
+    margin: 0 0 12px;
+    word-break: keep-all;
+  }
+  .ba-chapter-sub {
+    font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    color: #6B7280;
+    line-height: 1.7;
+    margin: 0;
+    word-break: keep-all;
+  }
+  @media (max-width: 768px) {
+    .ba-chapter { margin: 64px -16px 32px; padding-top: 24px; }
+    .ba-chapter-h { font-size: 26px; }
+    .ba-chapter-sub { font-size: 14px; }
+    .ba-chapter-bar { font-size: 10px; }
+  }
+
+  /* ===== 공용 .pb-part 컨테이너 (Zone 8~11) ===== */
+  .pb-part {
+    background: #FAFAF7;
+    border: 1px solid #E8E5DC;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 16px;
+    font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+  }
+  .pb-part-head { margin-bottom: 20px; }
+  .pb-part-h {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: #0F1B1F;
+    margin: 0 0 6px;
+    line-height: 1.4;
+  }
+  .pb-part-h-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 400;
+    color: #8B8578;
+    margin-left: 6px;
+  }
+  .pb-part-sub {
+    font-size: 13px;
+    color: #6B7280;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .pb-part-foot {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #8B8578;
+    text-align: center;
+  }
+  .pb-part-empty {
+    padding: 40px 24px;
+    text-align: center;
+    color: #9B9486;
+    font-style: italic;
+    font-size: 14px;
+  }
+
+  /* ===== Zone 8: 국민 찬반 (cv-* 오버라이드 — 차콜 + 골드) ===== */
+  .pb-part .cv-bar {
+    height: 12px;
+    border-radius: 6px;
+    background: #EFEDE4;
+    border: none;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .pb-part .cv-seg {
+    color: transparent;     /* 막대 안 % 텍스트 제거, 범례에서 표시 */
+    font-size: 0;
+    height: 12px;
+  }
+  .pb-part .cv-agree    { background: #0F1B1F; }   /* 차콜 */
+  .pb-part .cv-disagree { background: #8F5800; }   /* 골드 */
+  .pb-part .cv-legend {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: #374151;
+  }
+  .pb-part .cv-legend-item { gap: 6px; }
+  .pb-part .cv-legend-item strong { color: #0F1B1F; font-weight: 700; }
+  .pb-part .cv-dot { width: 8px; height: 8px; }
+  .pb-part .cv-dot-agree    { background: #0F1B1F; }
+  .pb-part .cv-dot-disagree { background: #8F5800; }
+  .pb-part .cv-total { color: #8B8578; }
+  .pb-part .cv-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .pb-part .cv-btn {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 18px;
+    background: #FFFFFF;
+    border: 1px solid #D9D3C3;
+    border-radius: 10px;
+    color: #0F1B1F;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    justify-content: center;
+  }
+  .pb-part .cv-btn:hover { border-color: #8F5800; }
+  .pb-part .cv-btn-agree.active,
+  .pb-part .cv-btn-disagree.active {
+    background: #0F1B1F;
+    border-color: #0F1B1F;
+    color: #FFFFFF;
+    font-weight: 700;
+  }
+  .pb-part .cv-my-hint {
+    width: 100%;
+    margin: 8px 0 0;
+    font-size: 12px;
+    color: #8B8578;
+    text-align: center;
+  }
+
+  /* ===== Zone 9: 본회의 표결 — 기존 vote-dashboard 유지, 카드 안에서 톤만 통일 ===== */
+  .pb-part .vote-dashboard { gap: 12px; margin-bottom: 0; }
+  .pb-part .vote-box {
+    background: #FFFFFF;
+    border: 1px solid #E8E5DC;
+    border-radius: 10px;
+  }
+  .pb-part .vote-box:not([data-empty]):hover { border-color: #8F5800; }
+
+  /* ===== Zone 10: 발의자 5열 그리드 ===== */
+  .pb-proposers-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pb-proposer-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    background: #FFFFFF;
+    border: 1px solid #E8E5DC;
+    border-radius: 10px;
+    text-decoration: none;
+    color: #0F1B1F;
+    transition: border-color 0.15s, transform 0.15s;
+    min-width: 0;
+  }
+  .pb-proposer-card:hover { border-color: #8F5800; transform: translateY(-1px); }
+  .pb-proposer-card.is-rep { border: 1.5px solid #8F5800; }   /* 대표만 골드 외곽선 = 대표 표시 */
+  .pb-proposer-card.is-retired {
+    color: #9B9486;
+    font-style: italic;
+    cursor: default;
+    background: #F3F1EA;
+    border-color: #E8E5DC;
+  }
+  .pb-pp-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #F3F1EA;
+  }
+  .pb-pp-avatar img, .pb-pp-avatar svg { width: 100%; height: 100%; display: block; }
+  .pb-pp-meta { min-width: 0; flex: 1; }
+  .pb-pp-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0F1B1F;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .pb-pp-party {
+    font-size: 11px;
+    color: #8B8578;
+    line-height: 1.4;
+  }
+  .pb-proposer-card.is-retired .pb-pp-name,
+  .pb-proposer-card.is-retired .pb-pp-party { color: #9B9486; }
+
+  @media (max-width: 1024px) {
+    .pb-proposers-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+  @media (max-width: 768px) {
+    .pb-proposers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* ===== Zone 11: 댓글 — 알약 토글 → 텍스트 underline + 카드 흰배경 ===== */
+  .pb-part .comment-write {
+    background: #FFFFFF;
+    border: 1px solid #E8E5DC;
+    border-radius: 10px;
+  }
+  .pb-part .write-input::placeholder,
+  .pb-part input::placeholder { color: #9B9486; }
+  .pb-part .comment-sort { color: #8B8578; font-size: 13px; }
+  .pb-part .sort-btn {
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: #8B8578;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .pb-part .sort-btn:hover { color: #0F1B1F; background: transparent; }
+  .pb-part .sort-btn.active {
+    color: #0F1B1F;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    text-decoration-thickness: 1.5px;
+    background: transparent;
+  }
+  .pb-part .sort-count { color: #8B8578; font-family: 'JetBrains Mono', monospace; }
+  .pb-part .comment-card {
+    background: #FFFFFF;
+    border: 1px solid #E8E5DC;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: none;
+  }
+  .pb-part .comment-card:hover { border-color: #D9D3C3; }
+  .pb-part .comment-replies .comment-card { background: #FAFAF7; }
+  .pb-part .comment-nickname { color: #0F1B1F; font-weight: 700; font-size: 14px; }
+  .pb-part .comment-date { color: #8B8578; font-size: 12px; }
+  .pb-part .comment-body { color: #0F1B1F; font-size: 14px; line-height: 1.7; }
+  .pb-part .comment-action { color: #8B8578; }
+  .pb-part .comment-action:hover { color: #0F1B1F; background: #F3F1EA; }
+  .pb-part .comment-action.liked { color: #8F5800; background: rgba(143,88,0,0.08); }
+  .pb-part .comment-action.liked strong { color: #8F5800; }
+  .pb-part .comments-empty {
+    background: transparent;
+    color: #9B9486;
+    font-style: italic;
+    border: 1px dashed #E8E5DC;
+  }
+
+  /* ===== Zone 6: 우측 sticky 인덱스 (페이지 레벨, 데스크톱 ≥1240px) =====
+     위치: 콘텐츠 우측에 붙음 (5-Zone .ba-shell 의 우측 거터 자리).
+     min(콘텐츠우측+40, viewport우측-232) 로 좁은 화면에선 viewport 안쪽 클램프 */
+  .pb-section-index {
+    position: fixed;
+    top: calc(var(--nav-h) + 32px);
+    left: min(calc(50% + 480px), calc(100% - 232px));
+    width: 200px;
+    z-index: 40;
+    font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-height: calc(100vh - var(--nav-h) - 64px);
+    /* overflow-y:auto 가 x 도 clip 하므로 좌측 도트(left:-5) 잘리는 문제 회피:
+       padding-left 로 도트 영역 확보. 시각상 좌측 시작점은 그대로 보임 */
+    padding-left: 8px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .pb-section-index::-webkit-scrollbar { width: 4px; }
+  .pb-section-index::-webkit-scrollbar-thumb { background: #E8E5DC; border-radius: 2px; }
+  .pb-idx-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-left: 1px solid #E8E5DC;     /* 그룹별 좌측 가이드 라인 */
+    padding-left: 0;
+  }
+  .pb-idx-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: #A8A095;
+    text-transform: uppercase;
+    margin: 0 0 8px 22px;
+  }
+  .pb-idx-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0 7px 22px;
+    font-size: 12px;
+    color: #6B7280;
+    text-decoration: none;
+    line-height: 1.4;
+    transition: color 0.15s;
+  }
+  .pb-idx-item::before {
+    content: '';
+    position: absolute;
+    left: -5px;        /* 가이드 라인 위에 점 올라타게 */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--bg, #F7F6F1);     /* 라인 위 점 — 라인이 점 뒤로 안 보이게 */
+    border: 1px solid #C8C0AA;
+    box-shadow: none;
+    transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .pb-idx-item:hover { color: #0F1B1F; }
+  .pb-idx-item.is-active {
+    color: #0F1B1F;
+    font-weight: 700;
+  }
+  .pb-idx-item.is-active::before {
+    background: #8F5800;
+    border-color: #8F5800;
+    box-shadow: 0 0 0 4px rgba(143,88,0,0.12);
+  }
+  .pb-idx-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #A8A095;
+    font-weight: 400;
+  }
+  /* 1240px 미만에서 인덱스 숨김 (5-Zone shell 우거터 사라지면서 시야 침범) */
+  @media (max-width: 1239px) {
+    .pb-section-index { display: none; }
+  }
+
+  /* ===== 모바일 floating jump bar — 모바일에서 항상 표시, 키보드 올라오면 숨김 ===== */
+  .pb-mobile-jumpbar {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));    /* iOS 홈 인디케이터 영역 보호 */
+    left: 16px;
+    right: 16px;
+    height: 52px;
+    border-radius: 26px;
+    background: rgba(15,27,31,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 60;
+    display: none;        /* 데스크톱 기본 숨김, 모바일 미디어쿼리에서 flex */
+    align-items: center;
+    padding: 6px;
+    gap: 4px;
+    transform: translateY(0);
+    opacity: 1;
+    transition: transform 200ms ease, opacity 200ms ease;
+  }
+  .pb-mobile-jumpbar[data-visible="false"] {
+    transform: translateY(120%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .pb-jb-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.65);
+    text-decoration: none;
+    border-radius: 18px;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1.2;
+    font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
+  }
+  .pb-jb-tab.is-active {
+    color: #FFFFFF;
+    background: rgba(255,255,255,0.08);
+    font-weight: 700;
+  }
+  .pb-jb-up {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #8F5800;
+    border: none;
+    color: #FFFFFF;
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+  }
+  .pb-jb-up:hover { background: #A36500; }
+  @media (max-width: 767px) {
+    .pb-mobile-jumpbar { display: flex; }
+    /* jump bar 가 컨텐츠 가리지 않도록 하단 여백 확보 (52 + 16 + 16) */
+    .bd-wrap { padding-bottom: 84px; }
+  }
+
+  /* ===== Zone 8/9 카드 모바일 padding 완화 ===== */
+  @media (max-width: 768px) {
+    .pb-part { padding: 22px 18px; border-radius: 12px; }
+    .pb-part-h { font-size: 19px; }
+  }
+
   /* 분석 요청 위젯 */
   .analysis-request-section {
     background: var(--bg2);
@@ -1204,7 +1761,7 @@
              data-has-requested="<%= hasRequested ? '1' : '0' %>"
              data-logged-in="<%= isLoggedIn ? '1' : '0' %>">
       <div class="request-header">
-        <h2>🤔 이 법안의 AI 분석이 아직 없어요</h2>
+        <h2>이 법안의 AI 분석이 아직 없어요</h2>
         <p>요청이 <strong><%= reqThreshold %>명</strong>에 도달하면 우선 분석됩니다.</p>
       </div>
 
@@ -1217,7 +1774,7 @@
       </div>
 
       <% if (reachedThreshold) { %>
-        <div class="threshold-reached">🎉 충분한 요청이 모였어요. 곧 분석됩니다.</div>
+        <div class="threshold-reached">충분한 요청이 모였어요. 곧 분석됩니다.</div>
       <% } %>
 
       <div class="request-action">
@@ -1229,27 +1786,38 @@
           <button type="button" class="btn-request-done" disabled>✓ 요청했어요</button>
         <% } else { %>
           <button type="button" class="btn-request" id="btn-request-analysis">
-            💡 이 법안 분석 요청하기
+            이 법안 분석 요청하기
           </button>
         <% } %>
       </div>
     </section>
   <% } %>
 
-  <!-- 국민 찬반 -->
-  <div class="bd-section" id="citizen-vote-section">
-    <h2>국민 찬반
-      <span class="pb-help" data-help-href="/glossary#vote-for" title="로그인한 국민들의 찬반 — 국회의원 표결과는 별개">?</span>
-    </h2>
-    <div id="citizen-vote-widget"></div>
-    <div style="margin-top:12px;font-size:12px;color:var(--sub2);line-height:1.7">
-      국회의원의 본회의 표결과 별개로, 이 서비스에 로그인한 국민들의 찬반을 집계합니다.
+  <!-- ============ Zone 7: 분석 → 참여 챕터 디바이더 ============ -->
+  <div class="ba-chapter">
+    <div class="ba-chapter-bar">
+      <span class="ba-chapter-cap left">02 정독 끝</span>
+      <span class="ba-chapter-cap right">03 당신의 차례 →</span>
     </div>
+    <h2 class="ba-chapter-h">이제 당신이 답할 차례입니다</h2>
+    <p class="ba-chapter-sub">법안에 찬반을 표시하고, 다른 시민들의 의견을 읽어보세요</p>
   </div>
 
-  <div class="bd-section">
-    <h2>본회의 표결 결과</h2>
-    <% const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0; %>
+  <!-- ============ Zone 8: 국민 찬반 ============ -->
+  <section class="pb-part" id="citizen-vote-section">
+    <div class="pb-part-head">
+      <h3 class="pb-part-h">국민 찬반</h3>
+      <p class="pb-part-sub">국회의원의 본회의 표결과 별개로, 이 서비스에 로그인한 국민들의 찬반을 집계합니다.</p>
+    </div>
+    <div id="citizen-vote-widget"></div>
+  </section>
+
+  <!-- ============ Zone 9: 본회의 표결 결과 ============ -->
+  <% const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0; %>
+  <section class="pb-part" id="part-floor-vote">
+    <div class="pb-part-head">
+      <h3 class="pb-part-h">본회의 표결 결과</h3>
+    </div>
     <% if (hasVotes) { %>
       <div class="vote-dashboard">
         <% ['agree','disagree','abstain','absent'].forEach(b => {
@@ -1263,56 +1831,62 @@
           </button>
         <% }); %>
       </div>
-      <div style="margin-top:10px;font-size:12px;color:var(--sub2);text-align:center">
-        각 박스를 누르면 표결 의원 명단이 열립니다.
-      </div>
+      <div class="pb-part-foot">각 박스를 누르면 표결 의원 명단이 열립니다.</div>
     <% } else { %>
-      <div style="padding:32px;text-align:center;color:var(--sub);background:var(--bg3);border:1px dashed var(--border);border-radius:8px">
-        본회의 표결 데이터가 아직 수집되지 않았습니다.
-      </div>
+      <div class="pb-part-empty">본회의 표결 데이터가 아직 수집되지 않았습니다.</div>
     <% } %>
-  </div>
+  </section>
 
-  <% if (coProposers && coProposers.length > 0) { %>
-    <div class="bd-section">
-      <h2>발의자 (<%= coProposers.length %>명)</h2>
-      <div class="proposers-grid">
-        <% coProposers.forEach(cp => { %>
-          <% const chipClasses = ['proposer-chip']; %>
-          <% if (cp.proposer_yn) chipClasses.push('rep'); %>
-          <% if (!cp.name) chipClasses.push('retired'); %>
-          <% if (cp.name) { %>
-            <a href="/politician/<%= cp.mona_cd %>" class="<%= chipClasses.join(' ') %>" style="text-decoration:none">
-              <div class="avatar">
-                <%- avatarHtml(cp.name, cp.photo_url, 28) %>
-              </div>
-              <div style="min-width:0;overflow:hidden">
-                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= cp.name %><% if (cp.proposer_yn) { %> <span style="color:var(--accent);font-size:11px">(대표)</span><% } %></div>
-                <div class="party-sm"><%= cp.party_name || '' %></div>
-              </div>
-            </a>
-          <% } else { %>
-            <div class="<%= chipClasses.join(' ') %>" title="22대 임기 중 퇴임 의원">
-              <div class="avatar">
-                <%- avatarHtml(null, null, 28) %>
-              </div>
-              <div style="min-width:0;overflow:hidden">
-                <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">(퇴임)<% if (cp.proposer_yn) { %> <span style="color:var(--accent);font-size:11px">(대표)</span><% } %></div>
-                <div class="party-sm">—</div>
-              </div>
-            </div>
-          <% } %>
-        <% }); %>
-      </div>
+  <!-- 발의자 섹션은 Zone 1 헤더 메타라인 직하 컴팩트 스택으로 통합됨 (mountBillAnalysis) -->
+
+  <!-- ============ Zone 11: 국민 의견 ============ -->
+  <section class="pb-part" id="part-comments">
+    <div class="pb-part-head">
+      <h3 class="pb-part-h">국민 의견</h3>
+    </div>
+    <div id="comment-widget"></div>
+  </section>
+</div>
+
+<!-- ============ Zone 6: 우측 sticky 인덱스 (페이지 레벨, 데스크톱 전용) ============ -->
+<nav class="pb-section-index" id="pb-section-index" aria-label="섹션 인덱스">
+  <% if (analysis) { %>
+    <div class="pb-idx-group">
+      <div class="pb-idx-label">AI 분석</div>
+      <a class="pb-idx-item" href="#ba-summary"   data-idx="ba-summary">요약</a>
+      <a class="pb-idx-item" href="#ba-changes"   data-idx="ba-changes">핵심 변화</a>
+      <% if (analysis.issues && analysis.issues.length) { %>
+        <a class="pb-idx-item" href="#ba-analysis" data-idx="ba-analysis">분석</a>
+      <% } %>
+      <% if (analysis.judgment_questions && analysis.judgment_questions.length) { %>
+        <a class="pb-idx-item" href="#ba-questions" data-idx="ba-questions">함께 생각</a>
+      <% } %>
     </div>
   <% } %>
-
-  <!-- 국민 댓글 -->
-  <div class="bd-section">
-    <h2>국민 의견</h2>
-    <div id="comment-widget"></div>
+  <div class="pb-idx-group">
+    <div class="pb-idx-label">참여</div>
+    <a class="pb-idx-item" href="#citizen-vote-section" data-idx="citizen-vote-section">
+      국민 찬반 <span class="pb-idx-count" data-count-citizen>—</span>
+    </a>
+    <a class="pb-idx-item" href="#part-floor-vote" data-idx="part-floor-vote">
+      본회의 표결 <span class="pb-idx-count"><%= hasVotes ? nf(voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent) : '—' %></span>
+    </a>
+    <a class="pb-idx-item" href="#part-comments" data-idx="part-comments">
+      의견 <span class="pb-idx-count" data-count-comments>—</span>
+    </a>
   </div>
-</div>
+</nav>
+
+<!-- ============ 모바일 floating jump bar ============ -->
+<nav class="pb-mobile-jumpbar" id="pb-mobile-jumpbar" aria-label="빠른 이동" data-visible="false">
+  <% if (analysis) { %>
+    <a class="pb-jb-tab" href="#ba-summary"  data-idx="ba-summary">요약</a>
+    <a class="pb-jb-tab" href="#ba-analysis" data-idx="ba-analysis">분석</a>
+  <% } %>
+  <a class="pb-jb-tab" href="#citizen-vote-section" data-idx="citizen-vote-section">찬반</a>
+  <a class="pb-jb-tab" href="#part-comments"     data-idx="part-comments">의견</a>
+  <button type="button" class="pb-jb-up" id="pb-jb-up" aria-label="맨 위로">↑</button>
+</nav>
 
 <!-- 표결 의원 명단 모달 -->
 <% if (hasVotes) { %>
@@ -1341,6 +1915,18 @@
 <script>window.__BILL_ANALYSIS__ = null;</script>
 <% } %>
 
+<script>
+  window.__BILL_PROPOSERS__ = <%- JSON.stringify(
+    (coProposers || []).map(cp => ({
+      mona_cd:    cp.mona_cd || null,
+      name:       cp.name    || null,
+      party_name: cp.party_name || null,
+      photo:      cp.photo_url  || null,
+      is_rep:     Boolean(cp.proposer_yn)
+    }))
+  ).replace(/</g, '\\u003c') %>;
+</script>
+
 <% if (hasVotes) { %>
 <script>
   window.__BILL_VOTERS__ = <%- JSON.stringify({
@@ -1365,6 +1951,7 @@
       PB.mountBillAnalysis({
         containerId: 'bill-analysis',
         analysisData: window.__BILL_ANALYSIS__,
+        proposers: window.__BILL_PROPOSERS__ || [],
         bill: {
           bill_id:            BILL_ID,
           bill_no:            '<%= bill.bill_no || "" %>',
@@ -1386,6 +1973,117 @@
     }
   };
   mount();
+
+  /* =========================================================
+     Zone 6 — 페이지 인덱스 (sticky right) + 모바일 jumpbar
+     ========================================================= */
+  const allIdxItems = document.querySelectorAll('.pb-idx-item, .pb-jb-tab');
+  const idxTargetIds = [...new Set([...allIdxItems].map(a => a.dataset.idx).filter(Boolean))];
+
+  // 오프셋: 고정 nav-h(데스크톱 100/모바일 60) + 20 여유. CSS 변수에서 동적 읽기
+  const getScrollOffset = () => {
+    const v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 100;
+    return v + 20;
+  };
+
+  // 클릭 시 헤더 오프셋 보정 스크롤
+  allIdxItems.forEach(a => {
+    a.addEventListener('click', (e) => {
+      const id = a.dataset.idx;
+      const target = document.getElementById(id);
+      if (!target) return;
+      e.preventDefault();
+      window.scrollTo({
+        top: target.getBoundingClientRect().top + window.scrollY - getScrollOffset(),
+        behavior: 'smooth'
+      });
+    });
+  });
+
+  // 활성 섹션 표시 — 스크롤 기반 트리거 (마지막 섹션도 안정적으로 잡힘).
+  // 주의: 5-Zone (ba-summary 등) 은 mountBillAnalysis 가 동적 주입하므로 DOM 대기 필요.
+  const setActive = (id) => {
+    allIdxItems.forEach(a => a.classList.toggle('is-active', a.dataset.idx === id));
+  };
+  let scrollRaf = 0;
+  const updateActive = () => {
+    scrollRaf = 0;
+    // 페이지 끝에 도달했으면(짧은 마지막 섹션이 trigger 라인까지 못 올라감) 마지막 섹션 강제 활성
+    const docHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    const reachedBottom = (window.innerHeight + window.scrollY) >= (docHeight - 24);
+    if (reachedBottom && idxTargetIds.length) {
+      setActive(idxTargetIds[idxTargetIds.length - 1]);
+      return;
+    }
+    const triggerLine = getScrollOffset();
+    let activeId = null;
+    // DOM 순서대로 순회 → top <= triggerLine 인 마지막 섹션 = 현재 위치
+    for (const id of idxTargetIds) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const top = el.getBoundingClientRect().top;
+      if (top <= triggerLine) activeId = id;
+    }
+    // 페이지 맨 위라 아무것도 안 걸리면 첫 섹션
+    if (!activeId && idxTargetIds.length) activeId = idxTargetIds[0];
+    if (activeId) setActive(activeId);
+  };
+  const onScrollIdx = () => {
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(updateActive);
+  };
+  const setupIndexObserver = (retry = 0) => {
+    // 5-Zone 분석 있을 땐 ba-summary 가 주입될 때까지 대기 (최대 ~3초)
+    if (window.__BILL_ANALYSIS__ && !document.getElementById('ba-summary') && retry < 60) {
+      return setTimeout(() => setupIndexObserver(retry + 1), 50);
+    }
+    if (!idxTargetIds.length) return;
+    window.addEventListener('scroll', onScrollIdx, { passive: true });
+    window.addEventListener('resize',  onScrollIdx, { passive: true });
+    updateActive();
+  };
+  setupIndexObserver();
+
+  // 동적 카운트 채우기 — 찬반/의견 (서버에 미리 없는 값). PB 로드 후 수행
+  const fillCount = (selector, value) => {
+    document.querySelectorAll(selector).forEach(el => { el.textContent = value; });
+  };
+  const loadCounts = async () => {
+    if (!window.PB) return setTimeout(loadCounts, 50);
+    try {
+      const d = await PB.fetch(`/api/votes/bill/${encodeURIComponent(BILL_ID)}`);
+      fillCount('[data-count-citizen]', d.total != null ? d.total : '—');
+    } catch (_) {}
+    try {
+      const d = await PB.fetch(`/api/comments?type=bill&targetId=${encodeURIComponent(BILL_ID)}`);
+      const items = Array.isArray(d) ? d : (d.items || []);
+      const visible = items.filter(c => !c.is_deleted).length;
+      fillCount('[data-count-comments]', visible);
+    } catch (_) {}
+  };
+  loadCounts();
+
+  // 모바일 jumpbar — 항상 표시, input/textarea focus 시에만 숨김
+  // (visualViewport 휴리스틱은 모바일 브라우저 URL bar 자동 토글에 오작동하므로 사용 안 함)
+  const jumpbar = document.getElementById('pb-mobile-jumpbar');
+  if (jumpbar) {
+    // jumpbar 를 body 직속으로 이전 — .pb-main(position:relative; z-index:1) 의 스태킹 컨텍스트
+    // 안에 있으면 footer(z-index:1) 가 위로 올라와 가려짐. body 레벨로 빼야 z-index 60 이 진짜로 위.
+    if (jumpbar.parentNode !== document.body) document.body.appendChild(jumpbar);
+    const isInput = (el) => !!(el && el.matches && el.matches('input, textarea, [contenteditable=""], [contenteditable="true"]'));
+    const isInputFocused = () => isInput(document.activeElement);
+    const setJumpbar = (visible) => { jumpbar.dataset.visible = visible ? 'true' : 'false'; };
+    setJumpbar(true);
+    // 포커스 진입 시 input 이면 숨김. 그 외 어떤 이유로도 활성 input 이 없으면 항상 visible.
+    document.addEventListener('focusin',  () => { setJumpbar(!isInputFocused()); });
+    document.addEventListener('focusout', () => {
+      // focusout 직후 activeElement 는 잠시 body 일 수 있음 → 마이크로타스크 후 재확인
+      setTimeout(() => setJumpbar(!isInputFocused()), 0);
+    });
+    document.getElementById('pb-jb-up')?.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
 
   /* =========================================================
      본회의 표결 명단 모달
