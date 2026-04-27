@@ -76,9 +76,9 @@
 
 <style>
   .profile-hero {
-    padding: 40px 24px;
-    border-top: 60px solid transparent;
-    margin-top: -60px;
+    padding: calc(var(--nav-h) + 24px) 24px 40px;
+    border-top: var(--nav-h) solid transparent;
+    margin-top: calc(-1 * var(--nav-h));
     border-bottom: 1px solid var(--border);
     background: linear-gradient(180deg, rgba(184,116,12,0.04) 0%, transparent 100%);
     position: relative;

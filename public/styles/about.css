@@ -102,6 +102,35 @@
   border-top: 1px dashed var(--border2);
 }
 
+/* "지금 사용할 수 있는 기능" 섹션 — 골드톤 강조 */
+.now-section {
+  background: linear-gradient(180deg, #FAF6EB 0%, var(--bg2) 100%);
+  border-color: var(--accent);
+}
+.now-section-lead {
+  text-align: center;
+  margin: -8px 0 24px !important;
+  font-size: 15px !important;
+  color: var(--sub) !important;
+}
+.now-section .direction-item {
+  position: relative;
+  background: var(--bg2);
+  border-color: var(--border);
+}
+.now-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+}
+
 @media (max-width: 768px) {
   .section-title { font-size: 20px; }
   .highlight-section { padding: 30px 18px; }
