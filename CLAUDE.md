@@ -1,5 +1,5 @@
 # 3jjoda 프로젝트 — Claude Code 컨텍스트
-> 마지막 업데이트: 2026-04-26
+> 마지막 업데이트: 2026-04-27
 > 이 파일은 **현재 코드 상태**만 담습니다.
 > 비전·로드맵: [ROADMAP.md](./ROADMAP.md)
 > 작업 이력: [CHANGELOG.md](./CHANGELOG.md)
@@ -355,14 +355,25 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - 라벨(`찬성 논리`/`반대 우려`/`법안 빈틈`)은 카드 좌측 외부 **마진노트** (`position: absolute; left: -180px; width: 160px; text-align: right; mono 12px --ba-meta`)
   - 색상 배지·아코디언·"여기까지 70%" 프로그레스 모두 제거
   - 1240px 미만에서 마진노트 인라인으로 폴백
-- **Zone 4 — 페이지 레벨 sticky 인덱스** (`.pb-section-index`, 2026-04-27 페이지 레벨로 끌어올림):
-  - `position: fixed; top: var(--nav-h) + 32px; right: 32px; width: 200px`
-  - **두 그룹** — `AI 분석` (요약/핵심 변화/분석/함께 생각) + `참여` (국민 찬반/본회의 표결/발의자/의견)
+- **Zone 4 — 페이지 레벨 sticky 인덱스** (`.pb-section-index`, 2026-04-27 페이지 레벨):
+  - `position: fixed; top: var(--nav-h) + 32px; left: min(calc(50% + 480px), calc(100% - 232px)); width: 200px` — 콘텐츠 우측에 밀착, 좁은 화면 클램프
+  - **두 그룹** — `AI 분석` (요약/핵심 변화/분석/함께 생각) + `참여` (국민 찬반/본회의 표결/의견) ※ 발의자는 Zone 1 헤더 스택으로 통합되어 인덱스 항목에서 제거
+  - 그룹별 좌측 1px 가이드 라인 + 8px 도트 (외곽선 `#C8C0AA` → 활성 채움 `#8F5800` + 4px glow). 도트 안쪽 `--bg` 채움으로 라인이 점 뒤로 안 보이게
   - 그룹 라벨: mono 10px / letter-spacing 0.22em / `#A8A095` uppercase
-  - 항목: 12px / 8px 도트 (외곽선 `#C8C0AA` → 활성 채움 `#8F5800` + 4px glow)
-  - 데이터 카운트(찬반·발의자·의견) 우측 정렬, 페이지 로드 후 `PB.fetch` 로 동적 채움
-  - IntersectionObserver 자동 활성, 클릭 smooth scroll (offset 80px)
-  - 1240px 미만 자동 숨김 → 모바일 floating jumpbar (`.pb-mobile-jumpbar`) 로 대체
+  - 항목: 12px / 7px 패딩 / 우측 카운트 (10px `#A8A095`)
+  - 데이터 카운트(찬반·의견) 페이지 로드 후 `PB.fetch` 로 동적 채움 (본회의 표결은 서버 SSR)
+  - **스크롤 기반 활성 트리거** (IntersectionObserver 의 좁은 활성 띠로 짧은 마지막 섹션 못 잡는 문제 회피). DOM 순서대로 순회 → `top <= getScrollOffset()` 인 마지막 섹션 active. 페이지 끝 도달 시 마지막 섹션 강제 활성화
+  - 클릭 스크롤 오프셋: `getScrollOffset()` = `--nav-h + 20` 동적 (데스크톱 120 / 모바일 80) — 5-Zone 헤드라인이 nav 뒤로 가리지 않게
+  - `padding-left: 8px` — `overflow-y:auto` 가 x clip 하는 브라우저 동작 회피용 (도트 좌측 잘림 방지)
+  - 1240px 미만 자동 숨김 → 모바일 floating jumpbar 로 대체
+
+- **모바일 floating jumpbar** (`.pb-mobile-jumpbar`):
+  - `position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 16px))` — iOS 홈 인디케이터 보호
+  - 768~1239px (Fold 펼친·작은 노트북·태블릿) + <768 모바일 모두 노출. ≥1240 데스크톱은 sticky 인덱스 사용
+  - 4 핵심 탭 (요약·분석·찬반·의견) + 골드 ↑ 버튼
+  - **항상 표시**, input/textarea 포커스 시에만 숨김 (`focusin`/`focusout` 위임 + focusout `setTimeout(0)` 으로 activeElement 재확인하여 입력 간 전환 깜빡임 방지)
+  - JS 가 페이지 로드 후 `document.body.appendChild(jumpbar)` 로 이동 — `.pb-main { position:relative; z-index:1 }` 의 stacking context 를 탈출해야 footer (z-index 1) 위로 정상 노출
+  - `.bd-wrap { padding-bottom: 84px }` 같은 범위에 적용 (jumpbar 가 콘텐츠 가리지 않게)
 - **Zone 5 — 질문** (`#ba-questions`, 옛 Zone 4):
   - 골드톤 박스 제거 → 단일 컬럼 본문에 통합
   - 번호 배지: 28px 원형, **외곽선만** (1.5px solid `--ba-gold`), mono 12px 700
@@ -374,7 +385,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 ### `/bill/:id` 참여 섹션 디자인 통합 (Zone 7~11, 2026-04-27)
 5-Zone 토큰을 그대로 이어받아 참여 섹션도 같은 시스템.
 
-- **Zone 7 — 챕터 디바이더** (`.ba-chapter`): 분석 끝 ↔ 참여 시작 사이 풀폭 브레이크. 상단 1px 보더 + 캡션 (`02 정독 끝` / `03 당신의 차례 →`, mono 11px). 메인 헤딩 세리프 900 / 36px "이제 당신이 답할 차례입니다"
+- **Zone 7 — 챕터 디바이더** (`.ba-chapter`): 분석 끝 ↔ 참여 시작 사이 풀폭 브레이크. 상단 1px 보더 + 메인 헤딩 세리프 900 / 36px "이제 당신이 답할 차례입니다" + 서브 15px `#6B7280` "법안에 찬반을 표시하고, 다른 시민들의 의견을 읽어보세요"
 - **Zone 8 — 국민 찬반** (`#citizen-vote-section .pb-part`): cv-bar 12px / 차콜+골드. CTA 두 버튼 동일 무게 흰 배경. 위치(좌/우) 로만 입장 구분 — 이모지 제거
 - **Zone 9 — 본회의 표결** (`#part-floor-vote`): 데이터 없을 때 italic `#9B9486` empty state. 있을 때 4-박스 vote-dashboard 톤만 통일 (정당색은 객관 데이터라 그대로)
 - ~~**Zone 10 — 발의자**~~: **2026-04-27 폐기** — 발의자는 메타데이터의 일부라 Zone 1 헤더 컴팩트 스택으로 통합됨. 참여 영역에서 분리

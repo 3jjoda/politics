@@ -5,6 +5,43 @@
 
 ---
 
+## 2026-04-27 — 법안 상세 정리·버그 수정 (Zone 6/7/Jumpbar)
+
+### 1. 우측 sticky 인덱스
+- **활성 표시 안 됨 → 수정**: IntersectionObserver(`-100/-50%` 좁은 활성 띠) 가 짧은 마지막 섹션을 못 잡던 문제 → **스크롤 기반 트리거**로 교체. DOM 순회로 `top <= triggerLine` 인 마지막 섹션을 active 로 표시 + 페이지 끝 도달 시 마지막 섹션 강제 활성화
+- **위치 너무 우측 → 수정**: `right: 32px` → `left: min(calc(50% + 480px), calc(100% - 232px))` 로 콘텐츠 우측에 밀착, 좁은 화면 클램프
+- **5-Zone 동적 주입 대기**: 인덱스 setup 이 `mountBillAnalysis` 의 동적 DOM 주입을 기다리도록 retry (최대 3초)
+- **그룹별 좌측 가이드 1px 라인** 부활 + 도트 라인 위로 올라타게 (`left: -5px` + 점 안쪽 `--bg` 채움)
+- **도트 좌측 잘림 → 수정**: `overflow-y: auto` 가 x 도 clip 하는 브라우저 동작 회피용 `padding-left: 8px`
+
+### 2. 클릭 스크롤 오프셋 동적화
+- 고정 80px → `getScrollOffset()` = `--nav-h + 20` (데스크톱 120 / 모바일 80)
+- 5-Zone 섹션 헤드라인이 nav 뒤로 가리던 문제 해결. 트리거 라인도 동일 값 사용으로 일관성
+
+### 3. Zone 7 챕터 디바이더 정리
+- 좌우 캡션 (`02 정독 끝` / `03 당신의 차례 →`) **제거** — 페이지에 01 마커가 없어 출처 불명. 헤딩 + 서브텍스트만 남김
+
+### 4. 모바일 floating jump bar 가시성 변경
+- **항상 표시** (스크롤 방향 감지 로직 폐기)
+- 키보드 올라올 때만 숨김: `focusin`/`focusout` 이벤트 위임으로 input/textarea/contenteditable 포커스 시 `data-visible="false"` (visualViewport 휴리스틱은 모바일 URL bar 자동 토글에 오작동해서 폐기)
+- focusout 시 `setTimeout(0)` 으로 activeElement 재확인 — 입력 간 전환 깜빡임 방지
+- iOS 홈 인디케이터 보호: `bottom: max(16px, env(safe-area-inset-bottom, 16px))`
+
+### 5. Jumpbar footer 흡수 버그 수정
+- 원인: `.pb-main { position: relative; z-index: 1 }` 가 자체 stacking context 생성 → jumpbar 의 z-index 60 이 main 내부에서만 의미. body 레벨에서 footer (z-index 1) 가 DOM 후순위라 위로 그려져 흡수
+- 수정: 페이지 로드 직후 `document.body.appendChild(jumpbar)` 로 body 직속 이동 → main stacking context 탈출
+
+### 6. Jumpbar 노출 범위 확장
+- `max-width: 767px` → `max-width: 1239px` — Fold 펼친 상태(~800px), 작은 노트북, 태블릿까지 커버
+- `.bd-wrap padding-bottom: 84px` 도 같은 범위에 적용 (jumpbar 가 콘텐츠 가리지 않게)
+- 결과: ≥1240 sticky 인덱스 / 768~1239 jumpbar / <768 jumpbar — 모든 폭에서 nav 보장
+
+### 7. 발의자 스택 접기 버그 수정
+- 원인: `.ba-proposers-grid { display: grid }` 가 브라우저 기본 `[hidden] { display: none }` 을 덮어씀 → JS 가 `hidden` 추가해도 안 접힘
+- 수정: `data-expanded` 한 곳에서만 제어. `[data-expanded="true"] .ba-proposers-grid { display: grid }` 로 부모 attribute 기반 표시. JS 도 `data-expanded` 만 토글, `hidden` 조작 제거
+
+---
+
 ## 2026-04-27 — 발의자 → Zone 1 헤더 컴팩트 스택 통합
 
 발의자는 법안 메타데이터의 일부 → 참여 섹션에서 분리해서 헤더 메타라인 직하로 옮김.
