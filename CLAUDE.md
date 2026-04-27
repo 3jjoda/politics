@@ -300,6 +300,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
 | `/community/:id` | `community/detail.ejs` | 상세 (조회수·좋아요·댓글) |
+| `/my` | `my/profile.ejs` | 마이페이지 (`requireLogin`) — 프로필 / 성향 카드 / 풀이 이력 / 분석 요청 요약 |
 | `/my/analysis-requests` | `my/analysis_requests.ejs` | 마이페이지 — 내가 요청한 AI 분석 (`requireLogin`) |
 | `/balance-game` | `balance/invite.ejs` | 성향 진단 — 게임팩 컬렉션 (입문 게임팩 + 주제팩 placeholder) |
 | `/balance-game/respond` | `balance/respond.ejs` | 단계 2 응답 (한 화면 한 문항, 즉시 서버 저장, 이어하기, 키보드 1·2·3·←) |
@@ -364,6 +365,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | 메서드 | 경로 | 내용 |
 |---|---|---|
 | GET | `/api/auth/check-nickname?nickname=X` | 닉네임 중복 체크 |
+| PUT | `/api/auth/nickname` | 닉네임 변경 (마이페이지 인라인 편집, requireLogin) |
 | DELETE | `/api/auth/withdraw` | 회원 탈퇴 (익명화) |
 | GET / POST / PUT / DELETE | `/api/comments[/:id]` | 댓글 CRUD (소프트 삭제, 대댓글 1단계) |
 | GET / POST | `/api/ratings/politician/:monacd` | 별점 조회/UPSERT |

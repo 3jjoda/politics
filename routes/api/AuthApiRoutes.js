@@ -9,6 +9,9 @@ export default (db) => {
     // 닉네임 중복 체크 (실시간 피드백용)
     router.get('/check-nickname', c.checkNickname);
 
+    // 닉네임 변경 (마이페이지 인라인 편집)
+    router.put('/nickname', requireLogin, c.updateNickname);
+
     // 회원 탈퇴 (익명화)
     router.delete('/withdraw', requireLogin, c.withdraw);
 

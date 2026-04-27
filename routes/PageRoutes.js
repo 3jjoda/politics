@@ -5,6 +5,7 @@ import InitController from '../controllers/InitController.js';
 import PoliticianController from '../controllers/PoliticianController.js';
 import BillController from '../controllers/BillController.js';
 import BalanceGameController from '../controllers/BalanceGameController.js';
+import MyController from '../controllers/MyController.js';
 import { requireLogin } from '../middlewares/auth.js';
 
 export default (db) => {
@@ -13,6 +14,7 @@ export default (db) => {
     const politicianController = PoliticianController(db);
     const billController = BillController(db);
     const balanceGameController = BalanceGameController(db);
+    const myController = MyController(db);
 
     // 메인 페이지
     router.get('/', initController.getHomePage);
@@ -54,7 +56,8 @@ export default (db) => {
     // AI 분석 요청 (POST) — 로그인 필수
     router.post('/bill/:id/request-analysis', requireLogin, billController.requestAnalysis);
 
-    // 마이페이지 — 내가 요청한 분석
+    // 마이페이지
+    router.get('/my',                   requireLogin, myController.getMyPage);
     router.get('/my/analysis-requests', requireLogin, billController.getMyAnalysisRequestsPage);
 
     // 성향 진단 (밸런스 게임) — 5단계 + 매핑 페이지

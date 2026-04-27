@@ -75,6 +75,15 @@ export default (db) => {
                 logger.info(`Auth: user_id=${userId} 탈퇴 처리됨 (익명화)`);
             }
             return result;
+        },
+
+        /* 닉네임 변경 — 마이페이지 인라인 편집용 */
+        updateNickname: async (userId, nickname) => {
+            const updated = await userDao.updateNickname(userId, nickname);
+            if (updated) {
+                logger.info(`Auth: user_id=${userId} 닉네임 변경 → ${nickname}`);
+            }
+            return updated;
         }
     };
 };

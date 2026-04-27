@@ -5,6 +5,33 @@
 
 ---
 
+## 2026-04-27 — 마이페이지 (`/my`) v1
+
+### 1. 통합 마이페이지 신설
+- 기존: `/my/analysis-requests` 단독 페이지만 존재
+- 신규: `/my` 랜딩 페이지 — 4섹션 한 화면
+  1. **프로필** — 닉네임 인라인 편집 (PUT `/api/auth/nickname`, 중복체크), provider/이메일/성별/연령대/가입일 read-only
+  2. **내 성향 카드** — 4축 좌표 다이아몬드 (220px 정적 SVG, reveal 패턴 축소), 축별 막대그래프, mapping 버전·`computed_at`·총 응답 수 메타. 미완료 시 진단 시작 CTA
+  3. **풀이 이력** — 활성 게임팩 전체에 대해 응답 수 `<현재>/<목표문항수>`, 마지막 응답일, 상태 pill (완료/부분/미시작) — 종합팩 우선 정렬
+  4. **분석 요청 요약** — 총/완료/대기 카운터 + 최근 3건 링크 + 전체 보기 → `/my/analysis-requests`
+
+### 2. 닉네임 변경 API
+- `PUT /api/auth/nickname` — `requireLogin`, body `{ nickname }`
+- 검증: 기존 `validateNickname` (2~20자, 한/영/숫/_) + 자기 자신은 no-op 허용 + UNIQUE 충돌 시 409
+- DAO 쿼리: `daos/queries/user/updateNickname.sql` — 자기 행만, NOT EXISTS 로 다른 사용자 점유 닉네임 차단
+
+### 3. 풀이 이력 집계 DAO
+- `BalanceGameDao.listUserPackHistory(userId, mappingVersion)` 추가
+- LEFT JOIN 으로 모든 활성 팩에 응답 수·`MAX(created_at)`·distinct 질문 카운트 집계
+- 종합팩 우선 정렬 후 `display_order` 순
+
+### 4. 진입 동선
+- 데스크톱 user dropdown 최상단에 "마이페이지" + "내가 요청한 분석" 두 항목
+- 모바일 햄버거 패널 `pb-mobile-auth` 영역에도 동일 추가
+- 햄버거 버튼은 항상 표시 → 모바일에서 dropdown 자체가 없어졌어도 패널로 진입 가능
+
+---
+
 ## 2026-04-26 — "당신과의 비교" 펼침 바디 가운데 정렬 + 중복 제거
 
 ### 1. 전체 일치도 박스 제거

@@ -1,0 +1,718 @@
+<%
+  const fmtDateOnly = (d) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
+  };
+  const fmtDateTime = (d) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    return `${fmtDateOnly(d)} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+  };
+  const providerLabel = user.provider === 'google' ? 'Google'
+                      : user.provider === 'kakao'  ? 'Kakao'
+                      : '로컬';
+  const genderLabel   = user.gender === 'male' ? '남성'
+                      : user.gender === 'female' ? '여성'
+                      : user.gender === 'other'  ? '기타' : '—';
+  const ageLabel      = user.age_group ? user.age_group.replace('s', '대') : '—';
+  const econ = axisScore ? Number(axisScore.economy ?? 0) : 0;
+  const soci = axisScore ? Number(axisScore.social ?? 0) : 0;
+  const sec  = axisScore ? Number(axisScore.security ?? 0) : 0;
+  const inst = axisScore ? Number(axisScore.institution ?? 0) : 0;
+%>
+
+<style>
+  .my-wrap {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: calc(var(--nav-h) + 36px) 24px 80px;
+  }
+
+  .my-breadcrumb {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub2);
+    margin-bottom: 14px;
+  }
+  .my-breadcrumb a { color: var(--sub); text-decoration: none; }
+  .my-breadcrumb a:hover { color: var(--accent); }
+  .my-breadcrumb .sep { color: var(--border2); margin: 0 6px; }
+
+  .my-head {
+    margin-bottom: 28px;
+  }
+  .my-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--text);
+    margin: 0 0 6px;
+    letter-spacing: 0.02em;
+  }
+  .my-sub {
+    font-size: 13px;
+    color: var(--sub);
+  }
+
+  /* ====== 공통 카드 ====== */
+  .my-section {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 26px;
+    margin-bottom: 18px;
+  }
+  .my-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .my-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+  }
+  .my-section-title .icon { color: var(--accent); margin-right: 6px; }
+  .my-section-link {
+    font-size: 13px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .my-section-link:hover { text-decoration: underline; }
+
+  /* ====== 1. 프로필 ====== */
+  .pf-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 22px;
+    align-items: center;
+  }
+  .pf-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .pf-avatar svg, .pf-avatar img { width: 100%; height: 100%; display: block; }
+  .pf-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px 22px;
+  }
+  .pf-field { font-size: 13px; }
+  .pf-label {
+    color: var(--sub2);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .pf-value {
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .pf-value.muted { color: var(--sub); font-weight: 400; }
+
+  /* 닉네임 인라인 편집 */
+  .pf-nick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pf-nick-text {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .pf-nick-edit-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--sub);
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .pf-nick-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pf-nick-form {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .pf-nick-form.editing { display: flex; }
+  .pf-nick.editing .pf-nick-text,
+  .pf-nick.editing .pf-nick-edit-btn { display: none; }
+  .pf-nick-input {
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    width: 180px;
+    font-family: inherit;
+  }
+  .pf-nick-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .pf-nick-save, .pf-nick-cancel {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    border: 1px solid var(--border2);
+  }
+  .pf-nick-save { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+  .pf-nick-save:hover { background: var(--accent2); }
+  .pf-nick-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .pf-nick-cancel { background: transparent; color: var(--sub); }
+  .pf-nick-cancel:hover { background: var(--bg3); }
+  .pf-nick-msg {
+    font-size: 12px;
+    margin-top: 6px;
+    flex-basis: 100%;
+  }
+  .pf-nick-msg.ok    { color: var(--green); }
+  .pf-nick-msg.error { color: var(--red); }
+
+  /* ====== 2. 성향 카드 ====== */
+  .ax-card {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 28px;
+    align-items: center;
+  }
+  .ax-diamond-wrap {
+    width: 220px;
+    height: 220px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .ax-svg { width: 100%; height: 100%; overflow: visible; }
+  .ax-grid    { fill: none; stroke: var(--border); stroke-width: 0.5; }
+  .ax-axis    { stroke: var(--border2); stroke-width: 1; }
+  .ax-fill    { fill: rgba(184,116,12,0.18); stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; }
+  .ax-dot     { fill: var(--accent); }
+  .ax-label   {
+    fill: var(--sub2); font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; text-anchor: middle;
+  }
+  .ax-label.bottom { dominant-baseline: hanging; }
+
+  .ax-info { min-width: 0; }
+  .ax-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--sub2);
+    margin-bottom: 10px;
+    letter-spacing: 0.06em;
+  }
+  .ax-axes-list {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .ax-axes-list .row {
+    display: grid;
+    grid-template-columns: 90px 1fr 60px;
+    gap: 10px;
+    font-size: 13px;
+    align-items: center;
+  }
+  .ax-axes-list .lab  { color: var(--sub); }
+  .ax-axes-list .bar  {
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ax-axes-list .bar > i {
+    position: absolute;
+    top: 0; bottom: 0;
+    background: var(--accent);
+    border-radius: 3px;
+  }
+  .ax-axes-list .val  {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: right;
+    font-size: 13px;
+  }
+  .ax-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .ax-cta:hover { background: var(--accent2); }
+  .ax-cta.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    margin-left: 8px;
+  }
+  .ax-cta.secondary:hover { background: #FAF6EB; }
+
+  .ax-empty {
+    text-align: center;
+    padding: 20px;
+    color: var(--sub);
+  }
+  .ax-empty .ax-cta { margin-top: 14px; }
+
+  /* ====== 3. 풀이 이력 ====== */
+  .hist-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .hist-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 14px;
+    padding: 14px 18px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    align-items: center;
+  }
+  .hist-row.completed { border-left: 3px solid var(--green); }
+  .hist-row.partial   { border-left: 3px solid var(--accent); }
+  .hist-row.unstarted { opacity: 0.65; }
+  .hist-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .hist-title .general-tag {
+    display: inline-block;
+    background: rgba(184,116,12,0.12);
+    color: var(--accent);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hist-meta {
+    font-size: 11px;
+    color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hist-counts {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--sub);
+    text-align: right;
+    line-height: 1.5;
+  }
+  .hist-counts strong { color: var(--text); font-weight: 700; }
+  .hist-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hist-status-pill.completed { background: rgba(15,157,110,0.10); color: var(--green); border: 1px solid var(--green); }
+  .hist-status-pill.partial   { background: #FAF6EB;                color: var(--accent); border: 1px solid var(--accent); }
+  .hist-status-pill.unstarted { background: var(--bg3);              color: var(--sub2); border: 1px solid var(--border); }
+
+  /* ====== 4. 분석 요청 요약 ====== */
+  .req-summary-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .req-stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    text-align: center;
+  }
+  .req-stat-num {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .req-stat.done    .req-stat-num { color: var(--green); }
+  .req-stat.pending .req-stat-num { color: var(--accent); }
+  .req-stat-label {
+    font-size: 12px;
+    color: var(--sub);
+  }
+  .req-recent {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .req-recent a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+    text-decoration: none;
+    gap: 10px;
+  }
+  .req-recent a:hover { border-color: var(--accent); }
+  .req-recent .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .req-recent .pill {
+    flex-shrink: 0;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .req-recent .pill.done    { background: rgba(15,157,110,0.10); color: var(--green); }
+  .req-recent .pill.pending { background: #FAF6EB;                color: var(--accent); }
+
+  .req-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--sub);
+    font-size: 13px;
+  }
+  .req-empty a { color: var(--accent); }
+
+  @media (max-width: 768px) {
+    .my-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    .my-title { font-size: 28px; }
+    .my-section { padding: 20px 18px; }
+    .pf-row { grid-template-columns: 64px 1fr; gap: 16px; }
+    .pf-avatar { width: 64px; height: 64px; }
+    .ax-card { grid-template-columns: 1fr; }
+    .ax-diamond-wrap { width: 200px; height: 200px; }
+    .hist-row { grid-template-columns: 1fr auto; gap: 10px; padding: 12px 14px; }
+    .hist-counts { display: none; }
+    .req-summary-row { grid-template-columns: 1fr; gap: 8px; }
+  }
+</style>
+
+<div class="my-wrap">
+  <nav class="my-breadcrumb">
+    <a href="/">홈</a>
+    <span class="sep">/</span>
+    <span>마이페이지</span>
+  </nav>
+
+  <header class="my-head">
+    <h1 class="my-title">마이페이지</h1>
+    <p class="my-sub"><strong style="color:var(--text)"><%= user.nickname %></strong>님, 환영합니다.</p>
+  </header>
+
+  <!-- ============ 1. 프로필 ============ -->
+  <section class="my-section">
+    <div class="my-section-head">
+      <h2 class="my-section-title"><span class="icon">👤</span>프로필</h2>
+    </div>
+    <div class="pf-row">
+      <div class="pf-avatar"><%- avatarHtml(user.nickname, null, 80) %></div>
+      <div>
+        <div class="pf-nick" id="pf-nick">
+          <span class="pf-nick-text" id="pf-nick-text"><%= user.nickname %></span>
+          <button type="button" class="pf-nick-edit-btn" id="pf-nick-edit-btn">변경</button>
+          <div class="pf-nick-form" id="pf-nick-form">
+            <input type="text" class="pf-nick-input" id="pf-nick-input"
+                   value="<%= user.nickname %>"
+                   maxlength="20"
+                   autocomplete="off">
+            <button type="button" class="pf-nick-save"   id="pf-nick-save">저장</button>
+            <button type="button" class="pf-nick-cancel" id="pf-nick-cancel">취소</button>
+            <div class="pf-nick-msg" id="pf-nick-msg"></div>
+          </div>
+        </div>
+        <div class="pf-fields" style="margin-top:14px">
+          <div class="pf-field">
+            <div class="pf-label">계정</div>
+            <div class="pf-value"><%= providerLabel %></div>
+          </div>
+          <div class="pf-field">
+            <div class="pf-label">이메일</div>
+            <div class="pf-value muted"><%= user.email || '—' %></div>
+          </div>
+          <div class="pf-field">
+            <div class="pf-label">성별</div>
+            <div class="pf-value muted"><%= genderLabel %></div>
+          </div>
+          <div class="pf-field">
+            <div class="pf-label">연령대</div>
+            <div class="pf-value muted"><%= ageLabel %></div>
+          </div>
+          <div class="pf-field">
+            <div class="pf-label">가입일</div>
+            <div class="pf-value muted"><%= fmtDateOnly(user.created_at) %></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. 성향 카드 ============ -->
+  <section class="my-section">
+    <div class="my-section-head">
+      <h2 class="my-section-title"><span class="icon">📊</span>내 성향 카드</h2>
+      <% if (completed) { %>
+        <a href="/balance-game/reveal" class="my-section-link">전체 카드 보기 →</a>
+      <% } %>
+    </div>
+    <% if (completed && axisScore) { %>
+      <div class="ax-card">
+        <div class="ax-diamond-wrap">
+          <%
+            const cx = 110, cy = 110, R = 80;
+            const top    = { x: cx,           y: cy - R * Math.abs(soci) / 1.0 * (soci >= 0 ? 1 : -1) + (soci >= 0 ? 0 : 0) };
+            // 다이아몬드는 ±1.0 클램프
+            const clampVis = (v) => Math.max(-1, Math.min(1, Number(v) || 0));
+            const cE = clampVis(econ), cS = clampVis(soci), cSe = clampVis(sec), cI = clampVis(inst);
+            const ptTop    = { x: cx,                  y: cy - R * cS };  // social
+            const ptRight  = { x: cx + R * cE,         y: cy };           // economy
+            const ptBottom = { x: cx,                  y: cy + R * cSe }; // security
+            const ptLeft   = { x: cx - R * cI,         y: cy };           // institution
+            const fillPts  = [ptTop, ptRight, ptBottom, ptLeft]
+                              .map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+          %>
+          <svg class="ax-svg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+            <% [0.25, 0.50, 0.75, 1.00].forEach(scale => {
+                 const r = R * scale;
+            %>
+              <polygon class="ax-grid" points="<%= cx %>,<%= cy - r %> <%= cx + r %>,<%= cy %> <%= cx %>,<%= cy + r %> <%= cx - r %>,<%= cy %>"/>
+            <% }); %>
+            <line class="ax-axis" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
+            <line class="ax-axis" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
+
+            <polygon class="ax-fill" points="<%= fillPts %>"/>
+            <% [ptTop, ptRight, ptBottom, ptLeft].forEach(p => { %>
+              <circle class="ax-dot" cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="3.5"/>
+            <% }); %>
+
+            <text class="ax-label"        x="<%= cx %>"        y="<%= cy - R - 6 %>">사회</text>
+            <text class="ax-label bottom" x="<%= cx %>"        y="<%= cy + R + 6 %>">안보</text>
+            <text class="ax-label"        x="<%= cx + R + 14 %>" y="<%= cy + 4 %>">경제</text>
+            <text class="ax-label"        x="<%= cx - R - 14 %>" y="<%= cy + 4 %>">제도</text>
+          </svg>
+        </div>
+        <div class="ax-info">
+          <div class="ax-meta">📊 mapping <%= mappingVersion %> · <%= fmtDateOnly(axisScore.computed_at) %> 분석 · <%= axisScore.total_responses %>개 응답 누적</div>
+          <div class="ax-axes-list">
+            <% [
+              { key: 'economy',     val: econ, lab: axes.economy.label },
+              { key: 'social',      val: soci, lab: axes.social.label },
+              { key: 'security',    val: sec,  lab: axes.security.label },
+              { key: 'institution', val: inst, lab: axes.institution.label }
+            ].forEach(a => {
+              const pct = Math.min(100, Math.abs(a.val) * 100);
+              const isLeft = a.val < 0;
+            %>
+              <div class="row">
+                <span class="lab"><%= a.lab %></span>
+                <span class="bar">
+                  <i style="<%= isLeft ? `right:50%; width:${pct/2}%;` : `left:50%; width:${pct/2}%;` %>"></i>
+                </span>
+                <span class="val"><%= a.val.toFixed(2) %></span>
+              </div>
+            <% }); %>
+          </div>
+          <div>
+            <a href="/balance-game/compare" class="ax-cta">📊 비교 보기</a>
+            <a href="/balance-game" class="ax-cta secondary">게임팩</a>
+          </div>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="ax-empty">
+        <p>아직 성향 진단을 완료하지 않으셨어요.</p>
+        <p style="font-size:13px;color:var(--sub2);margin-top:6px">
+          종합팩 20문항을 풀면 4축 좌표 카드가 생성됩니다.
+        </p>
+        <a href="/balance-game" class="ax-cta">🎯 진단 시작하기</a>
+      </div>
+    <% } %>
+  </section>
+
+  <!-- ============ 3. 풀이 이력 ============ -->
+  <section class="my-section">
+    <div class="my-section-head">
+      <h2 class="my-section-title"><span class="icon">🎮</span>풀이 이력</h2>
+      <a href="/balance-game" class="my-section-link">게임팩 더 보기 →</a>
+    </div>
+    <div class="hist-list">
+      <% packHistory.forEach(p => {
+           const status = (p.response_count >= p.question_count && p.question_count > 0) ? 'completed'
+                       : p.response_count > 0 ? 'partial' : 'unstarted';
+           const statusLabel = status === 'completed' ? '✓ 완료'
+                             : status === 'partial'   ? '⏳ 부분 풀이'
+                             : '미시작';
+      %>
+        <div class="hist-row <%= status %>">
+          <div>
+            <div class="hist-title">
+              <%= p.title %>
+              <% if (p.is_general) { %><span class="general-tag">종합</span><% } %>
+            </div>
+            <div class="hist-meta">
+              <% if (p.last_responded_at) { %>
+                마지막 응답 <%= fmtDateTime(p.last_responded_at) %>
+              <% } else { %>
+                아직 풀지 않음
+              <% } %>
+            </div>
+          </div>
+          <div class="hist-counts">
+            <strong><%= p.response_count %></strong> / <%= p.question_count %>문항
+          </div>
+          <span class="hist-status-pill <%= status %>"><%= statusLabel %></span>
+        </div>
+      <% }); %>
+      <% if (packHistory.length === 0) { %>
+        <div class="ax-empty">아직 활성화된 게임팩이 없습니다.</div>
+      <% } %>
+    </div>
+  </section>
+
+  <!-- ============ 4. 분석 요청 ============ -->
+  <section class="my-section">
+    <div class="my-section-head">
+      <h2 class="my-section-title"><span class="icon">🤖</span>내가 요청한 AI 분석</h2>
+      <% if (analysisSummary.total > 0) { %>
+        <a href="/my/analysis-requests" class="my-section-link">전체 보기 →</a>
+      <% } %>
+    </div>
+    <% if (analysisSummary.total === 0) { %>
+      <div class="req-empty">
+        아직 요청한 법안이 없어요. <a href="/bill">법안 둘러보기 →</a>
+      </div>
+    <% } else { %>
+      <div class="req-summary-row">
+        <div class="req-stat">
+          <div class="req-stat-num"><%= analysisSummary.total %></div>
+          <div class="req-stat-label">총 요청</div>
+        </div>
+        <div class="req-stat done">
+          <div class="req-stat-num"><%= analysisSummary.done %></div>
+          <div class="req-stat-label">분석 완료</div>
+        </div>
+        <div class="req-stat pending">
+          <div class="req-stat-num"><%= analysisSummary.pending %></div>
+          <div class="req-stat-label">대기</div>
+        </div>
+      </div>
+      <div class="req-recent">
+        <% analysisSummary.recent.forEach(r => { %>
+          <a href="/bill/<%= r.bill_id %>">
+            <span class="name"><%= r.bill_name %></span>
+            <span class="pill <%= r.has_ai_analysis ? 'done' : 'pending' %>">
+              <%= r.has_ai_analysis ? '✓ 분석 완료' : '⏳ 대기' %>
+            </span>
+          </a>
+        <% }); %>
+      </div>
+    <% } %>
+  </section>
+</div>
+
+<script>
+(() => {
+  const root      = document.getElementById('pf-nick');
+  const text      = document.getElementById('pf-nick-text');
+  const form      = document.getElementById('pf-nick-form');
+  const editBtn   = document.getElementById('pf-nick-edit-btn');
+  const input     = document.getElementById('pf-nick-input');
+  const saveBtn   = document.getElementById('pf-nick-save');
+  const cancelBtn = document.getElementById('pf-nick-cancel');
+  const msg       = document.getElementById('pf-nick-msg');
+
+  let originalNick = text.textContent.trim();
+
+  const setMsg = (kind, txt) => {
+    msg.className = 'pf-nick-msg ' + (kind || '');
+    msg.textContent = txt || '';
+  };
+  const startEdit = () => {
+    root.classList.add('editing');
+    form.classList.add('editing');
+    input.value = originalNick;
+    input.focus();
+    input.select();
+    setMsg('', '');
+  };
+  const stopEdit = () => {
+    root.classList.remove('editing');
+    form.classList.remove('editing');
+    setMsg('', '');
+  };
+  const save = async () => {
+    const v = input.value.trim();
+    if (!v) { setMsg('error', '닉네임을 입력해주세요.'); return; }
+    if (v === originalNick) { stopEdit(); return; }
+    saveBtn.disabled = true;
+    setMsg('', '저장 중...');
+    try {
+      const res = await fetch('/api/auth/nickname', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ nickname: v })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg('error', data.error || `오류 (HTTP ${res.status})`);
+        saveBtn.disabled = false;
+        return;
+      }
+      originalNick = data.nickname;
+      text.textContent = data.nickname;
+      setMsg('ok', '저장되었습니다.');
+      setTimeout(stopEdit, 800);
+    } catch (err) {
+      setMsg('error', '네트워크 오류: ' + err.message);
+      saveBtn.disabled = false;
+    } finally {
+      // saveBtn 활성화 복구는 성공 케이스에선 stopEdit 후 자동 reset
+      saveBtn.disabled = false;
+    }
+  };
+
+  editBtn.addEventListener('click', startEdit);
+  cancelBtn.addEventListener('click', stopEdit);
+  saveBtn.addEventListener('click', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter')  { e.preventDefault(); save(); }
+    if (e.key === 'Escape') { e.preventDefault(); stopEdit(); }
+  });
+})();
+</script>

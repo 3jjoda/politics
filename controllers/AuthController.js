@@ -201,6 +201,40 @@ export default (db) => {
             } catch (err) { next(err); }
         },
 
+        /* 닉네임 변경 (PUT /api/auth/nickname) */
+        updateNickname: async (req, res, next) => {
+            try {
+                const userId = req.session?.userId || (req.user && req.user.user_id);
+                if (!userId) return res.status(401).json({ error: '로그인이 필요합니다.' });
+
+                const { nickname } = req.body || {};
+                const v = authService.validateNickname(nickname);
+                if (!v.ok) return res.status(400).json({ error: v.reason });
+
+                const available = await authService.isNicknameAvailable(v.value);
+                if (!available) {
+                    // 본인 현재 닉네임이면 그냥 OK 응답 (no-op)
+                    const me = await authService.findById(userId);
+                    if (me && me.nickname === v.value) {
+                        return res.json({ ok: true, nickname: v.value });
+                    }
+                    return res.status(409).json({ error: '이미 사용 중인 닉네임입니다.' });
+                }
+
+                const updated = await authService.updateNickname(userId, v.value);
+                if (!updated) {
+                    return res.status(409).json({ error: '닉네임 변경에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+                }
+                res.json({ ok: true, nickname: updated.nickname });
+            } catch (err) {
+                if (err.code === '23505') {
+                    return res.status(409).json({ error: '이미 사용 중인 닉네임입니다.' });
+                }
+                logger.error('닉네임 변경 중 에러:', `${err.message}\n${err.stack}`);
+                next(err);
+            }
+        },
+
         /* 회원 탈퇴 (DELETE /api/auth/withdraw) */
         withdraw: async (req, res, next) => {
             try {

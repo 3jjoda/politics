@@ -27,6 +27,9 @@ export default (db) => {
         listUserResponsesByPack: (userId, packId) =>
             dao.listUserResponsesByPack(userId, packId, MAPPING_VERSION),
 
+        listUserPackHistory: (userId) =>
+            dao.listUserPackHistory(userId, MAPPING_VERSION),
+
         getUserAxisScore: (userId) => dao.getUserAxisScore(userId, MAPPING_VERSION),
 
         /* 응답 1건 저장 + 좌표 누적 갱신
