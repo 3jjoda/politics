@@ -1192,18 +1192,6 @@
     border-top: 1px solid #E8E5DC;
     text-align: center;
   }
-  .ba-chapter-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.18em;
-    color: #8B8578;
-    text-transform: uppercase;
-    margin-bottom: 28px;
-    padding: 0 8px;
-  }
   .ba-chapter-h {
     font-family: 'Noto Serif KR', serif;
     font-weight: 900;
@@ -1225,7 +1213,6 @@
     .ba-chapter { margin: 64px -16px 32px; padding-top: 24px; }
     .ba-chapter-h { font-size: 26px; }
     .ba-chapter-sub { font-size: 14px; }
-    .ba-chapter-bar { font-size: 10px; }
   }
 
   /* ===== 공용 .pb-part 컨테이너 (Zone 8~11) ===== */
@@ -1600,7 +1587,8 @@
     margin-left: 4px;
   }
   .pb-jb-up:hover { background: #A36500; }
-  @media (max-width: 767px) {
+  /* sticky 인덱스가 숨겨지는 범위(<1240px) 전체에서 jumpbar 노출 — Fold 펼친 상태(~800px) 포함 */
+  @media (max-width: 1239px) {
     .pb-mobile-jumpbar { display: flex; }
     /* jump bar 가 컨텐츠 가리지 않도록 하단 여백 확보 (52 + 16 + 16) */
     .bd-wrap { padding-bottom: 84px; }
@@ -1795,10 +1783,6 @@
 
   <!-- ============ Zone 7: 분석 → 참여 챕터 디바이더 ============ -->
   <div class="ba-chapter">
-    <div class="ba-chapter-bar">
-      <span class="ba-chapter-cap left">02 정독 끝</span>
-      <span class="ba-chapter-cap right">03 당신의 차례 →</span>
-    </div>
     <h2 class="ba-chapter-h">이제 당신이 답할 차례입니다</h2>
     <p class="ba-chapter-sub">법안에 찬반을 표시하고, 다른 시민들의 의견을 읽어보세요</p>
   </div>
