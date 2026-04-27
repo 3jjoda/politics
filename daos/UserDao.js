@@ -38,5 +38,9 @@ export default (db) => ({
     withdraw: async (userId) => {
         const { rows } = await db.query(queries.withdraw, [userId]);
         return rows[0] || null;
+    },
+    updateNickname: async (userId, nickname) => {
+        const { rows } = await db.query(queries.updateNickname, [userId, nickname]);
+        return rows[0] || null;
     }
 });

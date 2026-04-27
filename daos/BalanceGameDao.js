@@ -150,6 +150,32 @@ export default (db) => {
             return rows[0] || null;
         },
 
+        /* 마이페이지 — 한 유저의 게임팩별 풀이 이력 */
+        listUserPackHistory: async (userId, mappingVersion = MAPPING_VERSION_DEFAULT) => {
+            const { rows } = await db.query(`
+                SELECT p.id, p.title, p.description, p.is_general, p.display_order,
+                       p.question_count,
+                       (SELECT COUNT(*)::int FROM balance_game_questions q
+                          WHERE q.pack_id = p.id AND q.is_active = TRUE) AS active_question_count,
+                       COALESCE(r.response_count, 0)::int AS response_count,
+                       r.last_responded_at,
+                       (COALESCE(r.distinct_question_count, 0) >= p.question_count) AS completed
+                  FROM balance_game_packs p
+                  LEFT JOIN (
+                      SELECT pack_id,
+                             COUNT(*)::int AS response_count,
+                             COUNT(DISTINCT question_id)::int AS distinct_question_count,
+                             MAX(created_at) AS last_responded_at
+                        FROM balance_game_responses
+                       WHERE user_id = $1 AND mapping_version = $2
+                       GROUP BY pack_id
+                  ) r ON r.pack_id = p.id
+                 WHERE p.is_active = TRUE
+                 ORDER BY p.is_general DESC, p.display_order ASC, p.created_at ASC
+            `, [userId, mappingVersion]);
+            return rows;
+        },
+
         /* 그룹 평균 조회 — 단계 4 비교 */
         getGroupAxisAvg: async (groupKey, mappingVersion = MAPPING_VERSION_DEFAULT) => {
             const { rows } = await db.query(
