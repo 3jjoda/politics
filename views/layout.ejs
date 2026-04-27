@@ -48,20 +48,12 @@
 <body>
 
 <nav class="pb-nav">
-    <div class="pb-nav-inner">
+    <div class="pb-nav-top">
+      <div class="pb-nav-top-inner">
         <a href="/" class="pb-logo" aria-label="정치 바로미터">
             <img src="/assets/imgs/mark-only.svg" alt="" class="pb-logo-mark-img" aria-hidden="true">
             <img src="/assets/imgs/wordmark-nav.svg" alt="정치 바로미터" class="pb-logo-wordmark-img">
         </a>
-        <ul class="pb-nav-links">
-            <li><a href="/" class="<%= (locals.currentUrl === '/') ? 'active' : '' %>">홈</a></li>
-            <li><a href="/politician" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/politician') === 0) ? 'active' : '' %>">의원</a></li>
-            <li><a href="/bill" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/bill') === 0) ? 'active' : '' %>">법안</a></li>
-            <li><a href="/balance-game" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/balance-game') === 0) ? 'active' : '' %>">성향 진단</a></li>
-            <li><a href="/community" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/community') === 0) ? 'active' : '' %>">커뮤니티</a></li>
-            <li><a href="/glossary" class="<%= (locals.currentUrl === '/glossary') ? 'active' : '' %>">용어</a></li>
-            <li><a href="/about" class="<%= (locals.currentUrl === '/about') ? 'active' : '' %>">소개</a></li>
-        </ul>
         <div class="pb-nav-right">
             <% if (locals.dataFreshness) { %>
                 <span class="pb-nav-badge" title="법안 데이터 마지막 갱신: <%= dataFreshness.absolute %>">● 법안 <%= dataFreshness.relative %> 갱신</span>
@@ -87,7 +79,7 @@
                         <form method="post" action="/auth/logout" style="margin:0">
                             <button type="submit" class="pb-user-item pb-user-logout">로그아웃</button>
                         </form>
-                        <button type="button" class="pb-user-item pb-user-withdraw" id="pb-withdraw-trigger">회원 탈퇴</button>
+                        <button type="button" class="pb-user-item pb-user-withdraw pb-withdraw-trigger">회원 탈퇴</button>
                     </div>
                 </div>
             <% } else { %>
@@ -95,6 +87,18 @@
             <% } %>
             <button class="pb-hamburger" id="pb-hamburger" aria-label="menu">☰</button>
         </div>
+      </div>
+    </div>
+    <div class="pb-nav-menu">
+      <ul class="pb-nav-links">
+        <li><a href="/" class="<%= (locals.currentUrl === '/') ? 'active' : '' %>">홈</a></li>
+        <li><a href="/politician" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/politician') === 0) ? 'active' : '' %>">의원</a></li>
+        <li><a href="/bill" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/bill') === 0) ? 'active' : '' %>">법안</a></li>
+        <li><a href="/balance-game" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/balance-game') === 0) ? 'active' : '' %>">성향 진단</a></li>
+        <li><a href="/community" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/community') === 0) ? 'active' : '' %>">커뮤니티</a></li>
+        <li><a href="/glossary" class="<%= (locals.currentUrl === '/glossary') ? 'active' : '' %>">용어</a></li>
+        <li><a href="/about" class="<%= (locals.currentUrl === '/about') ? 'active' : '' %>">소개</a></li>
+      </ul>
     </div>
 </nav>
 
@@ -115,6 +119,27 @@
         <li><a href="/glossary">용어</a></li>
         <li><a href="/about">소개</a></li>
     </ul>
+    <div class="pb-mobile-auth">
+        <% if (locals.currentUser) { %>
+            <div class="pb-mobile-user">
+                <span class="pb-user-avatar"><%- avatarHtml(currentUser.nickname, null, 32) %></span>
+                <div class="pb-mobile-user-meta">
+                    <div class="pb-mobile-user-nick"><%= currentUser.nickname %></div>
+                    <div class="pb-mobile-user-provider">
+                        <%= currentUser.provider === 'google' ? 'Google' :
+                            currentUser.provider === 'kakao'  ? 'Kakao'  : '로컬' %> 계정
+                    </div>
+                </div>
+            </div>
+            <a href="/my/analysis-requests" class="pb-mobile-auth-link">내가 요청한 분석</a>
+            <form method="post" action="/auth/logout" style="margin:0">
+                <button type="submit" class="pb-mobile-auth-btn">로그아웃</button>
+            </form>
+            <button type="button" class="pb-mobile-auth-btn pb-mobile-auth-withdraw pb-withdraw-trigger">회원 탈퇴</button>
+        <% } else { %>
+            <a href="/auth/login" class="pb-mobile-auth-cta">로그인</a>
+        <% } %>
+    </div>
 </div>
 
 <main class="pb-main">
@@ -241,17 +266,20 @@
             });
         }
 
-        // 회원 탈퇴 모달
-        const wTrigger = document.getElementById('pb-withdraw-trigger');
+        // 회원 탈퇴 모달 — 데스크톱 dropdown / 모바일 panel 두 트리거 지원
+        const wTriggers = document.querySelectorAll('.pb-withdraw-trigger');
         const wModal   = document.getElementById('pb-withdraw-modal');
         const wConfirm = document.getElementById('pb-withdraw-confirm');
         const openWithdraw  = () => { wModal?.removeAttribute('hidden'); };
         const closeWithdraw = () => { wModal?.setAttribute('hidden', ''); };
-        if (wTrigger && wModal) {
-            wTrigger.addEventListener('click', (e) => {
-                e.stopPropagation();
-                dropdown?.classList.remove('open');
-                openWithdraw();
+        if (wTriggers.length && wModal) {
+            wTriggers.forEach(trigger => {
+                trigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown?.classList.remove('open');
+                    panel?.classList.remove('open');
+                    openWithdraw();
+                });
             });
             wModal.querySelectorAll('[data-withdraw-close]').forEach(el => {
                 el.addEventListener('click', closeWithdraw);

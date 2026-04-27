@@ -629,6 +629,16 @@
     color: var(--sub2);
     margin-right: 4px;
   }
+  .pol-list-aside {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .pol-list-detail-arrow {
+    font-size: 11px;
+    color: var(--accent);
+  }
   /* D 레이어 일치도 한 줄 — 리스트 뷰 (밝은 배경) */
   .pol-list-item .pol-match-line {
     font-size: 11px;
@@ -761,12 +771,20 @@
     #grid-view { display: none !important; }
     #list-view { display: block !important; }
     .list-header { display: none; }
-    .pol-list-item { grid-template-columns: 48px 1fr auto; gap: 12px; padding: 14px 16px; }
-    /* 공동(4번째), 상세→(5번째) 숨김 — 발의(3번째) 만 노출 */
-    .pol-list-item > div:nth-child(4),
-    .pol-list-item > div:nth-child(5) { display: none; }
+    .pol-list-item { grid-template-columns: 48px 1fr auto; gap: 8px 12px; padding: 14px 16px; }
+    /* 공동(4번째) 숨김 — 발의(3번째) 만 노출. 5번째(일치도) 는 row2 전폭 노출 */
+    .pol-list-item > div:nth-child(4) { display: none; }
     .pol-list-num-label { display: inline-block; }
     .pol-list-num { text-align: right; font-size: 14px; }
+    /* 5번째 div 를 row2 전폭으로 — 일치 텍스트만 좌측정렬, 상세→ 는 숨김 */
+    .pol-list-aside {
+      grid-column: 2 / -1;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .pol-list-detail-arrow { display: none; }
+    .pol-list-item .pol-match-line { white-space: normal; }
 
     /* 필터 버튼 노출 — 검색 바 위에 전체 폭 */
     .filter-sheet-btn {
@@ -1185,7 +1203,7 @@
             </div>
             <div class="pol-list-num"><span class="pol-list-num-label">발의</span><%= p.propose_cnt %></div>
             <div class="pol-list-num"><span class="pol-list-num-label">공동</span><%= p.co_propose_cnt %></div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div class="pol-list-aside">
               <%
                 const _dl = distanceTo(p);
                 const _siml = similarityOf(_dl);
@@ -1195,7 +1213,7 @@
               <% } else if (locals.balanceGameCompleted === false) { %>
                 <span class="pol-match-line is-pending" title="성향 진단 후 당신과의 일치도가 표시됩니다">진단 후 일치도 표시</span>
               <% } %>
-              <span style="font-size:11px;color:var(--accent)">상세 →</span>
+              <span class="pol-list-detail-arrow">상세 →</span>
             </div>
           </a>
         <% }); %>

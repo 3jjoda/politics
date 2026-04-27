@@ -8,41 +8,8 @@
   .bg-coll-wrap {
     max-width: 980px;
     margin: 0 auto;
-    padding: calc(var(--nav-h) + 36px) 24px 80px;
+    padding: 36px 24px 80px;
   }
-
-  /* 페이지 헤드 */
-  .bg-coll-head {
-    text-align: center;
-    margin-bottom: 36px;
-  }
-  .bg-coll-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.12em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 12px;
-  }
-  .bg-coll-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 52px;
-    line-height: 1.1;
-    letter-spacing: 0.02em;
-    color: var(--text);
-    margin: 0 0 14px;
-  }
-  .bg-coll-desc {
-    font-family: 'Noto Serif KR', serif;
-    font-weight: 500;
-    font-size: 17px;
-    line-height: 1.65;
-    color: var(--sub);
-    max-width: 640px;
-    margin: 0 auto;
-    word-break: keep-all;
-  }
-  .bg-coll-desc strong { color: var(--text); }
 
   /* 내 좌표 요약 (완료 유저) */
   .bg-my-card {
@@ -234,25 +201,25 @@
   .bg-coll-aux a:hover { color: var(--accent); border-color: var(--accent); }
 
   @media (max-width: 768px) {
-    .bg-coll-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
-    .bg-coll-title { font-size: 38px; }
-    .bg-coll-desc { font-size: 15px; }
+    .bg-coll-wrap { padding: 20px 16px 60px; }
     .bg-pack-feature { padding: 24px 22px; }
     .bg-pack-feature-title { font-size: 24px; }
     .bg-pack-feature-cta { width: 100%; justify-content: center; }
   }
 </style>
 
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <div>
+      <h1 class="pb-page-title">성향 진단</h1>
+      <p class="pb-page-desc">
+        각 게임팩이 같은 4축 좌표를 다른 각도에서 채웁니다. 응답이 쌓일수록 좌표가 정밀해져요. <span style="color:var(--sub2)">· mapping <%= mappingVersion %></span>
+      </p>
+    </div>
+  </div>
+</div>
+
 <div class="bg-coll-wrap">
-  <header class="bg-coll-head">
-    <div class="bg-coll-eyebrow">📊 성향 진단 · mapping <%= mappingVersion %></div>
-    <h1 class="bg-coll-title">게임팩 컬렉션</h1>
-    <p class="bg-coll-desc">
-      각 게임팩이 같은 <strong>4축 좌표</strong>를 다른 각도에서 채웁니다.
-      응답이 쌓일수록 좌표가 정밀해져요. 1축 라벨로 가두지 않고,
-      투명한 매핑으로 측정합니다.
-    </p>
-  </header>
 
   <% if (isCompleted && axisScore) { %>
     <div class="bg-my-card">
