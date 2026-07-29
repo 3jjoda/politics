@@ -1,89 +1,152 @@
-# 프로젝트명: 정치 바로미터
+# 정치 바로미터 (Politics Barometer)
+
+> "더 이상 당만 보고 투표하는 사람이 없도록"
+> 내가 행한 한 표가 어떻게 나라를 굴리고 있는지 끝까지 지켜볼 수 있는 플랫폼
+
+- **배포**: https://politics-production.up.railway.app
+- **저장소**: https://github.com/3jjoda/politics (dev 브랜치)
 
 ## 🎯 프로젝트 소개
 
 '정치 바로미터'는 국민이 정치인과 정책에 대한 객관적이고 투명한 정보를 바탕으로 합리적인 정치적 선택을 할 수 있도록 돕기 위해 개발된 웹 플랫폼입니다.
-공식 자료를 비롯한 다양한 데이터를 수집, 분석, 시각화하여 유권자들이 정치인의 △의정 활동 △법안 발의 내역 △공약 이행도 △대외 활동 등을 한눈에 파악할 수 있도록 제공합니다.
+
+열린국회정보 공공 API 데이터(의원·법안·본회의 표결)를 수집·분석·시각화하고, AI 법안 분석과 정치 성향 진단(밸런스 게임)을 통해 유권자가 "정답"이 아닌 **판단 근거**를 얻을 수 있도록 제공합니다.
 
 정보의 비대칭을 해소하고, 국민의 적극적인 참여와 소통을 통해 더욱 건강한 민주주의 사회를 만들어가는 것을 목표로 합니다.
 
 ## ✨ 주요 기능
 
-* **정치인 프로필:** 각 정치인의 상세 정보, 소속 정당, 재선 횟수, 주요 활동 등을 제공합니다.
-* **의정 활동 분석:** 발의 법안 목록, 국회 출석률, 위원회 활동 등 객관적인 데이터를 기반으로 한 활동 지표를 제공합니다.
-* **국민 평점 및 댓글:** 사용자들의 직접 참여를 통해 정치인에 대한 평가와 의견을 공유할 수 있는 커뮤니티 기능을 제공합니다.
-* **반응형 UI:** 모바일, 태블릿, 데스크톱 등 다양한 기기에서 최적화된 사용자 경험을 제공합니다.
-* **레이아웃 기반 템플릿:** EJS 레이아웃 시스템을 통해 일관된 UI와 효율적인 유지보수를 지원합니다.
+* **의원 프로필·분석**: 22대 국회의원 295명의 발의·표결 활동, KPI·레이더 차트·관심분야 TOP 5 등 활동 분석 탭
+* **법안 목록·상세**: 법안 16,800여 건 + 본회의 표결 144,000여 건. 위원회·정당·AI 카테고리 복수 필터와 정렬 지원
+* **AI 법안 분석 (5-Zone)**: Claude API 기반 — 한 줄 요약, 핵심 변화, 찬성 논리·반대 우려·법안 빈틈, 판단 질문. 미분석 법안은 사용자 분석 요청(임계값 도달 시 우선 분석)
+* **정치 성향 밸런스 게임**: 실제 법안 기반 4축(경제·사회·안보·제도) 성향 진단 5단계 — 응답 → 펼침 → 비교 → 의원 연결. 의원별 "나와의 일치도" 필터·정렬
+* **국민 참여**: 법안 국민 찬반 투표, 의원 별점, 댓글(대댓글·좋아요), 커뮤니티 게시판(법안 첨부)
+* **소셜 로그인**: Google / Kakao OAuth (Passport)
+* **반응형 UI**: 라이트 테마 · 골드 액센트 디자인 시스템, 모바일 jumpbar·바텀시트 필터 등 기기별 최적화
 
 ## 🛠️ 기술 스택
 
-* **백엔드:**
-    * **Node.js:** 서버 런타임 환경
-    * **Express.js:** 웹 애플리케이션 프레임워크
-* **데이터베이스:**
-    * **AWS RDS (Relational Database Service):** 안정적이고 확장 가능한 관계형 데이터베이스 서비스 (MySQL 8.0)
-* **프론트엔드:**
-    * **EJS (Embedded JavaScript):** 서버 사이드 템플릿 엔진
-    * **HTML5, CSS3, JavaScript (Vanilla JS, ES6+):** 웹 표준 기술
-    * **Bootstrap 5.3:** 반응형 디자인 및 컴포넌트 라이브러리 (CDN 사용)
-    * **Font Awesome 6.x:** 아이콘 라이브러리 (CDN 사용)
-    * **Google Fonts (Noto Sans KR):** 폰트 스타일 (CDN 사용)
-* **개발/배포:**
-    * **AWS EC2 (Elastic Compute Cloud):** 애플리케이션 서버 호스팅
-    * `npm` 또는 `yarn`: 패키지 매니저
-    * `express-ejs-layouts`: EJS 템플릿 레이아웃 관리 미들웨어
+* **백엔드**
+    * **Node.js + Express 5.1**: 웹 애플리케이션 프레임워크
+    * **Passport** (google-oauth20, kakao) + **express-session** + **connect-pg-simple**: 인증·세션
+* **데이터베이스**
+    * **Supabase PostgreSQL** (Transaction Pooler, ap-northeast-1) — `pg` 드라이버
+* **프론트엔드**
+    * **EJS** + `express-ejs-layouts`: 서버 사이드 템플릿
+    * **HTML5, CSS3, Vanilla JS (ES6+)**: 프레임워크 없이 공통 CSS(`.pb-*`)와 전역 헬퍼(`window.PB`)로 구성
+    * **폰트**: Noto Sans KR / Noto Serif KR / Pretendard Variable / JetBrains Mono
+* **AI / 데이터**
+    * **Claude API** (claude-haiku-4-5): 법안 분류·AI 법안 분석 (JSON mode, v4.1 프롬프트)
+    * **열린국회정보 Open API**: 의원·법안·표결 데이터 동기화 배치
+* **배포**
+    * **Railway**: 애플리케이션 호스팅 (배포 완료)
 
 ## 📁 프로젝트 구조
+
 ```
 POLITICS/
-├── app.js                      # Express 서버 진입점 및 주요 설정 (DB 연결 로직 포함)
-├── package.json                # 프로젝트 정보 및 의존성
-├── public/                     # 클라이언트가 직접 접근 가능한 정적 파일 (CSS, JS, 이미지)
-│   ├── assets/
-│   │   └── imgs/               # 이미지 파일
-│   ├── styles/                 # 공통 및 페이지별 CSS 파일
-│   │   ├── common.css
-│   │   ├── main.css
-│   │   ├── about.css           # '사이트 소개' 페이지 CSS
-│   │   ├── politician/
-│   │   │   └── politician.css  # '정치인 목록' 페이지 CSS
-│   │   └── ...
-│   └── scripts/                # 클라이언트 사이드 JavaScript 파일
-│       ├── globalStore.js
-│       ├── main.js             # 전역 스크립트 (모바일 메뉴 토글 등)
-│       ├── politician/
-│       │   └── politician.js   # '정치인 목록' 페이지 스크립트
-│       └── ...
-└── views/                      # EJS 템플릿 파일
-    ├── layout.ejs              # 모든 페이지의 공통 레이아웃 (헤더, 푸터, 기본 HTML 구조)
-    ├── index.ejs               # 메인 페이지
-    ├── about.ejs               # 사이트 소개 페이지
-    ├── politician/
-    │   └── politician.ejs      # '정치인 목록' 페이지
-    └── ...
+├── app.js                  # Express 서버 진입점
+├── routes/                 # 라우터 (페이지 + REST API)
+├── controllers/            # 컨트롤러
+├── services/               # 비즈니스 로직
+├── daos/                   # DB 접근 (SQL)
+├── middlewares/            # auth(requireLogin, injectUser), balanceGame 등
+├── utils/                  # dataFreshness 등 유틸
+├── config/                 # 설정 (DB, passport 등)
+├── batch/                  # 데이터 동기화·AI 분석 배치 스크립트
+│   ├── syncPoliticians.js  #   의원 마스터 동기화 (열린국회 API)
+│   ├── syncBills.js        #   법안 + 발의자 동기화
+│   ├── syncVotes.js        #   본회의 표결 동기화
+│   ├── syncBillAiAnalysis.js  # AI 법안 분석 (Claude Haiku)
+│   ├── calcPoliticianAxis.js  # 의원 4축 좌표 산출 (밸런스 게임)
+│   └── ...
+├── etc/ddl/                # DB 스키마 (DDL·마이그레이션·시드)
+├── public/                 # 정적 파일
+│   ├── styles/main.css     #   공통 CSS (.pb-* prefix)
+│   ├── scripts/interactions.js  # 전역 헬퍼 (window.PB — 위젯·fetch·아바타 등)
+│   └── assets/imgs/        #   브랜드 에셋·이미지
+└── views/                  # EJS 템플릿
+    ├── layout.ejs          #   공통 레이아웃
+    ├── politician/         #   의원 목록·상세
+    ├── bill/               #   법안 목록·상세 (AI 분석 5-Zone)
+    ├── balance/            #   밸런스 게임 5단계
+    ├── community/          #   커뮤니티
+    ├── my/                 #   마이페이지
+    └── auth/               #   로그인·가입 설정·환영
 ```
+
+## 📚 프로젝트 문서
+
+| 문서 | 내용 |
+|---|---|
+| [CLAUDE.md](./CLAUDE.md) | 현재 코드 상태 (스키마·라우트·컴포넌트 상세) |
+| [ROADMAP.md](./ROADMAP.md) | 비전·미구현 기획·우선순위 |
+| [CHANGELOG.md](./CHANGELOG.md) | 작업 이력 (시간 역순) |
+| [ANALYSIS.md](./ANALYSIS.md) | AI 법안 분석 생성 원칙 |
+| [UI_ANALYSIS.md](./UI_ANALYSIS.md) | AI 분석 UI 표시 원칙 |
+| [BALANCEGAME.md](./BALANCEGAME.md) | 밸런스 게임 설계 원칙 (4축·매핑·D 레이어) |
+| [UI_BALANCEGAME.md](./UI_BALANCEGAME.md) | 밸런스 게임 5단계 UI 설계 원칙 |
+| [PACK_DESIGN_GUIDE.md](./PACK_DESIGN_GUIDE.md) | 게임팩 추가 가이드 |
+| [BILL_AXIS_MAPPING_GUIDE.md](./BILL_AXIS_MAPPING_GUIDE.md) | 법안-축 매핑 가이드라인 |
 
 ## 🚀 시작하는 방법
 
-이 프로젝트를 로컬 환경에서 실행하기 위한 단계별 가이드입니다.
-
 ### 1. 프로젝트 클론
-https://github.com/3jjoda/politics.git
+
+```bash
+git clone https://github.com/3jjoda/politics.git
+cd politics
+```
 
 ### 2. 의존성 설치
+
+```bash
 npm install
+```
 
 ### 3. 환경 변수 설정
-```
-프로젝트 루트에 `.env` 파일을 생성하고 다음 환경 변수를 설정해야 합니다. 이 변수들은 AWS RDS 데이터베이스 연결 및 기타 설정에 사용됩니다.
-(.env 파일은 .gitignore에 추가하여 버전 관리에서 제외하는 것이 중요합니다.)
 
-DB_HOST=politics.cdg04ws4c5db.ap-southeast-2.rds.amazonaws.com
-DB_USER=your_db_username
-DB_PASSWORD=your_db_password
-DB_DATABASE=politics
+프로젝트 루트에 `.env` 파일을 생성합니다. (`.env`는 `.gitignore`에 포함되어 버전 관리에서 제외됩니다.)
+
+```
+# DB / 서버
+DATABASE_URL=postgresql://<user>:<password>@<host>:6543/postgres
 PORT=3000
+NODE_ENV=development
+BASE_URL=http://localhost:3000
+
+# 세션
+SESSION_SECRET=<32자 이상 랜덤 문자열>
+
+# OAuth
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+KAKAO_CLIENT_ID=
+KAKAO_CLIENT_SECRET=        # Kakao 콘솔에서 "Client Secret 사용함"일 때만
+
+# 공공 API / AI
+OPEN_ASSEMBLY_API_KEY=
+ANTHROPIC_API_KEY=
+ASSEMBLY_AGE=22
+
+# AI 분석 요청 임계값 (기본 5명)
+ANALYSIS_REQUEST_THRESHOLD=5
 ```
 
-### 4. 서버 실행
-node app.js
+### 4. DB 스키마 적용
+
+`etc/ddl/` 의 DDL → `etc/ddl/migrations/` → `etc/ddl/seeds/` 순으로 적용합니다.
+
+### 5. 서버 실행
+
+```bash
+npm run dev
+```
+
+### 6. 데이터 동기화 (선택)
+
+```bash
+node batch/syncPoliticians.js   # 의원
+node batch/syncBills.js         # 법안 + 발의자
+node batch/syncVotes.js         # 본회의 표결
+```
