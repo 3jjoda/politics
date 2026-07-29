@@ -69,16 +69,16 @@
   .xr-row .who { width: 150px; flex-shrink: 0; }
   .xr-row .who .nm { font-size: 13px; font-weight: 700; color: var(--text); }
   .xr-row .who .pt { font-size: 11px; color: var(--sub2); }
-  .xr-row .barwrap { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
-  .xr-row .bar { height: 100%; background: var(--accent); border-radius: 4px; }
+  .xr-row .barwrap { display: block; flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .xr-row .bar { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
   .xr-row .val { width: 120px; text-align: right; font-size: 12px; color: var(--sub); flex-shrink: 0; }
   .xr-row .val b { color: var(--text); font-size: 13px; }
 
   /* 가로 막대 (깔때기·카테고리 공용) */
   .xr-hbar-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
   .xr-hbar-row .lb { width: 120px; font-size: 13px; color: var(--sub); text-align: right; flex-shrink: 0; }
-  .xr-hbar-row .track { flex: 1; height: 18px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
-  .xr-hbar-row .fill { height: 100%; background: var(--accent); border-radius: 4px; }
+  .xr-hbar-row .track { display: block; flex: 1; height: 18px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .xr-hbar-row .fill { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
   .xr-hbar-row .num { width: 150px; font-size: 12px; color: var(--sub); flex-shrink: 0; }
   .xr-hbar-row .num b { color: var(--text); }
 
@@ -95,8 +95,8 @@
   .xr-gap-bars { display: flex; flex-direction: column; gap: 4px; }
   .xr-gap-line { display: flex; align-items: center; gap: 10px; }
   .xr-gap-line .who { width: 46px; font-size: 11px; color: var(--sub2); flex-shrink: 0; }
-  .xr-gap-line .track { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
-  .xr-gap-line .fill { height: 100%; border-radius: 4px; }
+  .xr-gap-line .track { display: block; flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .xr-gap-line .fill { display: block; height: 100%; border-radius: 4px; }
   .xr-gap-line .fill.citizen { background: var(--accent); }
   .xr-gap-line .fill.assembly { background: var(--text); }
   .xr-gap-line .v { width: 90px; font-size: 11px; color: var(--sub); flex-shrink: 0; }
