@@ -5,6 +5,72 @@
 
 ---
 
+## 2026-07-29 — 국회 X레이 메뉴 (시각화 10종 1차)
+
+전부 넣고 눈으로 확인 → 불필요한 것 제거 + 아이디어 확장하는 방식으로 시작. ROADMAP 16번(시각화 5종)을 10종으로 확대 구현.
+
+### 구성 (`/xray`, nav "X레이")
+1. **국회는 얼마나 싸우는가** — 법안별 찬성률 20구간 히스토그램 + 합의(90%+)/대치(70%미만) 비율 스탯
+2. **소신 표결** — 소속당 다수와 다르게 투표한 비율 TOP 15 ("이탈≠나쁨" 카피 명시)
+3. **발의왕 vs 입법왕** — 대표발의 건수 × 가결률 산점도 (중앙값 십자선, 상위 라벨)
+4. **법안 생존율** — 발의→처리→가결 깔때기 + 위원회 처리율 TOP/BOTTOM 5
+5. **초당적 협력** — 다정당 공동발의 비율 스탯 + 타당 서명 비율 TOP 10
+6. **주도자 vs 서명러** — 공동발의 × 대표발의 산점도
+7. **표결 불참률** — TOP 15 (사유 미구분 디스클레이머)
+8. **시민 vs 국회** — 시민 찬반 vs 본회의 찬성률 격차 TOP (자체 데이터, empty state 완비)
+9. **같은 당, 다른 생각** — 4축 좌표 정당별 도트 스트립, 축 선택 칩 (클라이언트 렌더)
+10. **국회의 관심사** — AI 카테고리 16종 가로 막대 (커버리지 편향 명시)
+
+### 구현
+- `daos/queries/xray/` 12개 집계 SQL (FILTER·width_bucket·LAG 등 PostgreSQL 순정) + `XrayDao`/`XrayService`/`XrayController`
+- 차트는 라이브러리 없이 서버 EJS 인라인 SVG/CSS (index.ejs 월별 추이와 동일 패턴). ⑨만 JSON 주입 + 클라이언트 렌더
+- 색: 골드 단일 + 차콜 + 그레이 (정당색·political 색 미사용). 모든 섹션에 집계 방식·한계 각주
+- 모든 랭킹 행은 의원 상세로, 시민 괴리는 법안 상세로 링크
+- nav "법안"과 "성향 진단" 사이 "X레이" 추가 (데스크톱 + 모바일 패널)
+
+### 알려진 한계 (각주로 명시)
+- 당적은 현재 기준 (표결 당시 당적 미반영 — 이력 테이블로 개선 여지)
+- 불참 사유 미구분 / ⑨ 매핑 48건 표본 / ⑩ 분석 커버리지 편향
+
+---
+
+## 2026-07-29 — 홈 "최근 정당 이동" 섹션
+
+### 1. 데이터
+- `daos/queries/politician/getRecentPartyMoves.sql` 신규 — `politician_party_memberships` 에 LAG 윈도우로 이전 정당을 붙여 "언제 A당 → B당" 형태로 조회 (같은 정당 재기록은 제외)
+- `PoliticianDao.getRecentPartyMoves(limit)` / `PoliticianService` / `InitController.getHomePage` Promise.all 에 추가 (기본 10건)
+
+### 2. UI (`views/index.ejs`) — 카드 캐러셀 (2차: 리스트 → 카드 전환, 3차: 히어로 직하로 이동)
+- 위치: **히어로(KPI) 바로 아래** 독립 `pb-section.pm-section` (패딩 36px 컴팩트) — 첫 화면에서 바로 보이는 티커 역할
+- 카드(168px, 모바일 140px): **상단 정사각 사진**(aspect-ratio 1/1, 상단 기준 크롭, 사진 없으면 이니셜) + 하단 텍스트 블록(이름 · `A당 → B당` · 감지일) — 의원 상세로 링크
+- **자동 슬라이드**: 카드가 한 화면을 넘칠 때만 원본 한 벌 복제(aria-hidden) 후 CSS 무한 marquee (~35px/s). hover/focus 시 정지, `prefers-reduced-motion` 시 애니메이션 없이 가로 스크롤
+- ⚠️ `avatarHtml` 의 img 는 `width:100%;height:100%` 라 **래퍼에 고정 크기 필수** (`.pm-avatar 48px`) — 1차 구현에서 크기 미지정으로 사진 거대화 버그
+- **정치색 회피**: 정당색 미사용, 강조는 골드 화살표만. 이동 0건이면 섹션 자체 미노출
+- 하단 주석: "수집 시점 기준 · 이동 사유는 공공 API 미제공" 디스클레이머
+
+### 한계 (알고 있는 것)
+- `start_date` 는 배치 실행일 기준이라 실제 이동일과 다를 수 있음 (배치를 오래 안 돌리면 몰아서 같은 날짜로 기록)
+- 이동 사유(탈당·합당·제명)는 저장 구조 없음 — 필요 시 `politician_status_history` 설계 검토
+
+---
+
+## 2026-07-29 — 문서·배치 정리
+
+### 1. README.md 전면 갱신
+- 구버전 스택 표기(AWS RDS MySQL·EC2·Bootstrap) → 실제 상태(Supabase PostgreSQL·Railway·Passport·Claude API)로 교체
+- 주요 기능(AI 법안 분석 5-Zone·밸런스 게임·국민 참여), 현재 디렉토리 구조, md 문서 9종 안내 표 추가
+- 환경 변수를 현행 `.env` 키 기준 플레이스홀더로 정리 (구 RDS 엔드포인트 제거)
+
+### 2. 폐기 배치 파일 삭제
+- `batch/topicUpdate.js`, `batch/updateByCommittee.js` (폐기 기록됨) + `_syncBills.js`, `_topicUpdate.js` (백업본) 4개 저장소에서 제거
+- `batch/` 에는 실사용 11개만 유지
+
+### 3. 배치 실행 순서 문서화 (CLAUDE.md)
+- 정기 갱신 순서(의원 → 법안 → 표결 → 그룹 평균) + 조건부·일회성 배치 트리거 표 추가
+- Node 22 필수 명시 — Node 18 실행 시 undici 7 이 전역 `File` 부재로 `ReferenceError: File is not defined` (실제 발생 사례)
+
+---
+
 ## 2026-04-27 — 법안 상세 정리·버그 수정 (Zone 6/7/Jumpbar)
 
 ### 1. 우측 sticky 인덱스

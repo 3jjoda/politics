@@ -1,5 +1,9 @@
 <%
   const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const fmtDate = (d) => {
+    const t = new Date(d);
+    return t.getFullYear() + '.' + String(t.getMonth() + 1).padStart(2, '0') + '.' + String(t.getDate()).padStart(2, '0');
+  };
   const k = kpi || {};
   const totalBills = Number(k.total_bills || 0);
   const processedBills = Number(k.processed_bills || 0);
@@ -565,6 +569,48 @@
     .pb-badge { overflow-wrap: anywhere; }
   }
 
+  .pb-section.pm-section { padding-top: 36px; padding-bottom: 36px; }
+  /* 최근 정당 이동 — 카드 캐러셀 (정치색 회피 — 정당색 미사용, 강조는 골드 화살표만) */
+  .pm-carousel { overflow: hidden; position: relative; }
+  .pm-track { display: flex; gap: 12px; width: max-content; }
+  .pm-track.is-animated { animation: pmSlide var(--pm-duration, 40s) linear infinite; }
+  .pm-carousel:hover .pm-track.is-animated,
+  .pm-carousel:focus-within .pm-track.is-animated { animation-play-state: paused; }
+  @keyframes pmSlide {
+    from { transform: translateX(0); }
+    to   { transform: translateX(var(--pm-shift, -50%)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pm-track.is-animated { animation: none; }
+    .pm-carousel { overflow-x: auto; }
+  }
+  .pm-card {
+    flex: 0 0 auto; width: 168px;
+    display: flex; flex-direction: column;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; text-decoration: none;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .pm-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .pm-photo {
+    width: 100%; aspect-ratio: 1 / 1;
+    background: var(--bg3); overflow: hidden;
+  }
+  .pm-photo img { object-position: center top; } /* 상반신 사진 상단 기준 크롭 */
+  .pm-body { display: flex; flex-direction: column; gap: 5px; padding: 12px 14px 14px; }
+  .pm-name { font-size: 14px; font-weight: 700; color: var(--text); }
+  .pm-retired { font-style: normal; font-weight: 400; font-size: 12px; color: var(--sub2); }
+  .pm-route { display: flex; align-items: center; gap: 5px; font-size: 12px; flex-wrap: wrap; }
+  .pm-from { color: var(--sub); }
+  .pm-arrow { color: var(--accent); font-weight: 700; }
+  .pm-to { color: var(--text); font-weight: 600; }
+  .pm-date { font-size: 11px; color: var(--sub2); letter-spacing: 0.04em; margin-top: 2px; }
+  .pm-note { margin-top: 10px; font-size: 12px; color: var(--sub2); }
+  @media (max-width: 768px) {
+    .pm-card { width: 140px; }
+    .pm-body { padding: 10px 12px 12px; }
+  }
+
   @keyframes pbFadeUp {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -644,6 +690,77 @@
     </div>
   </div>
 </section>
+
+<% if (partyMoves && partyMoves.length > 0) { %>
+<!-- 최근 정당 이동 -->
+<section class="pb-section pm-section">
+  <div class="pb-section-inner">
+    <div class="pb-section-header">
+      <div>
+        <div class="pb-section-label">소속 변화 추적</div>
+        <div class="pb-section-title">최근 정당 이동</div>
+      </div>
+      <a href="/politician" class="pb-section-link">전체 의원 보기 →</a>
+    </div>
+
+    <div class="pm-carousel" id="pm-carousel">
+      <div class="pm-track" id="pm-track">
+        <% partyMoves.forEach(m => { %>
+          <a href="/politician/<%= m.mona_cd %>" class="pm-card">
+            <div class="pm-photo"><%- avatarHtml(m.name, m.photo_url, 96) %></div>
+            <div class="pm-body">
+              <span class="pm-name">
+                <%= m.name %><% if (m.active_yn === false) { %> <em class="pm-retired">(퇴임)</em><% } %>
+              </span>
+              <span class="pm-route">
+                <span class="pm-from"><%= m.from_party %></span>
+                <span class="pm-arrow">→</span>
+                <span class="pm-to"><%= m.to_party %></span>
+              </span>
+              <span class="pm-date"><%= fmtDate(m.moved_at) %></span>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+    </div>
+    <p class="pm-note">데이터 수집 시점 기준 소속 변화입니다. 이동 사유(탈당·합당·제명 등)는 공공 API 가 제공하지 않습니다.</p>
+  </div>
+</section>
+
+<script>
+  // 정당 이동 카드 캐러셀 — 한 화면에 다 안 보일 때만 무한 슬라이드 (hover/focus 시 정지)
+  (function () {
+    var wrap = document.getElementById('pm-carousel');
+    var track = document.getElementById('pm-track');
+    if (!wrap || !track) return;
+
+    function setup() {
+      if (track.scrollWidth <= wrap.clientWidth) return; // 다 보이면 슬라이드 불필요
+      var gap = 12;
+      var baseWidth = track.scrollWidth;
+
+      // 원본 한 벌 복제해 이어붙여 무한 루프 (복제본은 스크린리더/탭 제외)
+      Array.prototype.slice.call(track.children).forEach(function (card) {
+        var clone = card.cloneNode(true);
+        clone.setAttribute('aria-hidden', 'true');
+        clone.tabIndex = -1;
+        track.appendChild(clone);
+      });
+
+      var shift = baseWidth + gap;
+      track.style.setProperty('--pm-shift', '-' + shift + 'px');
+      track.style.setProperty('--pm-duration', Math.max(20, Math.round(shift / 35)) + 's'); // 약 35px/s
+      track.classList.add('is-animated');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setup);
+    } else {
+      setup();
+    }
+  })();
+</script>
+<% } %>
 
 <div class="pb-divider"></div>
 

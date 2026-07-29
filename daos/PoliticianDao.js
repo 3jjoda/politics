@@ -40,6 +40,12 @@ export default (db) => {
             return rows;
         },
 
+        /* 홈 - 최근 정당 이동 내역 */
+        getRecentPartyMoves: async (limit = 10) => {
+            const { rows } = await db.query(queries.getRecentPartyMoves, [limit]);
+            return rows;
+        },
+
         /* 정당별 카운트 */
         getPartyCounts: async () => {
             const { rows } = await db.query(queries.getPartyCounts);

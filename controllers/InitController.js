@@ -24,13 +24,14 @@ export default (db) => {
     /* 홈 페이지 렌더링 */
     controller.getHomePage = wrapWithContext(async function getHomePage(req, res, next) {
         try {
-            const [codes, kpi, trending, recentVotes, topProposers, monthlyTrend] = await Promise.all([
+            const [codes, kpi, trending, recentVotes, topProposers, monthlyTrend, partyMoves] = await Promise.all([
                 codeService.getList(),
                 billService.getHomeKpi(),
                 billService.getTrending(),
                 billService.getRecentVotes(),
                 politicianService.getTopProposers(),
-                billService.getMonthlyTrend()
+                billService.getMonthlyTrend(),
+                politicianService.getRecentPartyMoves(10)
             ]);
 
             res.render('index', {
@@ -42,7 +43,8 @@ export default (db) => {
                 trending,
                 recentVotes,
                 topProposers,
-                monthlyTrend
+                monthlyTrend,
+                partyMoves
             });
         } catch (error) {
             logger.error('홈 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);

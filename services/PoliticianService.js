@@ -11,6 +11,7 @@ export default (db) => {
         getListWithStats: async () => politicianDao.getListWithStats(),
         getDetail: async (monaCd) => politicianDao.getDetail(monaCd),
         getTopProposers: async () => politicianDao.getTopProposers(),
+        getRecentPartyMoves: async (limit) => politicianDao.getRecentPartyMoves(limit),
         getPartyCounts: async () => politicianDao.getPartyCounts(),
         getCommitteeCounts: async () => politicianDao.getCommitteeCounts(),
         getElectTypeCounts: async () => politicianDao.getElectTypeCounts(),

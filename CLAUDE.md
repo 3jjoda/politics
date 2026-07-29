@@ -1,5 +1,5 @@
 # 3jjoda 프로젝트 — Claude Code 컨텍스트
-> 마지막 업데이트: 2026-04-27
+> 마지막 업데이트: 2026-07-29
 > 이 파일은 **현재 코드 상태**만 담습니다.
 > 비전·로드맵: [ROADMAP.md](./ROADMAP.md)
 > 작업 이력: [CHANGELOG.md](./CHANGELOG.md)
@@ -291,11 +291,12 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 ### 페이지 (EJS 렌더링)
 | 경로 | 뷰 | 설명 |
 |---|---|---|
-| `/` | `views/index.ejs` | 홈 (KPI, 주목 법안, 활발 의원, 월별 추이) |
+| `/` | `views/index.ejs` | 홈 (KPI, 주목 법안, 최근 표결, 최근 정당 이동, 활발 의원, 월별 추이) |
 | `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터) |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (AI 분석 진행률 배너 + 통합 필터 카드 + 정렬 + 카테고리·정당 복수선택, 페이징) |
 | `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·요청 위젯·국민 찬반·본회의 표결·댓글) |
+| `/xray` | `xray/xray.ejs` | 국회 X레이 — 시각화 10종 (합의 분포·당론 이탈·발의vs가결·생존율·초당 협력·발의 스타일·불참률·시민 괴리·정당 스펙트럼·AI 카테고리). `daos/queries/xray/` 12쿼리, 서버 SVG 렌더 |
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
@@ -571,6 +572,27 @@ PC/모바일 동일 패턴으로 통일.
 | `calcGroupAxisAvg.js` | DB 집계 | 인구 그룹별 4축 평균 일배치 (밸런스 게임 단계 4 비교용). 'all' + (gender × age_group), user_count >= 50 만 평균 채움 |
 | `calcPoliticianAxis.js` | DB 집계 | `bill_axis_mapping × bill_votes` → `politician_axis_score`. 가중평균 (찬성→agree_score / 반대→disagree_score, 기권/불참 제외). 인자 `--version v1` `--min-votes 1`. 분포 히스토그램 + 정당별 평균 검증 출력 |
 
+### 배치 실행 순서 (2026-07-29 정리)
+> ⚠️ 실행 전 `node -v` 확인 — **Node 22** (`.nvmrc` 22.20.0). Node 18 이면 undici 7 이 전역 `File` 부재로 즉사 (`ReferenceError: File is not defined`)
+
+**정기 갱신 (의존 순서 고정)**:
+```
+1. syncPoliticians.js    # 의원 마스터
+2. syncBills.js          # 법안 + 발의자 — 의원과 JOIN. updated_at 이 nav "N시간 전 갱신" 배지 소스
+3. syncVotes.js          # 본회의 표결 — bills 참조
+4. calcGroupAxisAvg.js   # 인구 그룹별 4축 평균 (1~3 과 독립, 매일 새벽 권장)
+```
+
+**조건부 (트리거 발생 시, 해당 sync 다음에)**:
+| 배치 | 트리거 |
+|---|---|
+| `syncPhotos.js` | 의원 추가·변경 시 (syncPoliticians 다음) |
+| `syncMissingBillDetails.js` | syncBills 후 상세 누락 발견 시 |
+| `syncBillAiAnalysis.js` | 분석 요청 임계값(5명) 도달 또는 신규 가결 법안 (syncBills·syncVotes 이후 — `proc_result` 필요) |
+| `calcPoliticianAxis.js` | `bill_axis_mapping` 시드 변경 또는 syncVotes 갱신 시 |
+
+**일회성 (완료, 재실행 불필요)**: `updateCommittee.js` (구레코드 committee 보강), `reclassifyCategories.js` (v4→v4.1 재분류 — 카테고리 체계 변경 시에만)
+
 ### syncBills.js 결과
 - RST_MONA_CD → bills.mona_cd, PUBL_MONA_CD → bill_co_proposers
 - committee / committee_id 동시 INSERT + ON CONFLICT UPDATE
@@ -592,7 +614,7 @@ PC/모바일 동일 패턴으로 통일.
 - `BEGIN`/`COMMIT` 트랜잭션, 16종 외면 `needs_review=true`
 - 결과: 12건 $0.0068 (1건당 $0.0006) 매우 싸다 — 일괄 호출이라 카테고리 결정 컨텍스트가 한 번만 들어가서
 
-> 폐기된 배치 파일(topicUpdate.js, updateByCommittee.js)은 [CHANGELOG.md](./CHANGELOG.md) 참조.
+> 폐기된 배치 파일(topicUpdate.js, updateByCommittee.js + `_` 백업본)은 2026-07-29 저장소에서 삭제됨. 내역은 [CHANGELOG.md](./CHANGELOG.md) 참조.
 
 ---
 
@@ -665,11 +687,10 @@ ANALYSIS_REQUEST_THRESHOLD=5
 # 서버 로컬 실행
 npm run dev
 
-# 배치 실행 예시
+# 배치 실행 예시 (순서: 의원 → 법안 → 표결. "배치 실행 순서" 섹션 참조. Node 22 필수)
 node batch/syncPoliticians.js
 node batch/syncBills.js
 node batch/syncVotes.js
-node batch/updateCommittee.js    # committee 컬럼 보강
 
 # AI 분석
 node batch/syncBillAiAnalysis.js                                # Phase 1 가결 + 미분석 3건

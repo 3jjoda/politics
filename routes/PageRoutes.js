@@ -6,6 +6,7 @@ import PoliticianController from '../controllers/PoliticianController.js';
 import BillController from '../controllers/BillController.js';
 import BalanceGameController from '../controllers/BalanceGameController.js';
 import MyController from '../controllers/MyController.js';
+import XrayController from '../controllers/XrayController.js';
 import { requireLogin } from '../middlewares/auth.js';
 
 export default (db) => {
@@ -15,6 +16,7 @@ export default (db) => {
     const billController = BillController(db);
     const balanceGameController = BalanceGameController(db);
     const myController = MyController(db);
+    const xrayController = XrayController(db);
 
     // 메인 페이지
     router.get('/', initController.getHomePage);
@@ -44,6 +46,9 @@ export default (db) => {
             next(error);
         }
     });
+
+    // 국회 X레이 (시각화)
+    router.get('/xray', xrayController.getXrayPage);
 
     // 국회의원 목록 / 상세
     router.get('/politician', politicianController.getListPage);
