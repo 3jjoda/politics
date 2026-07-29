@@ -311,6 +311,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/balance-game/mapping` | `balance/mapping_preview.ejs` | 매핑 미리 보기 (DB 조회, 게임팩별 섹션) |
 | `/auth/welcome` | `auth/welcome.ejs` | 가입 직후 환영 페이지 (1회 노출, [지금 풀기]/[둘러보기]) |
 | `/about` | `about.ejs` | 사이트 소개 |
+| `/privacy` | `privacy.ejs` | 개인정보처리방침 (2026-07-29, AdSense 대비 광고 쿠키 조항 포함) |
+| `/terms` | `terms.ejs` | 이용약관 (AI 분석 면책·게시물 정책) |
 | `/glossary` | `glossary.ejs` | 용어 설명 (목차 + 4섹션) |
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
 | `/auth/setup` | `auth/setup.ejs` | 신규 OAuth 닉네임·성별·연령대 설정 (필수) |

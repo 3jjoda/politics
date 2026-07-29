@@ -47,6 +47,30 @@ export default (db) => {
         }
     });
 
+    // 개인정보처리방침 / 이용약관
+    router.get('/privacy', async (req, res, next) => {
+        try {
+            res.render('privacy', {
+                pageTitle: '개인정보처리방침 - 정치 바로미터',
+                pageStyles: null,
+                currentUrl: '/privacy'
+            });
+        } catch (error) {
+            next(error);
+        }
+    });
+    router.get('/terms', async (req, res, next) => {
+        try {
+            res.render('terms', {
+                pageTitle: '이용약관 - 정치 바로미터',
+                pageStyles: null,
+                currentUrl: '/terms'
+            });
+        } catch (error) {
+            next(error);
+        }
+    });
+
     // 국회 X레이 (시각화)
     router.get('/xray', xrayController.getXrayPage);
 
