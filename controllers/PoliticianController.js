@@ -75,13 +75,14 @@ export default (db) => {
             }
             const politician = politicianData[0];
 
-            const [bills, votes, topics, monthly, timeline, voteSummary, partyCoop, radarScale] = await Promise.all([
+            const [bills, votes, topics, monthly, timeline, voteSummary, crossPartyVote, partyCoop, radarScale] = await Promise.all([
                 politicianService.getBillsByMonaCd(monaCd),
                 politicianService.getVotesByMonaCd(monaCd),
                 politicianService.getTopicsByMonaCd(monaCd),
                 politicianService.getMonthlyBillsByMonaCd(monaCd),
                 politicianService.getTimelineByMonaCd(monaCd),
                 politicianService.getVoteSummaryByMonaCd(monaCd),
+                politicianService.getCrossPartyVoteByMonaCd(monaCd),
                 politicianService.getPartyCoopByMonaCd(monaCd),
                 politicianService.getRadarScale()
             ]);
@@ -97,6 +98,7 @@ export default (db) => {
                 monthly,
                 timeline,
                 voteSummary: voteSummary || { for_cnt: 0, against_cnt: 0, abstain_cnt: 0, absent_cnt: 0, total_cnt: 0 },
+                crossPartyVote,
                 partyCoop,
                 radarScale
             });

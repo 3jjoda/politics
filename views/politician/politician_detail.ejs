@@ -694,6 +694,47 @@
   .cat-bar-track { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
   .cat-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.8s ease-out; }
 
+  /* ===== 교차 표결 성향 (자당 vs 타당 발의) =====
+     정당색(파랑·빨강) 사용 금지 — 자당/타당은 명도 차이로만 구분한다. */
+  .cpv-block { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .cpv-head { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+  .cpv-title { font-size: 12px; font-weight: 700; color: var(--sub); letter-spacing: 0.02em; }
+  .cpv-hint {
+    width: 14px; height: 14px; border-radius: 50%; flex: none;
+    border: 1px solid var(--border2); color: var(--sub2);
+    font-size: 9px; line-height: 12px; text-align: center; cursor: help;
+  }
+  .cpv-rows { display: flex; flex-direction: column; gap: 9px; }
+  .cpv-row { display: grid; grid-template-columns: 58px 1fr 48px 44px; align-items: center; gap: 8px; }
+  .cpv-lab { font-size: 11px; color: var(--sub2); }
+  .cpv-track { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .cpv-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.8s ease-out; }
+  .cpv-fill.is-own   { background: var(--accent); }
+  .cpv-fill.is-other { background: var(--sub2); }
+  .cpv-val { font-size: 12px; font-weight: 700; color: var(--text); text-align: right; }
+  .cpv-n { font-size: 10px; color: var(--sub2); text-align: right; }
+
+  .cpv-gap { display: flex; align-items: baseline; gap: 10px; margin-top: 14px; }
+  .cpv-gap-num { font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .cpv-gap-num small { font-size: 13px; font-weight: 700; margin-left: 1px; }
+  .cpv-gap-desc { font-size: 11px; color: var(--sub2); line-height: 1.5; }
+  .cpv-gap-desc em { display: block; font-style: normal; color: var(--sub2); opacity: 0.85; }
+
+  .cpv-rank { margin-top: 10px; font-size: 12px; color: var(--sub); }
+  .cpv-rank strong { color: var(--text); }
+  .cpv-rank-note { color: var(--sub2); font-size: 11px; }
+  .cpv-dissent {
+    margin-top: 8px; padding: 9px 11px; background: var(--bg3);
+    border-radius: 6px; font-size: 12px; color: var(--sub); line-height: 1.6;
+  }
+  .cpv-dissent strong { color: var(--text); }
+  .cpv-caveat { margin: 10px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.65; }
+
+  @media (max-width: 480px) {
+    .cpv-row { grid-template-columns: 52px 1fr 44px; }
+    .cpv-n { display: none; }
+  }
+
   .info-list { display: flex; flex-direction: column; gap: 12px; }
   .info-item {
     display: flex;
@@ -1502,6 +1543,72 @@
                   <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.absent_cnt, vsTotal) %>%;background:var(--sub2)"></div></div>
                 </div>
               </div>
+              <%
+                /* 교차 표결 성향 — "당을 보고 투표하나, 법안을 보고 투표하나"
+                   정당색은 쓰지 않는다(중립성). 자당/타당 프레이밍 + 골드 단일 강조. */
+                const cpv = locals.crossPartyVote;
+                const hasCpv = cpv && cpv.own_total > 0 && cpv.other_total > 0;
+                const cpvGap = hasCpv ? Number(cpv.gap) : 0;
+                const cpvMedian = hasCpv && cpv.cohort_median != null ? Number(cpv.cohort_median) : null;
+                const cpvRank = hasCpv && cpv.in_cohort ? Number(cpv.gap_rank) : null;
+                const cpvCohort = hasCpv ? Number(cpv.cohort_size) : 0;
+                const cpvPctile = cpvRank ? Math.round(cpvRank / cpvCohort * 100) : null;
+                const cpvDissent = hasCpv ? Number(cpv.dissent_total) : 0;
+                const cpvDissentOther = hasCpv ? Number(cpv.dissent_other) : 0;
+              %>
+              <% if (hasCpv) { %>
+                <div class="cpv-block">
+                  <div class="cpv-head">
+                    <span class="cpv-title">발의 정당별 찬성률</span>
+                    <span class="cpv-hint" title="본회의 표결 중 불참을 제외하고, 대표발의자의 소속 정당을 기준으로 나눈 값입니다. 대표발의자가 확인되지 않는 위원장 대안 등은 제외했습니다.">?</span>
+                  </div>
+
+                  <div class="cpv-rows">
+                    <div class="cpv-row">
+                      <span class="cpv-lab">자당 발의</span>
+                      <span class="cpv-track"><span class="cpv-fill is-own" style="width:<%= cpv.own_rate %>%"></span></span>
+                      <span class="cpv-val"><%= Number(cpv.own_rate).toFixed(1) %>%</span>
+                      <span class="cpv-n"><%= nf(cpv.own_total) %>건</span>
+                    </div>
+                    <div class="cpv-row">
+                      <span class="cpv-lab">타당 발의</span>
+                      <span class="cpv-track"><span class="cpv-fill is-other" style="width:<%= cpv.other_rate %>%"></span></span>
+                      <span class="cpv-val"><%= Number(cpv.other_rate).toFixed(1) %>%</span>
+                      <span class="cpv-n"><%= nf(cpv.other_total) %>건</span>
+                    </div>
+                  </div>
+
+                  <div class="cpv-gap">
+                    <span class="cpv-gap-num"><%= (cpvGap > 0 ? '+' : '') + cpvGap.toFixed(1) %><small>%p</small></span>
+                    <span class="cpv-gap-desc">
+                      자당·타당 격차
+                      <% if (cpvMedian !== null) { %>
+                        <em>의원 중앙값 <%= cpvMedian.toFixed(1) %>%p</em>
+                      <% } %>
+                    </span>
+                  </div>
+
+                  <% if (cpvRank) { %>
+                    <div class="cpv-rank">
+                      격차가 큰 순으로 <strong><%= nf(cpvCohort) %>명 중 <%= nf(cpvRank) %>위</strong>
+                      <span class="cpv-rank-note">(상위 <%= cpvPctile %>%)</span>
+                    </div>
+                  <% } %>
+
+                  <% if (cpvDissent > 0) { %>
+                    <div class="cpv-dissent">
+                      반대·기권한 <strong><%= nf(cpvDissent) %>건</strong> 중
+                      <strong><%= nf(cpvDissentOther) %>건</strong>이 타당 발의 법안입니다.
+                    </div>
+                  <% } %>
+
+                  <p class="cpv-caveat">
+                    격차가 클수록 소속 정당에 따라 표결이 갈렸다는 뜻입니다. 다만 다수당·소수당의 의사일정 구조가
+                    달라 수치만으로 단정하기는 어렵습니다.
+                  </p>
+                </div>
+              <% } %>
+
               <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--sub2);line-height:1.7">
                 총 <strong style="color:var(--text)"><%= nf(vsTotal) %>건</strong>의 본회의 표결 기록 분석.
               </div>

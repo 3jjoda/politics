@@ -23,6 +23,7 @@ export default (db) => {
         getMonthlyBillsByMonaCd: async (monaCd) => politicianDao.getMonthlyBillsByMonaCd(monaCd),
         getTimelineByMonaCd: async (monaCd) => politicianDao.getTimelineByMonaCd(monaCd),
         getVoteSummaryByMonaCd: async (monaCd) => politicianDao.getVoteSummaryByMonaCd(monaCd),
+        getCrossPartyVoteByMonaCd: async (monaCd) => politicianDao.getCrossPartyVoteByMonaCd(monaCd),
         getPartyCoopByMonaCd: async (monaCd) => politicianDao.getPartyCoopByMonaCd(monaCd),
         getRadarScale: async () => politicianDao.getRadarScale()
     };

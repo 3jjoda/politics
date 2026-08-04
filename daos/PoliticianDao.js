@@ -112,6 +112,12 @@ export default (db) => {
             return rows[0];
         },
 
+        /* 의원별 교차 표결 성향 (자당 vs 타당 발의 법안 찬성률) */
+        getCrossPartyVoteByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getCrossPartyVoteByMonaCd, [monaCd]);
+            return rows[0] || null;
+        },
+
         /* 의원별 정당 공동발의 협력 */
         getPartyCoopByMonaCd: async (monaCd) => {
             const { rows } = await db.query(queries.getPartyCoopByMonaCd, [monaCd]);
