@@ -3,6 +3,8 @@ import axios from 'axios'; // API 호출을 위해 axios는 다시 사용합니�
 import pg from 'pg';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
+import { startBatchRun, finishBatchRun } from '../utils/batchRun.js';
+import { startWatchdog } from '../utils/watchdog.js';
 
 // API 호출을 위한 기본 설정
 const API_KEY = process.env.OPEN_ASSEMBLY_API_KEY;
@@ -24,7 +26,8 @@ async function fetchPoliticiansFromAPI() {
                 type: 'json',
                 pIndex: 1,
                 pSize: 500 // 한 번에 가져올 수 있는 최대 수
-            }
+            },
+            timeout: 15000, // 소켓이 매달리면 컨테이너가 종료되지 않아 계속 과금된다 (syncBills/syncVotes 와 동일)
         });
 
         if (response.data && response.data[YOUR_SERVICE_ID]) {
@@ -90,10 +93,13 @@ async function ensurePartyExistsAndTrackHistory(client, partyNameFromAPI) {
 
 /**
  * DB에 국회의원 정보를 'Bulk Upsert'하고 정당 이력을 관리하는 함수
+ * @returns {{upserted:number, deactivated:number}|null} 실패 시 null (batch_runs 기록용)
  */
 async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
     const client = await pool.connect();
     await client.query('BEGIN'); // 트랜잭션 시작
+    let upserted = 0;
+    let deactivated = 0;
     try {
         const start = Date.now();
 
@@ -163,6 +169,7 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
                     active_yn = EXCLUDED.active_yn, updated_at = NOW()
             `;
             const result = await client.query(upsertSql, politiciansToInsertOrUpdate.flat());
+            upserted = result.rowCount;
             logger.info(`[Politicians Upsert] 처리 완료: ${result.rowCount}건`);
 
             // 4. `active_yn` 업데이트 (API에 없는 의원)
@@ -176,6 +183,7 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
                     WHERE mona_cd = ANY($1) AND active_yn = TRUE
                 `;
                 const deactivateResult = await client.query(deactivateSql, [monaCdsToDeactivate]);
+                deactivated = deactivateResult.rowCount;
                 logger.info(`[Politicians Deactivate] 활동 중지 처리: ${deactivateResult.rowCount}건`);
             }
         }
@@ -238,10 +246,12 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
         await client.query('COMMIT'); // 트랜잭션 커밋
         const duration = Date.now() - start;
         logger.info(`[배치 성공] 전체 의원 동기화 및 이력 관리 완료 /* ${duration}ms */`);
+        return { upserted, deactivated };
 
     } catch (error) {
         await client.query('ROLLBACK'); // 오류 발생 시 롤백
         logger.error('[배치 실패] DB 작업 중 오류 발생:', error);
+        return null;
     } finally {
         client.release();
     }
@@ -249,17 +259,24 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
 
 async function runSync() {
     logger.info('[배치 시작] 국회의원 데이터 동기화를 시작');
+    const stopWatchdog = startWatchdog('syncPoliticians', 15);
     const pool = new pg.Pool(dbConfig);
+    const runId = await startBatchRun(pool, 'syncPoliticians');
 
     const politiciansFromAPI = await fetchPoliticiansFromAPI();
 
     if (politiciansFromAPI && politiciansFromAPI.length > 0) {
-        await upsertPoliticiansToDB(pool, politiciansFromAPI);
+        const stats = await upsertPoliticiansToDB(pool, politiciansFromAPI);
+        await finishBatchRun(pool, runId, stats
+            ? { status: 'success', stats }
+            : { status: 'failed', error: 'DB 동기화 중 오류 (상세는 error.log 참조)' });
     } else {
         logger.warn('[배치] API에서 가져온 의원 데이터가 없어 DB 동기화를 건너뜐다.');
+        await finishBatchRun(pool, runId, { status: 'failed', error: 'API 반환 의원 데이터 0건' });
     }
 
     await pool.end();
+    stopWatchdog();
     logger.info('[배치 종료] 국회의원 데이터 동기화가 완료되었습니다.');
 }
 

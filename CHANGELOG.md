@@ -5,6 +5,53 @@
 
 ---
 
+## 2026-08-04 — 배치 증분화 + 실행 기록 (크론 등록 준비)
+
+수동 실행 실측: syncPoliticians 24.8초 / syncBills 82.6초 / syncVotes 76.1초 = 약 3분 5초, 일 API 호출 약 5,900건. 크론 등록 전에 호출 낭비와 테이블 churn 을 정리.
+
+### 1. syncVotes 전건 재스캔 → 증분 (`batch/syncVotes.js`)
+- 이전: `proc_result_name IS NOT NULL` 법안 4,541건을 매 실행마다 API 호출. 실제 표결이 있는 건 **598건뿐 — 호출의 87%가 빈 응답**
+- 이후: `AND (vote_synced_at IS NULL OR updated_at > vote_synced_at)` — 미스캔 + 마지막 스캔 이후 변경분만
+- 조회 성공한 법안만 `bills.vote_synced_at = NOW()` 기록 → API 실패분은 다음 실행에서 자동 재시도
+- `--full` 플래그로 전건 재스캔 유지 (드리프트 보정, 주 1회 권장)
+- 마이그레이션 직후 첫 실행은 `vote_synced_at` 이 전부 NULL 이라 기존과 동일한 전건 스캔 → baseline 확보 후 다음 실행부터 감소
+
+### 2. bills 전건 UPDATE 제거 (`batch/syncBills.js`)
+- `ON CONFLICT DO UPDATE` 에 `IS DISTINCT FROM` 가드(`BILL_CHANGED_GUARD`) 추가 — 이전엔 변경 여부와 무관하게 18,558행 재기록, **dead tuple 하루 18k**
+- `DO UPDATE SET` 이 건드리는 4개 컬럼(`bill_name`/`proc_result_name`/`committee`/`committee_id`)만 비교
+- 부수효과: `bills.updated_at` 의 의미가 "배치 실행 시각" → "법안 실제 변경 시각" 으로 바뀜. **이게 1번 증분 조회의 신호**가 되므로 두 변경은 한 쌍
+
+### 3. batch_runs 테이블 + nav 배지 소스 이관
+- `utils/batchRun.js` — `startBatchRun` / `finishBatchRun`. 기록 실패가 본작업을 막지 않도록 예외를 삼킴
+- sync 배치 3종에 배선. `status`(running/success/failed) + `stats` JSONB + `duration_ms` + `error`
+- `utils/dataFreshness.js` — `MAX(bills.updated_at)` → `MAX(batch_runs.finished_at)` (syncBills 성공분). 2번 때문에 `bills.updated_at` 이 배치 실행 시각을 더 이상 보장하지 않음. `batch_runs` 가 비면 기존 쿼리로 COALESCE fallback
+- 부수 효과: 배치가 최상위 catch 에서 로그만 남기고 exit 0 으로 끝나 cron 이 실패를 못 잡던 문제를 DB 쪽에서 추적 가능
+
+### 문서 수치 갱신
+의원 295→299명, 법안 16,817→18,558건, 발의자 217,568→238,895건, 표결 144,943→177,260건
+
+### 4. 크론 배포 준비
+- `package.json` 에 `batch:daily` / `batch:full` 스크립트 추가 — 실행 순서(의원→법안→표결→축계산→그룹평균)를 저장소에 고정. Railway Start Command 는 이걸 부르기만 함
+- Railway Cron 서비스 **1개**로 배포 (웹과 분리, GitHub repo 연결). UTC 기준이라 `0 19 * * *` = 04:00 KST
+- **표결 페이지 누락 자동 복구**: `fetchAllVotesForBill` 이 `{items, complete}` 를 반환하도록 변경. 페이지 일부를 못 받으면 `vote_synced_at` 을 찍지 않아 다음 실행에 재시도된다 (표결 1건 = 평균 3페이지, 한 페이지 누락 = 의원 100명 표결 통째 누락). 이 덕분에 주간 전건 재스캔 크론 서비스가 불필요해져 **서비스 2개 → 1개**
+- ⚠️ `railway.json` 을 repo 루트에 두지 말 것 — 웹 서비스가 같은 루트를 읽어 `cronSchedule` 을 물려받으면 사이트가 크론 잡으로 바뀜
+
+### 5. 배치 멈춤 방어 (`utils/watchdog.js`)
+- Railway 크론은 멈춘 배포를 자동으로 죽이지 않는다 → 배치가 매달리면 이후 실행이 영구 스킵되고 컨테이너가 24시간 과금된다. 크론 환경에서 유일한 실질 비용 리스크
+- sync 배치 3종에 타임아웃 워치독 (bills·politicians 15분 / votes 20분, 측정치 30~90초 대비 10배 이상 여유). `unref()` 로 정상 완료는 방해하지 않음 — 증분 실행 1.6초 종료 확인
+- `syncPoliticians.js` axios 호출에 누락돼 있던 `timeout: 15000` 보강 (bills·votes 는 원래 있었음). 체인 첫 배치라 여기서 매달리면 전체가 막힘
+
+### 6. 정적 자산 캐시 헤더 (`app.js`)
+- `express.static('public')` 에 옵션이 없어 serve-static 이 `Cache-Control: public, max-age=0` 을 보내고 있었다 → Railway CDN 이 이 헤더를 존중해 매 요청 origin 재검증, 브라우저도 페이지 이동마다 정적 파일 전부를 304 왕복
+- `{ maxAge: '1h' }` 추가 → `public, max-age=3600` 확인. Railway CDN Caching 을 켠 효과가 실제로 나게 됨
+- 자산 파일명에 해시가 없어(`main.css`/`interactions.js`) 1시간으로 제한. 더 늘리려면 `layout.ejs` 링크에 `?v=` 버전 쿼리 선행 필요
+- Railway CDN 설정: **HTML Caching = Never 필수** — nav 에 로그인 상태·닉네임이 SSR 로 박히므로 HTML 을 엣지에 캐시하면 다른 사용자 화면이 노출된다
+
+### DDL
+`ddl/migrations/2026-08-04-batch-incremental.sql` — **2026-08-04 프로덕션 적용 완료**. 적용 후 3배치 실행 검증: syncBills 변경 0건(이전 18,558행 전건 UPDATE), syncVotes baseline 4,541건 마킹 후 재실행 시 조회 생략(77초→0.1초, 4,541콜→0콜)
+
+---
+
 ## 2026-07-29 — 개인정보처리방침·이용약관 + footer 링크 정리 (AdSense 준비 1단계)
 
 ### 1. 법적 페이지 2종 (ROADMAP 베타 필수 6번 해소)

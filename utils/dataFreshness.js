@@ -3,8 +3,22 @@ import logger from './logger.js';
 const TTL_MS = 10 * 60 * 1000;
 let cache = { lastUpdated: null, fetchedAt: 0 };
 
+// 배지 소스는 batch_runs.finished_at (syncBills 마지막 성공 시각).
+//
+// bills.updated_at 을 쓰지 않는 이유: syncBills 가 변경분만 UPDATE 하도록 바뀌면서
+// (batch/syncBills.js 의 BILL_CHANGED_GUARD) updated_at 이 "배치 실행 시각"이 아니라
+// "법안이 실제로 바뀐 시각"이 됐다. 변경이 없는 날엔 배지가 멈춘다.
+//
+// COALESCE fallback 은 batch_runs 마이그레이션 적용 전이거나 첫 크론 실행 전인 경우
+// (batch_runs 가 비어 있음) 기존 동작을 유지하기 위한 것.
 const fetchLastUpdated = async (db) => {
-    const { rows } = await db.query('SELECT MAX(updated_at) AS max FROM bills');
+    const { rows } = await db.query(`
+        SELECT COALESCE(
+            (SELECT MAX(finished_at) FROM batch_runs
+              WHERE batch_name = 'syncBills' AND status = 'success'),
+            (SELECT MAX(updated_at) FROM bills)
+        ) AS max
+    `);
     return rows[0]?.max || null;
 };
 

@@ -88,7 +88,7 @@ $$ LANGUAGE plpgsql;
 - `code_groups`, `codes` — 공통코드 (BILL_TOPIC 16종 분류, 현재는 committee 단일 기준으로 대체)
 - `parties`, `party_names_history` — 정당
 - `politicians` — 의원 (mona_cd UNIQUE)
-  - ⚠️ **현직 22대 의원만 저장** (2026-04-24 현재 295명). `syncPoliticians.js` 가 열린국회 "현역 의원 API" 기반이라 중도 퇴임·사직·당선무효·사망·승계 등으로 빠진 ~11명은 미포함
+  - ⚠️ **현직 22대 의원만 저장** (2026-08-04 현재 299명). `syncPoliticians.js` 가 열린국회 "현역 의원 API" 기반이라 중도 퇴임·사직·당선무효·사망·승계 등으로 빠진 ~11명은 미포함
   - 결과: `bill_votes` / `bill_co_proposers` 에 해당 mona_cd 기록은 남아있지만 JOIN miss → 이름·정당·사진 렌더 불가. UI 는 "(퇴임)" fallback 으로 처리 (voter-list / proposer-chip)
   - 근본 해결은 "역대 국회의원 API" 전환 — [ROADMAP.md](./ROADMAP.md) 베타 오픈 전 필수 3번
 - `politician_party_memberships` — 의원-정당 이력
@@ -272,6 +272,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 
 ### DDL 파일 위치
 `etc/ddl/` — 모든 스키마 변경이 여기 기록됨
+> ⚠️ 2026-08-04 확인: 저장소에 실재하는 건 루트의 `ddl/` (git 추적 X, 현재 비어 있음). 아래 `etc/ddl/*` 파일들은 저장소에 없음 — 로컬에만 있거나 유실. 신규 마이그레이션은 `ddl/migrations/` 에 작성 중
 - `users_update.sql`, `comments.sql`, `politician_ratings.sql`,
   `bill_citizen_votes.sql`, `likes.sql`, `posts.sql`, `user_session.sql`,
   `bill_ai_analysis.sql` (2026-04-24 신규 — 샘플 INSERT 포함),
@@ -280,6 +281,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `2026-04-26-bill-category-tier.sql` — `bill_ai_analysis` 에 `category_main`/`category_sub` 컬럼 추가
   - `2026-04-26-balance-game.sql` — 밸런스 게임 4테이블 1차 (이후 cumulative 마이그레이션이 응답 테이블 재설계)
   - `2026-04-26-balance-game-cumulative.sql` — **누적 모델 v2**. `balance_game_packs` / `user_axis_score` / `group_axis_avg` 신규, `balance_game_responses` 1문항 단위 재설계, `balance_game_questions` 에 `pack_id`/`display_order`, `bill_axis_mapping.mapped_by` 타입 변경, `users.welcomed_at`. 종합팩 'general' + 20문항 시드 포함
+  - `ddl/migrations/2026-08-04-batch-incremental.sql` — **배치 증분화**. `bills.vote_synced_at` 컬럼 + 부분 인덱스, `batch_runs` 테이블 (배치 실행 기록 · nav 갱신 배지 소스 · 크론 실패 추적)
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
 - `balance_game_seed_v1.sql` (root) — 밸런스 게임 60문항 시드 (종합 20 + 노동 10 + 부동산 10 + 안보 10 + 젠더 10). 별도 받아온 외부 시드 파일이라 root 에 위치
@@ -488,7 +490,8 @@ PC/모바일 동일 패턴으로 통일.
   - `requireLogin` — API 401 / 페이지 `/auth/login?next=...` 리다이렉트
   - `injectUser` — `res.locals.currentUser` + `req.session.userId` 주입
 - `utils/dataFreshness.js`
-  - `dataFreshnessMiddleware(db)` — `MAX(bills.updated_at)` 조회 + 10분 메모리 캐시, `res.locals.dataFreshness = { lastUpdated, relative, absolute }` 주입
+  - `dataFreshnessMiddleware(db)` — `MAX(batch_runs.finished_at WHERE batch_name='syncBills' AND status='success')` 조회 + 10분 메모리 캐시, `res.locals.dataFreshness = { lastUpdated, relative, absolute }` 주입. `batch_runs` 가 비었으면 `MAX(bills.updated_at)` 으로 COALESCE fallback (마이그레이션 적용 전 호환)
+  - ⚠️ 2026-08-04 소스 변경: `syncBills` 가 변경분만 UPDATE 하게 되면서 `bills.updated_at` 이 "배치 실행 시각"을 더 이상 보장하지 않음 (변경 없는 날엔 배지가 멈춤)
   - `formatRelativeKo(date)` — 분/시간/일/주/달 단위 한국어 상대시간
   - nav 배지(`views/layout.ejs` `.pb-nav-badge`)가 "● 법안 N시간 전 갱신" 렌더에 사용. 모바일(≤768px)은 숨김. `syncBills.js` 의 `ON CONFLICT ... updated_at = NOW()` 가 시각 소스 → 크론 배치가 배지를 실시간으로 갱신
 - `middlewares/balanceGame.js` (2026-04-26)
@@ -564,7 +567,7 @@ PC/모바일 동일 패턴으로 통일.
 |------|------|------|
 | `syncPoliticians.js` | 열린국회 API | 의원 마스터 동기화 |
 | `syncBills.js` | 열린국회 API (`nzmimeepazxkubdpn`) | 법안 + 발의자 + committee/committee_id |
-| `syncVotes.js` | 열린국회 API (`nojepdqqaweusdfbi`) | 본회의 표결 (수집 완료 144,943건) |
+| `syncVotes.js` | 열린국회 API (`nojepdqqaweusdfbi`) | 본회의 표결 (수집 완료 177,260건). **증분 스캔** — `--full` 로 전건 재스캔 |
 | `syncMissingBillDetails.js` | ALLBILL API | 상세 누락분 보강 |
 | `syncPhotos.js` | 크롤링 | 의원 프로필 사진 |
 | `updateCommittee.js` | 열린국회 API | `syncBills.js` 이전 레코드 committee 컬럼 보강 (pSize=1000, bulk VALUES UPDATE) |
@@ -595,10 +598,44 @@ PC/모바일 동일 패턴으로 통일.
 
 **일회성 (완료, 재실행 불필요)**: `updateCommittee.js` (구레코드 committee 보강), `reclassifyCategories.js` (v4→v4.1 재분류 — 카테고리 체계 변경 시에만)
 
+### 크론 배포 (Railway, 2026-08-04)
+npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
+- `npm run batch:daily` — `syncPoliticians && syncBills && syncVotes && calcPoliticianAxis && calcGroupAxisAvg`
+- `npm run batch:full` — `syncVotes --full` (수동 전건 재스캔. 크론 불필요 — 아래 참조)
+
+Railway 설정 (웹 서비스와 **분리된 서비스 1개**, 같은 GitHub repo 연결):
+| Start Command | Cron Schedule (UTC) | KST |
+|---|---|---|
+| `npm run batch:daily` | `0 19 * * *` | 매일 04:00 |
+
+- ⚠️ **Empty Service 로 만들면 안 됨** — 소스가 없어 저장소 코드를 빌드/실행할 수 없다. `New → GitHub Repo → 3jjoda/politics` 로 생성 (또는 Empty 로 만들었으면 Settings → Source 에서 repo 연결)
+- 두 서비스 모두 **Southeast Asia (Singapore)** 리전. DB 가 도쿄(`ap-northeast-1`)라 US West 는 태평양 왕복이 생김
+- 크론 서비스 Replica Limits 2 vCPU / 2 GB (실측 피크 218MB — syncBills 기준). 웹은 조이지 말 것: 상한에 닿으면 크론은 재시도로 끝나지만 웹은 OOM 으로 사이트가 죽는다
+- 주간 전건 재스캔용 크론 서비스는 **만들지 않는다.** `syncVotes` 가 페이지 일부 누락 시 `vote_synced_at` 을 찍지 않아 다음 실행에 자동 재시도하므로 드리프트가 스스로 수렴한다. `--full` 은 로직 변경·매핑 갱신 후 검증용 수동 실행으로 충분
+
+- ⚠️ **Railway Cron 은 UTC**. KST 변환 필수 (04:00 KST = 전날 19:00 UTC)
+- ⚠️ **`railway.json` 을 repo 루트에 두면 안 됨** — 웹 서비스도 같은 루트를 읽어서 `cronSchedule` 을 물려받아 크론 잡으로 바뀐다(= 사이트 다운). 크론 설정은 대시보드 Settings 에서만
+- 컨테이너가 **종료돼야** 다음 실행이 잡힌다. 이전 실행이 `Active` 면 Railway 가 다음 회차를 조용히 스킵하고, 멈춘 배포를 자동으로 죽이지도 않음 → `batch_runs` 에 `status='running'` 이 오래 남아 있으면 그 배치가 멈춘 것
+- 그래서 배치 파일 안에 `cron.schedule(...)` 을 넣으면 안 된다 (프로세스가 종료되지 않아 이후 모든 실행이 영구 스킵). 최소 실행 간격은 5분
+- 비용: 실행 중일 때만 과금(vCPU $0.00000772/초, 메모리 $0.00000386/초). 일 5분 × 30일 기준 월 $0.1 미만
+- **워치독** (`utils/watchdog.js`, 2026-08-04): sync 배치 3종이 시작 시 타이머를 걸고(bills·politicians 15분, votes 20분) 초과하면 `process.exit(1)`. 배치가 멈추면 컨테이너가 종료되지 않아 **24시간 계속 과금**되는 게 크론 환경의 유일한 실질 비용 리스크라서. 타이머는 `unref()` 되어 정상 완료를 방해하지 않음
+  - 발화 시 `batch_runs` 에 `status='running'` 이 남는다 → 멈춤 감지 신호
+  - 같은 맥락에서 `syncPoliticians.js` 의 axios 호출에 누락돼 있던 `timeout: 15000` 보강 (bills·votes 는 원래 있었음)
+
 ### syncBills.js 결과
 - RST_MONA_CD → bills.mona_cd, PUBL_MONA_CD → bill_co_proposers
 - committee / committee_id 동시 INSERT + ON CONFLICT UPDATE
-- 16,817건 법안 + 217,568건 발의자 (75초)
+- 18,558건 법안 + 238,895건 발의자 (83초, 2026-08-04 실측)
+- **변경 가드** (2026-08-04): `ON CONFLICT DO UPDATE` 에 `IS DISTINCT FROM` WHERE 절 추가 (`BILL_CHANGED_GUARD`). 이전엔 매 실행마다 전건(18,558행) UPDATE → dead tuple 하루 18k. 이제 값이 실제로 바뀐 행만 기록
+  - 로그 `bills: 조회 N건 중 신규·변경 M건` — M 은 이제 "바뀐 행" 수 (전체 조회 건수와 다름)
+  - 부수효과: `bills.updated_at` 이 "배치 실행 시각" → "법안 실제 변경 시각" 으로 의미 변경. nav 갱신 배지는 `batch_runs` 로 소스 이관, `syncVotes` 증분 조회의 신호로 사용
+
+### syncVotes.js 증분 스캔 (2026-08-04)
+대상 조회에 `AND (vote_synced_at IS NULL OR updated_at > vote_synced_at)` 추가.
+- 이전: `proc_result_name IS NOT NULL` 전건 = 4,541건 매일 호출, 그중 표결 있는 건 598건뿐 (호출의 87%가 빈 응답, 일 ~5,700콜)
+- 이후: 미스캔 + 변경분만. 조회 성공한 법안에 `bills.vote_synced_at = NOW()` 기록 (실패분은 자동 재시도)
+- 본회의 표결은 확정 후 불변 + 표결 발생 시 `proc_result_name` 갱신 → `syncBills` 가 `updated_at` 을 밀어주는 흐름에 의존. **`syncBills` 변경 가드와 한 쌍**
+- `--full` 플래그로 전건 재스캔 (페이지 단위 부분 실패 등 드리프트 보정용, 주 1회 권장)
 
 ### syncBillAiAnalysis.js (2026-04-25 신규, 04-26 v4.1)
 **흐름**: 미분석 대상 조회 → `pal.assembly.go.kr/napal/lgsltpa/lgsltpaDone/view.do?lgsltPaId=<bill_id>` 본문 cheerio 파싱 → Haiku 분석 → `bill_ai_analysis` UPSERT
@@ -623,8 +660,16 @@ PC/모바일 동일 패턴으로 통일.
 ## 환경변수
 
 ```
-# DB / 서버
-DATABASE_URL=postgresql://...@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres
+# DB — config/database.js 가 읽는 실제 키. DATABASE_URL 은 코드에서 안 씀 (2026-08-04 정정)
+DB_HOST=aws-1-ap-northeast-1.pooler.supabase.com
+DB_PORT=6543
+DB_USER=
+DB_PASSWORD=
+DB_DATABASE=postgres
+DB_SSL=true
+DB_CONNECTION_LIMIT=10              # 선택, 기본 10
+
+# 서버
 PORT=3000
 NODE_ENV=production
 BASE_URL=http://localhost:3000      # 프로덕션: https://politics-production.up.railway.app

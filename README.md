@@ -109,8 +109,15 @@ npm install
 프로젝트 루트에 `.env` 파일을 생성합니다. (`.env`는 `.gitignore`에 포함되어 버전 관리에서 제외됩니다.)
 
 ```
-# DB / 서버
-DATABASE_URL=postgresql://<user>:<password>@<host>:6543/postgres
+# DB (config/database.js 가 읽는 키)
+DB_HOST=<supabase-pooler-host>
+DB_PORT=6543
+DB_USER=<user>
+DB_PASSWORD=<password>
+DB_DATABASE=postgres
+DB_SSL=true
+
+# 서버
 PORT=3000
 NODE_ENV=development
 BASE_URL=http://localhost:3000

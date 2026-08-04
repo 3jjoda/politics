@@ -4,6 +4,8 @@ import cron from 'node-cron';
 import pg from 'pg';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
+import { startBatchRun, finishBatchRun } from '../utils/batchRun.js';
+import { startWatchdog } from '../utils/watchdog.js';
 import axios from 'axios';
 import xml2js from 'xml2js';
 
@@ -97,6 +99,18 @@ async function fetchAllBills(age) {
 const BILL_COLUMNS = '(bill_id, bill_no, bill_name, propose_dt, proc_result_name, age_cd, link_url, mona_cd, proposer_name, committee, committee_id, co_proposer_count)';
 const BILL_COL_COUNT = 12;
 
+// ON CONFLICT DO UPDATE 가드 — 실제로 값이 바뀐 행만 UPDATE.
+// 없으면 매 실행마다 18,000+ 행을 무조건 재기록해 dead tuple 이 하루 18k씩 쌓인다.
+// DO UPDATE SET 이 건드리는 4개 컬럼만 비교하면 충분.
+// 부수효과: bills.updated_at 이 "실제 변경 시각"이 되므로
+//   · syncVotes 증분 조회(updated_at > vote_synced_at)의 신호가 되고
+//   · nav 갱신 배지는 batch_runs 로 소스를 옮겼다 (utils/dataFreshness.js).
+const BILL_CHANGED_GUARD = `
+             WHERE bills.bill_name        IS DISTINCT FROM EXCLUDED.bill_name
+                OR bills.proc_result_name IS DISTINCT FROM EXCLUDED.proc_result_name
+                OR bills.committee        IS DISTINCT FROM EXCLUDED.committee
+                OR bills.committee_id     IS DISTINCT FROM EXCLUDED.committee_id`;
+
 const CO_PROPOSER_COLUMNS = '(bill_id, bill_no, mona_cd, proposer_yn)';
 const CO_PROPOSER_COL_COUNT = 4;
 
@@ -111,7 +125,8 @@ async function bulkUpsertBills(pool, rows) {
                 proc_result_name = EXCLUDED.proc_result_name,
                 committee = EXCLUDED.committee,
                 committee_id = EXCLUDED.committee_id,
-                updated_at = NOW()`,
+                updated_at = NOW()
+             ${BILL_CHANGED_GUARD}`,
             params
         );
         return result.rowCount;
@@ -128,7 +143,8 @@ async function bulkUpsertBills(pool, rows) {
                         proc_result_name = EXCLUDED.proc_result_name,
                         committee = EXCLUDED.committee,
                         committee_id = EXCLUDED.committee_id,
-                        updated_at = NOW()`,
+                        updated_at = NOW()
+                     ${BILL_CHANGED_GUARD}`,
                     row
                 );
                 count++;
@@ -178,13 +194,18 @@ async function runBillSync(assemblyAge) {
     if (!assemblyAge) { logger.error('국회 대수(assemblyAge)가 지정되지 않았습니다.'); return; }
     logger.info(`[Bill Sync START] ${assemblyAge}대 국회 법안 동기화 시작`);
 
+    const stopWatchdog = startWatchdog('syncBills', 15);
     const pool = new pg.Pool(dbConfig);
     const startTime = Date.now();
+    const runId = await startBatchRun(pool, 'syncBills');
 
     try {
         // 1. API에서 전체 법안 수집
         const allBills = await fetchAllBills(assemblyAge);
-        if (allBills.length === 0) return;
+        if (allBills.length === 0) {
+            await finishBatchRun(pool, runId, { status: 'failed', error: 'API 반환 법안 0건' });
+            return;
+        }
 
         // 2. 데이터 변환 — bills 행 + co_proposers 행 준비
         const billRows = [];
@@ -254,12 +275,20 @@ async function runBillSync(assemblyAge) {
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         logger.info(`[Bill Sync SUCCESS] 완료 (${duration}초)`);
-        logger.info(`- bills: ${totalBills}건, co_proposers: ${totalCo}건`);
+        // 변경 가드 도입 후 rowCount 는 "실제로 바뀐 행" 만 센다 (전체 조회 건수와 다름)
+        logger.info(`- bills: 조회 ${billRows.length}건 중 신규·변경 ${totalBills}건, co_proposers 신규 ${totalCo}건`);
+
+        await finishBatchRun(pool, runId, {
+            status: 'success',
+            stats: { fetched: billRows.length, billsChanged: totalBills, coProposersAdded: totalCo }
+        });
 
     } catch (error) {
         logger.error('[Bill Sync FAILED]:', error);
+        await finishBatchRun(pool, runId, { status: 'failed', error: error.message });
     } finally {
         await pool.end();
+        stopWatchdog();
         logger.info('[Bill Sync END]');
     }
 }

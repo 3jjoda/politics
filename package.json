@@ -7,7 +7,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
-    "dev": "nodemon --ignore 'visitor_count.json' --ext 'js,mjs,cjs,json,sql,ejs' app.js"
+    "dev": "nodemon --ignore 'visitor_count.json' --ext 'js,mjs,cjs,json,sql,ejs' app.js",
+    "batch:daily": "node batch/syncPoliticians.js && node batch/syncBills.js && node batch/syncVotes.js && node batch/calcPoliticianAxis.js && node batch/calcGroupAxisAvg.js",
+    "batch:full": "node batch/syncVotes.js --full"
   },
   "keywords": [],
   "author": "",

@@ -30,7 +30,13 @@ app.set('trust proxy', 1);
 /* 미들웨어 설정 */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+// maxAge 를 안 주면 serve-static 이 'Cache-Control: public, max-age=0' 을 보낸다.
+// 그러면 Railway CDN 이 이 헤더를 존중해서 매 요청 origin 에 재검증하러 오고,
+// 브라우저도 페이지 이동마다 정적 파일 전부를 304 왕복한다 (CDN 켠 의미가 사라짐).
+// 1시간 = 세션 내 페이지 이동에서 재검증을 없애면서, 배포 후 stale 노출은 짧게.
+// 자산 파일명에 해시가 없으므로(main.css / interactions.js) 이보다 길게 두려면
+// layout.ejs 의 링크에 ?v= 버전 쿼리를 붙이는 작업이 선행돼야 한다.
+app.use(express.static('public', { maxAge: '1h' }));
 app.use(contextMiddleware);
 app.use(expressLayouts);
 
