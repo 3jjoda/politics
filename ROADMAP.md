@@ -59,6 +59,38 @@
     - ⬜ 마이페이지 카드 갤러리 (Phase 3+ — 시간순 카드 보존)
     - ⬜ v2 매핑: security 추가 매핑 (5건 → 10건+) · 변별력 큰 부결/이탈 법안 economy/social 보강
 
+### 🔧 오픈 당일 인프라 체크리스트 (2026-08-04 크론 배포 시 도출)
+> 기능이 아니라 **운영 설정** 항목. 오픈 전날 이 섹션만 훑고 넘어가면 됨.
+> 배경·수치 근거는 [CHANGELOG.md](./CHANGELOG.md) 2026-08-04 항목 참조.
+
+- [ ] **`BASE_URL` 환경변수 확인** ⚠️ 오픈 전 필수 — 없으면 SNS 공유가 깨진다
+  - `layout.ejs` 의 `og:url`/`og:image`/`twitter:image` 가 `http://localhost:3000` 으로 폴백 → 카카오톡·트위터 썸네일 미표시
+  - `config/passport.js` 의 OAuth `callbackURL` 도 상대경로가 됨
+  - 값: `BASE_URL=https://politics-production.up.railway.app` (자체 도메인 연결 시 그 도메인으로 교체)
+  - **자체 도메인 붙일 때 같이 바꿔야 함** — AdSense 때문에 도메인 구입 예정이므로 잊기 쉬움
+- [ ] **`NODE_ENV=production` 확인** — `app.js` 의 세션 쿠키 `secure` 플래그 조건. 없으면 로그인 쿠키에 Secure 가 안 붙음
+- [ ] **`TZ=Asia/Seoul` 확인 (웹·크론 둘 다)** — 날짜가 프로세스 타임존을 타는 코드에 대한 안전망. 규칙은 [CLAUDE.md](./CLAUDE.md) "날짜·시간 처리 규칙"
+- [ ] **Railway Usage limits — COMPUTE Hard limit 을 $10 → $20~30 으로 상향** ⚠️ 최우선
+  - Hard limit 은 "여기 닿으면 **전 서비스 정지**" 선이다. 웹까지 내려간다
+  - 오픈 전엔 방문자가 없어 $10 이 안전하지만, 오픈 후엔 **트래픽이 몰린 날 = 사이트가 죽는 날**이 될 수 있다
+  - 근거: Hobby 상한(8 vCPU/8 GB) 풀가동 폭주가 하루 약 $8. 상향해도 폭주는 2~3일 내 차단됨
+  - Email alert 은 $5 유지 (포함 크레딧 소진 시점 = 실과금 시작 신호)
+- [ ] **웹 서비스 Replica Limits 재확인** — 현재 8 vCPU / 8 GB. **낮추지 말 것**
+  - 크론(2 vCPU/2 GB)과 달리 웹은 상한에 닿으면 OOM 으로 사이트가 죽는다. 크론은 실패해도 다음날 재시도로 끝
+  - 상한은 예약이 아니라 천장이라 높게 둬도 요금이 늘지 않음. 비용 방어는 위의 Usage limits 가 담당
+- [ ] **`bill_axis_mapping` 좌표 미산출 의원 재확인** — 2026-08-04 기준 현직 299명 중 **15명** 이 표결 0건이라 일치도 미표시
+  - 김남국·송영길·박지원·이광재·한동훈·이진숙 등 최근 보궐·재보선 유입 의원. 표결이 쌓이면 자동 해소되지만, 유명 이름이 비어 보이는 게 오픈 시점에 걸릴 수 있음
+  - 확인: `SELECT count(*) FROM politicians p LEFT JOIN politician_axis_score s ON s.mona_cd=p.mona_cd AND s.mapping_version='v1' WHERE p.active_yn AND s.mona_cd IS NULL`
+- [ ] **정적 자산 캐시 TTL 상향 검토** — 현재 `app.js` 의 `express.static(..., { maxAge: '1h' })`
+  - 파일명에 해시가 없어(`main.css`/`interactions.js`) 1시간으로 묶어둔 상태. `layout.ejs` 링크에 `?v=` 버전 쿼리를 붙이면 1년으로 올려도 안전
+- [ ] **`batch_runs` 이상 감지 습관화** — `status='running'` 이 오래 남아 있으면 그 배치가 멈춘 것 (크론이 이후 실행을 조용히 스킵함)
+  - `SELECT batch_name,status,started_at FROM batch_runs ORDER BY id DESC LIMIT 10`
+
+### 오픈 후 검토 (인프라)
+- **Supabase 리전 이전 검토** — 앱은 싱가포르, DB 는 도쿄(`ap-northeast-1`). 같은 리전이면 페이지당 ~70ms 추가 단축. 프로젝트 재생성 + 데이터 마이그레이션이 필요해 체감이 아쉬울 때만
+- **`syncBills` 페이지 조회 병렬화** — 153초 중 124초가 186페이지 **순차** 조회. `syncVotes` 처럼 `pLimit(10)` 적용 시 20초대로 단축 (전체 체인 3분23초 → 1분20초). 새벽 배치라 실익은 작음
+- **`calcPoliticianAxis`/`calcGroupAxisAvg` 에 `batch_runs` 기록 배선** — 현재 sync 3종만 기록 중
+
 ### 베타 오픈 후 — 1순위
 15. **AI 분석 Zone 5 추가** — 참고 맥락(`context`) · 분석 한계(`limitations`) 접힘 표시 + Zone 4 "더 알아보기" 버튼 부활
 16. 국회 X레이 메뉴 (시각화 5종)

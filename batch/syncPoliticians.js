@@ -77,7 +77,8 @@ async function ensurePartyExistsAndTrackHistory(client, partyNameFromAPI) {
 
         // 새로운 정당이므로 party_names_history에도 첫 이력 추가
         await client.query(
-            'INSERT INTO party_names_history (party_id, party_name, start_date) VALUES ($1, $2, CURRENT_DATE)',
+            `INSERT INTO party_names_history (party_id, party_name, start_date)
+                  VALUES ($1, $2, (NOW() AT TIME ZONE 'Asia/Seoul')::date)`,
             [party_id, partyNameFromAPI]
         );
         logger.info(`[Party History] 새로운 정당 '${partyNameFromAPI}'의 첫 이름 이력 추가됨.`);
@@ -203,14 +204,14 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
                 // 기존 활성 멤버십 종료
                 await client.query(
                     `UPDATE politician_party_memberships
-                     SET end_date = CURRENT_DATE, updated_at = NOW()
+                     SET end_date = (NOW() AT TIME ZONE 'Asia/Seoul')::date, updated_at = NOW()
                      WHERE mona_cd = $1 AND end_date IS NULL`,
                     [mona_cd]
                 );
                 // 새로운 멤버십 시작
                 await client.query(
                     `INSERT INTO politician_party_memberships (mona_cd, party_id, start_date)
-                     VALUES ($1, $2, CURRENT_DATE)`,
+                     VALUES ($1, $2, (NOW() AT TIME ZONE 'Asia/Seoul')::date)`,
                     [mona_cd, newPartyId]
                 );
                 logger.info(`[Party History] 의원(${apiPolitician.HG_NM})의 정당 변경 이력 업데이트: ${existingPolitician.party_id} -> ${newPartyId}`);
@@ -219,7 +220,7 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
             else if (!existingPolitician) {
                  await client.query(
                      `INSERT INTO politician_party_memberships (mona_cd, party_id, start_date)
-                      VALUES ($1, $2, CURRENT_DATE)`,
+                      VALUES ($1, $2, (NOW() AT TIME ZONE 'Asia/Seoul')::date)`,
                      [mona_cd, newPartyId]
                  );
                  logger.info(`[Party History] 새로운 의원(${apiPolitician.HG_NM})의 첫 정당 소속 이력 추가: ${newPartyId}`);
@@ -234,7 +235,7 @@ async function upsertPoliticiansToDB(pool, politiciansFromAPI) {
                 if (activeMembership.length === 0) { // 현재 활성 멤버십이 없으면 추가
                     await client.query(
                         `INSERT INTO politician_party_memberships (mona_cd, party_id, start_date)
-                         VALUES ($1, $2, CURRENT_DATE)`,
+                         VALUES ($1, $2, (NOW() AT TIME ZONE 'Asia/Seoul')::date)`,
                         [mona_cd, newPartyId]
                     );
                     logger.info(`[Party History] 의원(${apiPolitician.HG_NM})의 현재 정당 소속 이력 복구/추가: ${newPartyId}`);

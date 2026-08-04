@@ -196,7 +196,7 @@
           <% } %>
           <div class="cm-card-meta">
             <span class="nick"><%= p.nickname || '탈퇴한 사용자' %></span>
-            <span class="date"><%= p.created_at %></span>
+            <span class="date" title="<%= p.created_at %>"><%= timeAgo(p.created_at) %></span>
             <span class="cm-card-stats">
               <span>
                 <svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>

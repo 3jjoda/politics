@@ -1,14 +1,8 @@
 <%
-  const fmtDateOnly = (d) => {
-    if (!d) return '—';
-    const dt = new Date(d);
-    return `${dt.getFullYear()}.${String(dt.getMonth()+1).padStart(2,'0')}.${String(dt.getDate()).padStart(2,'0')}`;
-  };
-  const fmtDateTime = (d) => {
-    if (!d) return '—';
-    const dt = new Date(d);
-    return `${fmtDateOnly(d)} ${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-  };
+  // 날짜 포맷은 app.locals 의 전역 헬퍼(utils/datetime.js)를 쓴다 — KST 명시.
+  // 이전엔 여기서 Date.getFullYear()/getHours() 로 직접 조립했는데, 그 계열은
+  // 서버 프로세스 타임존(Railway=UTC)을 따라가 새벽 데이터가 하루 밀렸다.
+  const fmtDateOnly = fmtDate;
   const providerLabel = user.provider === 'google' ? 'Google'
                       : user.provider === 'kakao'  ? 'Kakao'
                       : '로컬';

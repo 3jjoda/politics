@@ -610,6 +610,8 @@ Railway 설정 (웹 서비스와 **분리된 서비스 1개**, 같은 GitHub rep
 
 - ⚠️ **Empty Service 로 만들면 안 됨** — 소스가 없어 저장소 코드를 빌드/실행할 수 없다. `New → GitHub Repo → 3jjoda/politics` 로 생성 (또는 Empty 로 만들었으면 Settings → Source 에서 repo 연결)
 - 두 서비스 모두 **Southeast Asia (Singapore)** 리전. DB 가 도쿄(`ap-northeast-1`)라 US West 는 태평양 왕복이 생김
+- Usage limits: COMPUTE hard $10 / alert $5, AGENT hard $1. ⚠️ **오픈 시 hard limit 을 $20~30 으로 올려야 함** — 닿으면 웹까지 정지하므로 트래픽 몰린 날 사이트가 죽는다. → [ROADMAP.md](./ROADMAP.md) "오픈 당일 인프라 체크리스트"
+- 실측 (2026-08-04 첫 프로덕션 실행): 체인 전체 3분 23초 — politicians 47s / bills 153s / votes 0.7s / axis 1s / group 0.7s. 싱가포르라 로컬(한국) 대비 개별 배치는 1.8배 느리지만, votes 증분화(140s→0.7s)가 상쇄
 - 크론 서비스 Replica Limits 2 vCPU / 2 GB (실측 피크 218MB — syncBills 기준). 웹은 조이지 말 것: 상한에 닿으면 크론은 재시도로 끝나지만 웹은 OOM 으로 사이트가 죽는다
 - 주간 전건 재스캔용 크론 서비스는 **만들지 않는다.** `syncVotes` 가 페이지 일부 누락 시 `vote_synced_at` 을 찍지 않아 다음 실행에 자동 재시도하므로 드리프트가 스스로 수렴한다. `--full` 은 로직 변경·매핑 갱신 후 검증용 수동 실행으로 충분
 
@@ -671,8 +673,11 @@ DB_CONNECTION_LIMIT=10              # 선택, 기본 10
 
 # 서버
 PORT=3000
-NODE_ENV=production
+NODE_ENV=production                 # ⚠️ 없으면 app.js 의 세션 쿠키 secure 플래그가 안 붙음
 BASE_URL=http://localhost:3000      # 프로덕션: https://politics-production.up.railway.app
+                                    # ⚠️ 없으면 layout.ejs 의 og:url/og:image 가 localhost 로 나가 SNS 썸네일이 깨짐
+                                    #    passport.js 의 OAuth callbackURL 도 상대경로가 됨
+TZ=Asia/Seoul                       # 서버 렌더 날짜가 프로세스 타임존을 타는 코드에 대한 안전망 (Railway 기본 UTC)
 
 # 세션
 SESSION_SECRET=<32자 이상 랜덤>
@@ -691,6 +696,47 @@ ASSEMBLY_AGE=22
 # AI 분석 요청 임계값 (기본 5명 — 도달 시 "🔥 우선 분석 대기" 표시)
 ANALYSIS_REQUEST_THRESHOLD=5
 ```
+
+### Railway 서비스별 변수 배분 (2026-08-04)
+| | 웹 (`politics`) | 크론 (`politics-cron`) |
+|---|---|---|
+| `DB_*` 6종 | ✅ | ✅ |
+| `TZ=Asia/Seoul` | ✅ | ✅ |
+| `OPEN_ASSEMBLY_API_KEY` | ✅ | ✅ |
+| `ASSEMBLY_AGE=22` | — | ✅ |
+| `PORT` / `SESSION_SECRET` / `NODE_ENV` / `BASE_URL` | ✅ | — |
+| `GOOGLE_*` / `KAKAO_*` | ✅ | — |
+| `ANTHROPIC_API_KEY` | — | AI 분석 배치를 크론에 붙일 때만 |
+
+---
+
+## 날짜·시간 처리 규칙 (2026-08-04 정립)
+
+**DB 세션 타임존은 UTC, Railway 컨테이너도 UTC.** 한국 사용자 대상 서비스라 양쪽 모두 명시적 변환이 필요하다. 로컬 개발(윈도우 KST)에서는 전부 정상으로 보이므로 **로컬 테스트로는 절대 못 잡는다.** 검증하려면 `TZ=UTC node app.js` 로 띄울 것.
+
+### 저장
+| 무엇을 | 어떻게 | 비고 |
+|---|---|---|
+| **시각(instant)** | `TIMESTAMPTZ` + `NOW()` | 절대 시각이라 타임존 무관. **아무 조치 불필요** (현재 41개 컬럼) |
+| **한국 기준 달력 날짜** | `(NOW() AT TIME ZONE 'Asia/Seoul')::date` | `CURRENT_DATE` 는 UTC 기준이라 **금지** |
+
+`CURRENT_DATE` 가 위험한 이유: 크론이 04:00 KST(=19:00 UTC 전날)에 돌아 **항상 하루 이른 날짜**가 된다. 해당 컬럼은 `politician_party_memberships.start_date/end_date`, `party_names_history.start_date/end_date` 4개뿐 — 나머지 DATE 컬럼(`propose_dt`/`vote_date`/`birthday`)은 API 에서 받은 값이라 무관.
+
+### 조회
+- `TO_CHAR(ts, ...)` 는 세션 타임존(UTC)을 따른다 → **`TO_CHAR(ts AT TIME ZONE 'Asia/Seoul', ...)`** 로 쓸 것
+- 이 결과는 오프셋 없는 KST 벽시계 문자열이다. JS 에서 `new Date(s)` 로 바로 파싱하면 실행 환경 타임존으로 해석돼 또 어긋난다 → `utils/datetime.js` 나 `PB.timeAgo` 를 쓸 것 (둘 다 `+09:00` 을 붙여 파싱)
+
+### 표시 — `utils/datetime.js` (app.locals 전역 등록)
+| 헬퍼 | 출력 | 용도 |
+|---|---|---|
+| `fmtDate(v)` | `2026.08.05` | 가입일·분석일 등 |
+| `fmtDateTime(v)` | `2026.08.05 01:00` | 마지막 응답 시각 등 |
+| `timeAgo(v)` | `3시간 전` (7일 초과 시 날짜) | 게시글·댓글 |
+
+- ❌ `new Date(d).getFullYear()` / `.getDate()` / `.getHours()` — **로컬 getter 금지**. 프로세스 타임존을 탄다
+- ✅ `Intl.DateTimeFormat(..., { timeZone: 'Asia/Seoul' })` — `utils/datetime.js` 가 이 방식
+- 클라이언트는 `PB.timeAgo` (`public/scripts/interactions.js`). 서버 `timeAgo` 와 규칙 동일 (7일 컷오프)
+- `TZ=Asia/Seoul` 환경변수는 **안전망일 뿐** — 코드가 환경에 의존하지 않도록 위 헬퍼를 쓸 것
 
 ### Git 안전 수칙
 - `.gitignore` 에 OAuth/secret 파일 패턴 등록됨 (`*OAuth*.json`, `*secret*.json` 등)

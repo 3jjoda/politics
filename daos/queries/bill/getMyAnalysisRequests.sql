@@ -6,7 +6,7 @@ SELECT b.bill_id
      , b.committee
      , b.proc_result_name
      , TO_CHAR(b.propose_dt, 'YYYY.MM.DD')           AS propose_dt
-     , TO_CHAR(r.requested_at, 'YYYY.MM.DD HH24:MI') AS requested_at
+     , TO_CHAR(r.requested_at AT TIME ZONE 'Asia/Seoul', 'YYYY.MM.DD HH24:MI') AS requested_at
      , (a.bill_id IS NOT NULL)                       AS has_ai_analysis
      , a.summary                                     AS ai_summary
      , a.category_main                               AS ai_category_main

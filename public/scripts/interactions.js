@@ -160,8 +160,14 @@
 
   PB.timeAgo = (isoLike) => {
     if (!isoLike) return '';
-    // 서버 포맷 'YYYY-MM-DD HH:mm' 을 Date 로 변환
-    const safe = isoLike.replace(' ', 'T');
+    // 서버 포맷 'YYYY-MM-DD HH:mm' 을 Date 로 변환.
+    // 이 문자열은 DB 가 AT TIME ZONE 'Asia/Seoul' 로 만든 KST 벽시계라 오프셋이 없다.
+    // 그냥 파싱하면 "브라우저 로컬 시간"으로 해석돼 해외 접속자에게 시간이 어긋난다.
+    let safe = isoLike.replace(' ', 'T');
+    if (!/(Z|[+-]\d{2}:?\d{2})$/.test(safe)) {
+      if (safe.length === 16) safe += ':00';      // YYYY-MM-DDTHH:mm
+      safe += '+09:00';
+    }
     const t = new Date(safe);
     if (isNaN(t)) return isoLike;
     const diff = (Date.now() - t.getTime()) / 1000;

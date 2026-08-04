@@ -47,6 +47,25 @@
 - 자산 파일명에 해시가 없어(`main.css`/`interactions.js`) 1시간으로 제한. 더 늘리려면 `layout.ejs` 링크에 `?v=` 버전 쿼리 선행 필요
 - Railway CDN 설정: **HTML Caching = Never 필수** — nav 에 로그인 상태·닉네임이 SSR 로 박히므로 HTML 을 엣지에 캐시하면 다른 사용자 화면이 노출된다
 
+### 7. 타임존 전면 정리 (크론 등록 중 발견)
+`batch_runs` 시각이 UTC 로 보이는 걸 확인하다가, DB 세션(UTC)과 Railway 컨테이너(UTC) 양쪽에서 한국시간이 어긋나고 있던 걸 발견. **로컬 개발이 윈도우 KST 라 로컬에서는 절대 재현되지 않던 버그.**
+
+- **저장** — `syncPoliticians.js` 의 `CURRENT_DATE` 5곳 → `(NOW() AT TIME ZONE 'Asia/Seoul')::date`
+  - 크론이 04:00 KST(=19:00 UTC 전날)에 돌아 **정당 이동 이력 날짜가 항상 하루 이르게** 기록되던 상태. 크론 등록으로 상시화될 뻔함
+- **조회 — `TO_CHAR` 가 UTC 세션 기준이라 9시간 어긋남** (4파일 6곳): 댓글 `created_at`/`updated_at`, 게시글 목록·상세, 내 분석요청
+- **조회 — `CURRENT_DATE` 8곳**: 법안 경과일, 월별 추이 2, 의원 나이 3, 의원별 법안·월별 2
+- **표시** — `utils/datetime.js` 신규 (`fmtDate`/`fmtDateTime`/`timeAgo`, `Intl` + `timeZone` 명시). `app.js` 에서 `app.locals` 전역 등록
+  - `profile.ejs` 가 `Date.getFullYear()/getHours()` 로 직접 조립하고 있었음 → 서버 TZ(UTC)를 타서 새벽 가입자의 가입일이 하루 전으로 표시
+  - 커뮤니티 목록·상세는 **상대시간**으로 전환 (원본 시각은 `title` 툴팁). `PB.timeAgo` 와 동일한 7일 컷오프
+  - `PB.timeAgo` — 오프셋 없는 KST 문자열에 `+09:00` 을 붙여 파싱하도록 수정 (해외 접속자 대응)
+- **검증**: `TZ=UTC` 로 실행해 Railway 환경 재현 → `fmtDate(2026-08-04T16:00Z)` = `2026.08.05` (기존 방식은 `2026.08.04`). 수정한 SQL 11개 파일 EXPLAIN 통과, `/community` 렌더 확인
+- 규칙은 [CLAUDE.md](./CLAUDE.md) "날짜·시간 처리 규칙" 에 정리 — `timestamptz`+`NOW()` 는 조치 불필요, 달력 날짜만 명시 필요
+
+### 8. 누락 환경변수 발견 (Railway 웹 서비스)
+- `BASE_URL` 미설정 → `og:url`/`og:image` 가 `http://localhost:3000` 으로 폴백. **SNS 공유 썸네일이 깨진 상태**. `passport.js` 의 OAuth `callbackURL` 도 상대경로
+- `NODE_ENV` 미설정 → 세션 쿠키 `secure` 플래그 미적용
+- 둘 다 [ROADMAP.md](./ROADMAP.md) "오픈 당일 인프라 체크리스트" 에 등재
+
 ### DDL
 `ddl/migrations/2026-08-04-batch-incremental.sql` — **2026-08-04 프로덕션 적용 완료**. 적용 후 3배치 실행 검증: syncBills 변경 0건(이전 18,558행 전건 UPDATE), syncVotes baseline 4,541건 마킹 후 재실행 시 조회 생략(77초→0.1초, 4,541콜→0콜)
 

@@ -210,7 +210,7 @@
         <% } else { %>
           <span class="nick"><%= post.nickname %></span>
         <% } %>
-        <span class="date"><%= post.created_at %></span>
+        <span class="date" title="<%= post.created_at %>"><%= timeAgo(post.created_at) %></span>
         <% if (post.updated_at && post.updated_at !== post.created_at) { %>
           <span class="date">· 수정됨</span>
         <% } %>

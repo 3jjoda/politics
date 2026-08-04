@@ -21,10 +21,10 @@ SELECT p.politician_id
      , p.mona_cd
      , TO_CHAR(p.birthday, 'YYYY-MM-DD') AS birthday
      , (
-        EXTRACT(YEAR FROM CURRENT_DATE) - EXTRACT(YEAR FROM p.birthday)
+        EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'Asia/Seoul')::date) - EXTRACT(YEAR FROM p.birthday)
         -
         (CASE
-           WHEN TO_CHAR(CURRENT_DATE, 'MMDD') < TO_CHAR(p.birthday, 'MMDD') THEN 1
+           WHEN TO_CHAR((NOW() AT TIME ZONE 'Asia/Seoul')::date, 'MMDD') < TO_CHAR(p.birthday, 'MMDD') THEN 1
            ELSE 0
          END)
        ) AS age

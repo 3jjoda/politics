@@ -11,7 +11,7 @@ SELECT b.bill_id
      , b.link_url
      , b.committee AS bill_topic_nm
      , (b.mona_cd = $1) AS proposer_yn
-     , (CURRENT_DATE - b.propose_dt)::int AS days_elapsed
+     , ((NOW() AT TIME ZONE 'Asia/Seoul')::date - b.propose_dt)::int AS days_elapsed
      , (SELECT vote_result FROM bill_votes
          WHERE bill_id = b.bill_id AND mona_cd = $1 LIMIT 1) AS my_vote_result
   FROM bills b

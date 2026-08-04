@@ -13,6 +13,7 @@ import { contextMiddleware } from './utils/contextMiddleware.js';
 import { dataFreshnessMiddleware } from './utils/dataFreshness.js';
 import expressLayouts from 'express-ejs-layouts';
 import { avatarHtml } from './utils/avatar.js';
+import { fmtDate, fmtDateTime, timeAgo } from './utils/datetime.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -42,6 +43,11 @@ app.use(expressLayouts);
 
 /* EJS 전역 헬퍼 */
 app.locals.avatarHtml = avatarHtml;
+// 날짜 표시는 반드시 이 헬퍼들을 쓸 것 — Date 의 getFullYear/getHours 계열은
+// 서버 프로세스 타임존(Railway 는 UTC)을 따라가 새벽 시간대가 하루 밀린다.
+app.locals.fmtDate = fmtDate;          // 2026.08.05
+app.locals.fmtDateTime = fmtDateTime;  // 2026.08.05 01:00
+app.locals.timeAgo = timeAgo;          // 3시간 전 (7일 초과 시 날짜)
 
 /* ===== 세션 (PostgreSQL 저장) ===== */
 const PgSession = connectPgSimple(session);
