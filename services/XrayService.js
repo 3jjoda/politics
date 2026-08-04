@@ -26,6 +26,37 @@ export default (db) => {
         };
     }
 
+    /* ⑪ 당 성향 격차 히스토그램 — 2%p 폭 17구간 (-2 ~ 32) 채우기
+       빈 버킷도 자리를 잡아야 분포 모양이 안 왜곡된다 */
+    function buildGapDist(rows, stats) {
+        const BINS = 17, FROM = -2, STEP = 2;
+        const bins = Array.from({ length: BINS }, (_, i) => ({
+            from: FROM + i * STEP, to: FROM + (i + 1) * STEP, cnt: 0
+        }));
+        rows.forEach(r => {
+            const idx = Math.min(BINS - 1, Math.max(0, Number(r.bucket) - 1));
+            bins[idx].cnt = Number(r.cnt);
+        });
+        const total = stats ? Number(stats.total) : 0;
+        const pct = (n) => (total > 0 ? Math.round(Number(n) / total * 1000) / 10 : 0);
+        return {
+            bins,
+            total,
+            median: stats ? Number(stats.median) : 0,
+            q1: stats ? Number(stats.q1) : 0,
+            q3: stats ? Number(stats.q3) : 0,
+            gapMin: stats ? Number(stats.gap_min) : 0,
+            gapMax: stats ? Number(stats.gap_max) : 0,
+            neutralCnt: stats ? Number(stats.neutral_cnt) : 0,
+            neutralPct: stats ? pct(stats.neutral_cnt) : 0,
+            partisanCnt: stats ? Number(stats.partisan_cnt) : 0,
+            partisanPct: stats ? pct(stats.partisan_cnt) : 0,
+            byParty: (stats && stats.by_party) ? stats.by_party.map(p => ({
+                party: p.party_name, cnt: Number(p.cnt), avgGap: Number(p.avg_gap)
+            })) : []
+        };
+    }
+
     /* ⑨ 정당별 4축 분포 그룹핑 (10인 미만 정당은 '그 외') */
     function buildSpectrum(rows) {
         const byParty = new Map();
@@ -58,13 +89,15 @@ export default (db) => {
                 funnel, committeeRate,
                 crossPartyStats, crossPartyRank,
                 leaderSigner, absentRank, citizenGap,
-                spectrumRows, categoryCounts
+                spectrumRows, categoryCounts,
+                gapDistRows, gapStats
             ] = await Promise.all([
                 dao.getConsensusHistogram(), dao.getDissentRank(), dao.getProposePass(),
                 dao.getFunnel(), dao.getCommitteeProcessRate(),
                 dao.getCrossPartyStats(), dao.getCrossPartyRank(),
                 dao.getLeaderSigner(), dao.getAbsentRank(), dao.getCitizenGap(),
-                dao.getPartySpectrum(), dao.getCategoryCounts()
+                dao.getPartySpectrum(), dao.getCategoryCounts(),
+                dao.getCrossPartyGapDist(), dao.getCrossPartyGapStats()
             ]);
 
             return {
@@ -84,7 +117,8 @@ export default (db) => {
                 absentRank,
                 citizenGap,
                 spectrum: buildSpectrum(spectrumRows),
-                categoryCounts
+                categoryCounts,
+                gapDist: buildGapDist(gapDistRows, gapStats)
             };
         }
     };

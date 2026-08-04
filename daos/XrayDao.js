@@ -48,6 +48,10 @@ export default (db) => {
         getPartySpectrum: () => run('getPartySpectrum'),
 
         /* ⑩ AI 카테고리 분포 */
-        getCategoryCounts: () => run('getCategoryCounts')
+        getCategoryCounts: () => run('getCategoryCounts'),
+
+        /* ⑪ 당 성향 격차 분포 (politician_cross_party_vote MV 기반) */
+        getCrossPartyGapDist: () => run('getCrossPartyGapDist'),
+        getCrossPartyGapStats: () => run('getCrossPartyGapStats').then(rows => rows[0])
     };
 };

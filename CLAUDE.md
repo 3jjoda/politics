@@ -282,6 +282,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `2026-04-26-balance-game.sql` — 밸런스 게임 4테이블 1차 (이후 cumulative 마이그레이션이 응답 테이블 재설계)
   - `2026-04-26-balance-game-cumulative.sql` — **누적 모델 v2**. `balance_game_packs` / `user_axis_score` / `group_axis_avg` 신규, `balance_game_responses` 1문항 단위 재설계, `balance_game_questions` 에 `pack_id`/`display_order`, `bill_axis_mapping.mapped_by` 타입 변경, `users.welcomed_at`. 종합팩 'general' + 20문항 시드 포함
   - `ddl/migrations/2026-08-04-batch-incremental.sql` — **배치 증분화**. `bills.vote_synced_at` 컬럼 + 부분 인덱스, `batch_runs` 테이블 (배치 실행 기록 · nav 갱신 배지 소스 · 크론 실패 추적)
+  - `ddl/migrations/2026-08-05-cross-party-vote-mv.sql` — **교차 표결 성향 MV**. `politician_cross_party_vote` + UNIQUE 인덱스(CONCURRENTLY 갱신용) + `gap` 부분 인덱스
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
 - `balance_game_seed_v1.sql` (root) — 밸런스 게임 60문항 시드 (종합 20 + 노동 10 + 부동산 10 + 안보 10 + 젠더 10). 별도 받아온 외부 시드 파일이라 root 에 위치
@@ -298,7 +299,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (AI 분석 진행률 배너 + 통합 필터 카드 + 정렬 + 카테고리·정당 복수선택, 페이징) |
 | `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·요청 위젯·국민 찬반·본회의 표결·댓글) |
-| `/xray` | `xray/xray.ejs` | 국회 X레이 — 시각화 10종 (합의 분포·당론 이탈·발의vs가결·생존율·초당 협력·발의 스타일·불참률·시민 괴리·정당 스펙트럼·AI 카테고리). `daos/queries/xray/` 12쿼리, 서버 SVG 렌더 |
+| `/xray` | `xray/xray.ejs` | 국회 X레이 — 시각화 **11종** (합의 분포·당론 이탈·**당 성향 격차**·발의vs가결·생존율·초당 협력·발의 스타일·불참률·시민 괴리·정당 스펙트럼·AI 카테고리). `daos/queries/xray/` 14쿼리, 서버 SVG 렌더 |
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
@@ -435,6 +436,25 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - 격차 숫자 단독으로는 크기를 가늠할 수 없어 **중앙값 + 순위(N명 중 M위)** 를 반드시 동반
   - "반대·기권 N건 중 M건이 타당 발의" 한 줄 — 희소 신호(이견)가 어디로 향하는지가 가장 직관적
   - 폴백: 자당/타당 표결이 하나라도 0이면 블록 자체를 렌더하지 않음 (예: 무소속 한동훈). 50건 미달이면 순위만 숨기고 비율은 표시
+- **사전 계산** (2026-08-05): 집계 본체는 materialized view `politician_cross_party_vote`
+  - 매 요청 계산 시 의원 목록 쿼리가 88ms → 180ms 로 늘고, `bill_votes`(현재 177,260행)가 늘수록 나빠져서 MV 로 뺐다. 적용 후 92ms 로 복귀
+  - 갱신: `batch/refreshCrossPartyVote.js` (`REFRESH ... CONCURRENTLY`, 0.4초). `batch:daily` 체인의 syncVotes **다음**에 위치 (bills·votes 가 입력)
+  - `CONCURRENTLY` 를 쓰려면 UNIQUE 인덱스 필수 (`ux_pcpv_mona_cd`) — 갱신 중에도 목록 페이지가 안 막힘
+  - 상세 쿼리는 MV 를 읽어 중앙값·순위만 얹는다 (300행 스캔이라 비용 없음)
+- **의원 목록 필터·정렬** (2026-08-05, 일치도 필터와 같은 패턴):
+  - `#pol-gap-filter` 드롭다운 5옵션: `전체 / 법안 중심(2%p 미만) / 중간 이하(5%p 미만) / 뚜렷한 편(5%p 이상) / 매우 뚜렷(10%p 이상)`
+  - `#pol-sort` 추가: `gap-desc`(당 성향 뚜렷한 순) / `gap-asc`(법안 중심인 순)
+  - **일치도 필터와 달리 성향 진단 없이도 사용 가능** — 객관 데이터 기반이라 로그인·게임 완료 조건이 없다
+  - 카드에 `data-gap` 서버 사전 계산. 값 없는 의원(표본 50건 미만·무소속 등 43명)은 필터 시 제외 / 정렬 시 항상 최후미
+  - URL 키 `gap` 으로 영속화 (`loadFromUrl`/`saveToUrl`). 예: `/politician?gap=gte10&sort=gap-desc`
+  - 필터 시트 배지 카운트에는 미포함 (상단 드롭다운이라 `match` 와 동일 취급)
+- **X레이 ③ 「당을 보나, 법안을 보나」** (`#xr-gapdist`, 2026-08-05): 개인 순위("266명 중 42위")의 배경이 되는 **전체 분포**
+  - 쿼리 2개 — `getCrossPartyGapDist.sql` (2%p 폭 17구간 `width_bucket`, -2~32) / `getCrossPartyGapStats.sql` (사분위·중립/당파 인원·정당별 평균). 둘 다 MV 를 읽어 300행 스캔
+  - 서비스 `buildGapDist()` 가 빈 버킷을 채움 — 안 채우면 분포 모양이 왜곡된다
+  - 히스토그램에 **중앙값 점선** 오버레이. 10%p 이상 구간만 진하게 (합의 분포의 90% 강조와 같은 패턴)
+  - 실측: 중앙값 3.4%p / 2%p 미만 100명(37.6%) / 10%p 이상 29명(10.9%) / 범위 -1.2~30.9
+  - **정당별 평균 격차(국힘 7.4 · 민주 2.5)는 해석 주의 문구와 반드시 세트** — 다수당은 자기 법안이 무난히 통과되는 의사일정 구조라 격차가 낮게 나오는 경향. "어느 당이 더 당파적" 으로 읽히면 중립성 원칙 위반
+  - 섹션 번호가 밀려 기존 03~10 → 04~11 로 재정렬됨 (`SECTIONS` 배열 + `.xr-no` 라벨)
 - **`/xray` 지표와 중복 아님** — 세 축이 각각 다르다:
   | 지표 | 축 |
   |---|---|
@@ -597,6 +617,7 @@ PC/모바일 동일 패턴으로 통일.
 | `billCategories.js` | (모듈) | 16종 카테고리·정의·tie-breaker 공유 (분석/재분류 배치가 import) |
 | `calcGroupAxisAvg.js` | DB 집계 | 인구 그룹별 4축 평균 일배치 (밸런스 게임 단계 4 비교용). 'all' + (gender × age_group), user_count >= 50 만 평균 채움 |
 | `calcPoliticianAxis.js` | DB 집계 | `bill_axis_mapping × bill_votes` → `politician_axis_score`. 가중평균 (찬성→agree_score / 반대→disagree_score, 기권/불참 제외). 인자 `--version v1` `--min-votes 1`. 분포 히스토그램 + 정당별 평균 검증 출력 |
+| `refreshCrossPartyVote.js` | DB 집계 | `politician_cross_party_vote` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~0.4초). 의원 목록의 격차 필터·정렬이 이걸 읽는다. **syncBills·syncVotes 다음에 실행** |
 
 ### 배치 실행 순서 (2026-07-29 정리)
 > ⚠️ 실행 전 `node -v` 확인 — **Node 22** (`.nvmrc` 22.20.0). Node 18 이면 undici 7 이 전역 `File` 부재로 즉사 (`ReferenceError: File is not defined`)
@@ -621,7 +642,7 @@ PC/모바일 동일 패턴으로 통일.
 
 ### 크론 배포 (Railway, 2026-08-04)
 npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
-- `npm run batch:daily` — `syncPoliticians && syncBills && syncVotes && calcPoliticianAxis && calcGroupAxisAvg`
+- `npm run batch:daily` — `syncPoliticians && syncBills && syncVotes && refreshCrossPartyVote && calcPoliticianAxis && calcGroupAxisAvg`
 - `npm run batch:full` — `syncVotes --full` (수동 전건 재스캔. 크론 불필요 — 아래 참조)
 
 Railway 설정 (웹 서비스와 **분리된 서비스 1개**, 같은 GitHub repo 연결):

@@ -948,12 +948,21 @@
         <option value="gte50">50% 이상</option>
         <option value="lt50">50% 미만</option>
       </select>
+      <select id="pol-gap-filter" class="filter-select" title="자당 발의 법안과 타당 발의 법안의 찬성률 차이. 클수록 소속 정당에 따라 표결이 갈렸다는 뜻입니다.">
+        <option value="">당 성향: 전체</option>
+        <option value="lt2">법안 중심 (2%p 미만)</option>
+        <option value="lt5">중간 이하 (5%p 미만)</option>
+        <option value="gte5">뚜렷한 편 (5%p 이상)</option>
+        <option value="gte10">매우 뚜렷 (10%p 이상)</option>
+      </select>
       <select id="pol-sort" class="filter-select">
         <option value="propose">정렬: 발의 많은순</option>
         <option value="name">정렬: 이름순</option>
         <option value="party">정렬: 정당순</option>
         <option value="match-desc"<% if (!_bgDone) { %> disabled<% } %>>정렬: 일치도 높은 순</option>
         <option value="match-asc"<% if (!_bgDone) { %> disabled<% } %>>정렬: 일치도 낮은 순</option>
+        <option value="gap-desc">정렬: 당 성향 뚜렷한 순</option>
+        <option value="gap-asc">정렬: 법안 중심인 순</option>
       </select>
       <div class="search-wrap">
         <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1127,7 +1136,8 @@
              data-sex="<%= p.sex_gbn_nm || '' %>"
              data-age-bucket="<%= p.age_bucket || '' %>"
              data-propose="<%= p.propose_cnt || 0 %>"
-             data-match-pct="<% const _mp = similarityOf(distanceTo(p)); %><%= _mp === null ? '' : _mp %>">
+             data-match-pct="<% const _mp = similarityOf(distanceTo(p)); %><%= _mp === null ? '' : _mp %>"
+             data-gap="<%= (p.cpv_gap === null || p.cpv_gap === undefined) ? '' : p.cpv_gap %>">
             <% if (p.photo_url) { %>
               <img src="<%= p.photo_url %>" alt="<%= p.name %>" class="pol-photo-img" loading="lazy">
             <% } else { %>
@@ -1188,7 +1198,8 @@
              data-sex="<%= p.sex_gbn_nm || '' %>"
              data-age-bucket="<%= p.age_bucket || '' %>"
              data-propose="<%= p.propose_cnt || 0 %>"
-             data-match-pct="<% const _mpL = similarityOf(distanceTo(p)); %><%= _mpL === null ? '' : _mpL %>">
+             data-match-pct="<% const _mpL = similarityOf(distanceTo(p)); %><%= _mpL === null ? '' : _mpL %>"
+             data-gap="<%= (p.cpv_gap === null || p.cpv_gap === undefined) ? '' : p.cpv_gap %>">
             <div class="pol-list-avatar">
               <%- avatarHtml(p.name, p.photo_url, 40) %>
             </div>
@@ -1225,8 +1236,9 @@
 (() => {
   // party 는 상단 탭(단일), 나머지는 사이드바 복수선택 배열
   // match: '' | 'gte70' | 'gte60' | 'gte50' | 'lt50'
-  // sort: 'propose' | 'name' | 'party' | 'match-desc' | 'match-asc'
-  const state = { party: '', cmit: [], elect: [], sex: [], ageBucket: [], q: '', sort: 'propose', match: '' };
+  // gap:   '' | 'lt2' | 'lt5' | 'gte5' | 'gte10'   (교차 표결 성향 격차 %p)
+  // sort: 'propose' | 'name' | 'party' | 'match-desc' | 'match-asc' | 'gap-desc' | 'gap-asc'
+  const state = { party: '', cmit: [], elect: [], sex: [], ageBucket: [], q: '', sort: 'propose', match: '', gap: '' };
   const bgDone = <%= locals.balanceGameCompleted === true ? 'true' : 'false' %>;
 
   const gridContainer = document.getElementById('grid-container');
@@ -1246,6 +1258,19 @@
     return true;
   };
 
+  // 당 성향 격차 필터 — 값이 없는 의원(표본 50건 미만·무소속 등)은 필터 적용 시 제외
+  const gapPasses = (gapStr, mode) => {
+    if (!mode) return true;
+    if (gapStr === '' || gapStr === undefined || gapStr === null) return false;
+    const g = parseFloat(gapStr);
+    if (isNaN(g)) return false;
+    if (mode === 'lt2')   return g <  2;
+    if (mode === 'lt5')   return g <  5;
+    if (mode === 'gte5')  return g >= 5;
+    if (mode === 'gte10') return g >= 10;
+    return true;
+  };
+
   const applyFilter = () => {
     const q = state.q.trim();
     let visibleCount = 0;
@@ -1259,6 +1284,7 @@
       const sex   = el.dataset.sex || '';
       const age   = el.dataset.ageBucket || '';
       const matchPct = el.dataset.matchPct || '';
+      const gapVal = el.dataset.gap || '';
 
       // 이름·지역구 — 직접 부분일치 + 한글 초성 매칭 (PB.matchesQuery)
       const textHit = !q || (window.PB && (PB.matchesQuery(name, q) || PB.matchesQuery(district, q)));
@@ -1268,7 +1294,8 @@
         (state.elect.length === 0      || state.elect.includes(elect)) &&
         (state.sex.length === 0        || state.sex.includes(sex)) &&
         (state.ageBucket.length === 0  || state.ageBucket.includes(age)) &&
-        matchPasses(matchPct, state.match);
+        matchPasses(matchPct, state.match) &&
+        gapPasses(gapVal, state.gap);
 
       el.style.display = matches ? '' : 'none';
       return matches;
@@ -1287,7 +1314,21 @@
       const n = parseInt(v, 10);
       return isNaN(n) ? null : n;
     };
+    // 격차 정렬 시에도 값 없는 의원은 항상 마지막
+    const gapKey = (el) => {
+      const v = el.dataset.gap;
+      if (v === '' || v === undefined || v === null) return null;
+      const n = parseFloat(v);
+      return isNaN(n) ? null : n;
+    };
     const sortFn = (a, b) => {
+      if (state.sort === 'gap-desc' || state.sort === 'gap-asc') {
+        const ga = gapKey(a), gb = gapKey(b);
+        if (ga === null && gb === null) return 0;
+        if (ga === null) return 1;
+        if (gb === null) return -1;
+        return state.sort === 'gap-desc' ? (gb - ga) : (ga - gb);
+      }
       if (state.sort === 'match-desc' || state.sort === 'match-asc') {
         const ma = matchKey(a), mb = matchKey(b);
         if (ma === null && mb === null) return 0;
@@ -1331,6 +1372,7 @@
     if (state.q)                params.set('q',          state.q);
     if (state.sort && state.sort !== 'propose') params.set('sort',  state.sort);
     if (state.match)            params.set('match',      state.match);
+    if (state.gap)              params.set('gap',        state.gap);
     const qs = params.toString();
     const url = window.location.pathname + (qs ? '?' + qs : '');
     window.history.replaceState({}, '', url);
@@ -1347,12 +1389,15 @@
     // 게임 미완료 시 일치도 정렬은 무시 (기본값으로 fallback)
     state.sort = (!bgDone && (sortParam === 'match-desc' || sortParam === 'match-asc')) ? 'propose' : sortParam;
     state.match = bgDone ? (params.get('match') || '') : '';
+    state.gap = params.get('gap') || '';   // 격차는 성향 진단과 무관 — 항상 사용 가능
 
     // UI 동기화
     const sortSel = document.getElementById('pol-sort');
     if (sortSel) sortSel.value = state.sort;
     const matchSel = document.getElementById('pol-match-filter');
     if (matchSel) matchSel.value = state.match;
+    const gapSel = document.getElementById('pol-gap-filter');
+    if (gapSel) gapSel.value = state.gap;
     const searchInput = document.getElementById('pol-search');
     if (searchInput) searchInput.value = state.q;
     document.querySelectorAll('.party-tab').forEach(tab => {
@@ -1441,6 +1486,14 @@
   if (matchFilterEl) {
     matchFilterEl.addEventListener('change', (e) => {
       state.match = e.target.value;
+      applyFilter();
+    });
+  }
+  // 당 성향 격차 filter
+  const gapFilterEl = document.getElementById('pol-gap-filter');
+  if (gapFilterEl) {
+    gapFilterEl.addEventListener('change', (e) => {
+      state.gap = e.target.value;
       applyFilter();
     });
   }

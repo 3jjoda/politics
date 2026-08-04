@@ -12,6 +12,7 @@ WITH pol AS (
     FROM politicians p
    WHERE p.active_yn = TRUE
 )
+
 SELECT pol.politician_id
      , pol.politician_type
      , pol.party_id
@@ -43,6 +44,9 @@ SELECT pol.politician_id
      , pa.institution::float8 AS axis_institution
      , pa.mapping_version     AS axis_version
      , pa.vote_count_used     AS axis_vote_count
+     /* 교차 표결 성향 격차(%p) — 사전 계산 MV. 정의는 CLAUDE.md 참조.
+        in_cohort(자·타당 각 50건 이상) 아니면 NULL → UI 에서 필터 제외·정렬 최후미 */
+     , CASE WHEN cpv.in_cohort THEN cpv.gap END AS cpv_gap
   FROM pol
   LEFT JOIN (
       SELECT mona_cd, COUNT(*) AS propose_cnt
@@ -58,4 +62,6 @@ SELECT pol.politician_id
   ) cp ON cp.mona_cd = pol.mona_cd
   LEFT JOIN politician_axis_score pa
     ON pa.mona_cd = pol.mona_cd AND pa.mapping_version = 'v1'
+  LEFT JOIN politician_cross_party_vote cpv
+    ON cpv.mona_cd = pol.mona_cd
  ORDER BY pol.name

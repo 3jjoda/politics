@@ -24,10 +24,36 @@
 - **단정 회피** — 정당별 평균 격차가 민주 2.5 / 국힘 7.4 로 갈리는데 다수당 의사일정 구조 차이가 섞여 있다. 해석 주의 문구를 UI 에 명시 (ANALYSIS/BALANCEGAME 의 "객관 아닌 투명" 기조)
 - **폴백** — 자당/타당 표결이 하나라도 0이면 블록 미렌더(무소속 등), 50건 미달이면 순위만 숨김
 
+### 의원 목록 필터·정렬 (같은 날 추가)
+일치도 필터와 같은 패턴으로 목록에서 바로 찾을 수 있게 확장. **"정말 법안 보고 투표하는 의원 찾기"** 가 목록 단계에서 가능해짐.
+- `#pol-gap-filter` 5옵션 (`법안 중심 2%p 미만` ~ `매우 뚜렷 10%p 이상`) + 정렬 `gap-desc`/`gap-asc`, URL 키 `gap` 영속화
+- 일치도 필터와 달리 **성향 진단 없이도 사용 가능** — 객관 데이터라 로그인·게임 완료 조건이 없다
+- 검증: `?gap=gte10&sort=gap-desc` → 27명(강선영 30.9 ~), `?gap=lt2&sort=gap-asc` → 95명(안도걸 -1.2 ~). 값 없는 43명은 정렬 시 최후미
+
+### 성능 — materialized view 로 사전 계산
+목록에 붙이려면 299명 전원의 격차가 필요한데, 매 요청 집계하면 목록 쿼리가 **88ms → 180ms**. `bill_votes`(177,260행)가 계속 늘어 시간이 갈수록 나빠지는 구조라 MV 로 분리했다.
+- `politician_cross_party_vote` MV 신규 (`ddl/migrations/2026-08-05-cross-party-vote-mv.sql`, 프로덕션 적용 완료)
+- `batch/refreshCrossPartyVote.js` — `REFRESH ... CONCURRENTLY` 0.4초. `batch:daily` 체인의 syncVotes 다음에 삽입
+- 결과: 목록 쿼리 **92ms** (변경 전 88ms 수준으로 복귀). 상세 쿼리는 MV 를 읽어 중앙값·순위만 얹음
+- 별도 배치 스크립트 대신 MV 를 택한 이유 — 순수 집계라 `REFRESH` 한 줄이면 끝나고, 값이 하루 1회만 바뀐다
+
+### X레이 ③ 「당을 보나, 법안을 보나」 (같은 날 추가)
+개인 순위("266명 중 42위")가 **어떤 분포 위에서 나온 등수인지** 보여주는 배경. 상세 카드 → 목록 필터 → 전체 분포로 이어지는 3단 구성이 완성됐다.
+- `getCrossPartyGapDist.sql` (2%p 폭 17구간 히스토그램) + `getCrossPartyGapStats.sql` (사분위·정당별 평균) 신규. 둘 다 MV 를 읽어 300행 스캔
+- `XrayService.buildGapDist()` — 빈 버킷 채우기(안 채우면 분포 모양이 왜곡됨) + 요약 통계 가공
+- 히스토그램에 **중앙값 점선** 오버레이, 10%p 이상 구간만 진하게 (①합의 분포의 90% 강조와 같은 패턴)
+- 노출 수치: 중앙값 3.4%p · 2%p 미만 100명(37.6%) · 10%p 이상 29명(10.9%) · 범위 -1.2~30.9
+- **정당별 평균(국힘 7.4 / 민주 2.5)에 해석 주의 문구 병기** — 다수당은 자기 법안이 무난히 통과되는 의사일정 구조라 격차가 낮게 나온다. 이 문구 없이 숫자만 두면 중립성 원칙에 어긋난다
+- 섹션이 하나 늘어 기존 03~10 → 04~11 재번호 (`SECTIONS` 배열 + `.xr-no` 라벨)
+
 ### 변경
 - `daos/queries/politician/getCrossPartyVoteByMonaCd.sql` 신규
 - `PoliticianDao` / `PoliticianService` / `PoliticianController` 배선
 - `views/politician/politician_detail.ejs` — `.cpv-*` 블록 + 스타일 (이 페이지는 CSS 가 EJS 인라인)
+- `views/politician/politician.ejs` — 목록 격차 필터·정렬, 카드 `data-gap`
+- `daos/queries/politician/getListWithStats.sql` — MV LEFT JOIN, `cpv_gap` 노출
+- `batch/refreshCrossPartyVote.js` 신규 · `package.json` `batch:daily` 체인에 삽입
+- `daos/queries/xray/getCrossPartyGapDist.sql` · `getCrossPartyGapStats.sql` 신규 · `XrayDao`/`XrayService`/`views/xray/xray.ejs`
 - `.claude/launch.json` 신규 — 미리보기용 (`npm start` + `autoPort`, 포트 3000 점유 회피)
 
 `/xray` 의 당론 이탈·초당 협력과 축이 달라 중복 아님 — 상세는 [CLAUDE.md](./CLAUDE.md) 참조.
