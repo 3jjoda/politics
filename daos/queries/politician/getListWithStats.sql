@@ -4,9 +4,9 @@ WITH pol AS (
        , CASE
            WHEN p.birthday IS NULL THEN NULL
            ELSE (
-             EXTRACT(YEAR FROM (NOW() AT TIME ZONE 'Asia/Seoul')::date)::int
+             EXTRACT(YEAR FROM CURRENT_DATE)::int
            - EXTRACT(YEAR FROM p.birthday)::int
-           - CASE WHEN TO_CHAR((NOW() AT TIME ZONE 'Asia/Seoul')::date, 'MMDD') < TO_CHAR(p.birthday, 'MMDD') THEN 1 ELSE 0 END
+           - CASE WHEN TO_CHAR(CURRENT_DATE, 'MMDD') < TO_CHAR(p.birthday, 'MMDD') THEN 1 ELSE 0 END
          )
          END AS age
     FROM politicians p

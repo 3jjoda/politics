@@ -7,7 +7,7 @@ SELECT p.id
      , p.user_id
      , p.linked_bill_id
      , p.view_count
-     , TO_CHAR(p.created_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI') AS created_at
+     , TO_CHAR(p.created_at, 'YYYY-MM-DD HH24:MI') AS created_at
      , u.nickname
      , u.provider
      , b.bill_name       AS linked_bill_name

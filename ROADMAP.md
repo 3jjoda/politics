@@ -88,6 +88,7 @@
 
 ### 오픈 후 검토 (인프라)
 - **Supabase 리전 이전 검토** — 앱은 싱가포르, DB 는 도쿄(`ap-northeast-1`). 같은 리전이면 페이지당 ~70ms 추가 단축. 프로젝트 재생성 + 데이터 마이그레이션이 필요해 체감이 아쉬울 때만
+  - ⚠️ **이전 시 `ddl/migrations/2026-08-06-db-timezone-kst.sql` 재실행 필수** — DB 타임존은 `pg_db_role_setting` 에만 남는 속성이라 새 프로젝트로 안 따라온다. 빠뜨려도 **에러가 없고** 모든 시각이 조용히 9시간 밀린다
 - **`syncBills` 페이지 조회 병렬화** — 153초 중 124초가 186페이지 **순차** 조회. `syncVotes` 처럼 `pLimit(10)` 적용 시 20초대로 단축 (전체 체인 3분23초 → 1분20초). 새벽 배치라 실익은 작음
 - **`calcPoliticianAxis`/`calcGroupAxisAvg` 에 `batch_runs` 기록 배선** — 현재 sync 3종만 기록 중
 

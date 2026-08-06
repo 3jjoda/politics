@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-08-06 — DB 기본 타임존 KST + 타임존 규칙 단순화
+
+SQL 에디터에서 `timestamptz` 가 `+00` 으로 보여 읽기 어렵다는 문제에서 출발. 저장된 값은 원래 정확하므로(절대 시각) **표시 기본값만** 바꿨다.
+
+### DB 기본 타임존
+- `ALTER DATABASE postgres SET timezone TO 'Asia/Seoul'` (`ddl/migrations/2026-08-06-db-timezone-kst.sql`, 프로덕션 적용)
+- ⚠️ `pg_db_role_setting` 에만 남는 **데이터베이스 속성**이라 프로젝트를 새로 만들면 사라진다. Supabase 리전 이전 시 재실행 필요 — 빠뜨려도 에러가 없고 모든 시각이 조용히 9시간 밀린다. [ROADMAP.md](./ROADMAP.md) 해당 항목에 경고 등재
+
+### 규칙 단순화 — "저장만 명시, 조회는 그냥"
+2026-08-04 에 조회·저장 양쪽 모두 명시 변환을 넣었으나, DB 설정이 생기면서 조회는 불필요해져 걷어냈다.
+- **조회 16곳 제거** — `daos/queries/` 의 `TO_CHAR(... AT TIME ZONE 'Asia/Seoul', ...)` 6곳, `(NOW() AT TIME ZONE 'Asia/Seoul')::date` 10곳 → 평범한 `TO_CHAR` / `CURRENT_DATE` 로 복귀
+- **저장 5곳 유지** — `batch/syncPoliticians.js` 의 정당 이력 `start_date`/`end_date`
+- 근거: 실패 방식이 다르다. 조회가 틀리면 화면에 보이고 설정 한 줄로 복구되지만, 저장이 틀리면 **하루 어긋난 날짜가 영구 저장**되고 나중엔 틀린 줄도 알 수 없다
+- 검증: 세션 tz 를 UTC/KST 로 바꿔가며 비교 → 게시글 시각·의원 연령대 분포 동일. 수정한 조회 쿼리 11개 EXPLAIN 통과, `/community`·`/politician`·`/xray` 200
+
+### 유지되는 것
+- Node 쪽 `utils/datetime.js`(`Intl` + `timeZone` 명시)와 `PB.timeAgo`(`+09:00` 부착)는 그대로 — DB 타임존과 무관하게 **실행 환경 타임존**을 타는 문제라 계층이 다르다
+- `TZ=Asia/Seoul` 환경변수도 유지 (안전망)
+
+---
+
 ## 2026-08-05 — 의원 교차 표결 성향 (당을 보고 투표하나, 법안을 보고 투표하나)
 
 의원 상세 "표결 성향" 카드의 `찬성 95.7%` 가 정보량이 거의 없다는 문제에서 출발. 본회의에 올라오는 법안은 이미 위원회를 통과해 대부분 압도적으로 가결되므로, **비교 기준 없는 찬성률은 높은지 낮은지 판단이 안 된다.**

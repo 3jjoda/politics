@@ -37,7 +37,7 @@ SELECT b.bill_id
      , a.category_sub             AS ai_category_sub
      , COALESCE(rc.request_count, 0) AS analysis_request_count
      , COUNT(*) OVER() AS total_count
-     , ((NOW() AT TIME ZONE 'Asia/Seoul')::date - b.propose_dt)::int AS days_elapsed
+     , (CURRENT_DATE - b.propose_dt)::int AS days_elapsed
   FROM bills b
   LEFT JOIN (
       SELECT bill_id

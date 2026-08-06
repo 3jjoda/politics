@@ -8,8 +8,8 @@ SELECT c.id
      , c.user_id
      , c.content
      , c.is_deleted
-     , TO_CHAR(c.created_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI') AS created_at
-     , TO_CHAR(c.updated_at AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD HH24:MI') AS updated_at
+     , TO_CHAR(c.created_at, 'YYYY-MM-DD HH24:MI') AS created_at
+     , TO_CHAR(c.updated_at, 'YYYY-MM-DD HH24:MI') AS updated_at
      , u.nickname
      , u.provider
   FROM comments c

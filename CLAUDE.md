@@ -1,5 +1,5 @@
 # 3jjoda 프로젝트 — Claude Code 컨텍스트
-> 마지막 업데이트: 2026-08-05
+> 마지막 업데이트: 2026-08-06
 > 이 파일은 **현재 코드 상태**만 담습니다.
 > 비전·로드맵: [ROADMAP.md](./ROADMAP.md)
 > 작업 이력: [CHANGELOG.md](./CHANGELOG.md)
@@ -283,6 +283,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `2026-04-26-balance-game-cumulative.sql` — **누적 모델 v2**. `balance_game_packs` / `user_axis_score` / `group_axis_avg` 신규, `balance_game_responses` 1문항 단위 재설계, `balance_game_questions` 에 `pack_id`/`display_order`, `bill_axis_mapping.mapped_by` 타입 변경, `users.welcomed_at`. 종합팩 'general' + 20문항 시드 포함
   - `ddl/migrations/2026-08-04-batch-incremental.sql` — **배치 증분화**. `bills.vote_synced_at` 컬럼 + 부분 인덱스, `batch_runs` 테이블 (배치 실행 기록 · nav 갱신 배지 소스 · 크론 실패 추적)
   - `ddl/migrations/2026-08-05-cross-party-vote-mv.sql` — **교차 표결 성향 MV**. `politician_cross_party_vote` + UNIQUE 인덱스(CONCURRENTLY 갱신용) + `gap` 부분 인덱스
+  - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
 - `balance_game_seed_v1.sql` (root) — 밸런스 게임 60문항 시드 (종합 20 + 노동 10 + 부동산 10 + 안보 10 + 젠더 10). 별도 받아온 외부 시드 파일이라 root 에 위치
@@ -754,19 +755,36 @@ ANALYSIS_REQUEST_THRESHOLD=5
 
 ## 날짜·시간 처리 규칙 (2026-08-04 정립)
 
-**DB 세션 타임존은 UTC, Railway 컨테이너도 UTC.** 한국 사용자 대상 서비스라 양쪽 모두 명시적 변환이 필요하다. 로컬 개발(윈도우 KST)에서는 전부 정상으로 보이므로 **로컬 테스트로는 절대 못 잡는다.** 검증하려면 `TZ=UTC node app.js` 로 띄울 것.
+**Railway 컨테이너는 UTC**(`TZ=Asia/Seoul` 로 보정), **DB 는 2026-08-06 부터 `Asia/Seoul`** (`ddl/migrations/2026-08-06-db-timezone-kst.sql`). 둘 다 **안전망일 뿐** — 코드는 환경에 의존하지 않게 쓴다. 로컬 개발(윈도우 KST)에서는 문제가 전부 정상으로 보이므로 **로컬 테스트로는 못 잡는다.** 검증하려면 `TZ=UTC node app.js` 로 띄울 것.
 
-### 저장
+> ⚠️ DB 타임존 설정은 `pg_db_role_setting` 에만 남는 데이터베이스 속성이라 **프로젝트를 새로 만들면 사라진다** (Supabase 리전 이전 등). 빠뜨려도 에러가 없고 모든 시각이 조용히 9시간 밀리므로, DB 재생성 시 위 마이그레이션을 반드시 다시 실행할 것.
+
+### 한 줄 규칙 — **저장만 명시, 조회는 그냥**
+| | 타임존이 틀리면 | 명시 변환 |
+|---|---|---|
+| **조회** (`TO_CHAR`·`CURRENT_DATE`) | 화면에 9시간 어긋난 시각. 설정 고치면 즉시 정상 | ❌ 하지 않음 (DB 설정에 위임) |
+| **저장** (달력 날짜 INSERT/UPDATE) | **하루 틀린 날짜가 영구 저장**. 나중엔 틀린 줄도 모름 | ✅ 필수 |
+
+### 저장 (INSERT / UPDATE) — 여기만 명시한다
 | 무엇을 | 어떻게 | 비고 |
 |---|---|---|
 | **시각(instant)** | `TIMESTAMPTZ` + `NOW()` | 절대 시각이라 타임존 무관. **아무 조치 불필요** (현재 41개 컬럼) |
-| **한국 기준 달력 날짜** | `(NOW() AT TIME ZONE 'Asia/Seoul')::date` | `CURRENT_DATE` 는 UTC 기준이라 **금지** |
+| **한국 기준 달력 날짜** | `(NOW() AT TIME ZONE 'Asia/Seoul')::date` | DB 설정에 기대지 말 것. **`CURRENT_DATE` 금지** |
 
-`CURRENT_DATE` 가 위험한 이유: 크론이 04:00 KST(=19:00 UTC 전날)에 돌아 **항상 하루 이른 날짜**가 된다. 해당 컬럼은 `politician_party_memberships.start_date/end_date`, `party_names_history.start_date/end_date` 4개뿐 — 나머지 DATE 컬럼(`propose_dt`/`vote_date`/`birthday`)은 API 에서 받은 값이라 무관.
+DB 기본 타임존이 KST 라 `CURRENT_DATE` 도 지금은 맞는 값을 준다. 그래도 저장에서만 명시하는 이유는 **틀렸을 때 되돌릴 수 없기 때문**이다 — 설정이 빠진 상태로 크론이 04:00 KST(=19:00 UTC 전날)에 돌면 하루 이른 날짜가 영구히 박히고, 나중엔 틀린 줄도 알 수 없다.
 
-### 조회
-- `TO_CHAR(ts, ...)` 는 세션 타임존(UTC)을 따른다 → **`TO_CHAR(ts AT TIME ZONE 'Asia/Seoul', ...)`** 로 쓸 것
-- 이 결과는 오프셋 없는 KST 벽시계 문자열이다. JS 에서 `new Date(s)` 로 바로 파싱하면 실행 환경 타임존으로 해석돼 또 어긋난다 → `utils/datetime.js` 나 `PB.timeAgo` 를 쓸 것 (둘 다 `+09:00` 을 붙여 파싱)
+대상 컬럼은 4개뿐 (전부 `batch/syncPoliticians.js`): `politician_party_memberships.start_date/end_date`, `party_names_history.start_date/end_date`. 나머지 DATE 컬럼(`propose_dt`/`vote_date`/`birthday`)은 API 에서 받은 값이라 무관.
+
+### 조회 (SELECT) — 명시하지 않는다
+DB 기본 타임존이 `Asia/Seoul` 이므로 **그냥 쓰면 된다.** 2026-08-06 에 `daos/queries/` 의 명시 변환 16곳을 전부 걷어냈다.
+
+```sql
+TO_CHAR(c.created_at, 'YYYY-MM-DD HH24:MI')   -- KST 로 나온다
+CURRENT_DATE                                   -- 한국 기준 오늘
+```
+
+- 이 결과는 **오프셋 없는 KST 벽시계 문자열**이다. JS 에서 `new Date(s)` 로 바로 파싱하면 실행 환경 타임존으로 해석돼 어긋난다 → `utils/datetime.js` 나 `PB.timeAgo` 를 쓸 것 (둘 다 `+09:00` 을 붙여 파싱)
+- 조회를 명시하지 않기로 한 근거: 표시가 틀리면 화면에 바로 보이고 DB 설정 한 줄로 즉시 복구된다. 저장과 달리 잘못된 값이 남지 않는다
 
 ### 표시 — `utils/datetime.js` (app.locals 전역 등록)
 | 헬퍼 | 출력 | 용도 |
