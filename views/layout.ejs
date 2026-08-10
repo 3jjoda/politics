@@ -13,19 +13,20 @@
     <meta name="theme-color" content="#B8740C">
 
     <!-- Favicon / App Icons -->
-    <link rel="icon" type="image/svg+xml" href="/assets/imgs/favicon-32.svg">
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/imgs/favicon-32.svg">
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/imgs/favicon-16.svg">
-    <link rel="shortcut icon" href="/assets/imgs/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/imgs/apple-touch-180.png">
-    <link rel="manifest" href="/manifest.json">
+    <%# 정적 파일은 전부 asset() 을 거칠 것 — 배포마다 ?v= 가 바뀌어 캐시가 갈린다 (app.js 참조) %>
+    <link rel="icon" type="image/svg+xml" href="<%= asset('/assets/imgs/favicon-32.svg') %>">
+    <link rel="icon" type="image/png" sizes="32x32" href="<%= asset('/assets/imgs/favicon-32.svg') %>">
+    <link rel="icon" type="image/png" sizes="16x16" href="<%= asset('/assets/imgs/favicon-16.svg') %>">
+    <link rel="shortcut icon" href="<%= asset('/assets/imgs/favicon.ico') %>">
+    <link rel="apple-touch-icon" sizes="180x180" href="<%= asset('/assets/imgs/apple-touch-180.png') %>">
+    <link rel="manifest" href="<%= asset('/manifest.json') %>">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="당말사 — 당 말고 사람">
     <meta property="og:description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
     <meta property="og:url" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.currentUrl || '/') %>">
-    <meta property="og:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') %>/assets/imgs/og-image.png">
+    <meta property="og:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + asset('/assets/imgs/og-image.png') %>">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="당말사">
@@ -35,7 +36,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="당말사 — 당 말고 사람">
     <meta name="twitter:description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
-    <meta name="twitter:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') %>/assets/imgs/og-image.png">
+    <meta name="twitter:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + asset('/assets/imgs/og-image.png') %>">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,9 +45,9 @@
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <link rel="stylesheet" href="/styles/main.css">
+    <link rel="stylesheet" href="<%= asset('/styles/main.css') %>">
     <% if (locals.pageStyles) { %>
-        <link rel="stylesheet" href="/styles/<%= locals.pageStyles %>.css">
+        <link rel="stylesheet" href="<%= asset('/styles/' + locals.pageStyles + '.css') %>">
     <% } %>
 </head>
 <body>
@@ -56,11 +57,11 @@
       <div class="pb-nav-top-inner">
         <a href="/" class="pb-logo" aria-label="당말사 — 당 말고 사람">
             <span class="pb-logo-brand">
-                <img src="/assets/imgs/mark-only.svg" alt="" aria-hidden="true" class="pb-logo-mark">
-                <img src="/assets/imgs/wordmark-nav.svg" alt="" aria-hidden="true" class="pb-logo-wordmark">
+                <img src="<%= asset('/assets/imgs/mark-only.svg') %>" alt="" aria-hidden="true" class="pb-logo-mark">
+                <img src="<%= asset('/assets/imgs/wordmark-nav.svg') %>" alt="" aria-hidden="true" class="pb-logo-wordmark">
             </span>
             <span class="pb-logo-div" aria-hidden="true"></span>
-            <img src="/assets/imgs/tagline.svg" alt="" aria-hidden="true" class="pb-logo-tagline-img">
+            <img src="<%= asset('/assets/imgs/tagline.svg') %>" alt="" aria-hidden="true" class="pb-logo-tagline-img">
         </a>
         <div class="pb-nav-right">
             <% if (locals.dataFreshness) { %>
@@ -160,7 +161,7 @@
 
 <!-- 페이지 전환 로더 — 링크 클릭/폼 submit 시 풀스크린 오버레이 -->
 <div class="pb-page-loader" id="pb-page-loader" hidden aria-hidden="true">
-    <img src="/assets/imgs/spinner.svg" width="48" height="48" alt="">
+    <img src="<%= asset('/assets/imgs/spinner.svg') %>" width="48" height="48" alt="">
     <span class="pb-page-loader-label">불러오는 중…</span>
 </div>
 
@@ -201,9 +202,11 @@
 
 <script>
     window.__USER__ = <%- JSON.stringify(locals.currentUser ? { id: currentUser.user_id, nickname: currentUser.nickname } : null) %>;
+    /* JS 안에서 만드는 <img> 도 캐시를 갈아야 해서 버전을 넘겨둔다 (interactions.js 의 스피너 등) */
+    window.__ASSET_VER__ = <%- JSON.stringify(assetVer) %>;
 </script>
-<script src="/scripts/globalStore.js"></script>
-<script src="/scripts/interactions.js"></script>
+<script src="<%= asset('/scripts/globalStore.js') %>"></script>
+<script src="<%= asset('/scripts/interactions.js') %>"></script>
 <script>
     /* 페이지 전환 로더 — 내부 링크 클릭/폼 submit 동안 풀스크린 오버레이.
        프로그래매틱 navigation 의 경우 window.pbShowLoader() 직접 호출 가능 */

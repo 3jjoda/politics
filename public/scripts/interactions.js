@@ -57,6 +57,15 @@
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
   /* ===================================================================
+     정적 자산 URL — layout.ejs 가 심어준 배포 버전을 붙여 캐시를 갈아준다.
+     서버의 app.locals.asset() 과 같은 역할 (JS 로 만드는 <img> 용).
+  =================================================================== */
+  PB.asset = (p) => {
+    const v = window.__ASSET_VER__;
+    return v ? `${p}${p.includes('?') ? '&' : '?'}v=${v}` : p;
+  };
+
+  /* ===================================================================
      공용 스피너 — /assets/imgs/spinner.svg 기반
        PB.spinner({ size, label }) → HTML 문자열 (컨테이너 innerHTML 에 그대로 사용)
        PB.spinner.overlay({ label })  → 부모에 absolute 로 깔리는 오버레이 HTML
@@ -65,7 +74,7 @@
     const size  = opts.size  || 36;
     const label = opts.label || '불러오는 중…';
     return `<div class="pb-spinner" role="status" aria-live="polite">
-      <img src="/assets/imgs/spinner.svg" width="${size}" height="${size}" alt="" aria-hidden="true">
+      <img src="${PB.asset('/assets/imgs/spinner.svg')}" width="${size}" height="${size}" alt="" aria-hidden="true">
       <span class="pb-spinner-label">${PB.escapeHtml(label)}</span>
     </div>`;
   };
@@ -73,7 +82,7 @@
     const size  = opts.size  || 36;
     const label = opts.label || '불러오는 중…';
     return `<div class="pb-spinner-overlay" role="status" aria-live="polite">
-      <img src="/assets/imgs/spinner.svg" width="${size}" height="${size}" alt="" aria-hidden="true">
+      <img src="${PB.asset('/assets/imgs/spinner.svg')}" width="${size}" height="${size}" alt="" aria-hidden="true">
       <span class="pb-spinner-label">${PB.escapeHtml(label)}</span>
     </div>`;
   };

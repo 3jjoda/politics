@@ -34,12 +34,23 @@ app.use(express.urlencoded({ extended: true }));
 // maxAge 를 안 주면 serve-static 이 'Cache-Control: public, max-age=0' 을 보낸다.
 // 그러면 Railway CDN 이 이 헤더를 존중해서 매 요청 origin 에 재검증하러 오고,
 // 브라우저도 페이지 이동마다 정적 파일 전부를 304 왕복한다 (CDN 켠 의미가 사라짐).
-// 1시간 = 세션 내 페이지 이동에서 재검증을 없애면서, 배포 후 stale 노출은 짧게.
-// 자산 파일명에 해시가 없으므로(main.css / interactions.js) 이보다 길게 두려면
-// layout.ejs 의 링크에 ?v= 버전 쿼리를 붙이는 작업이 선행돼야 한다.
+// 자산 파일명에 해시가 없지만(main.css / interactions.js / 브랜드 SVG) 아래 asset() 헬퍼가
+// 배포마다 바뀌는 ?v= 를 붙여주므로, 캐시가 길어도 배포 즉시 새 파일을 받는다.
 app.use(express.static('public', { maxAge: '1h' }));
 app.use(contextMiddleware);
 app.use(expressLayouts);
+
+/* 정적 자산 버전 — 캐시 무효화용
+   파일명에 해시가 없어서(main.css / interactions.js / 브랜드 SVG 는 이름 고정, 내용만 교체)
+   Cache-Control: max-age 동안 브라우저가 옛 파일을 그대로 쓴다.
+   실제로 리브랜딩 배포 때 wordmark-nav.svg 가 구브랜드로 남는 문제가 있었음.
+   → 링크에 ?v= 를 붙여 배포마다 URL 이 바뀌게 한다.
+   Railway 는 RAILWAY_GIT_COMMIT_SHA 를 주입하므로 배포 단위로 값이 바뀌고,
+   로컬은 프로세스 기동 시각을 써서 서버 재시작마다 갱신된다. */
+const ASSET_VER = (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 8) || Date.now().toString(36);
+app.locals.assetVer = ASSET_VER;
+// 정적 파일 링크는 반드시 이 헬퍼를 거칠 것 — 안 붙이면 배포 후 stale 자산이 노출된다.
+app.locals.asset = (p) => `${p}${p.includes('?') ? '&' : '?'}v=${ASSET_VER}`;
 
 /* EJS 전역 헬퍼 */
 app.locals.avatarHtml = avatarHtml;
