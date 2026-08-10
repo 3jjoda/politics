@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= locals.pageTitle ? locals.pageTitle : '정치 바로미터' %></title>
+    <%# 타이틀 조립은 여기서만. 컨트롤러의 pageTitle 은 "페이지 이름"만 넘기고 브랜드·태그라인은 붙이지 말 것.
+        홈처럼 pageTitle 이 없으면 브랜드+태그라인 단독 → "당말사 — 당 말고 사람" %>
+    <title><%= locals.pageTitle ? locals.pageTitle + ' · 당말사 — 당 말고 사람' : '당말사 — 당 말고 사람' %></title>
 
     <!-- Primary Meta -->
-    <meta name="description" content="당신의 한 표가 어디로 갔는지 끝까지 봅니다. 22대 국회의 모든 법안, 의원, 표결을 국민이 직접 확인하는 정치 데이터 플랫폼.">
+    <meta name="description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
     <meta name="keywords" content="정치, 국회, 법안, 의원, 투표, 공약, 22대 국회, 정치 데이터">
     <meta name="theme-color" content="#B8740C">
 
@@ -20,19 +22,19 @@
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="정치 바로미터 — 내 한표의 바로미터">
-    <meta property="og:description" content="당신의 한 표가 어디로 갔는지 끝까지 봅니다. 22대 국회의 모든 법안, 의원, 표결을 국민이 직접 확인하는 정치 데이터 플랫폼.">
+    <meta property="og:title" content="당말사 — 당 말고 사람">
+    <meta property="og:description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
     <meta property="og:url" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.currentUrl || '/') %>">
     <meta property="og:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') %>/assets/imgs/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:site_name" content="정치 바로미터">
+    <meta property="og:site_name" content="당말사">
     <meta property="og:locale" content="ko_KR">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="정치 바로미터 — 내 한표의 바로미터">
-    <meta name="twitter:description" content="당신의 한 표가 어디로 갔는지 끝까지 봅니다. 22대 국회의 모든 법안, 의원, 표결을 국민이 직접 확인하는 정치 데이터 플랫폼.">
+    <meta name="twitter:title" content="당말사 — 당 말고 사람">
+    <meta name="twitter:description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
     <meta name="twitter:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') %>/assets/imgs/og-image.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -52,9 +54,13 @@
 <nav class="pb-nav">
     <div class="pb-nav-top">
       <div class="pb-nav-top-inner">
-        <a href="/" class="pb-logo" aria-label="정치 바로미터">
-            <img src="/assets/imgs/mark-only.svg" alt="" class="pb-logo-mark-img" aria-hidden="true">
-            <img src="/assets/imgs/wordmark-nav.svg" alt="정치 바로미터" class="pb-logo-wordmark-img">
+        <a href="/" class="pb-logo" aria-label="당말사 — 당 말고 사람">
+            <span class="pb-logo-brand">
+                <img src="/assets/imgs/mark-only.svg" alt="" aria-hidden="true" class="pb-logo-mark">
+                <img src="/assets/imgs/wordmark-nav.svg" alt="" aria-hidden="true" class="pb-logo-wordmark">
+            </span>
+            <span class="pb-logo-div" aria-hidden="true"></span>
+            <img src="/assets/imgs/tagline.svg" alt="" aria-hidden="true" class="pb-logo-tagline-img">
         </a>
         <div class="pb-nav-right">
             <% if (locals.dataFreshness) { %>
@@ -180,7 +186,7 @@
 <footer class="pb-footer">
     <div class="pb-footer-inner">
         <div class="pb-footer-copy">
-            &copy; 2026 정치 바로미터 · 열린국회정보포털 공공데이터 기반
+            &copy; 2026 당말사 · 열린국회정보포털 공공데이터 기반
         </div>
         <ul class="pb-footer-links">
             <li><a href="/about">소개</a></li>

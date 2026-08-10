@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  당말사 — Tagline (기본)
+  viewBox 를 잉크에 맞춰 재단 (132×30 → 108×30). 원래의 우측 27.3 여백은 폰트 폴백 대비였는데,
+  그 여백 때문에 가운데 정렬 시 잉크가 좌측으로 ~9px 밀림 (로그인 카드처럼 center 로 놓는 자리에서 문제).
+  textLength 로 advance 를 고정해 폴백 대비를 여백 대신 이걸로 처리함.
+
+  ⚠️ textLength/lengthAdjust 를 지우지 말 것 — 재단된 viewBox 라 그대로 잘림.
+  폴백별 잉크 우측 실측(고정 전): Pretendard 103.6 / Malgun Gothic 116.1 / Batang 116 / monospace 122
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 30" width="108" height="30">
+  <title>당 말고 사람</title>
+  <text x="2" y="22" font-family="Pretendard, sans-serif" font-weight="500" font-size="20"
+        textLength="101" lengthAdjust="spacingAndGlyphs"
+        fill="#6B7280"><tspan fill="#A8A095">당</tspan><tspan> 말고 </tspan><tspan fill="#8F5800" font-weight="800">사람</tspan></text>
+</svg>

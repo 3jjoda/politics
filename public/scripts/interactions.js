@@ -1,5 +1,5 @@
 /**
- * 정치 바로미터 공용 JS 헬퍼
+ * 당말사 공용 JS 헬퍼
  *   - window.__USER__ : 서버에서 주입 ({id, nickname} | null)
  *   - PB.fetch        : JSON + credentials 래핑
  *   - PB.escapeHtml

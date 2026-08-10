@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <title>정치 바로미터 — Spinner (가속 + 루프)</title>
+  <title>당말사 — Spinner (가속 + 루프)</title>
 
   <style>
     .ring, .bokV, .bokD {

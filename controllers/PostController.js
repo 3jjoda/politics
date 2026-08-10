@@ -34,7 +34,7 @@ export default (db) => {
                 const totalCount = rows.length > 0 ? parseInt(rows[0].total_count) : 0;
                 const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
                 res.render('community/list', {
-                    pageTitle: '커뮤니티 - 정치 바로미터',
+                    pageTitle: '커뮤니티',
                     pageStyles: null,
                     currentUrl: '/community',
                     posts: rows,
@@ -46,7 +46,7 @@ export default (db) => {
         /* GET /community/write — 작성 페이지 */
         writePage: (req, res) => {
             res.render('community/write', {
-                pageTitle: '글쓰기 - 커뮤니티',
+                pageTitle: '글쓰기 · 커뮤니티',
                 pageStyles: null,
                 currentUrl: '/community/write',
                 mode: 'create',
@@ -80,7 +80,7 @@ export default (db) => {
                 post.view_count = Number(post.view_count) + 1;
 
                 res.render('community/detail', {
-                    pageTitle: `${post.title} - 커뮤니티`,
+                    pageTitle: `${post.title} · 커뮤니티`,
                     pageStyles: null,
                     currentUrl: `/community/${id}`,
                     post
@@ -105,7 +105,7 @@ export default (db) => {
                 }
                 const attachedBill = await attachedBillFromId(post.linked_bill_id);
                 res.render('community/write', {
-                    pageTitle: '글 수정 - 커뮤니티',
+                    pageTitle: '글 수정 · 커뮤니티',
                     pageStyles: null,
                     currentUrl: `/community/${id}/edit`,
                     mode: 'edit',

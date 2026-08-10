@@ -93,7 +93,7 @@ export default (db) => {
             const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
             res.render('bill/bill', {
-                pageTitle: '정치 바로미터 - 법안',
+                pageTitle: '법안',
                 pageStyles: 'bill/bill',
                 currentUrl: '/bill',
                 bills,
@@ -171,7 +171,7 @@ export default (db) => {
             const coRepCount = coProposers.filter(cp => cp.proposer_yn).length;
 
             res.render('bill/bill_detail', {
-                pageTitle: `정치 바로미터 - ${bill.bill_name}`,
+                pageTitle: bill.bill_name,
                 pageStyles: 'bill/bill_detail',
                 currentUrl: `/bill/${billId}`,
                 bill,
@@ -251,7 +251,7 @@ export default (db) => {
             const requests = await billService.getMyAnalysisRequests(userId);
             const requestThreshold = billService.getRequestThreshold();
             res.render('my/analysis_requests', {
-                pageTitle: '내가 요청한 분석 - 정치 바로미터',
+                pageTitle: '내가 요청한 분석',
                 pageStyles: 'my/analysis_requests',
                 currentUrl: '/my/analysis-requests',
                 requests,

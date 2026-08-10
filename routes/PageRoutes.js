@@ -38,7 +38,7 @@ export default (db) => {
     router.get('/glossary', async (req, res, next) => {
         try {
             res.render('glossary', {
-                pageTitle: '용어 설명 - 정치 바로미터',
+                pageTitle: '용어 설명',
                 pageStyles: null,
                 currentUrl: '/glossary'
             });
@@ -51,7 +51,7 @@ export default (db) => {
     router.get('/privacy', async (req, res, next) => {
         try {
             res.render('privacy', {
-                pageTitle: '개인정보처리방침 - 정치 바로미터',
+                pageTitle: '개인정보처리방침',
                 pageStyles: null,
                 currentUrl: '/privacy'
             });
@@ -62,7 +62,7 @@ export default (db) => {
     router.get('/terms', async (req, res, next) => {
         try {
             res.render('terms', {
-                pageTitle: '이용약관 - 정치 바로미터',
+                pageTitle: '이용약관',
                 pageStyles: null,
                 currentUrl: '/terms'
             });

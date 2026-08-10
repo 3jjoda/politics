@@ -26,11 +26,17 @@
 
 ---
 
-## 서비스: 정치 바로미터
+## 서비스: 당말사
 
 ### 철학
 "더 이상 당만 보고 투표하는 사람이 없도록"
 내가 행한 한 표가 어떻게 나라를 굴리고 있는지 끝까지 지켜볼 수 있는 플랫폼.
+
+### 브랜드 (2026-08-10 리브랜딩)
+- 서비스명: **당말사** (구 "정치 바로미터")
+- 태그라인: **"당 말고 사람"** (구 "내 한표의 바로미터")
+- 골드 `#B8740C` · 점 복(卜) 마크는 그대로 승계 — 컬러/심볼 시스템 변경 없음
+- ⚠️ CSS 클래스 prefix `.pb-*` 와 JS 전역 `window.PB` 는 **의도적으로 유지** (내부 식별자, 517곳)
 
 ### 레포 & 배포
 - GitHub: https://github.com/3jjoda/politics (dev 브랜치)
@@ -807,20 +813,72 @@ CURRENT_DATE                                   -- 한국 기준 오늘
 ## 브랜드 에셋
 
 ### 현재 사용 중 (`public/assets/imgs/`)
-- nav 로고: `mark-only.svg` (36px) + `wordmark-nav.svg` (h28px, 단일행)
-- login 카드: `mark-only.svg` (48px) + `wordmark-nav.svg` (h36px, gap 12px)
+- **nav 로고: `[mark-only.svg + wordmark-nav.svg]` │ `tagline.svg` 가로 락업** — 데스크톱 225×36 (마크 36 · 워드마크 h30 · 구분선 1×20 · 태그라인 h18) / 모바일 ≤768 183×30 (30 · h24 · 1×16 · h15). CSS `.pb-logo` > `.pb-logo-brand`(`.pb-logo-mark` + `.pb-logo-wordmark`) + `.pb-logo-div` + `.pb-logo-tagline-img`
+- **login 카드: nav 와 같은 3에셋 조립** — 락업 161×84 (마크 48 · 워드마크 h40 가로배치 / 태그라인 h24 아래). 카드는 세로 여유가 있어 태그라인을 아래로 내리고 배율만 키움. CSS `.auth-logo` / `.auth-logo-brand` / `.auth-logo-mark` / `.auth-logo-wordmark` / `.auth-logo-tagline` (login.ejs 인라인)
 - 파비콘: `favicon.ico`, `favicon-16.svg`, `favicon-32.svg`, `apple-touch-180.png`
 - 앱 아이콘: `app-icon-192.png`, `app-icon-512.png` (`public/manifest.json` 참조)
 - OG: `og-image.png` (1200×630)
 
+### 태그라인 "당 말고 사람" 표기 규칙
+기준 에셋은 **`tagline.svg`**. `당` 을 흐리게, `사람` 을 골드로 눌러서 대비를 만드는 방식.
+
+| 조각 | 색 | weight |
+|---|---|---|
+| `당` | `#A8A095` (흐림) | 500 |
+| ` 말고 ` | `#6B7280` | 500 |
+| `사람` | `#8F5800` (골드) | **800** |
+
+- ⚠️ **취소선을 쓰지 말 것.** 초기 `logo-primary.svg` 에는 '당' 위에 골드 취소선(`<line>`)이 있었으나
+  2026-08-10 제거 결정. 현재 코드가 참조하는 어느 에셋에도 취소선 없음 — 되살리지 말 것
+- 새 태그라인 변형(다크·모노 등)을 만들 땐 위 3단 대비 구조를 유지할 것
+- `tagline.svg` / `logo-primary.svg` 양쪽 '당' 모두 `#A8A095` 로 통일 완료 (2026-08-10)
+
+### nav 락업 조립 규칙
+```
+[○卜 마크] 당말사  │  당 말고 사람
+└── .pb-logo-brand ┘ div    tagline
+      gap 9px        gap 12px
+```
+- **중첩 flex 로 간격을 2단 분리** — 마크↔워드마크는 한 덩어리라 좁게(9px), 구분선 기준 바깥은 넓게(12px).
+  단일 `gap` 으로는 이 위계가 안 나옴
+- 잉크 패딩까지 보정한 **시각 간격 실측**: 마크↔워드마크 12.2px / 워드마크↔구분선 14.9px / 구분선↔태그라인 14.1px
+- 모든 SVG 가 잉크 세로중심 ≈ viewBox 중심이라 (`mark` -0.06 / `wordmark` -0.06 / `tagline` -0.5 단위)
+  `align-items: center` 만으로 맞음 — 실측 정렬 오차 0.00px, 오프셋 보정 불필요
+
+### ⚠️ 텍스트 SVG 의 `textLength` — 지우지 말 것
+`wordmark-nav.svg`(116×46) 와 `tagline*.svg`(108×30) 는 viewBox 를 잉크에 타이트하게 재단해서
+CSS `gap` 이 곧 시각 간격이 되고, 가운데 정렬 시 잉크가 실제로 가운데 오게 만듦.
+그 대가로 **폰트 폴백 시 글자가 넓어지면 그대로 잘림**.
+
+- SVG 를 `<img>` 로 로드하면 웹폰트를 못 받아 시스템 폰트로 폴백함 (페이지가 폰트를 로드해도 소용없음)
+- `textLength` + `lengthAdjust="spacingAndGlyphs"` 로 advance 를 고정해 해결
+
+| 파일 | textLength | 폴백 전 잉크 우측 | 고정 후 | viewBox 폭 |
+|---|---|---|---|---|
+| `wordmark-nav.svg` | 109.3 | 106.2 ~ **117.2** (Batang) | 109.7~111.9 | 116 |
+| `tagline*.svg` | 101 | 103.6 ~ **122** (monospace) | 103.0~103.9 | 108 |
+
+- 문구·자간·폰트크기를 바꾸면 **`textLength` 값도 같이 다시 재야 함**
+  (캔버스 `measureText` 로 advance 측정 → 그 값을 넣기)
+- `tagline*.svg` 3종(기본·mono·white)은 같은 geometry 라 한쪽을 고치면 나머지도 같이 고칠 것
+
 ### 미배치 (추후 활용)
-- `logo-white.svg` — 다크모드 도입 시
-- `logo-mono.svg` — 인쇄·흑백 매체
-- `wordmark-kr.svg` — 태그라인 포함 ("내 한표의 바로미터", OG 변형 등)
-- `wordmark-en.svg` — 영문 서브 포함
-- `splash.svg` — 페이지 진입 로더 (전역 스플래시 UI 필요)
-- `spinner.svg` — API 대기 로더 (전역 스피너 UI 필요)
-- `app-icon-1024.png` — 스토어 등록 시
+**인레이형 계열** — '사' 자리에 마크가 박히는 형태. 2026-08-10 잠깐 nav/login 에 썼다가
+**"텍스트가 장난스러워 보인다"** 는 판단으로 전부 마크 분리형으로 회귀. 파일은 보존하되 신규 적용 금지:
+- `logo-primary.svg` (200×104, 태그라인 포함) / `logo-nav.svg` (196×66, 태그라인 없음)
+- `logo-mono.svg` (인쇄·흑백) / `logo-white.svg` (다크 배경)
+
+**평문 계열** — 마크 + '당말사' 텍스트:
+- `logo-lockup.svg` — 마크 + 워드마크 + 태그라인 가로 (280×72). 단 태그라인이 **JetBrains Mono 단색**이라
+  현행 `tagline.svg`(Pretendard + 당/사람 색 대비)와 처리가 다름. 쓰려면 먼저 통일할 것
+- `wordmark-only.svg` — 워드마크 + 태그라인 2행 (240×80)
+- `mark-white.svg` / `tagline-white.svg` — 다크 배경용 / `tagline-mono.svg` — 흑백 매체
+
+**기타**: `splash.svg` (진입 로더, 전역 스플래시 UI 필요) / `loader.svg` (정적 마크, 실제 로딩엔 `spinner.svg`) / `app-icon-1024.png` (스토어 등록 시)
+
+> 태그라인이 **구워진** 락업(`logo-primary` 200×104 / `logo-lockup` 280×72 / `wordmark-only` 240×80)은
+> **nav 에 쓸 수 없음** — 로고행이 60px 라 h36~44 가 한계인데 그 크기면 태그라인이 5~8px 로 뭉개짐.
+> 그래서 nav·login 모두 마크/워드마크/태그라인 **3에셋을 CSS 로 조립**하는 방식을 씀 (배율만 다르게).
 
 ### 디자인 규칙
 - 브랜드 골드: `#B8740C` / 호버: `#925C09`
@@ -831,6 +889,18 @@ CURRENT_DATE                                   -- 한국 기준 오늘
 - `views/layout.ejs <head>` — favicon 5종 + manifest + OG 11개 + Twitter 4개 + theme-color
 - `og:url` / `og:image` 는 `process.env.BASE_URL + locals.currentUrl` 기반 절대 URL
 - `public/manifest.json` — name/short_name/start_url/display=standalone/theme-color/icons(any maskable)
+
+### 브라우저 타이틀 규약 (2026-08-10)
+```
+홈       →  당말사 — 당 말고 사람
+그 외    →  {페이지 이름} · 당말사 — 당 말고 사람
+```
+- **조립은 `views/layout.ejs` 의 `<title>` 한 곳에서만** 함
+- 컨트롤러/라우트의 `pageTitle` 은 **페이지 이름만** 넘길 것 (`'법안'`, `'개인정보처리방침'`, `bill.bill_name`).
+  브랜드명·태그라인·구분자를 직접 붙이지 말 것 — 붙이면 `법안 - 당말사 · 당말사 — 당 말고 사람` 처럼 중복됨
+- 홈(`InitController`)은 `pageTitle: null` 을 넘겨 브랜드+태그라인 단독으로 렌더
+- 페이지 내 계층이 필요하면 `·` 사용 (`'글쓰기 · 커뮤니티'`)
+- 길이 실측: 대부분 18~24자, 최장은 법안 상세 34자 (법안명이 길어서) — 탭·SERP 모두 문제없음
 
 ---
 

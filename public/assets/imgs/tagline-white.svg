@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 당말사 — Tagline (다크 배경용). 재단·textLength 근거는 tagline.svg 주석 참조. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 30" width="108" height="30">
+  <title>당 말고 사람</title>
+  <text x="2" y="22" font-family="Pretendard, sans-serif" font-weight="500" font-size="20"
+        textLength="101" lengthAdjust="spacingAndGlyphs"
+        fill="#9CA3A0"><tspan fill="#6B7280">당</tspan><tspan> 말고 </tspan><tspan fill="#E5A53D" font-weight="800">사람</tspan></text>
+</svg>

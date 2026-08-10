@@ -1,5 +1,5 @@
 /* =========================================================
-   정치 바로미터 — 공통 라이트 테마 스타일
+   당말사 — 공통 라이트 테마 스타일
    ========================================================= */
 
 :root {
@@ -149,26 +149,56 @@ input, textarea, select { font-family: inherit; }
   margin: 0 auto;
 }
 
+/* 로고 락업 = [도장 마크 + 당말사 워드마크] │ 태그라인, 전부 가로 한 줄.
+   중첩 flex 로 간격을 2단 분리 — 마크↔워드마크는 한 덩어리라 좁게(9px),
+   구분선 기준 바깥은 넓게(12px). 모든 SVG 가 잉크 세로중심 ≈ viewBox 중심이라
+   align-items:center 만으로 잉크가 맞음 (실측 오차 0.06~0.5 단위). */
 .pb-logo {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
 }
-.pb-logo-mark-img {
+.pb-logo-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+/* mark-only.svg = 64×64 */
+.pb-logo-mark {
   display: block;
   width: 36px;
   height: 36px;
   flex-shrink: 0;
 }
-.pb-logo-wordmark-img {
+/* wordmark-nav.svg = 116×46, 비율 2.52 */
+.pb-logo-wordmark {
   display: block;
-  height: 28px;
+  height: 30px;
   width: auto;
+  flex-shrink: 0;
+}
+.pb-logo-div {
+  width: 1px;
+  height: 20px;
+  background: var(--border2);
+  flex-shrink: 0;
+}
+/* tagline.svg = 132×30, 비율 4.4 (우측 27.3 단위는 빈 여백) */
+.pb-logo-tagline-img {
+  display: block;
+  height: 18px;
+  width: auto;
+  flex-shrink: 0;
 }
 @media (max-width: 768px) {
-  .pb-logo-mark-img { width: 32px; height: 32px; }
-  .pb-logo-wordmark-img { height: 22px; }
+  .pb-logo { gap: 9px; }
+  .pb-logo-brand { gap: 7px; }
+  .pb-logo-mark { width: 30px; height: 30px; }
+  .pb-logo-wordmark { height: 24px; }
+  .pb-logo-div { height: 16px; }
+  .pb-logo-tagline-img { height: 15px; }
 }
 
 .pb-nav-links {

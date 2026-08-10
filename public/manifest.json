@@ -1,7 +1,7 @@
 {
-  "name": "정치 바로미터",
-  "short_name": "바로미터",
-  "description": "당신의 한 표가 어디로 갔는지 끝까지 봅니다.",
+  "name": "당말사",
+  "short_name": "당말사",
+  "description": "당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#F7F6F1",

@@ -35,7 +35,7 @@ export default (db) => {
             ]);
 
             res.render('index', {
-                pageTitle: '정치 바로미터',
+                pageTitle: null,   // 홈 — layout 이 '당말사 — 당 말고 사람' 단독으로 렌더
                 pageStyles: null,
                 currentUrl: '/',
                 initialData: { CODES: codes },

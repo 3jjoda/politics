@@ -31,7 +31,7 @@ export default (db) => {
             ]);
 
             res.render('politician/politician', {
-                pageTitle: '정치 바로미터 - 정치인',
+                pageTitle: '정치인',
                 pageStyles: 'politician/politician',
                 currentUrl: '/politician',
                 politicians,
@@ -88,7 +88,7 @@ export default (db) => {
             ]);
 
             res.render('politician/politician_detail', {
-                pageTitle: `정치 바로미터 - ${politician.name}`,
+                pageTitle: politician.name,
                 pageStyles: 'politician/politician_detail',
                 currentUrl: `/politician/${monaCd}`,
                 politician,

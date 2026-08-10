@@ -101,12 +101,13 @@
     line-height: 1;
     letter-spacing: 0.02em;
   }
-  .home-hero-title .accent { color: var(--accent); }
-  .home-hero-title .line2 {
-    display: block;
-    color: var(--sub);
-    font-size: clamp(32px, 4vw, 56px);
-  }
+  /* "당 말고 사람" 3행. 색은 구 카피의 3행 색을 그대로 옮김 —
+     당=구 '끝까지 봅니다'(--sub) / 말고=구 '당신의 한 표가'(--text) / 사람=구 '어디로 갔는지'(--accent).
+     크기 차등(구 line2 의 축소)은 두지 않고 3행 모두 같은 크기. */
+  .home-hero-title span { display: block; }
+  .home-hero-title .w-dang  { color: var(--sub); }
+  .home-hero-title .w-malgo { color: var(--text); }
+  .home-hero-title .w-saram { color: var(--accent); }
   .home-hero-desc {
     font-size: 16px;
     color: var(--sub);
@@ -628,9 +629,9 @@
     <div>
       <div class="home-hero-label">22대 국회 실시간 확인 중</div>
       <h1 class="home-hero-title">
-        당신의 한 표가<br>
-        <span class="accent">어디로 갔는지</span>
-        <span class="line2">끝까지 봅니다</span>
+        <span class="w-dang">당</span>
+        <span class="w-malgo">말고</span>
+        <span class="w-saram">사람</span>
       </h1>
       <p class="home-hero-desc">
         <strong><%= nf(k.total_bills) %>개 법안</strong>과 <strong><%= nf(k.total_politicians) %>명 의원</strong>의 모든 활동을 확인합니다.<br>

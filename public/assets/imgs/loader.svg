@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>당말사 — Loading Animation</title>
+  
+  <circle class="ring" cx="32" cy="32" r="25" fill="none" stroke="#B8740C" stroke-width="6.5" transform="rotate(-90 32 32)"></circle>
+  <path class="s1" d="M 30 16 Q 29 32 30 48" fill="none" stroke="#B8740C" stroke-width="7" stroke-linecap="round"></path>
+  <path class="s2" d="M 31 30 Q 37 34 42 38" fill="none" stroke="#B8740C" stroke-width="7" stroke-linecap="round"></path>
+</svg>

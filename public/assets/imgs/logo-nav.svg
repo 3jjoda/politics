@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  당말사 — Nav Lockup (인레이형 단일행)
+  logo-primary.svg 에서 태그라인·골드 밑줄을 제거하고 잉크 기준으로 타이트 크롭한 nav/login 전용 변형.
+  '사' 는 마크(○+卜)가 ㅅ 자리에 인레이되고 우측 rect 2개가 ㅏ 를 이룸.
+
+  textLength/lengthAdjust 는 필수:
+  SVG 가 <img> 로 로드되면 웹폰트를 못 받아 시스템 폰트로 폴백하는데,
+  Batang 폴백 시 '당말' 잉크가 x=125.7 까지 밀려 x=126.9 의 마크와 겹침.
+  advance 를 116.6 에 고정하면 어떤 폴백에서도 잉크가 120.3 을 안 넘어 최소 6.6 단위 간격이 유지됨.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 66" width="196" height="66">
+  <title>당말사</title>
+  <text x="0" y="57"
+        font-family="'Noto Serif KR', 'Nanum Myeongjo', serif" font-weight="900" font-size="64"
+        letter-spacing="-3.5" textLength="116.6" lengthAdjust="spacingAndGlyphs"
+        fill="#0F1B1F">당말</text>
+  <g transform="translate(124 11) scale(0.72)">
+    <circle cx="32" cy="32" r="28" fill="none" stroke="#B8740C" stroke-width="7.5"></circle>
+    <g stroke="#B8740C" stroke-width="8.4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 29.6 12.8 Q 28.4 32 29.6 51.2"></path>
+      <path d="M 30.8 29.6 Q 38 34.4 44 39.2"></path>
+    </g>
+    <rect x="74" y="1" width="9" height="62" rx="1.5" fill="#0F1B1F"></rect>
+    <rect x="83" y="26" width="13" height="8.5" rx="1.5" fill="#0F1B1F"></rect>
+  </g>
+</svg>

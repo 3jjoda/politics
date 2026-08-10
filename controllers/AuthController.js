@@ -21,7 +21,7 @@ export default (db) => {
             if (req.user) return res.redirect('/');
             if (req.query.next) req.session.authNext = String(req.query.next);
             res.render('auth/login', {
-                pageTitle: '로그인 - 정치 바로미터',
+                pageTitle: '로그인',
                 pageStyles: null,
                 currentUrl: '/auth/login',
                 providers: { google: GOOGLE_ENABLED, kakao: KAKAO_ENABLED },
@@ -59,7 +59,7 @@ export default (db) => {
             if (!pending) return res.redirect('/');
 
             res.render('auth/setup', {
-                pageTitle: '닉네임 설정 - 정치 바로미터',
+                pageTitle: '닉네임 설정',
                 pageStyles: null,
                 currentUrl: '/auth/setup',
                 pending,
@@ -77,7 +77,7 @@ export default (db) => {
                 const v = authService.validateNickname(nickname);
                 if (!v.ok) {
                     return res.status(400).render('auth/setup', {
-                        pageTitle: '닉네임 설정 - 정치 바로미터',
+                        pageTitle: '닉네임 설정',
                         pageStyles: null,
                         currentUrl: '/auth/setup',
                         pending,
@@ -87,7 +87,7 @@ export default (db) => {
                 const available = await authService.isNicknameAvailable(v.value);
                 if (!available) {
                     return res.status(400).render('auth/setup', {
-                        pageTitle: '닉네임 설정 - 정치 바로미터',
+                        pageTitle: '닉네임 설정',
                         pageStyles: null,
                         currentUrl: '/auth/setup',
                         pending,
@@ -100,7 +100,7 @@ export default (db) => {
                 const ageGroupValue = authService.validateAgeGroup(ageGroup);
                 if (!genderValue) {
                     return res.status(400).render('auth/setup', {
-                        pageTitle: '닉네임 설정 - 정치 바로미터',
+                        pageTitle: '닉네임 설정',
                         pageStyles: null,
                         currentUrl: '/auth/setup',
                         pending,
@@ -109,7 +109,7 @@ export default (db) => {
                 }
                 if (!ageGroupValue) {
                     return res.status(400).render('auth/setup', {
-                        pageTitle: '닉네임 설정 - 정치 바로미터',
+                        pageTitle: '닉네임 설정',
                         pageStyles: null,
                         currentUrl: '/auth/setup',
                         pending,
@@ -141,7 +141,7 @@ export default (db) => {
                 // UNIQUE 제약 동시 충돌 등
                 if (err.code === '23505') {
                     return res.status(400).render('auth/setup', {
-                        pageTitle: '닉네임 설정 - 정치 바로미터',
+                        pageTitle: '닉네임 설정',
                         pageStyles: null,
                         currentUrl: '/auth/setup',
                         pending: req.session.oauthPending,
@@ -165,7 +165,7 @@ export default (db) => {
                 if (userRow.welcomed_at) return res.redirect('/');
 
                 res.render('auth/welcome', {
-                    pageTitle: '환영합니다 - 정치 바로미터',
+                    pageTitle: '환영합니다',
                     pageStyles: 'auth/welcome',
                     currentUrl: '/auth/welcome',
                     user: userRow

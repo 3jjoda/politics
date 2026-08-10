@@ -40,7 +40,7 @@ export default (db) => {
             const reqPending = reqTotal - reqDone;
 
             res.render('my/profile', {
-                pageTitle: '마이페이지 - 정치 바로미터',
+                pageTitle: '마이페이지',
                 pageStyles: null,
                 currentUrl: '/my',
                 user,

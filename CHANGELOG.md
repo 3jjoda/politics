@@ -1,7 +1,185 @@
-# 정치 바로미터 — 작업 이력
+# 당말사 — 작업 이력
 > 시간 역순 (최신이 위). 의미 있는 리팩토링·기능 추가만 기록.
 > 현재 상태: [CLAUDE.md](./CLAUDE.md)
 > 앞으로 계획: [ROADMAP.md](./ROADMAP.md)
+> ⚠️ 2026-08-10 이전 항목의 "정치 바로미터" 표기는 당시 서비스명 그대로 둡니다 (역사 기록).
+
+---
+
+## 2026-08-10 — 홈 히어로 헤드라인을 브랜드 문구로 교체
+
+`views/index.ejs` 히어로 h1 을 3행 브랜드 문구로 변경. 구 카피의 3행 색을 단어별로 그대로 이어받음.
+
+| 행 | 구 카피 | 색 |
+|---|---|---|
+| **당** | 끝까지 봅니다 | `var(--sub)` `#4B5362` |
+| **말고** | 당신의 한 표가 | `var(--text)` `#1A1D24` |
+| **사람** | 어디로 갔는지 | `var(--accent)` `#B8740C` |
+
+- 색 매핑만 옮기고 **크기 차등은 제거** — 구 `.line2` 는 `clamp(32,4vw,56)` 로 3행만 작았는데, 3행 모두 같은 크기가 맞음
+- `.accent` / `.line2` 는 히어로 전용 셀렉터라 제거, `.w-dang` / `.w-malgo` / `.w-saram` 신설
+- 검증: 데스크톱 1280 76.8px 3행 블록 230px (히어로가 뷰포트 안에 들어옴) / 모바일 375 40px 줄바꿈 없음 / 가로 스크롤 없음
+- 히어로 설명문("당만 보고 투표하는 시대는 끝났습니다…")은 새 헤드라인과 결이 맞아 그대로 둠
+
+---
+
+## 2026-08-10 — nav 로고 마크 분리형으로 회귀
+
+인레이형(`logo-nav.svg`, '사' 자리에 마크가 박힌 형태)을 적용했다가 **"텍스트가 너무 장난스러워 보인다"** 는 판단으로 **도장 마크를 앞으로 빼고 '당말사' 는 평범한 워드마크로** 되돌림. 리브랜딩 초기 구조로 복귀하되 태그라인은 유지.
+
+```
+[○卜 마크] 당말사  │  당 말고 사람
+```
+
+### 1. `wordmark-nav.svg` 재단 + `textLength` 추가
+마크·구분선과 붙일 거라 viewBox 를 잉크에 타이트하게 재단 (124×48 → **116×46**). CSS `gap` 이 곧 시각 간격이 되게 하려면 필요한 작업인데, 그 대가로 폰트 폴백 시 잘림 위험이 생김:
+
+| 폰트 | textLength 없음 | 있음 |
+|---|---|---|
+| Noto Serif KR | 111.9 | 111.9 |
+| sans-serif | 106.2 | 111.8 |
+| **Batang** | **117.2** ← viewBox 116 초과 | 110.6 ✓ |
+| monospace | 116.2 | 109.7 ✓ |
+
+`textLength="109.3" lengthAdjust="spacingAndGlyphs"` 로 advance 고정 → 4종 전부 viewBox 안. 래스터 스캔상 잉크 1.5~111.5 / 3.5~42.4, 가장자리 접촉 0, 세로중심 오차 0.06.
+
+### 2. 중첩 flex 로 간격 위계 분리
+마크+워드마크는 한 덩어리라 좁게, 구분선 바깥은 넓게 — 단일 `gap` 으로는 안 되므로 `.pb-logo-brand` 래퍼 추가.
+
+- `.pb-logo` gap 12 > `.pb-logo-brand` gap 9
+- 잉크 패딩 보정한 시각 간격: 마크↔워드마크 **12.2px** / 워드마크↔구분선 **14.9px** / 구분선↔태그라인 **14.1px**
+- 세 SVG 모두 잉크 세로중심 ≈ viewBox 중심이라 `align-items:center` 만으로 정렬 — 실측 오차 **0.00px**
+
+### 3. 검증
+| 폭 | 락업 | 우측 그룹까지 | 오버플로 |
+|---|---|---|---|
+| 1280 | 225×36 (마크 36 · 워드마크 76×30 · 태그라인 79×18), 60px 행 상하 12px | 790px | 없음 |
+| 375 | 183×30 (30 · 61×24 · 66×15), 상하 15px | 107px | 없음 |
+| 320 | 183×30 | 52px | 없음 |
+
+### 4. 로그인 카드도 같은 조립 방식으로 (인레이형 완전 퇴출)
+nav 만 바꾸니 로그인 카드가 여전히 `logo-primary.svg`(인레이형)라 같은 형태가 두 군데서 갈림 → 카드도 3에셋 조립으로 교체.
+
+- 락업 161×84 — 마크 48 + 워드마크 h40 가로 배치, 그 아래 태그라인 h24. nav 와 구조는 같고 배율만 키움
+- 카드 420px 안에 좌우 130px 여백, 태그라인↔브랜드행 **잉크 중심 오차 0.27px**
+- `role="img"` + `aria-label` 로 락업 전체를 한 번만 읽히게 함 (개별 `<img>` 는 `aria-hidden`)
+- 이로써 코드가 참조하는 인레이형 에셋 0개 (`logo-primary`/`logo-nav`/`logo-mono`/`logo-white` 전부 미참조, 파일은 보존)
+- `og-image.png`·앱 아이콘·파비콘은 확인 결과 이미 마크 분리형/마크 단독이라 손댈 것 없음
+
+### 5. `tagline*.svg` 3종 재단 (132×30 → 108×30)
+원본은 우측에 27.3 단위 빈 여백이 있었음 — 폰트 폴백 대비용이었지만, 그 탓에 **가운데 정렬하면 잉크가 좌측으로 ~9.5px 밀림**. 로그인 카드처럼 center 로 놓는 자리에서 바로 문제가 됨.
+
+- 여백을 걷어내고 폴백 대비는 `textLength="101"` 로 대체 (Pretendard 103.6 / Malgun 116.1 / Batang 116 / monospace 122 → 전부 103.0~103.9 로 수렴)
+- 잉크 중심 오차 11.85 → **1.0 단위**
+- nav 는 좌측 정렬이라 **보이는 모습 변화 없음** — 락업 폭만 225→210 으로 줄고 잉크 간격은 12.2/14.9/14.1 그대로
+- `tagline-mono.svg` / `tagline-white.svg` 도 같은 geometry 라 함께 적용
+
+### 6. description 카피를 OG 이미지와 일치시킴
+`og-image.png` 에는 "당 말고 사람. / 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다" 가 적혀 있는데 `og:description` 은 구브랜드 문구("당신의 한 표가 어디로 갔는지 끝까지 봅니다. 22대 국회의 모든 법안…")라 링크 공유 시 이미지와 설명이 다른 말을 하고 있었음.
+
+- 4곳 전부 이미지 카피로 통일 — `<meta name="description">` / `og:description` / `twitter:description` / `manifest.json`
+- 홈 히어로 h1·설명문은 페이지 카피라 그대로 둠 (메타태그와 별개)
+
+### 7. 보존
+- `logo-nav.svg` 등 인레이형 4종은 삭제하지 않고 미배치 자산으로 보존
+
+---
+
+## 2026-08-10 — nav 로고 인레이형 교체 (`logo-nav.svg`) *(위 항목에서 회귀)*
+
+nav/login 로고를 **마크+워드마크 2장 조합 → 인레이형 1장** 으로 교체. `logo-primary.svg` 의 "마크가 '사'의 ㅅ 자리에 박히는" 컨셉을 상시 노출 영역까지 끌어옴.
+
+### 1. `logo-nav.svg` 신규 (196×66, 비율 2.97)
+- `logo-primary.svg` (200×104) 에서 **태그라인 텍스트 + 골드 밑줄 제거** 후 잉크 기준 타이트 크롭 (콘텐츠 전체를 y −5 이동, viewBox 196×66)
+- 원본을 그대로 못 쓰는 이유: 태그라인이 세로의 17%를 차지해서 nav 로고행(60px)에 넣으면 h36 기준 **태그라인이 6.2px** 로 판독 불가. 태그라인이 살려면 폭 240px+ 필요
+- **`textLength="116.6" lengthAdjust="spacingAndGlyphs"` 추가 — 이게 핵심.** SVG 를 `<img>` 로 로드하면 웹폰트를 못 받아 시스템 폰트로 폴백하는데, 폰트별 '당말' 잉크 우측이 112.4~125.7 로 흔들려 **Batang 폴백 시 x=126.9 의 마크와 1.2 단위까지 붙음**. advance 를 고정하니 4개 폰트(Noto Serif KR/Batang/sans-serif/monospace) 전부 잉크 우측 ≤120.3, 최소 간격 6.6 확보
+
+### 2. 태그라인 "당 말고 사람" 을 가로로 이어 붙임
+로고타입만 넣었다가 **"당말사" 가 무슨 뜻인지 안 보인다**는 지적을 받고 태그라인 복원.
+
+처음엔 세로로 쌓았는데(로고 h30 + 태그라인 11px) **"하단에 두니 둘 다 잘 안 보인다"** 는 피드백 → 60px 로고행을 둘이 나눠 쓰는 구조 자체가 문제. **가로 배치**로 바꿔 로고행 세로를 로고가 온전히 쓰게 함:
+
+| | 세로(폐기) | 가로(현재) |
+|---|---|---|
+| 로고 | h30 | **h38** |
+| 태그라인 | 11px | **h20** (font 13.3) |
+| 락업 | 89×44 | 226×38 |
+
+- 별도 `tagline.svg` (132×30) 를 받아 `<img>` 로 사용. 사이에 1×20 구분선(`--border2`), 좌우 gap 12
+- 두 SVG 모두 잉크가 viewBox 세로 중앙(32.5/33, 14.5/15)이라 `align-items:center` 로 잉크 중심 정렬됨 — 실측 오프셋 0.00px
+
+### 2-1. 태그라인 '당' 취소선 폐기
+초기 `logo-primary.svg` 에는 '당' 위에 골드 `<line>` 이 있었음 (밑줄이 아니라 '당' 폭과 정확히 일치하는 **취소선** — "당 말고 사람" 을 시각화한 장치). 새로 받은 `tagline.svg` 에는 없어서 nav/login 표기가 갈렸는데, **취소선 없는 쪽으로 통일 확정**하고 `logo-primary.svg` 도 취소선 뺀 파일로 교체받음.
+
+- 확정 규칙: `당` `#A8A095` 흐림 / ` 말고 ` `#6B7280` / `사람` `#8F5800` weight 800 — 대비만으로 의미 전달
+- 코드가 참조하는 어느 에셋에도 `<line>`·`line-through` 없음 (전수 확인)
+
+### 2-2. 브라우저 타이틀에 태그라인 추가 + 조립 일원화
+`<title>` 에도 태그라인을 넣기로 함. 그런데 기존 `pageTitle` 이 `당말사 - 법안`(브랜드 앞) / `커뮤니티 - 당말사`(브랜드 뒤) / `글쓰기 - 커뮤니티`(브랜드 없음) 세 패턴이 섞여 있어서 그냥 덧붙이면 구분자가 엉킴 → **조립을 layout 한 곳으로 모음**.
+
+```
+홈    →  당말사 — 당 말고 사람
+그 외 →  {페이지 이름} · 당말사 — 당 말고 사람
+```
+- `views/layout.ejs` `<title>` 이 유일한 조립 지점. 컨트롤러 `pageTitle` 35곳을 **페이지 이름만** 넘기도록 정리 (`'당말사 - 법안'` → `'법안'`, `` `당말사 - ${bill.bill_name}` `` → `bill.bill_name`)
+- 홈은 `pageTitle: null` → 브랜드+태그라인 단독
+- 페이지 내 계층 구분자를 `-` → `·` 로 통일 (`'글쓰기 · 커뮤니티'`)
+- 길이 실측: 홈 13자 / 대부분 18~24자 / 최장 법안 상세 34자 — 탭·SERP 모두 여유
+
+### 3. 적용
+- `views/layout.ejs` — `<img>` 2개 → `logo-nav.svg` + `.pb-logo-div` + `tagline.svg` 3요소 flex row. CSS `.pb-logo-mark-img`/`.pb-logo-wordmark-img` → `.pb-logo-img` / `.pb-logo-div` / `.pb-logo-tagline-img`. 데스크톱 h38·h20 / 모바일 ≤768 h30·h16
+- `views/auth/login.ejs` — 카드 폭 420px 라 자리가 넉넉해서 **`logo-primary.svg` 원본을 그대로** w200 배치. 태그라인이 자연 크기 18px 로 나와 별도 조합 불필요
+- `mark-only.svg` / `wordmark-nav.svg` 는 미참조 상태가 되지만 삭제하지 않고 미배치 자산으로 보존
+- 신규 반입: `tagline.svg` / `tagline-mono.svg` / `tagline-white.svg`
+
+### 4. 검증
+| 폭 | 락업 | 우측 그룹까지 | 오버플로 |
+|---|---|---|---|
+| 1280 | 226×38, 60px 행에 상하 11px 균등 | 789px | 없음 |
+| 769 (배지+로그인버튼 다 노출) | 226×38 | 278px | 없음 |
+| 375 | 178×30, 상하 15px 균등 | 111px | 없음 |
+| 320 | 178×30 | 56px | 없음 |
+
+| 항목 | 결과 |
+|---|---|
+| 잉크 중심 정렬 | 로고↔태그라인 세로 오프셋 0.00px |
+| 시각 간격 | 로고잉크→구분선 13.7px / 구분선→태그라인잉크 14.3px (잉크 패딩 보정 후) |
+| login 카드 | logo-primary 200×104, 카드 420px 안에 좌우 110px, 태그라인 18px |
+| 폰트 폴백 충돌 | 4종 전부 없음 (간격 5.6~10.3) |
+| 잉크 잘림 | 8배 래스터 픽셀 스캔 — `logo-nav` 여백 1.9~3.0 / `tagline` 여백 3.5~27.3, 가장자리 접촉 0 |
+
+---
+
+## 2026-08-10 — "정치 바로미터" → "당말사" 리브랜딩 전면 적용
+
+서비스명을 **당말사**, 태그라인을 **"당 말고 사람"** 으로 교체. 골드 `#B8740C` 와 점 복(卜) 마크는 그대로 승계해서 컬러·심볼 시스템 변경은 없음.
+
+### 1. 에셋 교체 (`public/assets/imgs/`)
+- 리브랜딩 세트 16종을 `public/assets/domain change/` 에서 반입 후 staging 폴더 삭제
+  - 교체: `favicon.ico`/`favicon-16,32.svg`/`apple-touch-180.png`/`app-icon-192,512,1024.png`/`og-image.png`/`mark-only.svg`/`logo-primary,mono,white.svg`
+  - 신규: `logo-lockup.svg` (마크+워드마크 가로), `mark-white.svg` (다크 배경), `wordmark-only.svg` (2행), `loader.svg`
+- **`wordmark-nav.svg` 는 신규 작성** — 반입 세트의 `wordmark-only.svg` 는 2행(이름+태그라인) 240×80 이라 nav `height:28px` 에 넣으면 태그라인이 뭉개짐. 단일행 124×48 로 별도 제작
+- **`spinner.svg` / `splash.svg` 는 애니메이션 유지 + `<title>` 만 교체** — 반입된 `loader.svg` 는 `<style>` 블록이 없는 정적 마크라 그대로 쓰면 로딩 스피너가 멈춤. `loader.svg` 는 미배치 자산으로 보관
+- 삭제: `wordmark-kr.svg`, `wordmark-en.svg` (구브랜드 텍스트 + 코드 미참조. kr 변형은 `wordmark-only.svg` 가 대체, en 변형은 당말사 영문 표기 미정이라 미작성)
+
+### 2. 코드 브랜드 문자열 48곳
+- `views/layout.ejs` — `<title>` 기본값 / og:title·twitter:title (`당말사 — 당 말고 사람`) / og:site_name / nav 로고 `aria-label`·`alt` / footer ©
+- `public/manifest.json` — `name`·`short_name` = "당말사", `description` 앞에 태그라인 추가
+- 컨트롤러 `pageTitle` 22곳 (`Auth`/`BalanceGame`/`Bill`/`Init`/`My`/`Politician`/`Post`/`Xray`) + `routes/PageRoutes.js` 3곳
+- 본문 카피 — `privacy.ejs`(약관 주체명), `terms.ejs`(약관 주체명), `glossary.ejs`, `xray.ejs`, `auth/setup.ejs`, `auth/welcome.ejs`, `auth/login.ejs`(로고 alt)
+- **`batch/syncBillAiAnalysis.js:71` 시스템 프롬프트** — AI 가 자기 소속 서비스를 부르는 이름도 교체
+- 주석 — `public/styles/main.css`, `public/scripts/interactions.js`
+- 삭제: `views/partials/old_footer.ejs` (어디서도 include 안 하는 죽은 파티셜, "© 2025 정치 바로미터" 잔존)
+
+### 3. 유지 결정
+- **CSS prefix `.pb-*` (517곳) 와 JS 전역 `window.PB` 는 안 바꿈** — 사용자에게 안 보이는 내부 식별자. 일괄 치환 대비 회귀 위험만 큼
+- `_favicon.png` / `_logo.png` — 미참조 레거시지만 존치
+- 도메인은 여전히 Railway 기본 주소(`politics-production.up.railway.app`). 커스텀 도메인 미연결이라 코드 변경 없음 — 전부 `process.env.BASE_URL` 주입이라 도메인 확정 시 환경변수만 바꾸면 됨
+
+### 4. 문서
+- `CLAUDE.md` — 서비스 섹션에 브랜드 항목 신설, 브랜드 에셋 목록 갱신
+- `README.md` / `ROADMAP.md` / `ANALYSIS.md` / `BALANCEGAME.md` / `UI_BALANCEGAME.md` 브랜드명 일괄 교체
+- CHANGELOG 과거 항목은 역사 기록이라 구 서비스명 유지
 
 ---
 

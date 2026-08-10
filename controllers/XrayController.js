@@ -13,7 +13,7 @@ export default (db) => {
             const data = await xrayService.getPageData();
 
             res.render('xray/xray', {
-                pageTitle: '국회 X레이 - 정치 바로미터',
+                pageTitle: '국회 X레이',
                 pageStyles: null,
                 currentUrl: '/xray',
                 xray: data

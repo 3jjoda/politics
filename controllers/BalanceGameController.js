@@ -23,7 +23,7 @@ export default (db) => {
             ]);
             const completed = svc.isCompleted(axisScore);
             res.render('balance/invite', {
-                pageTitle: '성향 진단 - 정치 바로미터',
+                pageTitle: '성향 진단',
                 pageStyles: 'balance/invite',
                 currentUrl: '/balance-game',
                 axes: AXES,
@@ -59,7 +59,7 @@ export default (db) => {
             if (progress.completed) return res.redirect('/balance-game/reveal');
 
             res.render('balance/respond', {
-                pageTitle: `${pack.title} - 정치 바로미터`,
+                pageTitle: pack.title,
                 pageStyles: 'balance/respond',
                 currentUrl: '/balance-game/respond',
                 pack,
@@ -105,7 +105,7 @@ export default (db) => {
             const distribution = distRows[0] || { left_count: 0, right_count: 0, skip_count: 0 };
 
             res.render('balance/reveal', {
-                pageTitle: '당신의 카드 - 정치 바로미터',
+                pageTitle: '당신의 카드',
                 pageStyles: 'balance/reveal',
                 currentUrl: '/balance-game/reveal',
                 axes: AXES,
@@ -149,7 +149,7 @@ export default (db) => {
             else if (group && groupCount >= svc.GROUP_THRESHOLD_LOW)  groupTier = 'low';
 
             res.render('balance/compare', {
-                pageTitle: '당신의 위치 - 정치 바로미터',
+                pageTitle: '당신의 위치',
                 pageStyles: 'balance/compare',
                 currentUrl: '/balance-game/compare',
                 axes: AXES,
@@ -182,7 +182,7 @@ export default (db) => {
             if (!svc.isCompleted(axisScore)) return res.redirect('/balance-game/respond?pack=general');
 
             res.render('balance/connect', {
-                pageTitle: '진단 완료 - 정치 바로미터',
+                pageTitle: '진단 완료',
                 pageStyles: 'balance/connect',
                 currentUrl: '/balance-game/connect',
                 axes: AXES,
@@ -205,7 +205,7 @@ export default (db) => {
                 svc.listAllActiveQuestions()
             ]);
             res.render('balance/mapping_preview', {
-                pageTitle: '매핑 미리보기 - 정치 바로미터',
+                pageTitle: '매핑 미리보기',
                 pageStyles: 'balance/mapping_preview',
                 currentUrl: '/balance-game/mapping',
                 axes: AXES,
