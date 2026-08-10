@@ -3,7 +3,7 @@
 > "더 이상 당만 보고 투표하는 사람이 없도록"
 > 내가 행한 한 표가 어떻게 나라를 굴리고 있는지 끝까지 지켜볼 수 있는 플랫폼
 
-- **배포**: https://politics-production.up.railway.app
+- **배포**: https://dangmalsa.kr
 - **저장소**: https://github.com/3jjoda/politics (dev 브랜치)
 
 ## 🎯 프로젝트 소개
@@ -147,8 +147,11 @@ ANALYSIS_REQUEST_THRESHOLD=5
 ### 5. 서버 실행
 
 ```bash
-npm run dev
+npm start
 ```
+
+> `npm run dev`(nodemon 자동 재시작)를 쓰려면 먼저 `npm i -D nodemon` 이 필요합니다.
+> 현재 저장소에는 devDependencies 가 없습니다.
 
 ### 6. 데이터 동기화 (선택)
 

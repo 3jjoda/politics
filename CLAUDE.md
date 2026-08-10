@@ -40,8 +40,22 @@
 
 ### 레포 & 배포
 - GitHub: https://github.com/3jjoda/politics (dev 브랜치)
-- 배포: https://politics-production.up.railway.app
+- **대표 주소: https://dangmalsa.kr** (2026-08-10 연결)
+  - `www.dangmalsa.kr` / `politics-production.up.railway.app` 은 여기로 **301** (`middlewares/canonicalHost.js`)
 - DB: Supabase PostgreSQL (Transaction Pooler, ap-northeast-1)
+
+### 인프라 구성 (2026-08-10)
+```
+가비아(도메인 등록) → Cloudflare(DNS·CDN·WAF) → Railway(앱) → Supabase(DB)
+```
+- **도메인**: 가비아 구매. 단 **네임서버는 Cloudflare** — 가비아 DNS 가 `ALIAS`/`ANAME` 을 지원하지 않아
+  apex(`dangmalsa.kr`)에 Railway 의 CNAME 타겟을 붙일 수 없었다. Cloudflare 의 **CNAME flattening** 으로 해결
+- **Cloudflare DNS 레코드 4개**: `@` CNAME → Railway 타겟 / `www` CNAME → Railway 타겟(다른 값) /
+  `_railway-verify` TXT 2개(apex·www 각각). 프록시는 **켜짐(주황)**
+- ⚠️ 프록시를 켤 때 **SSL/TLS 모드가 `Full (strict)` 여야 한다.** `Flexible` 이면 무한 리다이렉트
+- ⚠️ 프록시는 **Railway 인증서 발급이 끝난 뒤에** 켤 것. 먼저 켜면 발급이 막힌다
+- Railway 커스텀 도메인 한도는 플랜당 2개 — apex·www 로 정확히 소진 중
+- 코드는 프록시 유무와 무관. `req.ip`/`X-Forwarded-For` 를 쓰는 곳이 0곳이라 `trust proxy: 1` 그대로 유효
 
 ### 기술 스택
 - Node.js + Express 5.1 + EJS (+ `express-ejs-layouts`)
@@ -777,7 +791,10 @@ DB_CONNECTION_LIMIT=10              # 선택, 기본 10
 # 서버
 PORT=3000
 NODE_ENV=production                 # ⚠️ 없으면 app.js 의 세션 쿠키 secure 플래그가 안 붙음
-BASE_URL=http://localhost:3000      # 프로덕션: https://politics-production.up.railway.app
+BASE_URL=http://localhost:3000      # 프로덕션: https://dangmalsa.kr
+                                    #   ⚠️ 이 값이 og:url·og:image + passport 의 OAuth callbackURL +
+                                    #      canonicalHost 대표 도메인을 전부 좌우한다.
+                                    #      바꾸면 반드시 재시작 (passport 가 기동 시 1회만 읽음)
                                     # ⚠️ 없으면 layout.ejs 의 og:url/og:image 가 localhost 로 나가 SNS 썸네일이 깨짐
                                     #    passport.js 의 OAuth callbackURL 도 상대경로가 됨
 TZ=Asia/Seoul                       # 서버 렌더 날짜가 프로세스 타임존을 타는 코드에 대한 안전망 (Railway 기본 UTC)
@@ -997,7 +1014,14 @@ CSS `gap` 이 곧 시각 간격이 되고, 가운데 정렬 시 잉크가 실제
 
 ```bash
 # 서버 로컬 실행
-npm run dev
+npm start          # ← 현재 동작하는 명령
+
+# ⚠️ `npm run dev` 는 지금 실패한다 — nodemon 이 설치돼 있지 않다 (package.json 에 devDependencies 자체가 없음).
+#    자동 재시작을 쓰려면 먼저: npm i -D nodemon
+# ⚠️ 컨트롤러·라우트·서비스(.js)를 고치면 반드시 재시작해야 반영된다. EJS·CSS 는 요청마다 다시 읽어 재시작 불필요
+# ⚠️ Windows 에서 서버를 죽일 땐 Git Bash 의 `pkill -f "node app.js"` 가 **안 먹는다**.
+#    PowerShell `Stop-Process` 를 쓸 것 — 안 그러면 옛 프로세스가 포트를 잡은 채 응답해서
+#    "코드가 반영이 안 된다" 로 오진하게 된다 (실제로 겪음)
 
 # 배치 실행 예시 (순서: 의원 → 법안 → 표결. "배치 실행 순서" 섹션 참조. Node 22 필수)
 node batch/syncPoliticians.js

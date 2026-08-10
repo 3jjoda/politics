@@ -86,3 +86,6 @@ jspm_packages/
 ehthumbs.db
 Thumbs.db
 .idea
+
+# 에디터/도구 로컬 설정 (Claude Code 등) — 개인 환경이라 공유하지 않음
+.claude/

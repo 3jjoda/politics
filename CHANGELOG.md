@@ -6,6 +6,39 @@
 
 ---
 
+## 2026-08-10 — 커스텀 도메인 `dangmalsa.kr` 연결 (인프라)
+
+```
+가비아(도메인 등록) → Cloudflare(DNS·CDN·WAF) → Railway(앱) → Supabase(DB)
+```
+
+### 1. 가비아 DNS 로는 apex 를 못 붙인다
+`dangmalsa.kr` 을 대표 주소로 쓰려면 apex 에 Railway 의 CNAME 타겟을 붙여야 하는데, **DNS 규격상 apex 에는 CNAME 을 못 넣는다**(RFC 1034). 가비아 DNS 관리의 레코드 타입은 **A / MX / CNAME / TXT / SRV** 뿐 — `ALIAS`/`ANAME` 이 없다.
+
+→ **네임서버만 Cloudflare 로 이전**(도메인 소유·결제는 가비아 그대로). Cloudflare 의 CNAME flattening 이 apex 를 A 레코드로 평탄화한다. 검증: `dangmalsa.kr` → 69.46.46.80 = Railway 타겟 IP 와 일치.
+
+### 2. 등록한 것
+| 위치 | 내용 |
+|---|---|
+| Cloudflare DNS | `@` CNAME → Railway / `www` CNAME → Railway(다른 타겟) / `_railway-verify` TXT ×2 |
+| Railway | 커스텀 도메인 2개 (플랜 한도가 2라 정확히 소진) |
+| Railway 변수 | `BASE_URL=https://dangmalsa.kr` → **재시작 필수** (passport 가 기동 시 1회만 읽음) |
+| Google Cloud | JS 원본 + 리디렉션 URI. 승인된 도메인은 **자동 추가됨** |
+| Kakao | 웹 도메인(전체 URL 필요) + **Redirect URI** — 두 곳이 따로. 위치는 `플랫폼 키 > REST API 키` 아래 |
+
+### 3. 삽질 메모
+- **Railway TXT 검증값은 화면에서 잘려 보인다** — `…` 는 표시 생략이라 전체를 복사해야 함
+- **네거티브 DNS 캐시** — 레코드 생성 *전에* 조회하면 8.8.8.8 이 "없음"을 캐시해 한동안 NXDOMAIN 을 답한다.
+  권위 네임서버(`ridge.ns.cloudflare.com`)에 직접 물어야 진실이 나온다
+- **인증서 발급 전에는 TLS 핸드셰이크가 `SEC_E_WRONG_PRINCIPAL` 로 실패** — DNS 문제와 구분되는 신호
+- **Cloudflare 프록시는 인증서 발급 후에** 켤 것. SSL 모드는 `Full (strict)` (Flexible 이면 무한 리다이렉트)
+- 검증: `www`·`railway.app` → 301 1회로 apex, 정적 자산 `cf-cache-status: HIT`, HTML 은 `DYNAMIC`
+
+### 4. 호스팅 이전은 검토 후 기각
+"관리 포인트를 Cloudflare 하나로" 안이 나왔으나 **Workers 는 사실상 재작성**(Express 미동작 / EJS 런타임 컴파일 불가 / 배치 CPU 한도 / 파일시스템 없음), **Containers 는 베타·오토스케일링 없음**. Cloudflare 는 앞단(DNS·CDN·WAF)만 맡고 호스팅은 Railway 유지가 맞다고 결론.
+
+---
+
 ## 2026-08-10 — "국회 X레이" → "숫자로 본 국회" 개명
 
 nav 라벨 `X레이` → **`숫자`**, 페이지 제목 `국회 X레이` → **`숫자로 본 국회`**.
