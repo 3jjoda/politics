@@ -7,6 +7,7 @@ import dbConfig from './config/database.js';
 import setupRoutes from './routes/Index.js';
 import setupPassport from './config/passport.js';
 import { injectUser } from './middlewares/auth.js';
+import { canonicalHost } from './middlewares/canonicalHost.js';
 import { injectBalanceGameStatus } from './middlewares/balanceGame.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
@@ -27,6 +28,10 @@ app.set('views', './views');
 
 /* 리버스 프록시 (Railway) 뒤에서 secure 쿠키 동작시키기 위해 */
 app.set('trust proxy', 1);
+
+/* 대표 도메인으로 통일 — www·railway.app 로 들어와도 BASE_URL 주소로 301.
+   정적 파일까지 몰아주려고 static 보다 앞에 둔다. BASE_URL 이 로컬이면 자동 비활성. */
+app.use(canonicalHost());
 
 /* 미들웨어 설정 */
 app.use(express.json());

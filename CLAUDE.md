@@ -892,6 +892,22 @@ CSS `gap` 이 곧 시각 간격이 되고, 가운데 정렬 시 잉크가 실제
 - `og:url` / `og:image` 는 `process.env.BASE_URL + locals.currentUrl` 기반 절대 URL
 - `public/manifest.json` — name/short_name/start_url/display=standalone/theme-color/icons(any maskable)
 
+### 대표 도메인 (canonical host) — `middlewares/canonicalHost.js`
+커스텀 도메인을 붙이면 apex·www·railway.app 세 주소가 같은 사이트를 서빙한다.
+검색엔진엔 중복이고, 세션 쿠키가 host-only 라 주소별로 로그인이 따로 논다.
+→ **`BASE_URL` 의 호스트 하나로 301 통일**.
+
+- 대표 호스트를 하드코딩하지 않고 `BASE_URL` 에서 파싱 — 도메인이 또 바뀌어도 코드는 안 건드림
+- `BASE_URL` 이 없거나 localhost/127.0.0.1 이면 **자동 비활성** (로컬 개발 방해 안 함)
+- GET/HEAD → **301**, 그 외 → **308**. 301 은 클라이언트가 POST 를 GET 으로 바꿔도 되는 코드라 본문이 유실됨
+- `express.static` **앞**에 등록 — 정적 파일까지 대표 주소로 몰기 위함
+- `app.set('trust proxy', 1)` 이 전제 (Railway 프록시 뒤에서 `req.hostname` 이 X-Forwarded-Host 를 따르게)
+- `views/layout.ejs` 에 `<link rel="canonical">` 동반 (쿼리스트링 제외, `locals.currentUrl` 기준)
+
+> 커스텀 도메인 붙일 때 체크리스트: Railway 에 **apex·www 둘 다** 커스텀 도메인 등록(www 도 인증서가 있어야
+> 리다이렉트가 HTTPS 로 깨끗함) → `BASE_URL` 갱신 → **재시작**(passport 가 기동 시 `BASE_URL` 로 callbackURL 을 만듦)
+> → Google/Kakao 콘솔에 새 콜백 URI 등록.
+
 ### 정적 자산 캐시 무효화 (2026-08-10)
 `express.static('public', { maxAge: '1h' })` + **파일명 고정**(내용만 교체) 조합이라,
 그냥 두면 배포 후 최대 1시간 동안 브라우저가 옛 자산을 쓴다.

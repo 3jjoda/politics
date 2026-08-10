@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-08-10 — 대표 도메인 리다이렉트 + canonical (커스텀 도메인 준비)
+
+`dangmalsa.kr` 구매에 맞춰 선반영. 커스텀 도메인을 붙이면 apex·www·railway.app 세 주소가 같은 내용을 서빙하게 되는데, 검색엔진엔 중복 콘텐츠고 세션 쿠키가 host-only 라 주소별로 로그인이 따로 논다.
+
+### 1. `middlewares/canonicalHost.js` 신설
+- `BASE_URL` 의 호스트를 대표로 삼아 나머지 호스트를 301 리다이렉트. **호스트를 하드코딩하지 않아** 도메인이 또 바뀌어도 코드 수정 불필요
+- `BASE_URL` 이 없거나 localhost 계열이면 **완전 비활성** — 로컬 개발에 영향 없음
+- **GET/HEAD 301 / 그 외 308** — 301 은 클라이언트가 POST 를 GET 으로 바꿔도 되는 코드라 폼 본문이 유실될 수 있음
+- `express.static` **앞**에 등록해 정적 파일까지 대표 주소로 통일
+- `views/layout.ejs` 에 `<link rel="canonical">` 추가 (쿼리스트링 제외)
+
+### 2. 검증 (`BASE_URL=https://dangmalsa.kr` 로 시뮬레이션)
+| 요청 Host | 경로 | 결과 |
+|---|---|---|
+| `dangmalsa.kr` | `/`, `/bill?page=2&party=…` | 200 통과 |
+| `www.dangmalsa.kr` | `/bill/PRC_ABC?tab=vote` | 301 → 경로·쿼리 보존 |
+| `politics-production.up.railway.app` | `/politician/T2T8225E` | 301 |
+| `www.dangmalsa.kr` | `/auth/kakao/callback?code=xyz` | 301 (쿼리 보존) |
+| `www.dangmalsa.kr` | `POST /api/comments` | **308** (메서드 보존) |
+| `www.dangmalsa.kr` | 정적 파일 | 301 |
+- `BASE_URL` 미설정 시 리다이렉트 0건 + canonical 이 localhost 로 렌더되는 것까지 확인
+
+> ⚠️ 검증 중 삽질 메모: Git Bash 의 `pkill -f "node app.js"` 가 Windows 프로세스에 안 먹혀
+> 옛 서버가 포트를 계속 잡고 응답했다. 결과가 "코드가 안 먹는 것"처럼 보였으나 실제로는 프로세스 문제.
+> 이 환경에서 서버 재시작은 **PowerShell `Stop-Process`** 로 할 것.
+
+---
+
 ## 2026-08-10 — 정적 자산 캐시 무효화 + 에러 페이지 신설
 
 ### 1. 배포했는데 옛 로고가 남는 문제
