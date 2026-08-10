@@ -1,0 +1,89 @@
+<%# 월별 발의 추이 — 데이터: x.monthly (loader: monthly)
+     막대 = 그 달 대표발의 건수 / 선 = 그 달 법안 중 처리 완료 비율.
+     "발의량이 많다 = 열심히" 로 읽히지 않게, 그 법안들이 지금 어디까지 갔는지를 같은 화면에 둔다. %>
+<% const mo = x.monthly || { months: [] }; %>
+<% if (mo.months && mo.months.length > 0) { %>
+  <div class="xr-stats">
+    <div class="xr-stat"><div class="v"><%= nf(mo.avg) %></div><div class="l">월평균 대표발의 건수</div></div>
+    <div class="xr-stat"><div class="v"><%= mo.avgPerPerson %></div><div class="l">의원 1인당 월평균 — 총량 변화가 인원 때문인지 개인 활동량 때문인지 구분</div></div>
+    <div class="xr-stat"><div class="v"><em><%= mo.totalProcessedPct %>%</em></div><div class="l">전체 <%= nf(mo.total) %>건 중 처리 완료 (가결·부결·폐기·철회)</div></div>
+    <div class="xr-stat"><div class="v"><%= mo.recentProcessedPct %>%</div><div class="l">최근 <%= mo.recentMonths %>개월 발의분의 처리 완료 — 대부분 아직 심사 중</div></div>
+  </div>
+
+  <%
+    const ms = mo.months;
+    const W = 1000, H = 300, padL = 46, padR = 48, padT = 22, padB = 40;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const bw = plotW / ms.length;
+    const maxProposed = Math.max(1, ...ms.map(m => m.proposed));
+    const bx = (i) => padL + i * bw;
+    const by = (v) => padT + (1 - v / maxProposed) * plotH;           // 좌축: 건수
+    const ry = (p) => padT + (1 - p / 100) * plotH;                   // 우축: 처리 %
+    // 처리율 꺾은선 — 진행 중인 달은 표본이 아니라 제외
+    const linePts = ms.map((m, i) => (m.isPartial ? null : `${(bx(i) + bw / 2).toFixed(1)},${ry(m.processedPct).toFixed(1)}`))
+                      .filter(Boolean).join(' ');
+    // x축 라벨: 3개월 간격 + 연도 바뀌는 지점
+    const labelIdx = new Set();
+    ms.forEach((m, i) => { if (i % 3 === 0 || (i > 0 && m.ym.slice(0, 4) !== ms[i - 1].ym.slice(0, 4))) labelIdx.add(i); });
+    labelIdx.add(ms.length - 1);
+  %>
+  <div class="xr-svg-box">
+    <svg viewBox="0 0 <%= W %> <%= H %>" style="width:100%;height:auto">
+      <%# 가로 기준선 %>
+      <% [0, 50, 100].forEach(p => { %>
+        <line x1="<%= padL %>" y1="<%= ry(p).toFixed(1) %>" x2="<%= W - padR %>" y2="<%= ry(p).toFixed(1) %>"
+              stroke="#E2DFD4" stroke-width="1" stroke-dasharray="<%= p === 0 ? '0' : '3 4' %>"/>
+        <text x="<%= W - padR + 6 %>" y="<%= (ry(p) + 4).toFixed(1) %>" font-size="10" font-family="JetBrains Mono" fill="#7A8090"><%= p %>%</text>
+      <% }) %>
+
+      <%# 막대 — 발의 건수 %>
+      <% ms.forEach((m, i) => {
+           const h = Math.max(m.proposed > 0 ? 2 : 0, padT + plotH - by(m.proposed)); %>
+        <rect x="<%= (bx(i) + 1.5).toFixed(1) %>" y="<%= by(m.proposed).toFixed(1) %>"
+              width="<%= (bw - 3).toFixed(1) %>" height="<%= h.toFixed(1) %>" rx="2"
+              fill="#B8740C" opacity="<%= m.isPartial ? 0.28 : 0.75 %>">
+          <title><%= m.ym %> · 발의 <%= nf(m.proposed) %>건 (의원 <%= nf(m.proposers) %>명, 1인당 <%= m.perPerson %>건)<%= m.isPartial ? ' · 진행 중인 달' : ` · 처리 완료 ${m.processedPct}%` %></title>
+        </rect>
+      <% }) %>
+
+      <%# 꺾은선 — 처리 완료 비율 %>
+      <% if (linePts) { %>
+        <polyline points="<%= linePts %>" fill="none" stroke="#1A1D24" stroke-width="2" stroke-linejoin="round"/>
+        <% ms.forEach((m, i) => { if (m.isPartial) return; %>
+          <circle cx="<%= (bx(i) + bw / 2).toFixed(1) %>" cy="<%= ry(m.processedPct).toFixed(1) %>" r="2.5" fill="#1A1D24">
+            <title><%= m.ym %> · 처리 완료 <%= m.processedPct %>% (<%= nf(m.processed) %>/<%= nf(m.proposed) %>건)</title>
+          </circle>
+        <% }) %>
+      <% } %>
+
+      <%# 축 %>
+      <line x1="<%= padL %>" y1="<%= padT + plotH %>" x2="<%= W - padR %>" y2="<%= padT + plotH %>" stroke="#C9C5B6"/>
+      <text x="<%= padL - 8 %>" y="<%= (padT + 8) %>" text-anchor="end" font-size="10" font-family="JetBrains Mono" fill="#7A8090"><%= nf(maxProposed) %></text>
+      <text x="<%= padL - 8 %>" y="<%= (padT + plotH) %>" text-anchor="end" font-size="10" font-family="JetBrains Mono" fill="#7A8090">0</text>
+      <text x="14" y="<%= padT - 8 %>" font-size="10" font-family="JetBrains Mono" fill="#7A8090">발의 건수</text>
+
+      <% ms.forEach((m, i) => { if (!labelIdx.has(i)) return; %>
+        <text x="<%= (bx(i) + bw / 2).toFixed(1) %>" y="<%= H - 20 %>" text-anchor="middle"
+              font-size="10" font-family="JetBrains Mono" fill="#7A8090"><%= m.ym.slice(2).replace('-', '.') %></text>
+      <% }) %>
+      <text x="<%= W - padR %>" y="<%= H - 4 %>" text-anchor="end" font-size="10" font-family="JetBrains Mono" fill="#7A8090">처리 완료 비율 →</text>
+    </svg>
+  </div>
+
+  <div class="xr-hbar-row" style="padding-top:12px;gap:16px;font-size:12px;color:var(--sub2)">
+    <span><span style="display:inline-block;width:12px;height:10px;background:#B8740C;opacity:.75;border-radius:2px;vertical-align:-1px"></span> 발의 건수</span>
+    <span><span style="display:inline-block;width:14px;height:2px;background:#1A1D24;vertical-align:4px"></span> 처리 완료 비율</span>
+    <span><span style="display:inline-block;width:12px;height:10px;background:#B8740C;opacity:.28;border-radius:2px;vertical-align:-1px"></span> 진행 중인 달</span>
+  </div>
+
+  <div class="xr-note">
+    최고치는 <strong><%= mo.peak.ym %> <%= nf(mo.peak.proposed) %>건</strong> (개원 직후). 대표발의자가 있는 법안만 집계하며 위원장 대안 등은 제외됩니다.
+    <br>
+    <strong>오른쪽으로 갈수록 처리 완료 선이 내려가는 것은 국회가 일을 덜 해서가 아닙니다.</strong>
+    법안 심사에는 시간이 걸리므로 최근에 발의된 법안일수록 아직 결론이 안 났을 뿐입니다
+    (최근 <%= mo.recentMonths %>개월 발의분의 처리 완료는 <%= mo.recentProcessedPct %>%). 발의량이 많다고 일을 잘한 것도,
+    적다고 게으른 것도 아닙니다 — 이 지표는 <em>양</em>과 <em>속도</em>의 구조를 보여줄 뿐입니다.
+  </div>
+<% } else { %>
+  <div class="xr-empty">발의 데이터가 없습니다.</div>
+<% } %>

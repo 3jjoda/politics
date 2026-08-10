@@ -1,0 +1,38 @@
+<%# 07 발의 스타일 — 데이터: x.leaderSigner (loader: leader) %>
+<% const ls = x.leaderSigner || []; %>
+<% if (ls.length > 0) { %>
+  <%
+    const lsMaxCo = Math.max(1, ...ls.map(r => r.co_cnt));
+    const lsMaxRep = Math.max(1, ...ls.map(r => r.rep_cnt));
+    const lW = 1000, lH = 420, lPadL = 48, lPadR = 20, lPadT = 16, lPadB = 40;
+    const lx = (v) => lPadL + v / lsMaxCo * (lW - lPadL - lPadR);
+    const ly = (v) => lPadT + (1 - v / lsMaxRep) * (lH - lPadT - lPadB);
+    const lsLabeled = new Set();
+    [...ls].sort((a, b) => b.rep_cnt - a.rep_cnt).slice(0, 3).forEach(r => lsLabeled.add(r.mona_cd));
+    [...ls].sort((a, b) => b.co_cnt - a.co_cnt).slice(0, 3).forEach(r => lsLabeled.add(r.mona_cd));
+    const mCo = median(ls.map(r => r.co_cnt));
+    const mRep = median(ls.map(r => r.rep_cnt));
+  %>
+  <div class="xr-svg-box">
+    <svg viewBox="0 0 <%= lW %> <%= lH %>" style="width:100%;height:auto">
+      <line x1="<%= lPadL %>" y1="<%= lH - lPadB %>" x2="<%= lW - lPadR %>" y2="<%= lH - lPadB %>" stroke="#C9C5B6"/>
+      <line x1="<%= lPadL %>" y1="<%= lPadT %>" x2="<%= lPadL %>" y2="<%= lH - lPadB %>" stroke="#C9C5B6"/>
+      <line x1="<%= lx(mCo).toFixed(1) %>" y1="<%= lPadT %>" x2="<%= lx(mCo).toFixed(1) %>" y2="<%= lH - lPadB %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
+      <line x1="<%= lPadL %>" y1="<%= ly(mRep).toFixed(1) %>" x2="<%= lW - lPadR %>" y2="<%= ly(mRep).toFixed(1) %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
+      <% ls.forEach(r => { %>
+        <circle cx="<%= lx(r.co_cnt).toFixed(1) %>" cy="<%= ly(r.rep_cnt).toFixed(1) %>" r="4"
+                fill="<%= lsLabeled.has(r.mona_cd) ? '#B8740C' : '#1A1D24' %>" opacity="<%= lsLabeled.has(r.mona_cd) ? 1 : 0.35 %>">
+          <title><%= r.name %> (<%= r.party_name || '무소속' %>) · 대표발의 <%= nf(r.rep_cnt) %>건 · 공동발의 <%= nf(r.co_cnt) %>건</title>
+        </circle>
+        <% if (lsLabeled.has(r.mona_cd)) { %>
+          <text x="<%= (lx(r.co_cnt) + 7).toFixed(1) %>" y="<%= (ly(r.rep_cnt) + 4).toFixed(1) %>" font-size="12" fill="#1A1D24" font-weight="700"><%= r.name %></text>
+        <% } %>
+      <% }) %>
+      <text x="<%= lW - lPadR %>" y="<%= lH - 10 %>" text-anchor="end" font-size="11" font-family="JetBrains Mono" fill="#7A8090">공동발의(서명) →</text>
+      <text x="14" y="<%= lPadT + 8 %>" font-size="11" font-family="JetBrains Mono" fill="#7A8090">대표발의↑</text>
+    </svg>
+  </div>
+  <div class="xr-note">현직 의원 <%= nf(ls.length) %>명. 우하단으로 갈수록 "서명 위주", 좌상단으로 갈수록 "직접 주도" 스타일. 점선은 각 축의 중앙값. 공동발의 자체는 정상적인 입법 협력이며 많다고 나쁜 것이 아닙니다.</div>
+<% } else { %>
+  <div class="xr-empty">공동발의 데이터가 없습니다.</div>
+<% } %>

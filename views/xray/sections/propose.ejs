@@ -1,0 +1,41 @@
+<%# 04 발의 산점도 — 데이터: x.proposePass (loader: propose) %>
+<% const pp = x.proposePass || []; %>
+<% if (pp.length > 0) { %>
+  <%
+    const ppData = pp.map(r => ({ ...r, rate: pct(r.passed, r.proposed) }));
+    const maxProposed = Math.max(...ppData.map(r => r.proposed));
+    const maxRate = Math.max(10, ...ppData.map(r => r.rate));
+    const mProp = median(ppData.map(r => r.proposed));
+    const mRate = median(ppData.map(r => r.rate));
+    const sW = 1000, sH = 420, sPadL = 48, sPadR = 20, sPadT = 16, sPadB = 40;
+    const sx = (v) => sPadL + v / maxProposed * (sW - sPadL - sPadR);
+    const sy = (v) => sPadT + (1 - v / maxRate) * (sH - sPadT - sPadB);
+    const labeled = new Set();
+    [...ppData].sort((a, b) => b.passed - a.passed).slice(0, 3).forEach(r => labeled.add(r.mona_cd));
+    [...ppData].sort((a, b) => b.proposed - a.proposed).slice(0, 3).forEach(r => labeled.add(r.mona_cd));
+  %>
+  <div class="xr-svg-box">
+    <svg viewBox="0 0 <%= sW %> <%= sH %>" style="width:100%;height:auto">
+      <line x1="<%= sPadL %>" y1="<%= sH - sPadB %>" x2="<%= sW - sPadR %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6"/>
+      <line x1="<%= sPadL %>" y1="<%= sPadT %>" x2="<%= sPadL %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6"/>
+      <line x1="<%= sx(mProp).toFixed(1) %>" y1="<%= sPadT %>" x2="<%= sx(mProp).toFixed(1) %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
+      <line x1="<%= sPadL %>" y1="<%= sy(mRate).toFixed(1) %>" x2="<%= sW - sPadR %>" y2="<%= sy(mRate).toFixed(1) %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
+      <text x="<%= sW - sPadR %>" y="<%= sy(mRate) - 6 %>" text-anchor="end" font-size="10" font-family="JetBrains Mono" fill="#7A8090">가결률 중앙값 <%= mRate %>%</text>
+      <text x="<%= sx(mProp) + 6 %>" y="<%= sPadT + 12 %>" font-size="10" font-family="JetBrains Mono" fill="#7A8090">발의 중앙값 <%= mProp %>건</text>
+      <% ppData.forEach(r => { %>
+        <circle cx="<%= sx(r.proposed).toFixed(1) %>" cy="<%= sy(r.rate).toFixed(1) %>" r="4"
+                fill="<%= labeled.has(r.mona_cd) ? '#B8740C' : '#1A1D24' %>" opacity="<%= labeled.has(r.mona_cd) ? 1 : 0.35 %>">
+          <title><%= r.name %> (<%= r.party_name || '무소속' %>) · 발의 <%= r.proposed %>건 · 가결 <%= r.passed %>건 (<%= r.rate %>%)</title>
+        </circle>
+        <% if (labeled.has(r.mona_cd)) { %>
+          <text x="<%= (sx(r.proposed) + 7).toFixed(1) %>" y="<%= (sy(r.rate) + 4).toFixed(1) %>" font-size="12" fill="#1A1D24" font-weight="700"><%= r.name %></text>
+        <% } %>
+      <% }) %>
+      <text x="<%= sW - sPadR %>" y="<%= sH - 10 %>" text-anchor="end" font-size="11" font-family="JetBrains Mono" fill="#7A8090">대표발의 →</text>
+      <text x="14" y="<%= sPadT + 8 %>" font-size="11" font-family="JetBrains Mono" fill="#7A8090">가결률↑</text>
+    </svg>
+  </div>
+  <div class="xr-note">현직 의원, 대표발의 5건 이상 (<%= nf(ppData.length) %>명). 가결률 = (원안가결+수정가결) ÷ 대표발의. 대안반영폐기는 가결로 세지 않음 — 실제 기여보다 보수적인 수치. 점 위에 마우스를 올리면 상세가 보입니다.</div>
+<% } else { %>
+  <div class="xr-empty">발의 데이터가 부족합니다.</div>
+<% } %>

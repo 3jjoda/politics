@@ -82,44 +82,158 @@ export default (db) => {
         return main.map(p => ({ party: p.party, count: p.members.length, members: p.members }));
     }
 
-    return {
-        getPageData: async () => {
-            const [
-                consensusRows, dissentRank, proposePass,
-                funnel, committeeRate,
-                crossPartyStats, crossPartyRank,
-                leaderSigner, absentRank, citizenGap,
-                spectrumRows, categoryCounts,
-                gapDistRows, gapStats
-            ] = await Promise.all([
-                dao.getConsensusHistogram(), dao.getDissentRank(), dao.getProposePass(),
-                dao.getFunnel(), dao.getCommitteeProcessRate(),
-                dao.getCrossPartyStats(), dao.getCrossPartyRank(),
-                dao.getLeaderSigner(), dao.getAbsentRank(), dao.getCitizenGap(),
-                dao.getPartySpectrum(), dao.getCategoryCounts(),
+    /* 월별 발의 + 처리 진행도.
+       최근 달일수록 처리 완료가 0 에 수렴하는데, 이건 국회가 일을 안 한 게 아니라 아직 심사 중인 것이다.
+       그래서 "가결률" 대신 **처리 완료 비율**을 내보내고, 심사 초기 구간은 화면에서 구분해 그린다. */
+    function buildMonthlyPropose(rows) {
+        // 현재 월(KST) — 마지막 달은 아직 안 끝나서 막대가 낮게 보인다. 프로세스 타임존을 타지 않게 Intl 사용.
+        // ⚠️ ko-KR 로케일은 month: '2-digit' 을 무시하고 "8" 을 준다 (→ "2026-8" 이 되어 매칭 실패).
+        //    로케일에 기대지 말고 여기서 직접 0 을 채울 것.
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit'
+        }).formatToParts(new Date());
+        const y = parts.find(p => p.type === 'year')?.value;
+        const m = parts.find(p => p.type === 'month')?.value;
+        const currentYm = y && m ? `${y}-${String(m).padStart(2, '0')}` : null;
+
+        const months = rows.map(r => {
+            const proposed = Number(r.proposed) || 0;
+            const proposers = Number(r.proposers) || 0;
+            const processed = Number(r.processed) || 0;
+            return {
+                ym: r.ym,
+                proposed,
+                proposers,
+                processed,
+                passed: Number(r.passed) || 0,
+                perPerson: proposers > 0 ? Math.round(proposed / proposers * 10) / 10 : 0,
+                processedPct: proposed > 0 ? Math.round(processed / proposed * 1000) / 10 : 0,
+                isPartial: r.ym === currentYm          // 진행 중인 달 — 막대가 낮은 게 당연
+            };
+        });
+
+        if (months.length === 0) return { months: [], total: 0 };
+
+        // 통계는 진행 중인 달을 빼고 낸다 (평균이 낮게 왜곡됨)
+        const done = months.filter(mo => !mo.isPartial);
+        const base = done.length > 0 ? done : months;
+        const total = months.reduce((s, mo) => s + mo.proposed, 0);
+        const totalProcessed = months.reduce((s, mo) => s + mo.processed, 0);
+        const avg = Math.round(base.reduce((s, mo) => s + mo.proposed, 0) / base.length);
+        const avgPerPerson = Math.round(
+            base.reduce((s, mo) => s + mo.perPerson, 0) / base.length * 10
+        ) / 10;
+        const peak = base.reduce((a, b) => (b.proposed > a.proposed ? b : a), base[0]);
+
+        // 최근 6개월(진행 중 제외)의 처리 완료 비율 — "밀려 있음"을 수치로 보여주는 핵심
+        const recent = done.slice(-6);
+        const recentProposed = recent.reduce((s, mo) => s + mo.proposed, 0);
+        const recentProcessed = recent.reduce((s, mo) => s + mo.processed, 0);
+
+        return {
+            months,
+            total,
+            totalProcessedPct: total > 0 ? Math.round(totalProcessed / total * 1000) / 10 : 0,
+            avg,
+            avgPerPerson,
+            peak,
+            recentMonths: recent.length,
+            recentProcessedPct: recentProposed > 0
+                ? Math.round(recentProcessed / recentProposed * 1000) / 10 : 0
+        };
+    }
+
+    /* 섹션별 로더 — 그 섹션에 필요한 쿼리만 돈다.
+       키는 services/xraySections.js 의 `loader` 값과 1:1.
+       페이지 진입 시엔 아무것도 호출하지 않고, 사용자가 펼친 섹션만 여기를 탄다.
+
+       이전엔 14개 쿼리를 Promise.all 로 전부 돌린 뒤에야 HTML 을 그리기 시작해서
+       TTFB 가 2.3초였다 (가장 느린 1건이 전체를 지배). */
+    const SECTION_LOADERS = {
+        consensus: async () => ({ consensus: buildConsensus(await dao.getConsensusHistogram()) }),
+
+        dissent: async () => ({ dissentRank: await dao.getDissentRank() }),
+
+        gapdist: async () => {
+            const [rows, stats] = await Promise.all([
                 dao.getCrossPartyGapDist(), dao.getCrossPartyGapStats()
             ]);
+            return { gapDist: buildGapDist(rows, stats) };
+        },
 
+        propose: async () => ({ proposePass: await dao.getProposePass() }),
+
+        funnel: async () => {
+            const [funnel, committeeRate] = await Promise.all([
+                dao.getFunnel(), dao.getCommitteeProcessRate()
+            ]);
+            return { funnel, committeeRate };
+        },
+
+        crossparty: async () => {
+            const [stats, rank] = await Promise.all([
+                dao.getCrossPartyStats(), dao.getCrossPartyRank()
+            ]);
             return {
-                consensus: buildConsensus(consensusRows),
-                dissentRank,
-                proposePass,
-                funnel,
-                committeeRate,
                 crossParty: {
-                    stats: crossPartyStats,
-                    multiPct: crossPartyStats && Number(crossPartyStats.total_bills) > 0
-                        ? Math.round(Number(crossPartyStats.multi_party_bills) / Number(crossPartyStats.total_bills) * 1000) / 10
+                    stats,
+                    multiPct: stats && Number(stats.total_bills) > 0
+                        ? Math.round(Number(stats.multi_party_bills) / Number(stats.total_bills) * 1000) / 10
                         : 0,
-                    rank: crossPartyRank
-                },
-                leaderSigner,
-                absentRank,
-                citizenGap,
-                spectrum: buildSpectrum(spectrumRows),
-                categoryCounts,
-                gapDist: buildGapDist(gapDistRows, gapStats)
+                    rank
+                }
             };
-        }
+        },
+
+        leader: async () => ({ leaderSigner: await dao.getLeaderSigner() }),
+
+        absent: async () => ({ absentRank: await dao.getAbsentRank() }),
+
+        gap: async () => ({ citizenGap: await dao.getCitizenGap() }),
+
+        spectrum: async () => ({ spectrum: buildSpectrum(await dao.getPartySpectrum()) }),
+
+        category: async () => ({ categoryCounts: await dao.getCategoryCounts() }),
+
+        monthly: async () => ({ monthly: buildMonthlyPropose(await dao.getMonthlyPropose()) })
+    };
+
+    /* 메모리 캐시 — 이 지표들은 배치가 도는 하루 1회만 바뀐다.
+       두 번째 사용자부터는 DB 를 타지 않는다. utils/dataFreshness.js 와 같은 방식.
+       인스턴스별 캐시라 재시작하면 비는데, 그래도 무방한 성격의 데이터다. */
+    const CACHE_TTL_MS = 10 * 60 * 1000;
+    const cache = new Map();   // loaderKey → { data, at }
+
+    /* 같은 섹션에 요청이 몰릴 때 쿼리가 중복 실행되지 않게 진행 중 Promise 를 공유 */
+    const inflight = new Map();
+
+    async function loadSection(loaderKey) {
+        const loader = SECTION_LOADERS[loaderKey];
+        if (!loader) throw new Error(`알 수 없는 X레이 섹션 로더: ${loaderKey}`);
+
+        const hit = cache.get(loaderKey);
+        if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
+
+        if (inflight.has(loaderKey)) return inflight.get(loaderKey);
+
+        const p = (async () => {
+            try {
+                const data = await loader();
+                cache.set(loaderKey, { data, at: Date.now() });
+                return data;
+            } finally {
+                inflight.delete(loaderKey);
+            }
+        })();
+        inflight.set(loaderKey, p);
+        return p;
+    }
+
+    return {
+        loadSection,
+        /* 캐시 상태 점검용 (운영 디버깅) */
+        cacheStats: () => [...cache.entries()].map(([k, v]) => ({
+            section: k, ageSec: Math.round((Date.now() - v.at) / 1000)
+        }))
     };
 };

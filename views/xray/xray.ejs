@@ -1,51 +1,90 @@
-<%
-  const x = xray || {};
-  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
-  const pct = (num, den) => den > 0 ? Math.round(num / den * 1000) / 10 : 0;
-  const median = (arr) => {
-    if (!arr.length) return 0;
-    const s = [...arr].sort((a, b) => a - b);
-    const m = Math.floor(s.length / 2);
-    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-  };
+<%#
+  숫자로 본 국회 — 접힌 목록 페이지.
+  ⚠️ 표시명은 "숫자로 본 국회"(구 "국회 X레이")지만 내부 식별자는 xray / .xr-* / URL /xray 를 그대로 쓴다.
+     `.pb-*` 와 같은 판단 — 사용자에게 안 보이는 식별자를 223곳 치환하는 건 회귀 위험만 크다.
 
-  const SECTIONS = [
-    { id: 'consensus',  no: '01', title: '국회는 얼마나 싸우는가' },
-    { id: 'dissent',    no: '02', title: '소신 표결' },
-    { id: 'gapdist',    no: '03', title: '당을 보나, 법안을 보나' },
-    { id: 'propose',    no: '04', title: '발의왕 vs 입법왕' },
-    { id: 'funnel',     no: '05', title: '법안 생존율' },
-    { id: 'crossparty', no: '06', title: '초당적 협력' },
-    { id: 'leader',     no: '07', title: '주도자 vs 서명러' },
-    { id: 'absent',     no: '08', title: '표결 불참률' },
-    { id: 'gap',        no: '09', title: '시민 vs 국회' },
-    { id: 'spectrum',   no: '10', title: '같은 당, 다른 생각' },
-    { id: 'category',   no: '11', title: '국회의 관심사' }
-  ];
+  이 페이지는 DB 를 한 번도 조회하지 않는다. 섹션 정의는 services/xraySections.js 가 단일 소스이고,
+  사용자가 펼친 섹션만 GET /xray/s/:id 로 HTML 조각을 받아온다.
+
+  섹션 추가 방법: xraySections.js 에 한 줄 + views/xray/sections/<id>.ejs + XrayService 의 로더 한 개.
+  이 파일은 손댈 필요 없다.
 %>
 
 <style>
   .xr-wrap { max-width: 1080px; margin: 0 auto; padding: 36px 24px 80px; }
 
-  /* 상단 칩 네비 */
-  .xr-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
-  .xr-chip {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 7px 14px; border: 1px solid var(--border2); border-radius: 999px;
-    background: var(--bg2); color: var(--sub); font-size: 13px; text-decoration: none;
-    transition: all 0.15s;
+  /* 그룹 헤딩 */
+  .xr-group { margin-bottom: 34px; }
+  .xr-group-head { margin-bottom: 12px; padding-left: 2px; }
+  .xr-group-label {
+    font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 15px;
+    color: var(--text); display: inline; margin: 0;
   }
-  .xr-chip:hover { border-color: var(--accent); color: var(--accent); }
-  .xr-chip .no { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
+  .xr-group-label::before {
+    content: ''; display: inline-block; width: 3px; height: 14px; border-radius: 2px;
+    background: var(--accent); margin-right: 8px; vertical-align: -2px;
+  }
+  .xr-group-desc { display: inline; font-size: 12px; color: var(--sub2); margin-left: 8px; }
 
-  /* 섹션 카드 */
-  .xr-card {
+  /* 2열 그리드 — 펼친 항목만 전체폭으로 확장.
+     차트가 1000px 폭 SVG 라 열릴 땐 전체폭이 필요하고, 접힌 상태는 밀도가 중요하다. */
+  /* align-items 기본값(stretch) — 같은 행 카드 높이를 맞춰 들쭉날쭉하지 않게.
+     열이 많을수록 행 수가 줄어 접힌 목록이 짧아진다 (그룹 헤딩이 자리를 먹는 걸 상쇄) */
+  .xr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 1100px) { .xr-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .xr-item {
     background: var(--bg2); border: 1px solid var(--border); border-radius: 16px;
-    padding: 32px; margin-bottom: 32px; scroll-margin-top: calc(var(--nav-h) + 24px);
+    overflow: hidden;
+    scroll-margin-top: calc(var(--nav-h) + 24px);
+    transition: border-color 0.15s;
   }
-  .xr-head { margin-bottom: 24px; }
-  .xr-no { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.22em; color: var(--accent); }
-  .xr-title { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 26px; color: var(--text); margin: 6px 0 8px; }
+  .xr-item:hover { border-color: var(--border2); }
+  .xr-item[data-open="true"] { grid-column: 1 / -1; border-color: var(--accent); }
+
+  .xr-toggle {
+    width: 100%; display: flex; align-items: flex-start; gap: 12px;
+    padding: 18px 20px; background: none; border: 0; cursor: pointer;
+    text-align: left; font: inherit; color: inherit;
+  }
+  .xr-toggle:hover { background: var(--bg3); }
+  .xr-toggle .no {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.18em;
+    color: var(--accent); flex-shrink: 0; padding-top: 4px;
+  }
+  .xr-toggle .tx { flex: 1; min-width: 0; }
+  .xr-toggle .kicker {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; color: var(--sub2);
+  }
+  .xr-toggle .ttl {
+    font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 18px;
+    color: var(--text); margin: 4px 0 5px; line-height: 1.3; word-break: keep-all;
+  }
+  /* 접힌 카드는 2행까지만 — 카드 높이를 고르게 유지 */
+  .xr-toggle .dsc {
+    font-size: 12.5px; color: var(--sub); line-height: 1.6; word-break: keep-all;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .xr-item[data-open="true"] .xr-toggle .dsc { -webkit-line-clamp: unset; overflow: visible; }
+  .xr-caret {
+    flex-shrink: 0; width: 20px; height: 20px; color: var(--sub2);
+    transition: transform 0.25s ease; margin-top: 4px;
+  }
+  .xr-item[data-open="true"] .xr-caret { transform: rotate(180deg); color: var(--accent); }
+
+  .xr-body { padding: 0 24px 24px; }
+  .xr-body[hidden] { display: none; }
+  .xr-loading { padding: 32px 0; display: flex; justify-content: center; }
+
+  /* 전체 펼침/접기 */
+  .xr-bulk { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 14px; }
+  .xr-bulk button {
+    padding: 6px 14px; border: 1px solid var(--border2); border-radius: 999px;
+    background: var(--bg2); color: var(--sub); font-size: 12px; cursor: pointer;
+  }
+  .xr-bulk button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ↓ 아래는 섹션 조각(views/xray/sections/*.ejs)이 쓰는 공용 스타일 ↓ */
   .xr-desc { font-size: 14px; color: var(--sub); line-height: 1.7; max-width: 720px; }
   .xr-note { margin-top: 16px; font-size: 12px; color: var(--sub2); line-height: 1.7; border-top: 1px dashed var(--border); padding-top: 12px; }
   .xr-empty { padding: 40px 24px; text-align: center; color: var(--sub2); font-style: italic; }
@@ -128,8 +167,13 @@
   .xr-svg-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; overflow: hidden; }
 
   @media (max-width: 768px) {
-    .xr-card { padding: 20px 16px; }
-    .xr-title { font-size: 21px; }
+    .xr-grid { grid-template-columns: 1fr; }   /* 모바일은 1열 */
+    /* 1열이라 세로가 길어진다 — 접힌 카드 설명은 1행까지만
+       (펼친 카드는 위쪽 [data-open] 규칙이 우선순위로 이겨서 전문 노출) */
+    .xr-toggle .dsc { -webkit-line-clamp: 1; }
+    .xr-toggle { padding: 16px; gap: 12px; }
+    .xr-toggle .ttl { font-size: 17px; }
+    .xr-body { padding: 0 16px 20px; }
     .xr-row .who { width: 104px; }
     .xr-row .val { width: 92px; }
     .xr-hbar-row .lb { width: 84px; font-size: 12px; }
@@ -143,525 +187,158 @@
 <div class="pb-page-header">
   <div class="pb-page-header-inner">
     <div>
-      <h1 class="pb-page-title">국회 X레이</h1>
-      <p class="pb-page-desc">뉴스에 나오지 않는 국회의 구조를 공식 데이터 집계로 투시합니다. 해석은 당신의 몫입니다.</p>
+      <h1 class="pb-page-title">숫자로 본 국회</h1>
+      <p class="pb-page-desc">뉴스에 나오지 않는 국회의 구조를 공식 데이터 집계로 보여줍니다. 해석은 당신의 몫입니다.</p>
     </div>
   </div>
 </div>
 
 <div class="xr-wrap">
 
-  <!-- 칩 네비 -->
-  <nav class="xr-chips">
-    <% SECTIONS.forEach(s => { %>
-      <a class="xr-chip" href="#xr-<%= s.id %>"><span class="no"><%= s.no %></span><%= s.title %></a>
+  <div class="xr-bulk">
+    <button type="button" id="xr-expand-all">전체 펼치기</button>
+    <button type="button" id="xr-collapse-all">전체 접기</button>
+  </div>
+
+  <div id="xr-list">
+    <% groups.forEach(g => { %>
+      <section class="xr-group">
+        <div class="xr-group-head">
+          <h2 class="xr-group-label"><%= g.label %></h2>
+          <span class="xr-group-desc"><%= g.desc %></span>
+        </div>
+        <div class="xr-grid">
+          <% g.sections.forEach(s => { %>
+            <section class="xr-item" id="xr-<%= s.id %>" data-section="<%= s.id %>" data-open="false">
+              <button type="button" class="xr-toggle" aria-expanded="false" aria-controls="xr-body-<%= s.id %>">
+                <span class="no"><%= s.no %></span>
+                <span class="tx">
+                  <span class="kicker"><%= s.kicker %></span>
+                  <span class="ttl"><%= s.title %></span>
+                  <span class="dsc"><%= s.desc %></span>
+                </span>
+                <svg class="xr-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+              <div class="xr-body" id="xr-body-<%= s.id %>" hidden></div>
+            </section>
+          <% }) %>
+        </div>
+      </section>
     <% }) %>
-  </nav>
+  </div>
 
-  <!-- ① 국회는 얼마나 싸우는가 -->
-  <section class="xr-card" id="xr-consensus">
-    <div class="xr-head">
-      <div class="xr-no">01 · 표결 합의 분포</div>
-      <h2 class="xr-title">국회는 얼마나 싸우는가</h2>
-      <p class="xr-desc">본회의 표결이 이뤄진 법안의 찬성률(찬성·반대 참여자 기준) 분포입니다. 뉴스는 싸우는 법안만 보여주지만, 실제 분포는 다릅니다.</p>
-    </div>
-    <% const cs = x.consensus || { bins: [], total: 0 }; %>
-    <% if (cs.total > 0) { %>
-      <div class="xr-stats">
-        <div class="xr-stat"><div class="v"><%= nf(cs.total) %></div><div class="l">본회의 표결 법안 (표결 30인 이상)</div></div>
-        <div class="xr-stat"><div class="v"><em><%= cs.nearUnanimousPct %>%</em></div><div class="l">찬성률 90% 이상 — 사실상 합의 처리</div></div>
-        <div class="xr-stat"><div class="v"><%= cs.contestedPct %>%</div><div class="l">찬성률 70% 미만 — 실제로 맞붙은 표결</div></div>
-      </div>
-      <%
-        const maxBin = Math.max(1, ...cs.bins.map(b => b.cnt));
-        const hW = 1000, hH = 220, hPadL = 40, hPadB = 28, hPadT = 14;
-        const bw = (hW - hPadL - 8) / 20;
-      %>
-      <div class="xr-svg-box">
-        <svg viewBox="0 0 <%= hW %> <%= hH %>" style="width:100%;height:auto">
-          <% cs.bins.forEach((b, i) => {
-               const bh = Math.round(b.cnt / maxBin * (hH - hPadT - hPadB));
-               const bx = hPadL + i * bw;
-               const by = hH - hPadB - bh; %>
-            <rect x="<%= (bx + 1).toFixed(1) %>" y="<%= by %>" width="<%= (bw - 2).toFixed(1) %>" height="<%= Math.max(bh, b.cnt > 0 ? 2 : 0) %>"
-                  rx="3" fill="#B8740C" opacity="<%= b.from >= 90 ? 1 : 0.45 %>">
-              <title>찬성률 <%= b.from %>~<%= b.to %>% · <%= nf(b.cnt) %>건</title>
-            </rect>
-            <% if (b.cnt === maxBin) { %>
-              <text x="<%= (bx + bw / 2).toFixed(1) %>" y="<%= by - 5 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="#4B5362"><%= nf(b.cnt) %></text>
-            <% } %>
-          <% }) %>
-          <line x1="<%= hPadL %>" y1="<%= hH - hPadB %>" x2="<%= hW - 8 %>" y2="<%= hH - hPadB %>" stroke="#C9C5B6" stroke-width="1"/>
-          <% [0, 25, 50, 75, 100].forEach(t => { %>
-            <text x="<%= (hPadL + t / 100 * (bw * 20)).toFixed(1) %>" y="<%= hH - 8 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="#7A8090"><%= t %>%</text>
-          <% }) %>
-        </svg>
-      </div>
-      <div class="xr-note">집계: 법안별 찬성 ÷ (찬성+반대), 기권·불참 제외. 짙은 막대 = 찬성률 90% 이상 구간. 가결·부결 모두 포함.</div>
-    <% } else { %>
-      <div class="xr-empty">표결 데이터가 아직 수집되지 않았습니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ② 소신 표결 -->
-  <section class="xr-card" id="xr-dissent">
-    <div class="xr-head">
-      <div class="xr-no">02 · 당론 이탈</div>
-      <h2 class="xr-title">소신 표결 — 당과 다르게 투표한 의원</h2>
-      <p class="xr-desc">각 표결에서 소속 정당 다수의 선택과 다르게 투표한 비율입니다. 이탈이 곧 좋고 나쁨은 아닙니다 — 판단은 각 표결의 맥락으로.</p>
-    </div>
-    <% const dr = x.dissentRank || []; %>
-    <% if (dr.length > 0) { %>
-      <% const drMax = Math.max(0.001, ...dr.map(r => r.dissent_cnt / r.votes_cnt)); %>
-      <div class="xr-rank">
-        <% dr.forEach((r, i) => { const rate = pct(r.dissent_cnt, r.votes_cnt); %>
-          <a class="xr-row" href="/politician/<%= r.mona_cd %>">
-            <span class="idx"><%= i + 1 %></span>
-            <span class="ava"><%- avatarHtml(r.name, r.photo_url, 28) %></span>
-            <span class="who"><span class="nm"><%= r.name %></span><br><span class="pt"><%= r.party_name || '무소속' %></span></span>
-            <span class="barwrap"><span class="bar" style="width:<%= Math.round((r.dissent_cnt / r.votes_cnt) / drMax * 100) %>%"></span></span>
-            <span class="val"><b><%= rate %>%</b> · <%= nf(r.votes_cnt) %>회 중 <%= nf(r.dissent_cnt) %>회</span>
-          </a>
-        <% }) %>
-      </div>
-      <div class="xr-note">당적은 현재 소속 기준(표결 당시 당적과 다를 수 있음). 정당 내 유효 표결 10인 이상·개인 찬반 표결 50회 이상만 집계. 기권·불참은 이탈로 세지 않음.</div>
-    <% } else { %>
-      <div class="xr-empty">집계 가능한 표결 데이터가 부족합니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ③ 당 성향 격차 분포 -->
-  <section class="xr-card" id="xr-gapdist">
-    <div class="xr-head">
-      <div class="xr-no">03 · 당 성향 격차</div>
-      <h2 class="xr-title">당을 보나, 법안을 보나</h2>
-      <p class="xr-desc">
-        의원마다 <strong>자기 당이 낸 법안</strong>과 <strong>다른 당이 낸 법안</strong>에 찬성하는 비율이 다릅니다.
-        그 차이(격차)가 클수록 발의한 정당에 따라 표결이 갈렸다는 뜻입니다. 의원 상세의 순위가 이 분포 위에서 나옵니다.
-      </p>
-    </div>
-    <% const gd = x.gapDist || { bins: [], total: 0 }; %>
-    <% if (gd.total > 0) { %>
-      <div class="xr-stats">
-        <div class="xr-stat"><div class="v"><%= nf(gd.total) %></div><div class="l">집계 대상 의원 (자·타당 각 50표 이상)</div></div>
-        <div class="xr-stat"><div class="v"><em><%= gd.median %></em><small style="font-size:16px">%p</small></div><div class="l">격차 중앙값 — 절반은 이보다 작습니다</div></div>
-        <div class="xr-stat"><div class="v"><%= gd.neutralPct %>%</div><div class="l">격차 2%p 미만 — 발의 정당을 거의 안 가림 (<%= nf(gd.neutralCnt) %>명)</div></div>
-        <div class="xr-stat"><div class="v"><%= gd.partisanPct %>%</div><div class="l">격차 10%p 이상 — 당 성향이 뚜렷 (<%= nf(gd.partisanCnt) %>명)</div></div>
-      </div>
-      <%
-        const gMax = Math.max(1, ...gd.bins.map(b => b.cnt));
-        const gW = 1000, gH = 240, gPadL = 40, gPadB = 30, gPadT = 18;
-        const gbw = (gW - gPadL - 8) / gd.bins.length;
-        const gx = (v) => gPadL + (v - (-2)) / 34 * (gbw * gd.bins.length); // -2 ~ 32 스케일
-      %>
-      <div class="xr-svg-box">
-        <svg viewBox="0 0 <%= gW %> <%= gH %>" style="width:100%;height:auto">
-          <% gd.bins.forEach((b, i) => {
-               const bh = Math.round(b.cnt / gMax * (gH - gPadT - gPadB));
-               const bx = gPadL + i * gbw;
-               const by = gH - gPadB - bh; %>
-            <rect x="<%= (bx + 1).toFixed(1) %>" y="<%= by %>" width="<%= (gbw - 2).toFixed(1) %>"
-                  height="<%= Math.max(bh, b.cnt > 0 ? 2 : 0) %>" rx="3"
-                  fill="#B8740C" opacity="<%= b.from >= 10 ? 1 : 0.45 %>">
-              <title><%= b.from %>~<%= b.to %>%p · <%= nf(b.cnt) %>명</title>
-            </rect>
-            <% if (b.cnt === gMax) { %>
-              <text x="<%= (bx + gbw / 2).toFixed(1) %>" y="<%= by - 5 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="#4B5362"><%= nf(b.cnt) %>명</text>
-            <% } %>
-          <% }) %>
-
-          <!-- 중앙값 표시선 -->
-          <line x1="<%= gx(gd.median).toFixed(1) %>" y1="<%= gPadT - 6 %>" x2="<%= gx(gd.median).toFixed(1) %>" y2="<%= gH - gPadB %>"
-                stroke="#1A1D24" stroke-width="1.5" stroke-dasharray="4 3"/>
-          <text x="<%= (gx(gd.median) + 6).toFixed(1) %>" y="<%= gPadT %>" font-size="11" font-family="JetBrains Mono" fill="#1A1D24">중앙값 <%= gd.median %>%p</text>
-
-          <line x1="<%= gPadL %>" y1="<%= gH - gPadB %>" x2="<%= gW - 8 %>" y2="<%= gH - gPadB %>" stroke="#C9C5B6" stroke-width="1"/>
-          <% [0, 5, 10, 15, 20, 25, 30].forEach(t => { %>
-            <text x="<%= gx(t).toFixed(1) %>" y="<%= gH - 10 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="#7A8090"><%= t %></text>
-          <% }) %>
-          <text x="<%= gW - 8 %>" y="<%= gH - 10 %>" text-anchor="end" font-size="11" font-family="JetBrains Mono" fill="#7A8090">%p →</text>
-        </svg>
-      </div>
-
-      <% if (gd.byParty && gd.byParty.length > 0) { %>
-        <div class="xr-cols" style="grid-template-columns:1fr;margin-top:20px">
-          <div>
-            <div class="xr-col-h">정당별 평균 격차</div>
-            <% const pMax = Math.max(0.1, ...gd.byParty.map(p => p.avgGap)); %>
-            <% gd.byParty.forEach(p => { %>
-              <div class="xr-hbar-row">
-                <span class="lb"><%= p.party %></span>
-                <span class="track"><span class="fill" style="width:<%= Math.max(2, p.avgGap / pMax * 100) %>%"></span></span>
-                <span class="num"><b><%= p.avgGap %>%p</b> · <%= nf(p.cnt) %>명</span>
-              </div>
-            <% }) %>
-          </div>
-        </div>
-      <% } %>
-
-      <div class="xr-note">
-        집계: 불참 제외, 대표발의자 기준. 자당·타당 각 50표 이상인 의원만 (<%= nf(gd.total) %>명). 실측 범위 <%= gd.gapMin %> ~ <%= gd.gapMax %>%p, 사분위 <%= gd.q1 %> / <%= gd.median %> / <%= gd.q3 %>.
-        <br>
-        <strong>해석 주의</strong> — 정당별 평균 차이를 그대로 "어느 당이 더 당파적" 으로 읽으면 안 됩니다. 다수당은 자기 당 법안이 무난히 통과되는 의사일정 구조라 격차가 낮게 나오는 경향이 있습니다. 격차는 성향의 <em>한 단면</em>일 뿐입니다.
-      </div>
-    <% } else { %>
-      <div class="xr-empty">집계 가능한 표결 데이터가 부족합니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ④ 발의왕 vs 입법왕 -->
-  <section class="xr-card" id="xr-propose">
-    <div class="xr-head">
-      <div class="xr-no">04 · 발의 산점도</div>
-      <h2 class="xr-title">발의왕 vs 입법왕</h2>
-      <p class="xr-desc">많이 발의하는 의원과 통과시키는 의원은 다릅니다. 가로축은 대표발의 건수, 세로축은 그중 가결(원안+수정)된 비율.</p>
-    </div>
-    <% const pp = x.proposePass || []; %>
-    <% if (pp.length > 0) { %>
-      <%
-        const ppData = pp.map(r => ({ ...r, rate: pct(r.passed, r.proposed) }));
-        const maxProposed = Math.max(...ppData.map(r => r.proposed));
-        const maxRate = Math.max(10, ...ppData.map(r => r.rate));
-        const mProp = median(ppData.map(r => r.proposed));
-        const mRate = median(ppData.map(r => r.rate));
-        const sW = 1000, sH = 420, sPadL = 48, sPadR = 20, sPadT = 16, sPadB = 40;
-        const sx = (v) => sPadL + v / maxProposed * (sW - sPadL - sPadR);
-        const sy = (v) => sPadT + (1 - v / maxRate) * (sH - sPadT - sPadB);
-        const labeled = new Set();
-        [...ppData].sort((a, b) => b.passed - a.passed).slice(0, 3).forEach(r => labeled.add(r.mona_cd));
-        [...ppData].sort((a, b) => b.proposed - a.proposed).slice(0, 3).forEach(r => labeled.add(r.mona_cd));
-      %>
-      <div class="xr-svg-box">
-        <svg viewBox="0 0 <%= sW %> <%= sH %>" style="width:100%;height:auto">
-          <line x1="<%= sPadL %>" y1="<%= sH - sPadB %>" x2="<%= sW - sPadR %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6"/>
-          <line x1="<%= sPadL %>" y1="<%= sPadT %>" x2="<%= sPadL %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6"/>
-          <line x1="<%= sx(mProp).toFixed(1) %>" y1="<%= sPadT %>" x2="<%= sx(mProp).toFixed(1) %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
-          <line x1="<%= sPadL %>" y1="<%= sy(mRate).toFixed(1) %>" x2="<%= sW - sPadR %>" y2="<%= sy(mRate).toFixed(1) %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
-          <text x="<%= sW - sPadR %>" y="<%= sy(mRate) - 6 %>" text-anchor="end" font-size="10" font-family="JetBrains Mono" fill="#7A8090">가결률 중앙값 <%= mRate %>%</text>
-          <text x="<%= sx(mProp) + 6 %>" y="<%= sPadT + 12 %>" font-size="10" font-family="JetBrains Mono" fill="#7A8090">발의 중앙값 <%= mProp %>건</text>
-          <% ppData.forEach(r => { %>
-            <circle cx="<%= sx(r.proposed).toFixed(1) %>" cy="<%= sy(r.rate).toFixed(1) %>" r="4"
-                    fill="<%= labeled.has(r.mona_cd) ? '#B8740C' : '#1A1D24' %>" opacity="<%= labeled.has(r.mona_cd) ? 1 : 0.35 %>">
-              <title><%= r.name %> (<%= r.party_name || '무소속' %>) · 발의 <%= r.proposed %>건 · 가결 <%= r.passed %>건 (<%= r.rate %>%)</title>
-            </circle>
-            <% if (labeled.has(r.mona_cd)) { %>
-              <text x="<%= (sx(r.proposed) + 7).toFixed(1) %>" y="<%= (sy(r.rate) + 4).toFixed(1) %>" font-size="12" fill="#1A1D24" font-weight="700"><%= r.name %></text>
-            <% } %>
-          <% }) %>
-          <text x="<%= sW - sPadR %>" y="<%= sH - 10 %>" text-anchor="end" font-size="11" font-family="JetBrains Mono" fill="#7A8090">대표발의 →</text>
-          <text x="14" y="<%= sPadT + 8 %>" font-size="11" font-family="JetBrains Mono" fill="#7A8090">가결률↑</text>
-        </svg>
-      </div>
-      <div class="xr-note">현직 의원, 대표발의 5건 이상 (<%= nf(ppData.length) %>명). 가결률 = (원안가결+수정가결) ÷ 대표발의. 대안반영폐기는 가결로 세지 않음 — 실제 기여보다 보수적인 수치. 점 위에 마우스를 올리면 상세가 보입니다.</div>
-    <% } else { %>
-      <div class="xr-empty">발의 데이터가 부족합니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ④ 법안 생존율 -->
-  <section class="xr-card" id="xr-funnel">
-    <div class="xr-head">
-      <div class="xr-no">05 · 생존율 깔때기</div>
-      <h2 class="xr-title">발의된 법안은 어디까지 살아남는가</h2>
-      <p class="xr-desc">발의부터 가결까지, 단계마다 법안이 얼마나 걸러지는지 봅니다.</p>
-    </div>
-    <% const fn = x.funnel; %>
-    <% if (fn && Number(fn.total) > 0) { %>
-      <%
-        const fnRows = [
-          { label: '발의', v: Number(fn.total), sub: '' },
-          { label: '처리 완료', v: Number(fn.processed), sub: '가결·부결·폐기·철회 포함' },
-          { label: '가결', v: Number(fn.passed), sub: '원안+수정' }
-        ];
-      %>
-      <% fnRows.forEach(r => { %>
-        <div class="xr-hbar-row">
-          <span class="lb"><%= r.label %></span>
-          <span class="track"><span class="fill" style="width:<%= Math.max(1, Math.round(r.v / Number(fn.total) * 100)) %>%"></span></span>
-          <span class="num"><b><%= nf(r.v) %>건</b> · <%= pct(r.v, Number(fn.total)) %>%</span>
-        </div>
-      <% }) %>
-      <div class="xr-note" style="border-top:none;padding-top:8px;margin-top:4px">
-        처리 완료 중 대안반영폐기 <%= nf(fn.alt_reflected) %>건 — 폐기로 분류되지만 내용은 대안에 흡수된 "사실상 반영". 부결·폐기·철회는 <%= nf(fn.rejected) %>건.
-      </div>
-      <% const cr = x.committeeRate || []; %>
-      <% if (cr.length >= 6) { %>
-        <div class="xr-cols">
-          <div>
-            <div class="xr-col-h">처리율 높은 위원회 TOP 5</div>
-            <% cr.slice(0, 5).forEach(c => { %>
-              <div class="xr-hbar-row">
-                <span class="lb" style="font-size:12px"><%= c.committee.replace('위원회', '') %></span>
-                <span class="track" style="height:10px"><span class="fill" style="width:<%= pct(c.processed, c.total) %>%"></span></span>
-                <span class="num" style="width:110px"><b><%= pct(c.processed, c.total) %>%</b> (<%= nf(c.total) %>건)</span>
-              </div>
-            <% }) %>
-          </div>
-          <div>
-            <div class="xr-col-h">처리율 낮은 위원회 BOTTOM 5</div>
-            <% cr.slice(-5).reverse().forEach(c => { %>
-              <div class="xr-hbar-row">
-                <span class="lb" style="font-size:12px"><%= c.committee.replace('위원회', '') %></span>
-                <span class="track" style="height:10px"><span class="fill" style="width:<%= Math.max(1, pct(c.processed, c.total)) %>%;opacity:0.5"></span></span>
-                <span class="num" style="width:110px"><b><%= pct(c.processed, c.total) %>%</b> (<%= nf(c.total) %>건)</span>
-              </div>
-            <% }) %>
-          </div>
-        </div>
-      <% } %>
-      <div class="xr-note">위원회 처리율은 접수 100건 이상 위원회만. 처리율이 낮다 = 법안이 계류 중이라는 뜻이며, 위원회 업무 태만과 동의어는 아닙니다 (상정 시기·법안 난이도 차이).</div>
-    <% } else { %>
-      <div class="xr-empty">법안 데이터가 없습니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ⑤ 초당적 협력 -->
-  <section class="xr-card" id="xr-crossparty">
-    <div class="xr-head">
-      <div class="xr-no">06 · 공동발의 네트워크</div>
-      <h2 class="xr-title">초당적 협력 — 당 경계를 넘는 서명</h2>
-      <p class="xr-desc">공동발의 명단에 2개 이상 정당이 함께 이름을 올린 법안 비율과, 다른 당 법안에 가장 많이 서명한 의원입니다.</p>
-    </div>
-    <% const cp = x.crossParty || {}; %>
-    <% if (cp.stats && Number(cp.stats.total_bills) > 0) { %>
-      <div class="xr-stats">
-        <div class="xr-stat"><div class="v"><em><%= cp.multiPct %>%</em></div><div class="l">공동발의진에 2개 이상 정당이 참여한 법안</div></div>
-        <div class="xr-stat"><div class="v"><%= nf(cp.stats.multi_party_bills) %></div><div class="l">초당적 공동발의 법안 수 / 전체 <%= nf(cp.stats.total_bills) %>건</div></div>
-      </div>
-      <% const cpr = cp.rank || []; %>
-      <% if (cpr.length > 0) { %>
-        <div class="xr-col-h">타당 법안 서명 비율 TOP 10 (공동발의 30건 이상)</div>
-        <% const cprMax = Math.max(0.001, ...cpr.map(r => r.cross_cnt / r.co_cnt)); %>
-        <div class="xr-rank">
-          <% cpr.forEach((r, i) => { %>
-            <a class="xr-row" href="/politician/<%= r.mona_cd %>">
-              <span class="idx"><%= i + 1 %></span>
-              <span class="ava"><%- avatarHtml(r.name, r.photo_url, 28) %></span>
-              <span class="who"><span class="nm"><%= r.name %></span><br><span class="pt"><%= r.party_name || '무소속' %></span></span>
-              <span class="barwrap"><span class="bar" style="width:<%= Math.round((r.cross_cnt / r.co_cnt) / cprMax * 100) %>%"></span></span>
-              <span class="val"><b><%= pct(r.cross_cnt, r.co_cnt) %>%</b> · <%= nf(r.co_cnt) %>건 중 <%= nf(r.cross_cnt) %>건</span>
-            </a>
-          <% }) %>
-        </div>
-      <% } %>
-      <div class="xr-note">당적은 현재 기준. 대표발의자가 복수 정당인 공동대표 법안은 첫 정당 기준으로 집계.</div>
-    <% } else { %>
-      <div class="xr-empty">공동발의 데이터가 없습니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ⑥ 주도자 vs 서명러 -->
-  <section class="xr-card" id="xr-leader">
-    <div class="xr-head">
-      <div class="xr-no">07 · 발의 스타일</div>
-      <h2 class="xr-title">주도자 vs 서명러</h2>
-      <p class="xr-desc">발의 건수 랭킹의 착시를 벗깁니다. 가로축은 남의 법안에 서명한 공동발의, 세로축은 직접 주도한 대표발의.</p>
-    </div>
-    <% const ls = x.leaderSigner || []; %>
-    <% if (ls.length > 0) { %>
-      <%
-        const lsMaxCo = Math.max(1, ...ls.map(r => r.co_cnt));
-        const lsMaxRep = Math.max(1, ...ls.map(r => r.rep_cnt));
-        const lW = 1000, lH = 420, lPadL = 48, lPadR = 20, lPadT = 16, lPadB = 40;
-        const lx = (v) => lPadL + v / lsMaxCo * (lW - lPadL - lPadR);
-        const ly = (v) => lPadT + (1 - v / lsMaxRep) * (lH - lPadT - lPadB);
-        const lsLabeled = new Set();
-        [...ls].sort((a, b) => b.rep_cnt - a.rep_cnt).slice(0, 3).forEach(r => lsLabeled.add(r.mona_cd));
-        [...ls].sort((a, b) => b.co_cnt - a.co_cnt).slice(0, 3).forEach(r => lsLabeled.add(r.mona_cd));
-        const mCo = median(ls.map(r => r.co_cnt));
-        const mRep = median(ls.map(r => r.rep_cnt));
-      %>
-      <div class="xr-svg-box">
-        <svg viewBox="0 0 <%= lW %> <%= lH %>" style="width:100%;height:auto">
-          <line x1="<%= lPadL %>" y1="<%= lH - lPadB %>" x2="<%= lW - lPadR %>" y2="<%= lH - lPadB %>" stroke="#C9C5B6"/>
-          <line x1="<%= lPadL %>" y1="<%= lPadT %>" x2="<%= lPadL %>" y2="<%= lH - lPadB %>" stroke="#C9C5B6"/>
-          <line x1="<%= lx(mCo).toFixed(1) %>" y1="<%= lPadT %>" x2="<%= lx(mCo).toFixed(1) %>" y2="<%= lH - lPadB %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
-          <line x1="<%= lPadL %>" y1="<%= ly(mRep).toFixed(1) %>" x2="<%= lW - lPadR %>" y2="<%= ly(mRep).toFixed(1) %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
-          <% ls.forEach(r => { %>
-            <circle cx="<%= lx(r.co_cnt).toFixed(1) %>" cy="<%= ly(r.rep_cnt).toFixed(1) %>" r="4"
-                    fill="<%= lsLabeled.has(r.mona_cd) ? '#B8740C' : '#1A1D24' %>" opacity="<%= lsLabeled.has(r.mona_cd) ? 1 : 0.35 %>">
-              <title><%= r.name %> (<%= r.party_name || '무소속' %>) · 대표발의 <%= nf(r.rep_cnt) %>건 · 공동발의 <%= nf(r.co_cnt) %>건</title>
-            </circle>
-            <% if (lsLabeled.has(r.mona_cd)) { %>
-              <text x="<%= (lx(r.co_cnt) + 7).toFixed(1) %>" y="<%= (ly(r.rep_cnt) + 4).toFixed(1) %>" font-size="12" fill="#1A1D24" font-weight="700"><%= r.name %></text>
-            <% } %>
-          <% }) %>
-          <text x="<%= lW - lPadR %>" y="<%= lH - 10 %>" text-anchor="end" font-size="11" font-family="JetBrains Mono" fill="#7A8090">공동발의(서명) →</text>
-          <text x="14" y="<%= lPadT + 8 %>" font-size="11" font-family="JetBrains Mono" fill="#7A8090">대표발의↑</text>
-        </svg>
-      </div>
-      <div class="xr-note">현직 의원 <%= nf(ls.length) %>명. 우하단으로 갈수록 "서명 위주", 좌상단으로 갈수록 "직접 주도" 스타일. 점선은 각 축의 중앙값. 공동발의 자체는 정상적인 입법 협력이며 많다고 나쁜 것이 아닙니다.</div>
-    <% } else { %>
-      <div class="xr-empty">공동발의 데이터가 없습니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ⑦ 표결 불참률 -->
-  <section class="xr-card" id="xr-absent">
-    <div class="xr-head">
-      <div class="xr-no">08 · 본회의 참여</div>
-      <h2 class="xr-title">표결 불참률</h2>
-      <p class="xr-desc">본회의 표결 기록에서 불참으로 기록된 비율입니다.</p>
-    </div>
-    <% const ab = x.absentRank || []; %>
-    <% if (ab.length > 0) { %>
-      <% const abMax = Math.max(0.001, ...ab.map(r => r.absent_cnt / r.total_cnt)); %>
-      <div class="xr-rank">
-        <% ab.forEach((r, i) => { %>
-          <a class="xr-row" href="/politician/<%= r.mona_cd %>">
-            <span class="idx"><%= i + 1 %></span>
-            <span class="ava"><%- avatarHtml(r.name, r.photo_url, 28) %></span>
-            <span class="who"><span class="nm"><%= r.name %></span><br><span class="pt"><%= r.party_name || '무소속' %></span></span>
-            <span class="barwrap"><span class="bar" style="width:<%= Math.round((r.absent_cnt / r.total_cnt) / abMax * 100) %>%"></span></span>
-            <span class="val"><b><%= pct(r.absent_cnt, r.total_cnt) %>%</b> · <%= nf(r.total_cnt) %>회 중 <%= nf(r.absent_cnt) %>회</span>
-          </a>
-        <% }) %>
-      </div>
-      <div class="xr-note">표결 기록 100회 이상 현직 의원만. 불참 사유(공무 출장·사보임·청가 등)는 API가 제공하지 않아 구분하지 못합니다 — 높은 수치가 곧 태만을 뜻하지는 않습니다.</div>
-    <% } else { %>
-      <div class="xr-empty">표결 데이터가 부족합니다.</div>
-    <% } %>
-  </section>
-
-  <!-- ⑧ 시민 vs 국회 -->
-  <section class="xr-card" id="xr-gap">
-    <div class="xr-head">
-      <div class="xr-no">09 · 여론 괴리</div>
-      <h2 class="xr-title">시민 vs 국회 — 찬성률이 가장 갈린 법안</h2>
-      <p class="xr-desc">당말사 이용자의 찬반 투표와 실제 본회의 표결의 찬성률 격차입니다. 우리 서비스에서만 볼 수 있는 지표입니다.</p>
-    </div>
-    <% const gap = x.citizenGap || []; %>
-    <% if (gap.length > 0) { %>
-      <% gap.forEach(g => {
-           const cRate = pct(g.c_agree, g.c_agree + g.c_disagree);
-           const aRate = pct(g.a_yes, g.a_yes + g.a_no); %>
-        <a class="xr-gap-item" href="/bill/<%= g.bill_id %>">
-          <div class="xr-gap-name"><%= g.bill_name %></div>
-          <div class="xr-gap-bars">
-            <div class="xr-gap-line">
-              <span class="who">시민</span>
-              <span class="track"><span class="fill citizen" style="width:<%= cRate %>%"></span></span>
-              <span class="v">찬성 <%= cRate %>% (<%= nf(g.c_agree + g.c_disagree) %>표)</span>
-            </div>
-            <div class="xr-gap-line">
-              <span class="who">본회의</span>
-              <span class="track"><span class="fill assembly" style="width:<%= aRate %>%"></span></span>
-              <span class="v">찬성 <%= aRate %>% (<%= nf(g.a_yes + g.a_no) %>표)</span>
-            </div>
-          </div>
-        </a>
-      <% }) %>
-      <div class="xr-note">시민 투표 3표 이상 + 본회의 찬반 30인 이상인 법안만. 시민 표본은 아직 작아 대표성이 없습니다 — 참여가 쌓일수록 정확해지는 지표입니다.</div>
-    <% } else { %>
-      <div class="xr-empty">
-        아직 시민 찬반과 본회의 표결을 함께 비교할 수 있는 법안이 없습니다.<br>
-        법안 상세 페이지에서 찬반 투표에 참여하면 이 차트가 채워집니다.
-      </div>
-    <% } %>
-  </section>
-
-  <!-- ⑨ 같은 당, 다른 생각 -->
-  <section class="xr-card" id="xr-spectrum">
-    <div class="xr-head">
-      <div class="xr-no">10 · 성향 스펙트럼</div>
-      <h2 class="xr-title">같은 당, 다른 생각</h2>
-      <p class="xr-desc">실제 표결로 산출한 의원 4축 좌표를 정당별로 펼쳤습니다. 한 당 안의 편차가 생각보다 클 수 있습니다. 점 하나가 의원 한 명입니다.</p>
-    </div>
-    <% const sp = x.spectrum || []; %>
-    <% if (sp.length > 0) { %>
-      <div class="xr-axis-chips" id="xr-axis-chips">
-        <button class="xr-axis-chip active" data-axis="economy">경제 (시장↔개입)</button>
-        <button class="xr-axis-chip" data-axis="social">사회 (전통↔자율)</button>
-        <button class="xr-axis-chip" data-axis="security">안보 (동맹·강경↔자주·대화)</button>
-        <button class="xr-axis-chip" data-axis="institution">제도 (안정↔개혁)</button>
-      </div>
-      <div id="xr-spectrum-body"></div>
-      <div class="xr-strip-ends" id="xr-strip-ends"><span>← 시장</span><span>개입 →</span></div>
-      <div class="xr-note">좌표는 밸런스 게임의 법안-축 매핑 v1(48개 법안) × 본회의 표결로 산출 — 표본이 작아 참고용입니다. 굵은 세로선 = 정당 평균, 가운데 회색선 = 중립(0). 점 위에 마우스를 올리면 의원 이름이 보입니다. 10인 미만 정당은 "그 외"로 묶음.</div>
-    <% } else { %>
-      <div class="xr-empty">의원 좌표 데이터가 아직 산출되지 않았습니다. (batch/calcPoliticianAxis.js)</div>
-    <% } %>
-  </section>
-
-  <!-- ⑩ 국회의 관심사 -->
-  <section class="xr-card" id="xr-category">
-    <div class="xr-head">
-      <div class="xr-no">11 · AI 분석 카테고리</div>
-      <h2 class="xr-title">국회의 관심사 — 분야별 법안 분포</h2>
-      <p class="xr-desc">AI 분석이 완료된 법안의 16종 분야 분포입니다.</p>
-    </div>
-    <% const cat = x.categoryCounts || []; %>
-    <% if (cat.length > 0) { %>
-      <% const catMax = Math.max(1, ...cat.map(c => c.cnt));
-         const catTotal = cat.reduce((s, c) => s + c.cnt, 0); %>
-      <% cat.forEach(c => { %>
-        <div class="xr-hbar-row">
-          <span class="lb"><%= c.category_main %></span>
-          <span class="track" style="height:14px"><span class="fill" style="width:<%= Math.max(2, Math.round(c.cnt / catMax * 100)) %>%"></span></span>
-          <span class="num"><b><%= nf(c.cnt) %>건</b> · <%= pct(c.cnt, catTotal) %>%</span>
-        </div>
-      <% }) %>
-      <div class="xr-note">AI 분석 완료 <%= nf(catTotal) %>건 기준 — 전체 법안이 아니라 분석된 법안의 분포입니다. 분석은 가결 법안과 이용자 요청 법안부터 진행되고 있어 표본에 편향이 있습니다. 커버리지가 쌓이면 월별 트렌드로 확장 예정.</div>
-    <% } else { %>
-      <div class="xr-empty">AI 분석 데이터가 아직 없습니다.</div>
-    <% } %>
-  </section>
-
-  <p style="font-size:12px;color:var(--sub2);line-height:1.8;margin-top:8px">
+  <p style="font-size:12px;color:var(--sub2);line-height:1.8;margin-top:24px">
     모든 지표는 열린국회정보 공공 API 원자료를 당말사가 집계한 것입니다. 지표는 구조를 보여줄 뿐, 좋은 의원·나쁜 의원의 순위가 아닙니다.
     집계 방식에 대한 의견은 <a href="/community" style="color:var(--accent)">커뮤니티</a>로 보내주세요.
   </p>
 </div>
 
-<% if ((x.spectrum || []).length > 0) { %>
 <script>
-  window.__XR_SPECTRUM__ = <%- JSON.stringify(x.spectrum).replace(/</g, '\\u003c') %>;
-  (function () {
-    var AXIS_ENDS = {
-      economy:     ['← 시장', '개입 →'],
-      social:      ['← 전통', '자율 →'],
-      security:    ['← 동맹·강경', '자주·대화 →'],
-      institution: ['← 안정', '개혁 →']
-    };
-    var body = document.getElementById('xr-spectrum-body');
-    var ends = document.getElementById('xr-strip-ends');
-    var chips = document.getElementById('xr-axis-chips');
-    if (!body || !chips) return;
+(function () {
+  var list = document.getElementById('xr-list');
+  if (!list) return;
 
-    function esc(s) {
-      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-      });
-    }
-
-    function render(axis) {
-      var html = '';
-      window.__XR_SPECTRUM__.forEach(function (p) {
-        var vals = p.members.map(function (m) { return m[axis]; });
-        var avg = vals.reduce(function (s, v) { return s + v; }, 0) / (vals.length || 1);
-        var dots = p.members.map(function (m) {
-          var left = ((m[axis] + 1) / 2 * 100).toFixed(1);
-          return '<span class="dot" style="left:' + left + '%" title="' + esc(m.name) + ' ' + Number(m[axis]).toFixed(2) + '"></span>';
-        }).join('');
-        var avgLeft = ((avg + 1) / 2 * 100).toFixed(1);
-        html += '<div class="xr-strip-row">'
-              +   '<div class="party">' + esc(p.party) + '<small>' + p.count + '명 · 평균 ' + avg.toFixed(2) + '</small></div>'
-              +   '<div class="xr-strip"><span class="mid"></span>' + dots + '<span class="avg" style="left:' + avgLeft + '%"></span></div>'
-              + '</div>';
-      });
-      body.innerHTML = html;
-      if (ends) ends.innerHTML = '<span>' + AXIS_ENDS[axis][0] + '</span><span>' + AXIS_ENDS[axis][1] + '</span>';
-    }
-
-    chips.addEventListener('click', function (e) {
-      var btn = e.target.closest('.xr-axis-chip');
-      if (!btn) return;
-      chips.querySelectorAll('.xr-axis-chip').forEach(function (c) { c.classList.remove('active'); });
-      btn.classList.add('active');
-      render(btn.dataset.axis);
+  /* innerHTML 로 삽입한 <script> 는 실행되지 않는다.
+     동일 내용으로 새 script 엘리먼트를 만들어 교체해야 실행된다.
+     (스펙트럼 섹션이 축 전환 로직을 인라인 script 로 갖고 있음) */
+  function runScripts(container) {
+    container.querySelectorAll('script').forEach(function (old) {
+      var s = document.createElement('script');
+      for (var i = 0; i < old.attributes.length; i++) {
+        s.setAttribute(old.attributes[i].name, old.attributes[i].value);
+      }
+      s.textContent = old.textContent;
+      old.parentNode.replaceChild(s, old);
     });
+  }
 
-    render('economy');
-  })();
+  function spinnerHtml() {
+    if (window.PB && typeof PB.spinner === 'function') {
+      return '<div class="xr-loading">' + PB.spinner({ size: 32, label: '집계 불러오는 중…' }) + '</div>';
+    }
+    return '<div class="xr-loading" style="color:var(--sub2);font-size:13px">집계 불러오는 중…</div>';
+  }
+
+  function load(item) {
+    var id = item.dataset.section;
+    var body = item.querySelector('.xr-body');
+    if (item.dataset.loaded === 'true' || item.dataset.loading === 'true') return Promise.resolve();
+
+    item.dataset.loading = 'true';
+    body.innerHTML = spinnerHtml();
+
+    return fetch('/xray/s/' + encodeURIComponent(id), { headers: { 'Accept': 'text/html' } })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        body.innerHTML = html;
+        runScripts(body);
+        item.dataset.loaded = 'true';
+      })
+      .catch(function () {
+        body.innerHTML = '<div class="xr-empty">불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
+      })
+      .finally(function () { item.dataset.loading = 'false'; });
+  }
+
+  function open(item, opts) {
+    var body = item.querySelector('.xr-body');
+    var btn = item.querySelector('.xr-toggle');
+    item.dataset.open = 'true';
+    btn.setAttribute('aria-expanded', 'true');
+    body.hidden = false;
+    var p = load(item);
+    if (opts && opts.scroll) {
+      p.then(function () { item.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    }
+    return p;
+  }
+
+  function close(item) {
+    var body = item.querySelector('.xr-body');
+    var btn = item.querySelector('.xr-toggle');
+    item.dataset.open = 'false';
+    btn.setAttribute('aria-expanded', 'false');
+    body.hidden = true;   /* 내용은 남겨둔다 — 다시 펼칠 때 재요청 안 함 */
+  }
+
+  list.addEventListener('click', function (e) {
+    var btn = e.target.closest('.xr-toggle');
+    if (!btn) return;
+    var item = btn.closest('.xr-item');
+    if (item.dataset.open === 'true') {
+      close(item);
+      if (location.hash === '#xr-' + item.dataset.section) {
+        history.replaceState(null, '', location.pathname);
+      }
+    } else {
+      open(item);
+      history.replaceState(null, '', location.pathname + '#xr-' + item.dataset.section);
+    }
+  });
+
+  document.getElementById('xr-expand-all').addEventListener('click', function () {
+    list.querySelectorAll('.xr-item').forEach(function (it) { open(it); });
+  });
+  document.getElementById('xr-collapse-all').addEventListener('click', function () {
+    list.querySelectorAll('.xr-item').forEach(close);
+    history.replaceState(null, '', location.pathname);
+  });
+
+  /* /xray#xr-dissent 로 들어오면 해당 섹션 자동 펼침 — 링크 공유 가능 */
+  function openFromHash() {
+    var m = (location.hash || '').match(/^#xr-([\w-]+)$/);
+    if (!m) return false;
+    var item = list.querySelector('.xr-item[data-section="' + m[1] + '"]');
+    if (!item) return false;
+    open(item, { scroll: true });
+    return true;
+  }
+
+  /* 기본은 전부 접힌 상태 — 해시로 들어온 경우에만 그 섹션을 펼친다.
+     자동 펼침을 두지 않으므로 페이지 진입 시 DB 조회가 정말로 0회다. */
+  openFromHash();
+  window.addEventListener('hashchange', openFromHash);
+})();
 </script>
-<% } %>

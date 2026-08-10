@@ -71,8 +71,11 @@ export default (db) => {
         }
     });
 
-    // 국회 X레이 (시각화)
+    // 숫자로 본 국회 (구 "국회 X레이" — 표시명만 변경, 경로·식별자는 xray 유지)
+    //   /xray      — 접힌 목록. DB 조회 0회
+    //   /xray/s/:id — 섹션 HTML 조각. 펼칠 때만 호출 (layout 없음)
     router.get('/xray', xrayController.getXrayPage);
+    router.get('/xray/s/:id', xrayController.getSectionFragment);
 
     // 국회의원 목록 / 상세
     router.get('/politician', politicianController.getListPage);

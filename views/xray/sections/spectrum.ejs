@@ -1,0 +1,69 @@
+<%# 10 성향 스펙트럼 — 데이터: x.spectrum (loader: spectrum)
+     ⚠️ 이 섹션만 인라인 <script> 를 포함한다 (축 전환이 클라이언트 렌더).
+        innerHTML 로 넣은 <script> 는 실행되지 않으므로, xray.ejs 의 로더가
+        조각 삽입 후 script 태그를 재생성해 실행시킨다. runScripts() 참조. %>
+<% const sp = x.spectrum || []; %>
+<% if (sp.length > 0) { %>
+  <div class="xr-axis-chips" id="xr-axis-chips">
+    <button class="xr-axis-chip active" data-axis="economy">경제 (시장↔개입)</button>
+    <button class="xr-axis-chip" data-axis="social">사회 (전통↔자율)</button>
+    <button class="xr-axis-chip" data-axis="security">안보 (동맹·강경↔자주·대화)</button>
+    <button class="xr-axis-chip" data-axis="institution">제도 (안정↔개혁)</button>
+  </div>
+  <div id="xr-spectrum-body"></div>
+  <div class="xr-strip-ends" id="xr-strip-ends"><span>← 시장</span><span>개입 →</span></div>
+  <div class="xr-note">좌표는 밸런스 게임의 법안-축 매핑 v1(48개 법안) × 본회의 표결로 산출 — 표본이 작아 참고용입니다. 굵은 세로선 = 정당 평균, 가운데 회색선 = 중립(0). 점 위에 마우스를 올리면 의원 이름이 보입니다. 10인 미만 정당은 "그 외"로 묶음.</div>
+
+  <script>
+    window.__XR_SPECTRUM__ = <%- JSON.stringify(sp).replace(/</g, '\\u003c') %>;
+    (function () {
+      var AXIS_ENDS = {
+        economy:     ['← 시장', '개입 →'],
+        social:      ['← 전통', '자율 →'],
+        security:    ['← 동맹·강경', '자주·대화 →'],
+        institution: ['← 안정', '개혁 →']
+      };
+      var body = document.getElementById('xr-spectrum-body');
+      var ends = document.getElementById('xr-strip-ends');
+      var chips = document.getElementById('xr-axis-chips');
+      if (!body || !chips) return;
+
+      function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+
+      function render(axis) {
+        var html = '';
+        window.__XR_SPECTRUM__.forEach(function (p) {
+          var vals = p.members.map(function (m) { return m[axis]; });
+          var avg = vals.reduce(function (s, v) { return s + v; }, 0) / (vals.length || 1);
+          var dots = p.members.map(function (m) {
+            var left = ((m[axis] + 1) / 2 * 100).toFixed(1);
+            return '<span class="dot" style="left:' + left + '%" title="' + esc(m.name) + ' ' + Number(m[axis]).toFixed(2) + '"></span>';
+          }).join('');
+          var avgLeft = ((avg + 1) / 2 * 100).toFixed(1);
+          html += '<div class="xr-strip-row">'
+                +   '<div class="party">' + esc(p.party) + '<small>' + p.count + '명 · 평균 ' + avg.toFixed(2) + '</small></div>'
+                +   '<div class="xr-strip"><span class="mid"></span>' + dots + '<span class="avg" style="left:' + avgLeft + '%"></span></div>'
+                + '</div>';
+        });
+        body.innerHTML = html;
+        if (ends) ends.innerHTML = '<span>' + AXIS_ENDS[axis][0] + '</span><span>' + AXIS_ENDS[axis][1] + '</span>';
+      }
+
+      chips.addEventListener('click', function (e) {
+        var btn = e.target.closest('.xr-axis-chip');
+        if (!btn) return;
+        chips.querySelectorAll('.xr-axis-chip').forEach(function (c) { c.classList.remove('active'); });
+        btn.classList.add('active');
+        render(btn.dataset.axis);
+      });
+
+      render('economy');
+    })();
+  </script>
+<% } else { %>
+  <div class="xr-empty">의원 좌표 데이터가 아직 산출되지 않았습니다. (batch/calcPoliticianAxis.js)</div>
+<% } %>

@@ -1,0 +1,27 @@
+<%# 06 공동발의 네트워크 — 데이터: x.crossParty {stats, multiPct, rank} (loader: crossparty) %>
+<% const cp = x.crossParty || {}; %>
+<% if (cp.stats && Number(cp.stats.total_bills) > 0) { %>
+  <div class="xr-stats">
+    <div class="xr-stat"><div class="v"><em><%= cp.multiPct %>%</em></div><div class="l">공동발의진에 2개 이상 정당이 참여한 법안</div></div>
+    <div class="xr-stat"><div class="v"><%= nf(cp.stats.multi_party_bills) %></div><div class="l">초당적 공동발의 법안 수 / 전체 <%= nf(cp.stats.total_bills) %>건</div></div>
+  </div>
+  <% const cpr = cp.rank || []; %>
+  <% if (cpr.length > 0) { %>
+    <div class="xr-col-h">타당 법안 서명 비율 TOP 10 (공동발의 30건 이상)</div>
+    <% const cprMax = Math.max(0.001, ...cpr.map(r => r.cross_cnt / r.co_cnt)); %>
+    <div class="xr-rank">
+      <% cpr.forEach((r, i) => { %>
+        <a class="xr-row" href="/politician/<%= r.mona_cd %>">
+          <span class="idx"><%= i + 1 %></span>
+          <span class="ava"><%- avatarHtml(r.name, r.photo_url, 28) %></span>
+          <span class="who"><span class="nm"><%= r.name %></span><br><span class="pt"><%= r.party_name || '무소속' %></span></span>
+          <span class="barwrap"><span class="bar" style="width:<%= Math.round((r.cross_cnt / r.co_cnt) / cprMax * 100) %>%"></span></span>
+          <span class="val"><b><%= pct(r.cross_cnt, r.co_cnt) %>%</b> · <%= nf(r.co_cnt) %>건 중 <%= nf(r.cross_cnt) %>건</span>
+        </a>
+      <% }) %>
+    </div>
+  <% } %>
+  <div class="xr-note">당적은 현재 기준. 대표발의자가 복수 정당인 공동대표 법안은 첫 정당 기준으로 집계.</div>
+<% } else { %>
+  <div class="xr-empty">공동발의 데이터가 없습니다.</div>
+<% } %>

@@ -289,6 +289,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `2026-04-26-balance-game-cumulative.sql` — **누적 모델 v2**. `balance_game_packs` / `user_axis_score` / `group_axis_avg` 신규, `balance_game_responses` 1문항 단위 재설계, `balance_game_questions` 에 `pack_id`/`display_order`, `bill_axis_mapping.mapped_by` 타입 변경, `users.welcomed_at`. 종합팩 'general' + 20문항 시드 포함
   - `ddl/migrations/2026-08-04-batch-incremental.sql` — **배치 증분화**. `bills.vote_synced_at` 컬럼 + 부분 인덱스, `batch_runs` 테이블 (배치 실행 기록 · nav 갱신 배지 소스 · 크론 실패 추적)
   - `ddl/migrations/2026-08-05-cross-party-vote-mv.sql` — **교차 표결 성향 MV**. `politician_cross_party_vote` + UNIQUE 인덱스(CONCURRENTLY 갱신용) + `gap` 부분 인덱스
+  - `ddl/migrations/2026-08-10-dissent-mv.sql` — **당론 이탈 MV**. `politician_dissent` + UNIQUE 인덱스 + `dissent_rate` 인덱스. "숫자로 본 국회" 최대 병목(1,410ms)이었던 `getDissentRank` 를 45ms 로
   - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
@@ -306,7 +307,12 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (AI 분석 진행률 배너 + 통합 필터 카드 + 정렬 + 카테고리·정당 복수선택, 페이징) |
 | `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·요청 위젯·국민 찬반·본회의 표결·댓글) |
-| `/xray` | `xray/xray.ejs` | 국회 X레이 — 시각화 **11종** (합의 분포·당론 이탈·**당 성향 격차**·발의vs가결·생존율·초당 협력·발의 스타일·불참률·시민 괴리·정당 스펙트럼·AI 카테고리). `daos/queries/xray/` 14쿼리, 서버 SVG 렌더 |
+| `/xray` | `xray/xray.ejs` | **숫자로 본 국회** (nav 라벨 "숫자") — 지표 **12종** 아코디언 목록. **페이지 자체는 DB 조회 0회**, 펼친 섹션만 `/xray/s/:id` 로 조각 로드 |
+| `/xray/s/:id` | `xray/sections/*.ejs` | 섹션 HTML 조각 (layout 없음). 컨트롤러가 `layout: false` 로 렌더 |
+
+> ⚠️ **표시명은 "숫자로 본 국회", 내부 식별자는 `xray`.** 2026-08-10 에 구 "국회 X레이" 에서 개명하면서
+> 사용자에게 보이는 5곳(nav 2 · h1 · pageTitle · 404 링크)만 바꿨다.
+> URL `/xray`, `.xr-*` 클래스 223곳, 파일·디렉터리명은 **의도적으로 유지** — `.pb-*` 와 같은 판단.
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
@@ -426,6 +432,51 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - 데이터 주입: `window.__BILL_VOTERS__ = { agree[], disagree[], abstain[], absent[] }` — `{mona_cd, name, party, photo}` 만 직렬화
 - 닫기: backdrop / × / ESC, 열릴 때 `body` 스크롤 잠금
 
+### `/xray` 구조 — 아코디언 + 섹션 지연 로딩 (2026-08-10 재편)
+섹션이 계속 늘어나는 페이지라 **추가 비용이 일정하도록** 구조를 잡았다.
+
+```
+services/xraySections.js   ← 그룹(XRAY_GROUPS) + 섹션(SECTIONS) 정의 단일 소스
+services/XrayService.js    ← SECTION_LOADERS[loader] : 그 섹션 쿼리만 실행 + 메모리 캐시
+views/xray/xray.ejs        ← 그룹별 카드 그리드 + 펼침 JS (DB 조회 0회)
+views/xray/sections/*.ejs  ← 섹션 본문 11개 (제목·설명은 목록이 담당하므로 body 만)
+```
+
+- **섹션 추가** = `SECTIONS` 에 한 줄 (+ `group` 지정) + partial 하나 + 로더 하나
+- **그룹 추가** = `XRAY_GROUPS` 에 한 줄
+- 둘 다 `xray.ejs` 는 안 건드린다
+- 번호(`no`)는 **그룹 순서 → 그룹 내 순서**로 자동 부여. 어디에 끼워넣어도 손댈 곳이 없다
+  (이전엔 gapdist 를 3번에 넣느라 기존 03~10 을 04~11 로 전부 밀어야 했다)
+- `group` 오타로 어느 그룹에도 안 걸리면 **"기타" 그룹으로 노출 + 경고 로그**. 조용히 사라지지 않는다
+
+**그룹 5종 · 섹션 12개**: 표결(합의분포·당론이탈·불참률) / 발의(발의왕vs입법왕·초당협력·발의스타일) /
+법안(생존율·**월별추이**·AI카테고리) / 성향(당성향격차·성향스펙트럼) / 시민(시민vs국회)
+
+> ⚠️ **월별 추이(`monthly`) 는 처리 지연을 반드시 같이 보여줄 것.**
+> 최근 달일수록 처리 완료가 0 에 수렴한다 (실측: 2026-05 발의 254건 중 처리 1건, 최근 6개월 3.3%).
+> "가결률"만 그리면 국회가 갈수록 일을 안 하는 것처럼 보이지만 **아직 심사 중일 뿐**이다.
+> 진행 중인 달(`isPartial`)은 막대를 흐리게 + 꺾은선·평균 통계에서 제외한다.
+
+**레이아웃** — 접힌 카드는 그리드, 펼친 카드만 전체폭:
+- `.xr-grid` 3열 (≤1100px 2열 / ≤768px 1열), 펼치면 `grid-column: 1 / -1`
+- 차트가 1000px 폭 SVG 라 열릴 땐 전체폭이 필수인데, 접힌 상태는 밀도가 중요해서 나눈 것
+- 카드 제목은 **한 줄에 들어가게 짧게** 유지할 것 (길면 3열에서 2줄로 접혀 카드가 커짐).
+  긴 설명은 `desc` 로 — 접힘 2행(모바일 1행) 클램프, 펼치면 전문
+- 실측(1280px, 11개): 1열 1,053px → 3열+그룹 **901px**. 모바일 1,324px
+
+- **왜 바꿨나**: 이전엔 14개 쿼리를 `Promise.all` 로 전부 돌린 뒤 렌더해서 **TTFB 2.3초 / HTML 248KB**.
+  화면에서 접기만 해서는 서버가 여전히 14개를 다 돌기 때문에 데이터도 같이 지연 로딩해야 했다
+- 결과: **TTFB 0.02초 / 39KB**, 초기 쿼리 **14 → 0**
+- 캐시: 섹션별 10분 TTL 메모리 캐시 + inflight 공유(동시 요청 시 쿼리 중복 방지). 배치가 하루 1회만 바꾸는 값이라 안전.
+  재요청 실측 1.6초 → 3ms
+- 조각은 `layout: false` 로 렌더 — layout 을 타면 nav·footer 가 통째로 딸려온다
+- ⚠️ **`innerHTML` 로 넣은 `<script>` 는 실행되지 않는다.** 스펙트럼 섹션이 축 전환 로직을 인라인 script 로
+  갖고 있어서, `xray.ejs` 의 `runScripts()` 가 조각 삽입 후 script 태그를 재생성해 실행시킨다.
+  섹션에 script 를 넣을 땐 이 경로를 탄다는 걸 전제할 것
+- 접으면 DOM 은 남기고 `hidden` 만 토글 — 다시 펼칠 때 재요청 없음
+- **기본은 전부 접힘** — 자동 펼침을 두지 않으므로 진입 시 DB 조회가 정말로 0회
+- `/xray#xr-<id>` 로 진입하면 그 섹션만 자동 펼침 (링크 공유용)
+
 ### `/politician/:id` 페이지 구조 (2026-04-25 재편)
 - **히어로**: breadcrumb → `.profile-identity` (아바타 240px + 이름·정당배지·메타) → `.profile-subinfo` (생년월일·성별 / 이메일 / 홈페이지·국회프로필 — flex-wrap, 이메일만 `.full` 로 단독 행). 카드 박스 없이 hero 배경에 자연스럽게 녹아듬
 - **탭**: `[분석(기본), 법안 활동, 표결 내역, 국민 평가]`
@@ -457,7 +508,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - 카드에 `data-gap` 서버 사전 계산. 값 없는 의원(표본 50건 미만·무소속 등 43명)은 필터 시 제외 / 정렬 시 항상 최후미
   - URL 키 `gap` 으로 영속화 (`loadFromUrl`/`saveToUrl`). 예: `/politician?gap=gte10&sort=gap-desc`
   - 필터 시트 배지 카운트에는 미포함 (상단 드롭다운이라 `match` 와 동일 취급)
-- **X레이 ③ 「당을 보나, 법안을 보나」** (`#xr-gapdist`, 2026-08-05): 개인 순위("266명 중 42위")의 배경이 되는 **전체 분포**
+- **숫자로 본 국회 「당을 보나, 법안을 보나」** (`#xr-gapdist`, 2026-08-05): 개인 순위("266명 중 42위")의 배경이 되는 **전체 분포**
   - 쿼리 2개 — `getCrossPartyGapDist.sql` (2%p 폭 17구간 `width_bucket`, -2~32) / `getCrossPartyGapStats.sql` (사분위·중립/당파 인원·정당별 평균). 둘 다 MV 를 읽어 300행 스캔
   - 서비스 `buildGapDist()` 가 빈 버킷을 채움 — 안 채우면 분포 모양이 왜곡된다
   - 히스토그램에 **중앙값 점선** 오버레이. 10%p 이상 구간만 진하게 (합의 분포의 90% 강조와 같은 패턴)
@@ -467,8 +518,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - **`/xray` 지표와 중복 아님** — 세 축이 각각 다르다:
   | 지표 | 축 |
   |---|---|
-  | X레이 당론 이탈 (`getDissentRank`) | 소속당 **다수 입장 vs 나** (내부 이탈) |
-  | X레이 초당 협력 (`getCrossPartyStats`) | 공동**발의**진 정당 다양성 (표결 아님) |
+  | 당론 이탈 (`getDissentRank`) | 소속당 **다수 입장 vs 나** (내부 이탈) |
+  | 초당 협력 (`getCrossPartyStats`) | 공동**발의**진 정당 다양성 (표결 아님) |
   | 교차 표결 격차 (신규) | **상대 당 발의 법안**을 어떻게 대하나 (외부 태도) |
 - **법안 활동 탭**: 전체/대표발의/공동발의 필터 + 법안 리스트, 카드 클릭 시 `/bill/:id` 내부 링크
 - **표결 내역 탭**: 본회의 표결 기록 리스트 (최근 50건 + 전체 개수 표시)
@@ -627,6 +678,7 @@ PC/모바일 동일 패턴으로 통일.
 | `calcGroupAxisAvg.js` | DB 집계 | 인구 그룹별 4축 평균 일배치 (밸런스 게임 단계 4 비교용). 'all' + (gender × age_group), user_count >= 50 만 평균 채움 |
 | `calcPoliticianAxis.js` | DB 집계 | `bill_axis_mapping × bill_votes` → `politician_axis_score`. 가중평균 (찬성→agree_score / 반대→disagree_score, 기권/불참 제외). 인자 `--version v1` `--min-votes 1`. 분포 히스토그램 + 정당별 평균 검증 출력 |
 | `refreshCrossPartyVote.js` | DB 집계 | `politician_cross_party_vote` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~0.4초). 의원 목록의 격차 필터·정렬이 이걸 읽는다. **syncBills·syncVotes 다음에 실행** |
+| `refreshDissent.js` | DB 집계 | `politician_dissent` MV 갱신 (`REFRESH ... CONCURRENTLY`). "숫자로 본 국회"의 소신 표결이 이걸 읽는다. **syncPoliticians·syncVotes 다음에 실행** |
 
 ### 배치 실행 순서 (2026-07-29 정리)
 > ⚠️ 실행 전 `node -v` 확인 — **Node 22** (`.nvmrc` 22.20.0). Node 18 이면 undici 7 이 전역 `File` 부재로 즉사 (`ReferenceError: File is not defined`)
@@ -651,7 +703,7 @@ PC/모바일 동일 패턴으로 통일.
 
 ### 크론 배포 (Railway, 2026-08-04)
 npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
-- `npm run batch:daily` — `syncPoliticians && syncBills && syncVotes && refreshCrossPartyVote && calcPoliticianAxis && calcGroupAxisAvg`
+- `npm run batch:daily` — `syncPoliticians && syncBills && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg`
 - `npm run batch:full` — `syncVotes --full` (수동 전건 재스캔. 크론 불필요 — 아래 참조)
 
 Railway 설정 (웹 서비스와 **분리된 서비스 1개**, 같은 GitHub repo 연결):

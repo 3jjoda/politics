@@ -1,0 +1,30 @@
+<%# 09 여론 괴리 — 데이터: x.citizenGap (loader: gap)
+     bill_citizen_votes × bill_votes. 우리 서비스에서만 나오는 지표 %>
+<% const gap = x.citizenGap || []; %>
+<% if (gap.length > 0) { %>
+  <% gap.forEach(g => {
+       const cRate = pct(g.c_agree, g.c_agree + g.c_disagree);
+       const aRate = pct(g.a_yes, g.a_yes + g.a_no); %>
+    <a class="xr-gap-item" href="/bill/<%= g.bill_id %>">
+      <div class="xr-gap-name"><%= g.bill_name %></div>
+      <div class="xr-gap-bars">
+        <div class="xr-gap-line">
+          <span class="who">시민</span>
+          <span class="track"><span class="fill citizen" style="width:<%= cRate %>%"></span></span>
+          <span class="v">찬성 <%= cRate %>% (<%= nf(g.c_agree + g.c_disagree) %>표)</span>
+        </div>
+        <div class="xr-gap-line">
+          <span class="who">본회의</span>
+          <span class="track"><span class="fill assembly" style="width:<%= aRate %>%"></span></span>
+          <span class="v">찬성 <%= aRate %>% (<%= nf(g.a_yes + g.a_no) %>표)</span>
+        </div>
+      </div>
+    </a>
+  <% }) %>
+  <div class="xr-note">시민 투표 3표 이상 + 본회의 찬반 30인 이상인 법안만. 시민 표본은 아직 작아 대표성이 없습니다 — 참여가 쌓일수록 정확해지는 지표입니다.</div>
+<% } else { %>
+  <div class="xr-empty">
+    아직 시민 찬반과 본회의 표결을 함께 비교할 수 있는 법안이 없습니다.<br>
+    법안 상세 페이지에서 찬반 투표에 참여하면 이 차트가 채워집니다.
+  </div>
+<% } %>

@@ -50,6 +50,9 @@ export default (db) => {
         /* ⑩ AI 카테고리 분포 */
         getCategoryCounts: () => run('getCategoryCounts'),
 
+        /* 월별 대표발의 + 그 달 법안의 처리 진행도 */
+        getMonthlyPropose: () => run('getMonthlyPropose'),
+
         /* ⑪ 당 성향 격차 분포 (politician_cross_party_vote MV 기반) */
         getCrossPartyGapDist: () => run('getCrossPartyGapDist'),
         getCrossPartyGapStats: () => run('getCrossPartyGapStats').then(rows => rows[0])

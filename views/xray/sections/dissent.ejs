@@ -1,0 +1,20 @@
+<%# 02 당론 이탈 — 데이터: x.dissentRank (loader: dissent)
+     집계 본체는 materialized view politician_dissent (2026-08-10). 1410ms → 45ms %>
+<% const dr = x.dissentRank || []; %>
+<% if (dr.length > 0) { %>
+  <% const drMax = Math.max(0.001, ...dr.map(r => r.dissent_cnt / r.votes_cnt)); %>
+  <div class="xr-rank">
+    <% dr.forEach((r, i) => { const rate = pct(r.dissent_cnt, r.votes_cnt); %>
+      <a class="xr-row" href="/politician/<%= r.mona_cd %>">
+        <span class="idx"><%= i + 1 %></span>
+        <span class="ava"><%- avatarHtml(r.name, r.photo_url, 28) %></span>
+        <span class="who"><span class="nm"><%= r.name %></span><br><span class="pt"><%= r.party_name || '무소속' %></span></span>
+        <span class="barwrap"><span class="bar" style="width:<%= Math.round((r.dissent_cnt / r.votes_cnt) / drMax * 100) %>%"></span></span>
+        <span class="val"><b><%= rate %>%</b> · <%= nf(r.votes_cnt) %>회 중 <%= nf(r.dissent_cnt) %>회</span>
+      </a>
+    <% }) %>
+  </div>
+  <div class="xr-note">당적은 현재 소속 기준(표결 당시 당적과 다를 수 있음). 정당 내 유효 표결 10인 이상·개인 찬반 표결 50회 이상만 집계. 기권·불참은 이탈로 세지 않음.</div>
+<% } else { %>
+  <div class="xr-empty">집계 가능한 표결 데이터가 부족합니다.</div>
+<% } %>

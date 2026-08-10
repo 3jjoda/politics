@@ -1,0 +1,16 @@
+<%# 11 AI 분석 카테고리 — 데이터: x.categoryCounts (loader: category) %>
+<% const cat = x.categoryCounts || []; %>
+<% if (cat.length > 0) { %>
+  <% const catMax = Math.max(1, ...cat.map(c => c.cnt));
+     const catTotal = cat.reduce((s, c) => s + c.cnt, 0); %>
+  <% cat.forEach(c => { %>
+    <div class="xr-hbar-row">
+      <span class="lb"><%= c.category_main %></span>
+      <span class="track" style="height:14px"><span class="fill" style="width:<%= Math.max(2, Math.round(c.cnt / catMax * 100)) %>%"></span></span>
+      <span class="num"><b><%= nf(c.cnt) %>건</b> · <%= pct(c.cnt, catTotal) %>%</span>
+    </div>
+  <% }) %>
+  <div class="xr-note">AI 분석 완료 <%= nf(catTotal) %>건 기준 — 전체 법안이 아니라 분석된 법안의 분포입니다. 분석은 가결 법안과 이용자 요청 법안부터 진행되고 있어 표본에 편향이 있습니다. 커버리지가 쌓이면 월별 트렌드로 확장 예정.</div>
+<% } else { %>
+  <div class="xr-empty">AI 분석 데이터가 아직 없습니다.</div>
+<% } %>

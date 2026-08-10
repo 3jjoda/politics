@@ -1,0 +1,19 @@
+<%# 08 본회의 참여 — 데이터: x.absentRank (loader: absent) %>
+<% const ab = x.absentRank || []; %>
+<% if (ab.length > 0) { %>
+  <% const abMax = Math.max(0.001, ...ab.map(r => r.absent_cnt / r.total_cnt)); %>
+  <div class="xr-rank">
+    <% ab.forEach((r, i) => { %>
+      <a class="xr-row" href="/politician/<%= r.mona_cd %>">
+        <span class="idx"><%= i + 1 %></span>
+        <span class="ava"><%- avatarHtml(r.name, r.photo_url, 28) %></span>
+        <span class="who"><span class="nm"><%= r.name %></span><br><span class="pt"><%= r.party_name || '무소속' %></span></span>
+        <span class="barwrap"><span class="bar" style="width:<%= Math.round((r.absent_cnt / r.total_cnt) / abMax * 100) %>%"></span></span>
+        <span class="val"><b><%= pct(r.absent_cnt, r.total_cnt) %>%</b> · <%= nf(r.total_cnt) %>회 중 <%= nf(r.absent_cnt) %>회</span>
+      </a>
+    <% }) %>
+  </div>
+  <div class="xr-note">표결 기록 100회 이상 현직 의원만. 불참 사유(공무 출장·사보임·청가 등)는 API가 제공하지 않아 구분하지 못합니다 — 높은 수치가 곧 태만을 뜻하지는 않습니다.</div>
+<% } else { %>
+  <div class="xr-empty">표결 데이터가 부족합니다.</div>
+<% } %>
