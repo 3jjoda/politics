@@ -6,6 +6,28 @@
 
 ---
 
+## 2026-08-10 — Google AdSense 코드 준비 (env 게이트)
+
+승인 신청 전에 코드 쪽만 미리 붙였다. **`ADSENSE_CLIENT_ID` 하나로 전체가 켜지고 꺼진다** —
+변수가 없으면 스크립트도 `ads.txt` 도 나가지 않으므로 지금 배포해도 사이트는 그대로다.
+
+- `app.js` — `app.locals.adsenseClientId` 주입 + `GET /ads.txt` 핸들러.
+  `ca-pub-XXXX` 에서 `ca-` 를 떼어 `google.com, pub-XXXX, DIRECT, f08c47fec0942fa0` 를 응답.
+  파일(`public/ads.txt`) 대신 라우트로 만든 건 pub 아이디를 저장소에 박지 않으려는 것
+- `views/layout.ejs` — `<head>` 에 `adsbygoogle.js` 조건부 스크립트. 이 한 줄이 소유 확인 + 자동 광고 겸용
+
+검증 (로컬, `PORT=3999`): 변수 있음 → `/ads.txt` 200 + 본문 정상 · `<head>` 스크립트 1개 /
+변수 없음 → `/ads.txt` 404 · 스크립트 0개.
+
+남은 건 전부 운영자 액션 — 애드센스 가입 → 사이트 추가 → `ADSENSE_CLIENT_ID` 세팅 → 승인 대기 →
+**승인 후 차단 관리에서 "정치" 카테고리 차단**(중립성 원칙). 상세는 [CLAUDE.md](./CLAUDE.md) "Google AdSense".
+
+> 하마터면 오진할 뻔한 것: 첫 검증에서 변수를 넣었는데도 404 가 났다.
+> Git Bash 의 `kill %1` 이 안 먹어서 **변수 없이 띄운 이전 프로세스가 포트를 계속 잡고 있던 것**.
+> CLAUDE.md "빠른 시작" 에 적힌 그대로였다 — 윈도우에서 서버를 죽일 땐 PowerShell `Stop-Process`.
+
+---
+
 ## 2026-08-10 — 커스텀 도메인 `dangmalsa.kr` 연결 (인프라)
 
 ```

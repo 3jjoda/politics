@@ -57,6 +57,26 @@ app.locals.assetVer = ASSET_VER;
 // 정적 파일 링크는 반드시 이 헬퍼를 거칠 것 — 안 붙이면 배포 후 stale 자산이 노출된다.
 app.locals.asset = (p) => `${p}${p.includes('?') ? '&' : '?'}v=${ASSET_VER}`;
 
+/* ===== Google AdSense =====
+   ADSENSE_CLIENT_ID 가 있을 때만 켜진다 (형식: ca-pub-0000000000000000).
+   비워두면 layout.ejs 의 스크립트도, 아래 /ads.txt 도 나가지 않으므로
+   승인 전에는 환경변수를 그냥 두지 않으면 된다. */
+const ADSENSE_CLIENT_ID = (process.env.ADSENSE_CLIENT_ID || '').trim();
+app.locals.adsenseClientId = ADSENSE_CLIENT_ID;
+
+/* ads.txt — "이 도메인의 광고 재고를 팔 권한이 있는 사업자" 선언.
+   없으면 AdSense 가 "수익 손실 위험" 경고를 계속 띄운다. 반드시 apex 루트에서 200 이어야 한다
+   (www·railway.app 로 오면 canonicalHost 가 301 로 넘겨주므로 크롤러가 따라온다).
+   파일로 두지 않고 env 로 만드는 이유는 pub 아이디를 저장소에 박지 않으려는 것.
+   express.static 뒤에 두면 public/ads.txt 파일이 생겼을 때 그쪽이 우선한다 —
+   지금은 파일이 없으므로 이 핸들러가 응답한다. */
+app.get('/ads.txt', (req, res) => {
+    if (!ADSENSE_CLIENT_ID) return res.status(404).type('text/plain; charset=utf-8').send('');
+    const pub = ADSENSE_CLIENT_ID.replace(/^ca-/, '');   // ca-pub-XXXX → pub-XXXX
+    res.type('text/plain; charset=utf-8')
+       .send(`google.com, ${pub}, DIRECT, f08c47fec0942fa0\n`);
+});
+
 /* EJS 전역 헬퍼 */
 app.locals.avatarHtml = avatarHtml;
 // 날짜 표시는 반드시 이 헬퍼들을 쓸 것 — Date 의 getFullYear/getHours 계열은

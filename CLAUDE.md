@@ -815,6 +815,9 @@ ASSEMBLY_AGE=22
 
 # AI 분석 요청 임계값 (기본 5명 — 도달 시 "🔥 우선 분석 대기" 표시)
 ANALYSIS_REQUEST_THRESHOLD=5
+
+# Google AdSense (2026-08-10) — 승인 후에만 세팅. 비워두면 광고 관련 출력이 전부 꺼진다
+ADSENSE_CLIENT_ID=ca-pub-0000000000000000
 ```
 
 ### Railway 서비스별 변수 배분 (2026-08-04)
@@ -827,6 +830,30 @@ ANALYSIS_REQUEST_THRESHOLD=5
 | `PORT` / `SESSION_SECRET` / `NODE_ENV` / `BASE_URL` | ✅ | — |
 | `GOOGLE_*` / `KAKAO_*` | ✅ | — |
 | `ANTHROPIC_API_KEY` | — | AI 분석 배치를 크론에 붙일 때만 |
+| `ADSENSE_CLIENT_ID` | 승인 후 ✅ | — |
+
+---
+
+## Google AdSense (2026-08-10)
+
+`ADSENSE_CLIENT_ID` (형식 `ca-pub-0000000000000000`) 하나로 전체가 켜지고 꺼진다. **승인 전에는 변수를 두지 않는다.**
+
+| 위치 | 내용 |
+|---|---|
+| `app.js` | `ADSENSE_CLIENT_ID` 읽어 `app.locals.adsenseClientId` 주입 + `GET /ads.txt` 핸들러 |
+| `views/layout.ejs` | `<head>` 에 `adsbygoogle.js` 스크립트 (`locals.adsenseClientId` 있을 때만) |
+| `views/privacy.ejs` §6 | 광고 쿠키 조항 (2026-07-29 선반영) |
+| `views/terms.ejs` | 제3자 광고 조항 |
+
+- **head 스크립트 한 줄이 사이트 소유 확인 + 자동 광고를 겸한다.** 광고 단위를 코드에 심지 않아도
+  AdSense 콘솔의 "자동 광고" 를 켜면 노출된다. 수동 단위가 필요해질 때만 `<ins class="adsbygoogle">` 를 추가
+- `ads.txt` 는 파일이 아니라 **라우트로 생성** — pub 아이디를 저장소에 박지 않으려고.
+  `ADSENSE_CLIENT_ID` 앞의 `ca-` 를 떼어 `google.com, pub-XXXX, DIRECT, f08c47fec0942fa0` 를 응답
+  - ⚠️ `express.static` 뒤에 등록돼 있으므로 **`public/ads.txt` 파일을 만들면 그쪽이 이긴다.** 둘 다 두지 말 것
+  - ⚠️ 반드시 **apex 루트**(`https://dangmalsa.kr/ads.txt`)에서 200 이어야 한다. www 로 오면 `canonicalHost` 가 301 로 넘긴다
+- ⚠️ **정치 중립성 리스크** — 정치 콘텐츠 사이트라 자동 광고에 특정 정당·후보 광고가 붙으면 브랜드 원칙과 정면 충돌한다.
+  승인 후 AdSense 콘솔 → **차단 관리 → 일반 카테고리에서 "정치" 계열 차단** 을 반드시 먼저 걸 것.
+  선거기간에는 공직선거법상 광고 규제도 걸릴 수 있으므로 그 시기엔 정치 카테고리 차단 상태를 재확인
 
 ---
 

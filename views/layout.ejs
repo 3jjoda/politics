@@ -41,6 +41,14 @@
     <meta name="twitter:description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
     <meta name="twitter:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + asset('/assets/imgs/og-image.png') %>">
 
+    <%# Google AdSense — ADSENSE_CLIENT_ID 환경변수가 있을 때만 나간다 (app.js 참조).
+        이 한 줄이 사이트 소유 확인 + 자동 광고 게재를 겸한다.
+        광고 단위를 직접 배치하지 않아도 AdSense 콘솔의 "자동 광고" 만으로 노출된다. %>
+    <% if (locals.adsenseClientId) { %>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=<%= adsenseClientId %>"
+            crossorigin="anonymous"></script>
+    <% } %>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
