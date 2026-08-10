@@ -1,4 +1,4 @@
-/* X레이 ⑧ 시민 vs 국회 — 시민 찬반(3표 이상)과 본회의 표결(찬반 30인 이상)이 모두 있는 법안의 찬성률 격차 TOP 10 */
+/* X레이 ⑧ 국민 vs 국회 — 국민 찬반(3표 이상)과 본회의 표결(찬반 30인 이상)이 모두 있는 법안의 찬성률 격차 TOP 10 */
 WITH citizen AS (
     SELECT bill_id
          , COUNT(*) FILTER (WHERE vote = 'agree')::int AS c_agree

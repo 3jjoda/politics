@@ -38,7 +38,11 @@
 8. ~~OG 태그 적용 (og-image.png → layout.ejs)~~ ✅ 2026-04-23 완료
 9. ~~법안 상세 페이지 UI 개선 (AI 분석 5-Zone 통합)~~ ✅ 2026-04-24 완료
 10. ~~AI 분석 표시 시스템 + 분석 요청 시스템~~ ✅ 2026-04-25 완료 (진행률 배너, 통합 필터, 카드 배지·요약, 미분석 시 요청 위젯, 마이페이지)
-11. **AI 분석 자동 트리거** — 임계값(5명) 도달 시 cron 또는 hook 으로 자동 분석. 현재는 운영자가 수동으로 `--bill-id` 실행. 자동화 위치는 `batch/syncBillAiAnalysis.js` 의 `fetchTargets` 에 "request_count >= threshold AND a.bill_id IS NULL" 분기 추가
+11. **AI 분석 자동 트리거** — ✅ 2026-08-11 `fetchTargets` 개편 완료 (요청 임계값 편입 + 요청 우선 정렬 + 변경분 재분석). 상세는 [CLAUDE.md](./CLAUDE.md) "syncBillAiAnalysis.js". 남은 것:
+    - ⬜ **크론 배선** — 아직 운영자가 수동 실행. `batch:daily` 체인에 붙이려면 크론 서비스에 `ANTHROPIC_API_KEY` 추가 필요. 붙이기 전에 `--limit` 상한을 정할 것 (무제한이면 하루 비용이 튄다)
+    - ⬜ **본문 변경 감지** — 현재 재분석 트리거는 `bills.updated_at` 기반이라 `bill_name`/`proc_result_name`/`committee`/`committee_id` 변경만 잡는다. **계류 중 조문만 바뀐 경우는 못 잡음.** 크롤한 본문의 해시를 `bill_ai_analysis` 에 저장해 비교하는 방식이 필요
+    - ⬜ **JSON 파싱 실패 재시도** — 실측 실패율 ~4%. 지금은 실패 처리 후 다음 실행에 재편입되는 것으로 흡수 중
+    - ⬜ **`needs_review` 임계값 재조정** — 43.9% 가 플래그돼 검수 큐로서 변별력 없음 (`shouldReview` 휴리스틱)
 12. **prompt cache 활성화** — 현재 system prompt(~3,300 tok)가 Haiku 4.5 임계값(~4,096) 미달로 캐시 안 들어감. 예시·금지표현 추가로 4,500+ 토큰까지 늘리면 자동 활성. 절감 효과 = 1건당 cache_read $0.0033 (input × 0.10) ≈ -20%
 13. **legacy `category` 컬럼 DROP** — v4.1 안정화 1주 후 (`bill_ai_analysis.category` 와 `bills.bill_topic_cd` 둘 다)
 14. **정치 성향 밸런스 게임** — [BALANCEGAME.md](./BALANCEGAME.md) / [UI_BALANCEGAME.md](./UI_BALANCEGAME.md) 참조

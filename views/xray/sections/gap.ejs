@@ -9,7 +9,7 @@
       <div class="xr-gap-name"><%= g.bill_name %></div>
       <div class="xr-gap-bars">
         <div class="xr-gap-line">
-          <span class="who">시민</span>
+          <span class="who">국민</span>
           <span class="track"><span class="fill citizen" style="width:<%= cRate %>%"></span></span>
           <span class="v">찬성 <%= cRate %>% (<%= nf(g.c_agree + g.c_disagree) %>표)</span>
         </div>
@@ -21,10 +21,10 @@
       </div>
     </a>
   <% }) %>
-  <div class="xr-note">시민 투표 3표 이상 + 본회의 찬반 30인 이상인 법안만. 시민 표본은 아직 작아 대표성이 없습니다 — 참여가 쌓일수록 정확해지는 지표입니다.</div>
+  <div class="xr-note">국민 투표 3표 이상 + 본회의 찬반 30인 이상인 법안만. 국민 표본은 아직 작아 대표성이 없습니다 — 참여가 쌓일수록 정확해지는 지표입니다.</div>
 <% } else { %>
   <div class="xr-empty">
-    아직 시민 찬반과 본회의 표결을 함께 비교할 수 있는 법안이 없습니다.<br>
+    아직 국민 찬반과 본회의 표결을 함께 비교할 수 있는 법안이 없습니다.<br>
     법안 상세 페이지에서 찬반 투표에 참여하면 이 차트가 채워집니다.
   </div>
 <% } %>

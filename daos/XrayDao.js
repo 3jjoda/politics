@@ -41,7 +41,7 @@ export default (db) => {
         /* ⑦ 표결 불참률 TOP */
         getAbsentRank: () => run('getAbsentRank'),
 
-        /* ⑧ 시민 vs 국회 괴리 */
+        /* ⑧ 국민 vs 국회 괴리 */
         getCitizenGap: () => run('getCitizenGap'),
 
         /* ⑨ 정당 내 성향 스펙트럼 */

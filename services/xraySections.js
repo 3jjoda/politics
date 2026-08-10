@@ -25,7 +25,7 @@ export const XRAY_GROUPS = [
     { id: 'proposal',  label: '발의', desc: '법안을 누가 만들고 누가 서명하는가' },
     { id: 'lifecycle', label: '법안', desc: '발의된 법안이 어디까지 가는가' },
     { id: 'stance',    label: '성향', desc: '표결로 드러나는 정치 성향의 분포' },
-    { id: 'citizen',   label: '시민', desc: '시민의 판단과 국회의 결정' }
+    { id: 'citizen',   label: '국민', desc: '국민의 판단과 국회의 결정' }
 ];
 
 const SECTIONS = [
@@ -114,11 +114,11 @@ const SECTIONS = [
         loader: 'spectrum', partial: 'xray/sections/spectrum'
     },
 
-    /* ── 시민 ── */
+    /* ── 국민 ── */
     {
         id: 'gap', group: 'citizen',
         kicker: '여론 괴리',
-        title: '시민 vs 국회',
+        title: '국민 vs 국회',
         desc: '당말사 이용자의 찬반 투표와 실제 본회의 표결의 찬성률 격차입니다. 우리 서비스에서만 볼 수 있는 지표입니다.',
         loader: 'gap', partial: 'xray/sections/gap'
     }

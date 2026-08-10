@@ -34,6 +34,10 @@ const PRICE_CACHE_READ_PER_MTOK = 0.10;
 // 요청 간 대기 (rate limit 대비)
 const REQUEST_INTERVAL_MS = 1500;
 
+// 미처리(계류) 법안을 분석 대상에 넣는 국민 요청 임계값.
+// services/BillService.js 와 같은 값을 써야 UI 의 "🔥 우선 분석 대기" 표시와 실제 배치 동작이 일치한다.
+const REQUEST_THRESHOLD = parseInt(process.env.ANALYSIS_REQUEST_THRESHOLD, 10) || 5;
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // --- 인자 파싱 ---
@@ -337,18 +341,54 @@ async function fetchTargets(pool, args) {
         return rows;
     }
 
-    // Phase 1: 가결 법안 우선, 미분석만
+    // 대상 = 미분석 법안 중 (가결됐거나) OR (국민 요청이 임계값 이상 모였거나).
+    //
+    // 가결만 보던 이유는 정확성이 아니라 **비용**이었다 (건당 ~$0.016).
+    // 그런데 국민이 실제로 분석을 요청하는 건 대개 아직 계류 중인 뜨거운 법안이라,
+    // 가결 필터를 그대로 두면 요청 시스템이 영원히 발화하지 않는다.
+    // → 요청이 임계값만큼 모인 법안은 미처리여도 분석한다. 수요가 비용을 정당화하는 선.
+    //
+    // 여기에 더해, **분석 이후 법안이 바뀐 건은 재분석**한다 (b.updated_at > a.analyzed_at).
+    // 계류 상태로 분석해둔 법안이 심사를 거쳐 확정되면 저장된 분석이 낡은 내용으로 남기 때문.
+    // upsertAnalysis 가 UPSERT 라 재분석 결과가 기존 행을 덮어쓴다.
+    //
+    // ⚠️ 이 트리거의 실제 범위는 syncBills.js 의 BILL_CHANGED_GUARD 가 정한다.
+    //    현재 4개 컬럼만 updated_at 을 올린다: bill_name / proc_result_name / committee / committee_id.
+    //    → "계류 → 가결" 은 잡힌다 (가장 중요한 케이스, 내용이 확정되는 시점).
+    //    → 법안 **본문** 수정은 못 잡는다. 본문은 bills 에 없고 매 실행 시 pal.assembly.go.kr 에서
+    //       새로 크롤하므로, 계류 중 조용히 조문만 바뀐 경우는 감지 수단이 없다.
+    //
+    // 정렬은 "요청 많은 순 → 미분석 먼저 → 최신 발의순".
+    //
+    // 재분석을 **뒤로** 미루는 이유: 위 트리거가 거칠어서 오탐이 많다.
+    // 실측(2026-08-11) — 재분석 대상 17건이 전부 updated_at 이 '08-05 00:03' 로 동일했다.
+    // 법안별 개별 변경이 아니라 그날 syncBills 한 번이 일괄로 올린 것이고, 분석 본문과는 무관하다.
+    // 재분석을 앞에 두면 이런 무의미한 건이 매 실행의 앞자리를 차지해 미분석 법안 소진이 밀린다.
+    // 단, 국민 요청이 있는 법안은 첫 번째 정렬 키에서 이미 최우선이라 재분석이어도 바로 잡힌다.
+    //
+    // 요청이 0건이고 변경분이 없으면 기존과 완전히 동일한 순서로 동작한다.
     const { rows } = await pool.query(
         `SELECT b.bill_id, b.bill_no, b.bill_name, b.committee, b.proposer_name,
-                TO_CHAR(b.propose_dt, 'YYYY-MM-DD') AS propose_dt, b.proc_result_name
+                TO_CHAR(b.propose_dt, 'YYYY-MM-DD') AS propose_dt, b.proc_result_name,
+                COALESCE(rc.request_count, 0) AS request_count,
+                (a.bill_id IS NOT NULL) AS is_reanalysis
            FROM bills b
       LEFT JOIN bill_ai_analysis a ON a.bill_id = b.bill_id
-          WHERE a.bill_id IS NULL
-            AND b.proc_result_name IN ('원안가결', '수정가결')
-            AND b.bill_name IS NOT NULL
-          ORDER BY b.propose_dt DESC
+      LEFT JOIN bill_analysis_request_counts rc ON rc.bill_id = b.bill_id
+          WHERE b.bill_name IS NOT NULL
+            AND (
+                  a.bill_id IS NULL                  -- 미분석
+               OR b.updated_at > a.analyzed_at       -- 분석 후 법안 변경 → 재분석
+                )
+            AND (
+                  b.proc_result_name IN ('원안가결', '수정가결')
+               OR COALESCE(rc.request_count, 0) >= $2
+                )
+          ORDER BY COALESCE(rc.request_count, 0) DESC,
+                   (a.bill_id IS NOT NULL) ASC,   -- 미분석 먼저, 재분석은 뒤로
+                   b.propose_dt DESC
           LIMIT $1`,
-        [args.limit]
+        [args.limit, REQUEST_THRESHOLD]
     );
     return rows;
 }
@@ -382,11 +422,21 @@ async function run() {
             logger.info('분석 대상 없음.');
             return;
         }
-        logger.info(`[대상] ${targets.length}건`);
+        const requestedCount = targets.filter(t => Number(t.request_count) > 0).length;
+        const pendingCount = targets.filter(t => !t.proc_result_name).length;
+        const reanalysisCount = targets.filter(t => t.is_reanalysis).length;
+        logger.info(
+            `[대상] ${targets.length}건 (국민 요청 ${requestedCount}건 우선 · 계류 ${pendingCount}건, 요청 ${REQUEST_THRESHOLD}명+ 로 편입 · 재분석 ${reanalysisCount}건)`
+        );
 
         for (let i = 0; i < targets.length; i++) {
             const bill = targets[i];
-            const tag = `[${i + 1}/${targets.length}] ${bill.bill_no} ${String(bill.bill_name).substring(0, 30)}`;
+            // 요청 있는 법안은 💡N, 미처리는 [계류], 변경분 재분석은 [재분석] 을 붙여
+            // 각 분기가 실제로 먹었는지 로그에서 바로 보이게
+            const reqMark = Number(bill.request_count) > 0 ? ` 💡${bill.request_count}` : '';
+            const pendMark = bill.proc_result_name ? '' : ' [계류]';
+            const reMark = bill.is_reanalysis ? ' [재분석]' : '';
+            const tag = `[${i + 1}/${targets.length}]${reqMark}${pendMark}${reMark} ${bill.bill_no} ${String(bill.bill_name).substring(0, 30)}`;
             try {
                 logger.info(`${tag} → 본문 수집 중`);
                 const content = await fetchBillContent(bill.bill_id);
