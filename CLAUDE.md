@@ -325,6 +325,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/terms` | `terms.ejs` | 이용약관 (AI 분석 면책·게시물 정책) |
 | `/glossary` | `glossary.ejs` | 용어 설명 (목차 + 4섹션) |
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
+| (404/403) | `error_pages/404.ejs` | 찾을 수 없음·권한 없음 공용. `{ pageTitle, pageStyles:'error', message, code?, detail? }` — `code` 생략 시 404 |
+| (500) | `error_pages/500.ejs` | 전역 에러 핸들러 전용. locals 의존 최소화 (에러 처리 중 렌더라 실패하면 안 됨) |
 | `/auth/setup` | `auth/setup.ejs` | 신규 OAuth 닉네임·성별·연령대 설정 (필수) |
 
 ### `/bill/:id` 5-Zone AI 분석 UI (2026-04-27 전면 리디자인)
@@ -889,6 +891,25 @@ CSS `gap` 이 곧 시각 간격이 되고, 가운데 정렬 시 잉크가 실제
 - `views/layout.ejs <head>` — favicon 5종 + manifest + OG 11개 + Twitter 4개 + theme-color
 - `og:url` / `og:image` 는 `process.env.BASE_URL + locals.currentUrl` 기반 절대 URL
 - `public/manifest.json` — name/short_name/start_url/display=standalone/theme-color/icons(any maskable)
+
+### 정적 자산 캐시 무효화 (2026-08-10)
+`express.static('public', { maxAge: '1h' })` + **파일명 고정**(내용만 교체) 조합이라,
+그냥 두면 배포 후 최대 1시간 동안 브라우저가 옛 자산을 쓴다.
+실제로 리브랜딩 배포에서 `wordmark-nav.svg` 가 구브랜드로 남는 문제가 발생했다.
+
+- `app.js` — `ASSET_VER` = `RAILWAY_GIT_COMMIT_SHA` 앞 8자 (로컬은 기동 시각 base36)
+- **정적 링크는 반드시 `asset()` 헬퍼를 거칠 것** — `<%= asset('/styles/main.css') %>`
+  - 적용 대상: CSS(main + pageStyles) / JS / 브랜드 SVG / 파비콘 5종 / manifest / og:image·twitter:image / spinner
+- JS 가 동적 생성하는 `<img>` 는 `window.__ASSET_VER__` 를 읽는 `PB.asset()` 사용
+- 새 정적 참조를 추가할 때 `?v=` 를 빠뜨리면 배포 후 stale 자산이 노출된다
+
+### 에러 페이지 (2026-08-10)
+- `app.js` 라우트 등록 **뒤에** 404 캐치올 → 전역 에러 핸들러 순서로 등록 (순서 바뀌면 캐치올이 모든 요청을 먹음)
+- 두 핸들러 모두 `res.render(view, locals, cb)` 의 **콜백으로 렌더 실패를 잡아 평문 fallback** 으로 끝냄.
+  ⚠️ 이게 없으면 뷰가 없거나 깨졌을 때 에러 처리 중에 또 에러가 나서 스택트레이스가 노출된다
+  (실제로 `error_pages/404` 뷰가 없어서 모든 not-found 가 500 으로 떨어지고 있었음)
+- 에러 핸들러는 `res.headersSent` 면 손대지 않고 `next(err)` 로 넘김
+- 스타일은 `public/styles/error.css` (`.err-*`), layout 을 그대로 타서 nav·footer 포함
 
 ### 브라우저 타이틀 규약 (2026-08-10)
 ```

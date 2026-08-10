@@ -1,0 +1,35 @@
+<%#
+  404 / 403 공용 "찾을 수 없음·권한 없음" 페이지.
+  호출부 계약: { pageTitle, pageStyles: 'error', message, code?, detail? }
+    - code   : 생략 시 404. 403 등 다른 상태로 렌더할 땐 명시 (res.status() 와 맞출 것)
+    - detail : 원인 URL 같은 부가 정보 (선택)
+  ⚠️ 이 뷰가 없으면 404 분기가 렌더에 실패해 500 으로 떨어진다 (실제로 그런 상태였음).
+     파일명·경로를 바꿀 땐 error_pages/404 를 렌더하는 5개 호출부와 app.js 캐치올을 같이 고칠 것.
+%>
+<div class="err-wrap">
+  <img src="<%= asset('/assets/imgs/mark-only.svg') %>" alt="" aria-hidden="true" class="err-mark">
+
+  <div class="err-code"><%= locals.code || 404 %></div>
+  <h1 class="err-title"><%= locals.pageTitle || '페이지를 찾을 수 없습니다' %></h1>
+  <p class="err-msg"><%= locals.message || '요청하신 페이지를 찾을 수 없습니다.' %></p>
+
+  <% if (locals.detail) { %>
+    <div class="err-detail"><%= detail %></div>
+  <% } %>
+
+  <div class="err-actions">
+    <a href="/" class="err-btn">홈으로</a>
+    <a href="#" class="err-btn ghost" data-no-loader onclick="history.length > 1 ? history.back() : location.assign('/'); return false;">이전으로</a>
+  </div>
+
+  <div class="err-links">
+    <span class="lb">찾으시는 게 이쪽일 수도 있어요</span>
+    <ul>
+      <li><a href="/bill">법안</a></li>
+      <li><a href="/politician">의원</a></li>
+      <li><a href="/xray">국회 X레이</a></li>
+      <li><a href="/community">커뮤니티</a></li>
+      <li><a href="/glossary">용어 설명</a></li>
+    </ul>
+  </div>
+</div>

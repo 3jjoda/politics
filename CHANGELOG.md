@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-08-10 — 정적 자산 캐시 무효화 + 에러 페이지 신설
+
+### 1. 배포했는데 옛 로고가 남는 문제
+"배포 서버에 옛 nav 가 남아있다" 는 제보 — 확인 결과 **서버는 정상**이었다. HTML·CSS·SVG 모두 새 버전을 서빙했고 `last-modified` 가 커밋 시각과 초 단위로 일치했다. 원인은 브라우저 캐시.
+
+- `express.static('public', { maxAge: '1h' })` → `Cache-Control: public, max-age=3600` = 1시간 동안 **재검증 없이** 캐시본 사용
+- 리브랜딩이 **파일명을 그대로 두고 내용만 교체**했기 때문에 (`wordmark-nav.svg` 는 원래 "정치 바로미터" 가 들어있던 파일), 배포 전 접속자는 구브랜드를 계속 봄
+- CSS 가 특히 위험 — 새 HTML(`.pb-logo-mark`) + 옛 CSS = 스타일 미적용으로 로고가 원본 크기로 튐
+
+**해결**: `app.js` 에 `ASSET_VER`(`RAILWAY_GIT_COMMIT_SHA` 앞 8자, 로컬은 기동 시각) 과 `asset()` 헬퍼 추가, 모든 정적 링크에 `?v=` 부착.
+
+- 대상: CSS(main + pageStyles) / `globalStore.js` / `interactions.js` / 브랜드 SVG 3종(nav·로그인) / 파비콘 5종 / `manifest.json` / `og:image`·`twitter:image` / `spinner.svg`
+- JS 가 만드는 `<img>` 용으로 `window.__ASSET_VER__` 주입 + `PB.asset()` 헬퍼 추가
+- 검증: 5개 페이지에서 미적용 참조 **0건**, 버전 URL 전부 200 (express.static 은 쿼리 무시), 락업 210×36 유지, 깨진 이미지 0
+- `app.js` 의 "?v= 작업이 선행돼야 한다" 는 기존 TODO 주석 해소
+
+### 2. 없는 페이지가 500 을 내던 문제
+검증 중 발견 — `/bill/NOPE` `/politician/NOPE` `/community/99999999` 이 전부 **500**. 컨트롤러에는 `res.status(404).render('error_pages/404')` 분기가 제대로 있었지만 **뷰 파일 자체가 없어서** 404 를 그리려다 예외가 나 500 으로 떨어지고 있었다. 미매칭 URL 은 Express 기본 `Cannot GET /xxx` 영문 평문 페이지가 노출됐다.
+
+**신설**
+- `views/error_pages/404.ejs` — 404/403 공용. `code`(기본 404) / `message` / `detail`(원인 URL) locals. 마크 + 큰 코드 + 제목 + 메시지 + [홈으로][이전으로] + 주요 섹션 바로가기
+- `views/error_pages/500.ejs` — 마크 + 500 + 재시도/홈 + 문의 경로. 에러 처리 중 렌더라 동적 데이터 의존 없음
+- `public/styles/error.css` — `.err-*`, layout 을 그대로 타서 nav·footer 포함
+- `app.js` — 404 캐치올 추가 + 전역 핸들러가 500 뷰를 렌더하도록 교체. 둘 다 **`render` 콜백으로 렌더 실패를 잡아 평문 fallback** (이번 버그의 재발 방지). `res.headersSent` 가드 추가
+- `PostController` 의 403 분기에 `code: 403` 전달 (상태코드와 화면 표기 일치)
+
+**검증**
+
+| 경로 | 결과 |
+|---|---|
+| `/asdf` | 404 · "페이지를 찾을 수 없습니다" · detail `/asdf` |
+| `/bill/NOPE` `/politician/NOPE` `/community/99999999` | 404 · 각 컨트롤러 메시지 |
+| 500 경로 (임시 throw 라우트로 검증 후 제거) | 500 · 스택 노출 0건 · nav/footer 정상 |
+| 기존 11개 페이지 | 전부 200 (캐치올이 정상 라우트를 먹지 않음) |
+
+- 데스크톱: 콘텐츠가 nav 아래 72px 클리어 / 모바일 375: 44px, 버튼 세로 스택, 가로 스크롤 없음
+
+---
+
 ## 2026-08-10 — 홈 히어로 헤드라인을 브랜드 문구로 교체
 
 `views/index.ejs` 히어로 h1 을 3행 브랜드 문구로 변경. 구 카피의 3행 색을 단어별로 그대로 이어받음.

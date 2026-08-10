@@ -136,9 +136,43 @@ const startServer = async () => {
     try {
         setupRoutes(app, db);
 
+        /* 404 캐치올 — 라우트에 안 걸린 URL.
+           이게 없으면 Express 기본 'Cannot GET /xxx' 영문 평문 페이지가 노출된다. */
+        app.use((req, res) => {
+            res.status(404).render('error_pages/404', {
+                pageTitle: '페이지를 찾을 수 없습니다',
+                pageStyles: 'error',
+                currentUrl: req.originalUrl,
+                message: '주소가 바뀌었거나 삭제된 페이지입니다.',
+                detail: req.originalUrl
+            }, (renderErr, html) => {
+                if (renderErr) {
+                    logger.error(`404 페이지 렌더 실패: ${renderErr.message}`);
+                    return res.type('text/plain; charset=utf-8').send('페이지를 찾을 수 없습니다.');
+                }
+                res.send(html);
+            });
+        });
+
+        /* 전역 에러 핸들러.
+           ⚠️ 렌더 자체가 실패하는 경우까지 감안할 것 — 실제로 error_pages/404 뷰가 없던 시절
+              404 분기가 렌더에 실패해 전부 500 으로 떨어지는 문제가 있었다.
+              여기서 또 던지면 Express 기본 핸들러로 넘어가 스택트레이스가 노출될 수 있으므로
+              반드시 평문 fallback 으로 끝낸다. */
         app.use((err, req, res, next) => {
             logger.error(`서버 에러 발생: ${err.message}`, { stack: err.stack });
-            res.status(500).send('서버에서 에러가 발생했습니다.');
+            if (res.headersSent) return next(err);   // 응답이 이미 나가는 중이면 손대지 않는다
+            res.status(500).render('error_pages/500', {
+                pageTitle: '서버 오류',
+                pageStyles: 'error',
+                currentUrl: req.originalUrl
+            }, (renderErr, html) => {
+                if (renderErr) {
+                    logger.error(`500 페이지 렌더 실패: ${renderErr.message}`);
+                    return res.type('text/plain; charset=utf-8').send('서버에서 에러가 발생했습니다.');
+                }
+                res.send(html);
+            });
         });
 
         app.listen(port, () => {

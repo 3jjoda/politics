@@ -100,6 +100,7 @@ export default (db) => {
                     return res.status(403).render('error_pages/404', {
                         pageTitle: '권한 없음',
                         pageStyles: 'error',
+                        code: 403,
                         message: '본인 글만 수정할 수 있습니다.'
                     });
                 }
