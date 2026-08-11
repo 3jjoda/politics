@@ -279,10 +279,14 @@
     font-size: 12px;
     line-height: 1.4;
   }
+  /* ⚠️ 색은 대비비 기준으로 고른 값이다 (배경 #FAF6EB, 12px 본문 → WCAG AA 4.5:1 필요).
+     `--accent #B8740C` 는 3.51 로 미달 — "AI가 생성한 분석으로 사실과 다를 수 있습니다" 는
+     법적·윤리적 고지라 안 읽히면 곤란하다. `#8F5800` 은 5.46 으로 통과.
+     보더는 장식이라 `--accent` 유지 (3:1 비텍스트 기준 충족). */
   .ai-analysis-label.is-done {
     background: #FAF6EB;
     border: 1px solid var(--accent);
-    color: var(--accent);
+    color: #8F5800;
   }
   .ai-analysis-label.is-pending {
     background: var(--bg3);
@@ -306,13 +310,16 @@
     color: var(--sub2);
     flex-shrink: 0;
   }
-  .ai-analysis-label.is-done .label-meta { color: var(--accent2, #925C09); opacity: 0.8; }
+  /* opacity 0.8 을 걸면 배경과 합성돼 대비가 5.46 → 3.66 으로 떨어진다. 색으로만 톤을 낮춘다 */
+  .ai-analysis-label.is-done .label-meta { color: #8F5800; }
 
   .bill-ai-analysis {
     /* 분석 섹션 전용 디자인 토큰 — 사용자 스펙 (Brand Assets 기반) */
     --ba-ink:    #0F1B1F;   /* 본문 */
     --ba-sub:    #374151;   /* 보조 */
-    --ba-meta:   #6B7280;   /* 메타 */
+    /* 메타 — #6B7280 은 대비 4.47 로 AA(4.5) 아슬하게 미달이었다. 한 톤만 내려 4.76~4.93.
+       Z1 메타·태그라인, Z3 마진노트 등 12~14px 소형 텍스트가 전부 이 토큰을 쓴다 */
+    --ba-meta:   #646E7E;
     --ba-gold:   #8F5800;   /* 머스타드 골드 (강조 단일색) */
     --ba-paper:  #F3F1EA;   /* 페이지 */
     --ba-card-bg:     #FAFAF7;
@@ -548,7 +555,11 @@
     .ba-pp-stack-item    { width: 22px; height: 22px; margin-left: -5px; }
     .ba-pp-stack-item.is-rep { width: 28px; height: 28px; margin-left: 0; }
     .ba-proposers-label  { flex-basis: 100%; order: 3; }
-    .ba-pp-toggle        { flex-basis: 100%; order: 4; justify-content: flex-start; }
+    /* 터치 타깃 확보 (실측 20px → 44px).
+       밑줄(border-bottom)이 이 요소에 붙어 있어서 padding-bottom 으로 늘리면 밑줄이 글자에서 떨어진다.
+       `min-height` + `align-items: flex-end` 로 히트영역만 위로 키우면 밑줄은 글자 바로 밑에 남는다 */
+    .ba-pp-toggle        { flex-basis: 100%; order: 4; justify-content: flex-start;
+                           min-height: 44px; align-items: flex-end; }
     .ba-proposers-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
@@ -600,6 +611,20 @@
     grid-template-columns: 8fr 4fr 4fr;
     gap: 16px;
   }
+  /* 태블릿~작은 노트북: 8fr/4fr/4fr 3열을 유지하면 소카드 내부가 121px 까지 좁아진다.
+     16px 본문이 한 줄에 7글자밖에 안 들어가고 라벨 칩도 2줄로 깨진다 (820px 실측).
+     → 큰 카드를 전체폭으로 내리고 소카드 둘을 반반으로. 내부 304px 확보 */
+  @media (max-width: 1024px) and (min-width: 769px) {
+    .ba-z2 .ba-cards { grid-template-columns: 1fr 1fr; }
+    .ba-z2 .ba-card-changes { grid-column: 1 / -1; }
+  }
+  /* Zone 2 는 이 페이지에서 가장 중요한 정보인데 "눈에 안 들어온다" 는 지적이 있었다.
+     원인: 세 카드가 **배경도 라벨색도 전부 같고** 차이가 좌측 4px 바 하나뿐이었다.
+           라벨까지 셋 다 같은 회색이라 훑을 때 "혜택" 과 "손해" 가 구분되지 않았다.
+     처방: ① 카드 표면을 서로 다르게(웜 / 순백 / 쿨그레이) ② 라벨을 색 채운 칩으로
+           ③ 진입 애니메이션으로 시선 유도.
+     ⚠️ 내용을 접지 않는다 — Zone 3 아코디언을 이미 폐기한 판단과 같은 이유다.
+        가장 중요한 정보를 인터랙션 뒤에 숨기면 못 읽고 지나가는 손실이 몰입 이득보다 크다. */
   .ba-card {
     background: var(--ba-card-bg);
     border: 1px solid var(--ba-card-border);
@@ -608,19 +633,61 @@
     padding: 32px;
     display: flex;
     flex-direction: column;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   }
-  .ba-card-changes { border-left-color: var(--ba-gold); }
-  .ba-card-benefit { border-left-color: var(--ba-ink); }
-  .ba-card-loss    { border-left-color: var(--ba-meta); }
+  /* 표면을 웜 → 순백 → 쿨그레이 로 갈라 놓는다.
+     정당색(파랑·빨강)을 못 쓰므로 **색상환이 아니라 온도와 명도**로 구분한다.
+     밝기 순서(웜 tint → 흰색 → 회색)는 가치판단이 아니라 시선 유도용 위계다. */
+  .ba-card-changes {
+    border-left-color: var(--ba-gold);
+    background: #FBF5EA;                 /* 골드 tint — 8fr 대형 카드, 가장 먼저 읽히는 자리 */
+    border-color: #EFE3CC;
+  }
+  .ba-card-benefit {
+    border-left-color: var(--ba-ink);
+    background: #FFFFFF;                 /* 순백 — 페이지 배경(#F7F6F1)보다 밝아 도드라짐 */
+    border-color: #E4E1D8;
+  }
+  .ba-card-loss {
+    border-left-color: var(--ba-meta);
+    background: #F0F1F3;                 /* 쿨 그레이 — 유일하게 차가운 면이라 즉시 갈림 */
+    border-color: #DFE2E6;
+  }
+  .ba-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(15,27,31,0.07);
+  }
+  .ba-card-changes:hover { border-color: var(--ba-gold); }
+  .ba-card-benefit:hover { border-color: var(--ba-ink); }
+  .ba-card-loss:hover    { border-color: var(--ba-meta); }
+
   .ba-card-empty .ba-card-body { justify-content: center; }
+
+  /* 라벨을 "메타데이터" 에서 "머리말" 로 승격 — 외곽선 칩.
+     채움(흰 글자 + 색 배경)도 검토했으나, 차콜 칩이 흰 카드 위에서 혼자 시선을 독점하고
+     페이지 톤(베이지 + 골드 단색)에서 과하게 튀어 외곽선으로 정리했다.
+     표면 3색이 이미 구분을 하고 있어서 칩까지 채울 필요가 없다.
+     대비(11px → AA 4.5 필요): 골드 5.43 / 차콜 17.55 / 그레이 4.56 — 전부 통과 */
   .ba-card-label {
+    align-self: flex-start;
     font-family: var(--ba-mono);
-    font-size: 12px;
-    letter-spacing: 0.18em;
-    color: var(--ba-meta);
+    /* 11px 은 안 읽힌다는 판단으로 13px 로 상향 (2026-08-11).
+       카드 본문이 18px(대) / 16px(소) 라 13px 이면 머리말로 읽히면서 본문을 밀어내지 않는다.
+       ⚠️ 더 키울 거면 소카드 폭(1440 기준 4fr ≈ 212px, 패딩 제외 148px)에서
+          최장 라벨 "혜택받는 사람" 이 한 줄에 들어가는지 먼저 확인할 것 */
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    background: transparent;
     text-transform: uppercase;
-    margin-bottom: 16px;
+    padding: 5px 11px;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    margin-bottom: 18px;
   }
+  .ba-card-changes .ba-card-label { color: var(--ba-gold); }
+  .ba-card-benefit .ba-card-label { color: var(--ba-ink); }
+  .ba-card-loss    .ba-card-label { color: var(--ba-meta); }
   .ba-card-body {
     font-family: var(--ba-sans);
     font-size: 18px;
@@ -634,6 +701,31 @@
   }
   .ba-z2 .ba-card-loss .ba-card-body,
   .ba-z2 .ba-card-benefit .ba-card-body { font-size: 16px; }
+  /* 진입 애니메이션 — Zone 2 가 화면에 들어올 때 3장이 순차로 올라온다.
+     내용을 가리지 않으면서 "여기 봐라" 신호를 주는 장치.
+     JS 가 .is-in 을 붙이기 전까지만 숨고, JS 가 없거나 실패하면 아래 no-js 폴백으로 그냥 보인다. */
+  .ba-z2 .ba-cards[data-reveal] .ba-card {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .ba-z2 .ba-cards[data-reveal] .ba-card:nth-child(2) { transition-delay: 0.09s; }
+  .ba-z2 .ba-cards[data-reveal] .ba-card:nth-child(3) { transition-delay: 0.18s; }
+  .ba-z2 .ba-cards[data-reveal].is-in .ba-card {
+    opacity: 1;
+    transform: none;
+  }
+  /* 모션 최소화 설정 존중 — 이동 없이 즉시 표시 */
+  @media (prefers-reduced-motion: reduce) {
+    .ba-z2 .ba-cards[data-reveal] .ba-card {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+    .ba-card { transition: none; }
+    .ba-card:hover { transform: none; }
+  }
+
   .ba-card-sub {
     margin-top: 12px;
     padding-top: 12px;
@@ -650,16 +742,31 @@
     border-top: 1px solid var(--ba-card-border);
   }
   .ba-z3 .ba-issue:first-child { border-top: none; padding-top: 0; }
+  /* Zone 3 라벨 — Zone 2 와 같은 외곽선 칩. 위치는 좌측 거터(마진노트) 그대로 유지한다.
+     `left: -180px; width: 160px; text-align: right` 대신 `right: calc(100% + 24px)` 를 쓰는 이유:
+     칩은 내용에 맞춰 줄어들어야 하는데 고정폭 + 우측정렬로는 테두리가 거터 전체를 감싼다.
+     라벨이 `찬성 논리 / 반대 우려 / 법안 빈틈` **고정 3종에 전부 4글자**라
+     (interactions.js `ISSUE_LABEL`) 칩 폭이 균일하게 떨어진다 — 마진에서 들쭉날쭉하지 않는다.
+
+     ⚠️ 색은 세 개 모두 `--ba-meta` 로 **같아야 한다**. Zone 2 처럼 라벨별로 색을 주면 안 된다 —
+        `바뀌는 것/혜택/손해` 는 서술이지만 `찬성/반대` 는 **입장**이라, 색을 다르게 주는 순간
+        어느 쪽을 지지한다는 신호가 된다. */
   .ba-margin-note {
     position: absolute;
-    left: -180px;
-    top: 0;
-    width: 160px;
-    padding-right: 24px;
-    text-align: right;
+    right: calc(100% + 24px);
+    /* `.ba-issue` 가 `padding: 28px 0` 이라 top:0 이면 칩이 제목보다 28px 위에 뜬다.
+       평문일 땐 눈에 안 띄었지만 박스가 되니 앞 섹션에 붙은 것처럼 보였다.
+       첫 항목만 padding-top:0 이라 아래에서 top:0 으로 되돌린다. */
+    top: 28px;
+    display: inline-block;
+    white-space: nowrap;
+    padding: 5px 11px;                 /* Zone 2 라벨 칩과 동일 */
+    border: 1px solid currentColor;
+    border-radius: 6px;
     font-family: var(--ba-mono);
-    font-size: 12px;
-    letter-spacing: 0.16em;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
     color: var(--ba-meta);
     line-height: 1.6;
   }
@@ -775,12 +882,12 @@
     }
     .ba-content { grid-column: 1 / -1; }
     /* 마진노트 인라인으로 폴백 */
+    /* 1240px 미만: 거터가 사라지므로 제목 위 인라인으로 폴백.
+       칩 패딩/보더는 유지해야 데스크톱과 같은 형태로 보인다 (구 `padding-right: 0` 은 칩을 깨뜨림) */
     .ba-margin-note {
       position: static;
-      width: auto;
-      text-align: left;
-      padding-right: 0;
-      margin-bottom: 8px;
+      right: auto;
+      margin-bottom: 10px;
     }
   }
   @media (max-width: 768px) {
@@ -813,7 +920,7 @@
      같은 값을 이 섹션에 다시 선언해 톤을 맞춘다 (골드 강조 · 세리프 헤드라인 · 롱폼 본문). */
   .bill-raw-summary {
     --raw-ink:        #0F1B1F;
-    --raw-meta:       #6B7280;
+    --raw-meta:       #646E7E;   /* #6B7280 은 대비 4.47 로 AA 미달 */
     --raw-gold:       #8F5800;
     --raw-gold-hover: #6B4200;
     background: #FAFAF7;
@@ -891,6 +998,10 @@
     background: none;
     border: 0;
     padding: 4px 0;
+    min-height: 44px;      /* 터치 타깃 (실측 25px 였음). 밑줄은 안쪽 span 이 아니라 이 요소라
+                              세로 padding 대신 min-height 로 늘려야 밑줄이 안 뜬다 */
+    display: inline-flex;
+    align-items: flex-end;
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
     letter-spacing: 0.1em;
@@ -1570,14 +1681,27 @@
     border: 1px dashed #E8E5DC;
   }
 
-  /* ===== Zone 6: 우측 sticky 인덱스 (페이지 레벨, 데스크톱 ≥1240px) =====
-     위치: 콘텐츠 우측에 붙음 (5-Zone .ba-shell 의 우측 거터 자리).
-     min(콘텐츠우측+40, viewport우측-232) 로 좁은 화면에선 viewport 안쪽 클램프 */
+  /* ===== Zone 6: 우측 sticky 인덱스 (페이지 레벨, 데스크톱 ≥1260px) =====
+     위치: 5-Zone `.ba-shell` 의 우측 거터 자리. 콘텐츠(.ba-content, max 880 중앙정렬)의
+     우측 끝은 `50% + 440px` 이므로 그 바깥인 `50% + 448px` 에 둔다.
+
+     ⚠️ 예전엔 `min(calc(50% + 480px), calc(100% - 232px))` 였는데,
+        화면이 1424px 미만이면 두 번째 항이 이겨서 인덱스가 안쪽으로 당겨지고
+        **콘텐츠를 덮었다.** 배경이 투명이라 글자끼리 겹쳤고, z-index:40 이라
+        발의자 "전체 보기 ▾" 토글이 아예 클릭되지 않았다 (1280·1300px 실측 확인).
+        1280px 는 가장 흔한 노트북 폭이라 그냥 둘 수 없었다.
+
+        클램프를 없애고 항상 콘텐츠 바깥에 두되, 화면 밖으로 나가는 폭에서는
+        아예 숨긴다(아래 미디어쿼리). "겹치더라도 보여준다" 보다 "안 되면 숨긴다" 가 맞다 —
+        그 구간은 모바일 jumpbar 가 대체한다.
+
+     폭 계산: left(50%+448) + width(180) ≤ 100% → 화면 ≥ 1256px. 안전하게 1260 을 컷으로 잡음
+              (1280px 실측: 인덱스 좌측 1088 vs 콘텐츠 우측 1071 → 17px 여유) */
   .pb-section-index {
     position: fixed;
     top: calc(var(--nav-h) + 32px);
-    left: min(calc(50% + 480px), calc(100% - 232px));
-    width: 200px;
+    left: calc(50% + 448px);
+    width: 180px;
     z-index: 40;
     font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
     display: flex;
@@ -1599,11 +1723,13 @@
     border-left: 1px solid #E8E5DC;     /* 그룹별 좌측 가이드 라인 */
     padding-left: 0;
   }
+  /* ⚠️ 10px 에 #A8A095 는 대비 2.39 — 사실상 안 보이는 수준이었다. #746C5D 는 4.80 으로 AA 통과.
+     소형·저대비 조합은 "은은함" 이 아니라 그냥 안 읽히는 것이라 색만 눌러 톤을 유지한다 */
   .pb-idx-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
     letter-spacing: 0.22em;
-    color: #A8A095;
+    color: #746C5D;
     text-transform: uppercase;
     margin: 0 0 8px 22px;
   }
@@ -1614,7 +1740,7 @@
     justify-content: space-between;
     padding: 7px 0 7px 22px;
     font-size: 12px;
-    color: #6B7280;
+    color: #646E7E;      /* #6B7280 은 대비 4.47 로 AA 미달 */
     text-decoration: none;
     line-height: 1.4;
     transition: color 0.15s;
@@ -1646,11 +1772,12 @@
   .pb-idx-count {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    color: #A8A095;
+    color: #746C5D;      /* #A8A095 는 대비 2.39 로 크게 미달 */
     font-weight: 400;
   }
-  /* 1240px 미만에서 인덱스 숨김 (5-Zone shell 우거터 사라지면서 시야 침범) */
-  @media (max-width: 1239px) {
+  /* 1260px 미만에서 인덱스 숨김 — 이 아래로는 인덱스가 화면 밖으로 나가거나 콘텐츠를 덮는다.
+     (구 1240px 컷 + 클램프 조합이 1240~1355px 구간에서 겹침·클릭차단을 만들었다) */
+  @media (max-width: 1259px) {
     .pb-section-index { display: none; }
   }
 
@@ -1679,10 +1806,17 @@
     opacity: 0;
     pointer-events: none;
   }
+  /* 스크롤 중 엄지로 누르는 요소라 터치 타깃이 특히 중요하다.
+     바 높이 52 - padding 6*2 = 40px 이 실질 한계라, 탭이 그 40px 을 꽉 채우게 한다
+     (실측 30px → 40px. 44 를 만들려면 바 자체를 키워야 해서 여기까지가 상한) */
   .pb-jb-tab {
     flex: 1;
     text-align: center;
     padding: 8px 4px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 12px;
     font-weight: 500;
     color: rgba(255,255,255,0.65);
@@ -1698,8 +1832,9 @@
     font-weight: 700;
   }
   .pb-jb-up {
-    width: 36px;
-    height: 36px;
+    /* 바 높이 52 - padding 6*2 = 40 이 상한. 탭들과 같은 40px 로 맞춘다 (실측 36px 였음) */
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: #8F5800;
     border: none;
@@ -1713,8 +1848,10 @@
     margin-left: 4px;
   }
   .pb-jb-up:hover { background: #A36500; }
-  /* sticky 인덱스가 숨겨지는 범위(<1240px) 전체에서 jumpbar 노출 — Fold 펼친 상태(~800px) 포함 */
-  @media (max-width: 1239px) {
+  /* sticky 인덱스가 숨겨지는 범위(<1260px) 전체에서 jumpbar 노출 — Fold 펼친 상태(~800px) 포함.
+     ⚠️ 위 `.pb-section-index` 숨김 breakpoint 와 **반드시 같은 값**이어야 한다.
+        어긋나면 둘 다 없는 구간(길 잃음) 또는 둘 다 있는 구간(중복)이 생긴다 */
+  @media (max-width: 1259px) {
     .pb-mobile-jumpbar { display: flex; }
     /* jump bar 가 컨텐츠 가리지 않도록 하단 여백 확보 (52 + 16 + 16) */
     .bd-wrap { padding-bottom: 84px; }
@@ -2148,11 +2285,49 @@
         },
         scrollTargetId: 'citizen-vote-section'
       });
+      setupZone2Reveal();   // 5-Zone 은 JS 로 렌더되므로 mount 직후에 걸어야 한다
     }
     if (typeof PB.mountAnalysisRequest === 'function') {
       PB.mountAnalysisRequest({ containerId: 'analysis-request-widget' });
     }
   };
+
+  /* Zone 2 진입 애니메이션 — 화면에 들어오면 카드 3장이 순차로 올라온다.
+     `data-reveal` 을 JS 가 붙여야 초기 숨김이 시작된다 → JS 실패 시 카드는 그냥 보인다 (폴백). */
+  function setupZone2Reveal() {
+    const cards = document.querySelector('.ba-z2 .ba-cards');
+    if (!cards || cards.hasAttribute('data-reveal')) return;
+
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !('IntersectionObserver' in window)) return;   // 숨기지 않고 끝냄
+
+    cards.setAttribute('data-reveal', '');
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        cards.classList.add('is-in');
+        io.disconnect();
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -10% 0px' });
+    io.observe(cards);
+
+    // 안전장치 — 페이지에서 가장 중요한 정보를 CSS 로 숨겨두는 구조라 실패 시 손실이 크다.
+    // `is-in` 만 붙이는 건 **전환이 실제로 돌아야** 보인다는 뜻인데, 백그라운드 탭 스로틀링이나
+    // 일부 웹뷰처럼 전환이 진행되지 않는 환경에서는 opacity:0 인 채로 영영 남는다.
+    // 2초 뒤에도 여전히 안 보이면 숨김 규칙과 전환을 통째로 걷어내 강제 노출한다.
+    // (정상 브라우저에서는 이미 애니메이션이 끝나 있으므로 이 분기를 타지 않는다)
+    setTimeout(() => {
+      cards.classList.add('is-in');
+      io.disconnect();
+      const items = [...cards.querySelectorAll('.ba-card')];
+      const stuck = items.some((c) => Number(getComputedStyle(c).opacity) < 1);
+      if (!stuck) return;
+      cards.removeAttribute('data-reveal');
+      // 여기까지 왔다면 모션 자체가 죽은 환경이라, 이 카드들의 전환은 꺼두는 게 맞다
+      items.forEach((c) => { c.style.transition = 'none'; c.style.opacity = '1'; c.style.transform = 'none'; });
+    }, 2000);
+  }
   mount();
 
   /* =========================================================

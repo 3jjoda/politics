@@ -362,7 +362,12 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 `bill_ai_analysis` 테이블에 레코드가 있을 때만 5-Zone 렌더. 없으면 `.bill-basic-header` (옛 디자인 — 메타 + 법안명) + **법안 원문 섹션** + 분석 요청 위젯 노출.
 
 **디자인 토큰** (분석 섹션 전용 — `.bill-ai-analysis` 스코프):
-- 컬러: `--ba-ink #0F1B1F` (본문) / `--ba-sub #374151` (보조) / `--ba-meta #6B7280` (메타) / `--ba-gold #8F5800` (강조 단일색, 머스타드)
+- 컬러: `--ba-ink #0F1B1F` (본문) / `--ba-sub #374151` (보조) / `--ba-meta #646E7E` (메타) / `--ba-gold #8F5800` (강조 단일색, 머스타드)
+  - ⚠️ **소형 텍스트 색은 대비비로 정한다** (2026-08-11 감사). 12~14px 는 WCAG AA 4.5:1 필요:
+    - `--ba-meta` 는 `#6B7280` 이었는데 **4.47** 로 아슬하게 미달 → `#646E7E` (4.76~4.93). 육안 차이는 거의 없다
+    - `.ai-analysis-label.is-done` 의 `color` 는 `--accent #B8740C` 였는데 배경 `#FAF6EB` 위에서 **3.51** → `#8F5800` (5.46). **"AI가 생성한 분석으로 사실과 다를 수 있습니다" 는 법적·윤리적 고지라 안 읽히면 안 된다**
+    - `.label-meta` 의 `opacity: 0.8` 제거 — 배경과 합성돼 5.46 → 3.66 으로 떨어진다. 톤은 색으로만 낮출 것
+  - 검증된 본문 타이포(수정 불필요): Z1 요약 44px/900, Z3 본문 18px·lh 1.75·**줄당 49자**(한글 정독 최적 45~50), Z2 카드 18px·줄당 20자
 - 카드: `--ba-card-bg #FAFAF7` / `--ba-card-border #E8E5DC` / radius 16px / padding 32px
 - 폰트: `Pretendard Variable` (본문 18px / weight 450 / line-height 1.75) / `Noto Serif KR` (헤드라인) / `JetBrains Mono` (메타 letter-spacing 0.18~0.22em)
 - 강조: `<strong>`/`<em>` → weight 700 + `text-decoration: underline` 골드 (offset 6px / thickness 2px)
@@ -387,34 +392,58 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - 한 줄 요약 `<h2>` 세리프 900 / **44px** / line-height 1.15 + **좌측 4px 골드바 only** (박스/배경 X)
   - 태그라인: 카테고리·읽기시간·결과를 텍스트 메타로 (`환경·에너지·기후기술 · 읽기 2분 · 수정가결`, 14px `--ba-meta`)
   - 국회 원문 링크 (mono 12px, currentColor 보더라인)
-- **Zone 2 — 핵심 변화 3카드** (`#ba-changes`):
+- **Zone 2 — 핵심 변화 3카드** (`#ba-changes`, 2026-08-11 가시성 개편):
   - **비대칭 grid 8fr / 4fr / 4fr** (큰카드 18px / 작은카드 16px)
-  - 좌측 4px 컬러바로 카드 구분 (모두 같은 #FAFAF7 배경):
-    - `바뀌는 것` → `--ba-gold` 골드
-    - `혜택받는 사람` → `--ba-ink` 차콜
-    - `손해보는 곳` → `--ba-meta` 그레이
-  - 이모지 전체 제거. 라벨은 mono 12px uppercase
+  - ⚠️ **이전에는 세 카드가 배경도 라벨색도 전부 같았다** (`#FAFAF7` + 좌측 4px 바만 다름, 라벨은 셋 다 회색).
+    페이지에서 가장 중요한 정보인데 훑을 때 "혜택" 과 "손해" 가 구분되지 않았다. 되돌리지 말 것
+  - **표면을 서로 다르게** — 정당색(파랑·빨강)을 못 쓰므로 색상환이 아니라 **온도·명도**로 가른다:
+    | 카드 | 좌측 바 | 표면 | 라벨 칩 (외곽선) |
+    |---|---|---|---|
+    | `바뀌는 것` | `--ba-gold` | `#FBF5EA` 골드 tint (웜) | 골드 글자 + 골드 1px 보더 (대비 5.43) |
+    | `혜택받는 사람` | `--ba-ink` | `#FFFFFF` 순백 (페이지 `#F7F6F1` 보다 밝아 도드라짐) | 차콜 (17.55) |
+    | `손해보는 곳` | `--ba-meta` | `#F0F1F3` 쿨 그레이 (유일한 차가운 면) | 그레이 (4.56) |
+  - 라벨은 **외곽선 칩**으로 승격 (mono **13px** / 700 / letter-spacing 0.14em / uppercase / radius 6 / `border: 1px solid currentColor`). 기존 mono 12px 회색 텍스트는 머리말이 아니라 메타데이터로 읽혔다
+    - ⚠️ **더 키우려면 소카드 폭을 먼저 확인할 것.** 최장 라벨 `혜택받는 사람` 이 13px 에서 135px 인데 소카드 내부는 148px(1025px 이상) 이라 **여유가 13px 뿐**이다. 14px 로 올리면 2줄로 깨진다
+  - **태블릿(769~1024px)은 2열로 전환** — `1fr 1fr` + `바뀌는 것` 전체폭.
+    3열을 유지하면 소카드 내부가 121px 까지 좁아져 라벨 칩이 2줄로 깨지고 16px 본문이 한 줄에 7글자만 들어간다 (820px 실측). 2열이면 내부 314px 확보
+    - 채움(흰 글자 + 색 배경)도 만들어 봤으나 **차콜 칩이 흰 카드 위에서 혼자 시선을 독점**하고 페이지 톤(베이지 + 골드 단색)에서 과하게 튀어 외곽선으로 정리했다. 표면 3색이 이미 구분을 하므로 칩까지 채울 필요가 없다
+  - hover: `translateY(-2px)` + 그림자 + 보더를 카드 색으로
+  - **진입 애니메이션**: IntersectionObserver 로 `.ba-cards` 에 `.is-in` → 3장이 0/0.09/0.18s 지연으로 fade+rise
+    - ⚠️ **내용을 접지 않는다.** "가려두고 hover 로 펼치기" 안이 있었지만 채택하지 않았다 — 터치엔 hover 가 없어 모바일은 3번 탭해야 하고, Zone 3 아코디언을 이미 폐기한 판단과 모순되며, 못 읽고 지나가는 손실이 몰입 이득보다 크다
+    - ⚠️ **숨김은 JS 가 `data-reveal` 을 붙일 때만 시작된다** — JS 실패 시 카드는 그냥 보인다
+    - ⚠️ **2초 폴백 필수**: `is-in` 만 붙이는 건 "전환이 실제로 돌아야 보인다" 는 뜻이라, 백그라운드 탭 스로틀링·일부 웹뷰처럼 전환이 진행되지 않는 환경에서 `opacity:0` 인 채 영영 남는다. 2초 뒤에도 안 보이면 `data-reveal` 제거 + 인라인으로 전환을 꺼 강제 노출한다
+    - `prefers-reduced-motion: reduce` 면 `data-reveal` 을 아예 안 붙임
+  - 이모지 전체 제거
 - **Zone 3 — 분석** (`#ba-analysis`, 토글 폐기):
   - 항목별 `<article>` = H3(세리프 24px) + 본문 (펼침 기본)
-  - 라벨(`찬성 논리`/`반대 우려`/`법안 빈틈`)은 카드 좌측 외부 **마진노트** (`position: absolute; left: -180px; width: 160px; text-align: right; mono 12px --ba-meta`)
+  - 라벨(`찬성 논리`/`반대 우려`/`법안 빈틈`)은 카드 좌측 외부 **마진노트 위치의 외곽선 칩** — Zone 2 라벨 칩과 **완전히 같은 스타일** (mono 13px/600, padding 5px 11px, radius 6, `border: 1px solid currentColor`, `--ba-meta`). 실측 101×33
+    - 2026-08-11: mono 12px 회색 평문 → 13px 칩. 같은 역할의 라벨이 두 구역에서 다르게 처리돼 있었다
+    - 위치 계산은 `right: calc(100% + 24px)` — 구 `left: -180px; width: 160px; text-align: right` 는 고정폭이라 칩 테두리가 거터 전체를 감싼다. 칩은 내용에 맞춰 줄어들어야 한다
+    - 라벨이 `ISSUE_LABEL` (interactions.js) 의 **고정 3종이고 전부 4글자**라 칩 폭이 101px 로 균일하게 떨어진다 — 마진에서 들쭉날쭉하지 않는 근거
+    - ⚠️ `top: 28px` 필수 (첫 항목만 `top: 0`). `.ba-issue` 가 `padding: 28px 0` 이라 `top: 0` 이면 칩이 제목보다 28px 위에 떠 **앞 섹션에 붙은 것처럼 보인다.** 평문일 땐 안 띄었지만 박스가 되니 드러났다
+    - ⚠️ **세 라벨의 색은 반드시 같아야 한다** (`--ba-meta`). Zone 2 처럼 라벨별로 색을 주면 안 된다 — `바뀌는 것/혜택/손해` 는 서술이지만 `찬성/반대` 는 **입장**이라, 색을 다르게 주는 순간 어느 쪽을 지지한다는 신호가 된다. 정치색 배제 원칙의 핵심
   - 색상 배지·아코디언·"여기까지 70%" 프로그레스 모두 제거
   - 1240px 미만에서 마진노트 인라인으로 폴백
 - **Zone 4 — 페이지 레벨 sticky 인덱스** (`.pb-section-index`, 2026-04-27 페이지 레벨):
-  - `position: fixed; top: var(--nav-h) + 32px; left: min(calc(50% + 480px), calc(100% - 232px)); width: 200px` — 콘텐츠 우측에 밀착, 좁은 화면 클램프
-  - **두 그룹** — `AI 분석` (요약/핵심 변화/분석/함께 생각) + `참여` (국민 찬반/본회의 표결/의견) ※ 발의자는 Zone 1 헤더 스택으로 통합되어 인덱스 항목에서 제거
+  - `position: fixed; top: var(--nav-h) + 32px; left: calc(50% + 448px); width: 180px` — 콘텐츠(`.ba-content` max 880 중앙정렬, 우측 끝 = `50% + 440`) 바깥에 항상 위치
+  - ⚠️ **클램프(`min(..., calc(100% - 232px))`)를 되살리지 말 것** (2026-08-11 제거). 화면이 1424px 미만이면 클램프가 이겨서 인덱스가 안쪽으로 당겨졌고, 배경이 투명이라 **본문 글자와 겹치고** `z-index: 40` 때문에 발의자 `전체 보기 ▾` 토글이 **클릭 자체가 막혔다**. 1240~1355px 구간 — 1280px 는 가장 흔한 노트북 폭이다
+    - 원칙: **겹치더라도 보여주기보다, 자리가 없으면 숨긴다.** 그 구간은 jumpbar 가 대체한다
+    - 실측(1280px): 인덱스 1083~1263 / 콘텐츠 우측 1071 → 12px 여유, 화면 안에 들어옴
+  - **두 그룹** — `AI 분석` (요약/핵심 변화/분석/함께 생각/원문 대조) + `참여` (국민 찬반/본회의 표결/의견) ※ 발의자는 Zone 1 헤더 스택으로 통합되어 인덱스 항목에서 제거
   - 그룹별 좌측 1px 가이드 라인 + 8px 도트 (외곽선 `#C8C0AA` → 활성 채움 `#8F5800` + 4px glow). 도트 안쪽 `--bg` 채움으로 라인이 점 뒤로 안 보이게
-  - 그룹 라벨: mono 10px / letter-spacing 0.22em / `#A8A095` uppercase
-  - 항목: 12px / 7px 패딩 / 우측 카운트 (10px `#A8A095`)
+  - 그룹 라벨: mono 10px / letter-spacing 0.22em / `#746C5D` uppercase (구 `#A8A095` 는 대비 **2.39** 로 사실상 안 보였음 → 4.80)
+  - 항목: 12px `#646E7E` / 7px 패딩 / 우측 카운트 (10px `#746C5D`). 180px 폭에서 최장 항목 `본회의 표결 294` 도 한 줄 유지
   - 데이터 카운트(찬반·의견) 페이지 로드 후 `PB.fetch` 로 동적 채움 (본회의 표결은 서버 SSR)
   - **스크롤 기반 활성 트리거** (IntersectionObserver 의 좁은 활성 띠로 짧은 마지막 섹션 못 잡는 문제 회피). DOM 순서대로 순회 → `top <= getScrollOffset()` 인 마지막 섹션 active. 페이지 끝 도달 시 마지막 섹션 강제 활성화
   - 클릭 스크롤 오프셋: `getScrollOffset()` = `--nav-h + 20` 동적 (데스크톱 120 / 모바일 80) — 5-Zone 헤드라인이 nav 뒤로 가리지 않게
   - `padding-left: 8px` — `overflow-y:auto` 가 x clip 하는 브라우저 동작 회피용 (도트 좌측 잘림 방지)
-  - 1240px 미만 자동 숨김 → 모바일 floating jumpbar 로 대체
+  - **1260px 미만 자동 숨김** → 모바일 floating jumpbar 로 대체. `left(50%+448) + width(180) ≤ 100%` 가 성립하는 최소 폭이 1256px 이라 1260 을 컷으로 잡음
 
 - **모바일 floating jumpbar** (`.pb-mobile-jumpbar`):
   - `position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 16px))` — iOS 홈 인디케이터 보호
-  - 768~1239px (Fold 펼친·작은 노트북·태블릿) + <768 모바일 모두 노출. ≥1240 데스크톱은 sticky 인덱스 사용
-  - 4 핵심 탭 (요약·분석·찬반·의견) + 골드 ↑ 버튼
+  - <1260px 전체 노출 (Fold 펼친·작은 노트북·태블릿·모바일). ≥1260 데스크톱은 sticky 인덱스 사용
+    - ⚠️ 이 breakpoint 는 `.pb-section-index` 숨김 breakpoint 와 **반드시 같은 값**이어야 한다. 어긋나면 둘 다 없는 구간(길 잃음)이나 둘 다 있는 구간(중복)이 생긴다
+  - 4 핵심 탭 (요약·분석·찬반·의견) + 골드 ↑ 버튼. 탭 `min-height: 40px` / ↑ 버튼 40×40 — 바 높이 52 − padding 6×2 = 40 이 상한이라 44 는 불가
   - **항상 표시**, input/textarea 포커스 시에만 숨김 (`focusin`/`focusout` 위임 + focusout `setTimeout(0)` 으로 activeElement 재확인하여 입력 간 전환 깜빡임 방지)
   - JS 가 페이지 로드 후 `document.body.appendChild(jumpbar)` 로 이동 — `.pb-main { position:relative; z-index:1 }` 의 stacking context 를 탈출해야 footer (z-index 1) 위로 정상 노출
   - `.bd-wrap { padding-bottom: 84px }` 같은 범위에 적용 (jumpbar 가 콘텐츠 가리지 않게)
