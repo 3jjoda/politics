@@ -56,6 +56,11 @@ export default (db) => {
             const committee = committeeRaw || null;
             const partyRaw = req.query.party ? String(req.query.party).trim() : null;
             const party = partyRaw || null;
+            // 법안명 완전일치 — 카드의 "같은 법률 개정안 N건 →" 링크가 여기로 착지.
+            // search(ILIKE 부분일치)와 별개다: 부분일치면 "○○법 일부개정법률안(대안)" 같은
+            // 변형까지 딸려와 카드에 표시한 건수와 결과 건수가 어긋난다.
+            const billNameRaw = req.query.bill_name ? String(req.query.bill_name).trim() : null;
+            const billName = billNameRaw || null;
 
             // AI 분석 필터 — 'Y'(있음) / 'N'(없음) / null(전체)
             const hasAnalysisRaw = String(req.query.has_analysis || '');
@@ -77,8 +82,8 @@ export default (db) => {
             const priorityThreshold = billService.getRequestThreshold();
 
             const [bills, statusCounts, topicCounts, partyCounts, aiCategories, baseStats, requestStats] = await Promise.all([
-                billService.getList({ search, status, committee, party, hasAnalysis, aiCategoryMain, sort, requestStatus, priorityThreshold, limit: pageSize, offset }),
-                billService.getStatusCounts(committee, party),
+                billService.getList({ search, status, committee, party, hasAnalysis, aiCategoryMain, sort, requestStatus, priorityThreshold, billName, limit: pageSize, offset }),
+                billService.getStatusCounts(committee, party, billName),
                 billService.getTopicCounts(),
                 billService.getPartyCounts(),
                 billService.getAiCategories(),
@@ -108,6 +113,7 @@ export default (db) => {
                     status: status || '',
                     committee: committee || '',
                     party: party || '',
+                    bill_name: billName || '',
                     has_analysis: hasAnalysis || '',
                     ai_category_main: aiCategoryMain || '',
                     request_status: requestStatus || '',

@@ -113,6 +113,10 @@ $$ LANGUAGE plpgsql;
   - 근본 해결은 "역대 국회의원 API" 전환 — [ROADMAP.md](./ROADMAP.md) 베타 오픈 전 필수 3번
 - `politician_party_memberships` — 의원-정당 이력
 - `bills` (PK bill_id VARCHAR), `bill_co_proposers`, `bill_votes` — 법안·발의자·표결
+  - `bills.summary` — 국회 공식 **"제안이유 및 주요내용" 원문** (2026-08-11 추가, `syncBillSummary.js`). 전체 18,671건 중 **18,631건(99.79%) 보유**, 11MB. 길이 140~10,349자(중앙값 498)
+    - ⚠️ `bill_ai_analysis.summary` 와 **다른 것**. 이쪽은 가공 없는 원문(관 문체, "~하고자 함")이고 **전건** 보유. AI 분석은 쉬운 말·찬반 쟁점이고 요청·가결 건만
+    - 빈 40건은 전부 `대안반영폐기`·`철회` — 국회가 요약을 공표하지 않은 건이라 정상. 재시도해도 안 채워짐
+    - ⚠️ 본문 첫 줄에 `제안이유 및 주요내용` 또는 `제안이유` 머리말이 포함돼 있다. UI 표시 시 제거 필요
   - `bill_co_proposers.proposer_yn=1` 이 여러 행인 경우 = 공동 대표발의. `bills.mona_cd` / `proposer_name` 은 첫 번째 대표만 저장 (2026-04-24)
 - `temp_*` — 배치용 staging (현재 미사용)
 
@@ -304,6 +308,11 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `ddl/migrations/2026-08-04-batch-incremental.sql` — **배치 증분화**. `bills.vote_synced_at` 컬럼 + 부분 인덱스, `batch_runs` 테이블 (배치 실행 기록 · nav 갱신 배지 소스 · 크론 실패 추적)
   - `ddl/migrations/2026-08-05-cross-party-vote-mv.sql` — **교차 표결 성향 MV**. `politician_cross_party_vote` + UNIQUE 인덱스(CONCURRENTLY 갱신용) + `gap` 부분 인덱스
   - `ddl/migrations/2026-08-10-dissent-mv.sql` — **당론 이탈 MV**. `politician_dissent` + UNIQUE 인덱스 + `dissent_rate` 인덱스. "숫자로 본 국회" 최대 병목(1,410ms)이었던 `getDissentRank` 를 45ms 로
+  - `ddl/migrations/2026-08-11-bill-name-index.sql` — **동명 법안 계열 카운트용 btree**. `idx_bills_bill_name_btree`
+    - ⚠️ **`idx_bills_bill_name` 이라는 이름은 이미 전문검색용 GIN(`to_tsvector('simple', bill_name)`)이 쓰고 있다.** 등치 비교에 못 쓴다
+    - ⚠️ `CREATE INDEX IF NOT EXISTS` 는 **정의가 아니라 이름만** 본다 — 같은 이름으로 만들면 에러 없이 무시되고 btree 는 끝내 안 생긴다. 실제로 이 함정에 걸려 `enable_seqscan=off` 로도 Seq Scan 이 나왔다. 인덱스 추가 전 `SELECT indexname, indexdef FROM pg_indexes WHERE tablename='bills'` 로 확인할 것
+    - 효과: 계열 COUNT 6ms(Seq Scan) → **1.5ms(Index Only Scan, Heap Fetches 0)**. 목록 쿼리에서 서브쿼리 50회 비용 170ms → **6ms**. `?bill_name=` 필터 349ms → 100ms
+  - `ddl/migrations/2026-08-11-bill-summary.sql` — **법안 제안이유·주요내용**. `bills.summary` + `bills.summary_synced_at` + 부분 인덱스(`WHERE summary_synced_at IS NULL`). 미분석 법안이 목록·상세에서 내용이 아예 없던 문제 해소 (전체의 87%가 동명 법안이라 카드 구분 불가였음)
   - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
@@ -350,7 +359,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/auth/setup` | `auth/setup.ejs` | 신규 OAuth 닉네임·성별·연령대 설정 (필수) |
 
 ### `/bill/:id` 5-Zone AI 분석 UI (2026-04-27 전면 리디자인)
-`bill_ai_analysis` 테이블에 레코드가 있을 때만 5-Zone 렌더. 없으면 `.bill-basic-header` (옛 디자인 — 메타 + 법안명) + 분석 요청 위젯 노출.
+`bill_ai_analysis` 테이블에 레코드가 있을 때만 5-Zone 렌더. 없으면 `.bill-basic-header` (옛 디자인 — 메타 + 법안명) + **법안 원문 섹션** + 분석 요청 위젯 노출.
 
 **디자인 토큰** (분석 섹션 전용 — `.bill-ai-analysis` 스코프):
 - 컬러: `--ba-ink #0F1B1F` (본문) / `--ba-sub #374151` (보조) / `--ba-meta #6B7280` (메타) / `--ba-gold #8F5800` (강조 단일색, 머스타드)
@@ -426,8 +435,52 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - ~~**Zone 10 — 발의자**~~: **2026-04-27 폐기** — 발의자는 메타데이터의 일부라 Zone 1 헤더 컴팩트 스택으로 통합됨. 참여 영역에서 분리
 - **Zone 11 — 댓글** (`#part-comments`): 정렬 토글 알약 → 텍스트 underline. 카드 흰 배경 / `#E8E5DC` / radius 10. 닉네임 700, 본문 14/1.7. 좋아요 활성 골드
 
+### `/bill/:id` 법안 원문 섹션 (2026-08-11)
+`#bill-summary-raw` — **두 분기 모두** 노출되지만 역할과 형태가 다르다.
+
+| | 미분석 법안 | AI 분석 있는 법안 (`.is-compare`) |
+|---|---|---|
+| 위치 | `bill-basic-header` 아래, 분석 요청 위젯 **위** | 5-Zone 아래, 챕터 디바이더 **앞** |
+| 역할 | **본문** (유일한 내용) | **검증** (원문 대조) |
+| 제목 | `제안이유 및 주요내용` | `국회 원문과 대조하기` + 설명 한 줄 |
+| 접힘 | 700자 초과 시만 · 15em 엿보기 + 페이드 | **항상 · 완전 접힘(`display:none`) accordion** |
+| 버튼 | `전문 보기 ▾` | `원문 펼치기 ▾` |
+| 배경 | `#FAFAF7` 카드 | 투명 + dashed 보더 (참고자료 신호) |
+
+- 버튼 라벨은 `data-label-collapsed` / `data-label-expanded` 로 마크업이 정한다 (JS 는 읽기만)
+- ⚠️ **대조 모드에서 "15em 엿보기" 를 쓰면 안 된다** — 원문 중앙값이 498자라 대부분 15em 보다 짧아서 접힘 높이 == 전체 높이가 되고, 버튼을 눌러도 아무 일도 안 일어나는 것처럼 보인다 (실제로 그렇게 만들었다가 고쳤다)
+- ⚠️ **이건 AI 가 읽은 그 문서가 아니다.** AI 분석은 `pal.assembly.go.kr` 입법예고 페이지를 크롤하고(`syncBillAiAnalysis.js:56`), 이 원문은 열린국회 API `BPMBILLSUMMARY` 다. 둘 다 국회가 낸 "제안이유 및 주요내용" 이지만 동일 문서 보장은 없으므로 **"AI 가 읽은 원문" 같은 표현을 쓰지 말 것**. 대조용 참고자료로만 제시한다
+- 왜 분석 있는 법안에도 넣었나: 상단에 `AI가 생성한 분석으로 사실과 다를 수 있습니다` 라고 써놓고 정작 대조할 원문은 사이트를 나가야 볼 수 있었다. 접혀 있으면 안 펼치는 사람에겐 비용 0, 의심하는 사람에겐 가치가 크다
+- `.is-compare` 는 `max-width: 880px` 로 `.ba-content` 와 좌우를 맞춘다 (`bd-wrap` 960px 그대로면 어긋나 보인다)
+- 모바일 jumpbar 에는 **추가하지 않는다** — 4탭(요약·분석·찬반·의견) 유지. 원문 대조는 부차 동작이라 sticky 인덱스에만 둔다
+
+공통 규칙:
+- 미분석 분기는 **원문이 분석 요청 위젯보다 위**에 온다 — 내용을 읽고 나서 요청을 누르는 순서라야 한다
+- 소스는 `bills.summary` (국회 공식 제안이유·주요내용). `getDetail.sql` 은 목록과 달리 **절단하지 않는다** — 상세는 전문을 보는 자리
+- 반드시 `stripSummaryHeading()` 을 거친다 (원문 99.8%가 `제안이유 및 주요내용` 줄로 시작하고, 그건 이미 섹션 제목이 하고 있음)
+- 본문 `white-space: pre-line` — 원문 문단 구분을 살리고 들여쓰기 잡음은 접는다
+- 접기는 어느 분기든 필수다. 실측 최장 10,349자는 펼침 5,386px — 안 접으면 페이지가 못 쓰게 된다
+  - 접을 때 섹션 상단으로 smooth scroll 복귀 (안 하면 사라진 본문 아래 허공에 남음)
+  - `rawSummary` 계산은 `if (analysis)` **바깥**에 있어야 한다 — 두 분기와 헤더 조건문이 모두 이 값을 쓴다
+- **`.raw-src` "국회 의안정보 원문 ↗" 필수** — 바로 위에 `🤖 AI 분석 / 아직 분석되지 않은 법안입니다` 라벨이 떠 있어서, 출처를 안 박으면 이 본문이 AI 생성물로 읽힌다
+  - **출처 표기 + 국회 원문 링크를 겸한다** (2026-08-11). 헤더 `.zone-1-top` 의 `국회 원문 ↗` 버튼과 같은 `bill.link_url` 이라 중복이었다
+  - 색은 **골드 `#8F5800` + 상시 밑줄 + weight 500** (hover `#6B4200`). 회색 메타 톤으로 두면 클릭 가능한 줄 모른다 — 이 사이트의 링크 색은 골드다
+    - ⚠️ **파란 링크로 만들지 말 것** — 정당색(파랑·빨강) 금지는 중립성 브랜드의 핵심 원칙이다. "링크처럼 안 보인다" 의 해법은 파랑이 아니라 골드
+    - 대비비 5.64:1 (배경 `#FAFAF7`) — 11px 소형 텍스트라 WCAG AA(4.5:1) 충족이 필요했다
+    - `link_url` 이 없을 때의 `<span>` 폴백은 **회색 유지** (클릭 불가인데 골드면 링크로 오인). 현재 해당 0건이지만 방어용
+  - 분기: **원문 있음(18,631건) → 헤더 버튼 제거**, `.raw-src` 가 링크 / **원문 없음(40건) → 헤더 버튼 유지** (국회로 가는 유일한 통로가 사라지면 안 됨)
+  - 그래서 `rawSummary` 계산은 `bill-basic-header` **위**에 있어야 한다 (헤더의 조건문이 이 값을 쓴다)
+  - AI 분석 분기(5-Zone)의 `.ba-original-link` 는 별개 경로(`interactions.js`)이고 원문 섹션이 없어 중복이 아니므로 그대로 둔다
+- 5-Zone 의 `--ba-*` 토큰은 `.bill-ai-analysis` 스코프라 여기선 못 쓴다 → `--raw-ink/meta/gold` 로 같은 값을 다시 선언
+- sticky 인덱스·모바일 jumpbar 에 `법안 내용 > 제안이유` 항목 추가 (분석 없고 `bill.summary` 있을 때만)
+- 원문이 없는 40건(대안반영폐기·철회)은 섹션 자체가 렌더되지 않음
+
+> ⚠️ **원문 530건(2.8%)에 전각 물음표 `？` 가 섞여 있다.** 열린국회 API 가 가운뎃점(`ㆍ`)을 변환하지 못한 것으로 보인다
+> (`민？형사상`, `지도？감독`). 같은 문서 안에 정상 `ㆍ` 와 공존한다. **일괄 치환은 하지 않았다** — `선거제도는？비례대표`
+> 처럼 가운뎃점이 아닌 자리도 섞여 있어 오변환 위험이 있다. 원문 그대로 두는 게 출처 표기와도 맞다.
+
 ### `/bill/:id` 분석 요청 위젯 (2026-04-25)
-미분석 법안에서만 노출. `bill-basic-header` 바로 아래 골드 그라디언트 카드.
+미분석 법안에서만 노출. **법안 원문 섹션** 바로 아래 골드 그라디언트 카드.
 - 큰 숫자 카운터(세리프 32px) `<count> / <threshold>명` + 진행 바 (`linear-gradient(90deg, var(--accent), #D4A442)`)
 - 임계값(`requestThreshold`, 기본 5명) 도달 시 "🎉 충분한 요청이 모였어요. 곧 분석됩니다." 초록 박스
 - 비로그인: "로그인하고 분석 요청하기" → `/auth/login?next=<currentUrl>`
@@ -568,6 +621,9 @@ views/xray/sections/*.ejs  ← 섹션 본문 11개 (제목·설명은 목록이 
 - `/bill?committee=행정안전위원회` — 단일 위원회
 - `/bill?committee=기획재정위원회,재정경제기획위원회` — **쉼표 분리 복수 매칭** (`string_to_array` 로 SQL IN 처리)
 - `/bill?party=더불어민주당,국민의힘` — **대표발의 정당 복수 필터** (2026-04-25). `LEFT JOIN politicians p ON p.mona_cd = b.mona_cd` + `COALESCE(p.party_name, '기타/무소속') = ANY(...)`
+- `/bill?bill_name=조세특례제한법 일부개정법률안` — **법안명 완전일치** (2026-08-11). 카드의 "같은 법률 N건 →" 링크가 여기로 착지
+  - `search`(ILIKE 부분일치)와 별개다 — 부분일치면 `...법률안(대안)` 같은 변형까지 딸려와 카드에 표시한 건수와 결과 건수가 어긋난다
+  - `getStatusCounts` 에도 같은 조건(`$3`)을 넣어 상태 탭 숫자를 맞춘다. 실측: 자본시장법 계열 → 배너 117건 / 탭 "전체 117"
 - `/bill?has_analysis=Y` / `=N` — AI 분석 있는/없는 것만
 - `/bill?ai_category_main=조세·재정,산업·R&D` — AI main 카테고리 복수 (2026-04-26 v4.1). 구버전 `?ai_category=` 도 자동 매핑되어 호환
 - `/bill?request_status=any` / `=priority` — 미분석 + 요청 1명+ / 임계값 도달
@@ -599,6 +655,21 @@ PC/모바일 동일 패턴으로 통일.
 - **진행률 배너**: stepper 아래 카드 — "🤖 법안 N건 중 AI 분석 완료 M건" + 가로 막대(`progress-bar-fill`) + 퍼센트
 - **정렬 드롭다운**: 검색 바 옆 `<select onchange="this.form.submit()">` — `최신순(default) / 분석 있음 우선 / 요청 많은 순`. ai_priority/requested 만 분석 있는 카드를 위쪽에 띄움 (CASE WHEN ORDER BY)
 - **카드 강조**: 분석 있는 법안은 `.has-analysis { border-left: 3px solid var(--accent) }` + `🤖 AI 분석` 배지 + `bill-card-summary` (세리프 14px, 2줄 클램프) + `category_main · category_sub` 메타. 미분석 + 요청 임계값 도달 시 `🔥 우선 분석 대기` 배지. 미분석 + 요청 1명+ 시 메타에 "💡 AI 분석 N명 요청"
+- **카드 본문 2단 폴백** (2026-08-11): AI 요약이 있으면 그것, 없으면 **국회 원문 제안이유**(`bills.summary`)를 같은 자리에 노출
+  - 왜: 법안의 **87%가 동명**("○○법 일부개정법률안" — 조세특례제한법 788건, 자본시장법 117건)이라 이름만으로는 카드가 구분되지 않는다. 이전에는 분석된 0.6%에만 본문이 있어 나머지는 이름·발의자·날짜뿐이었다
+  - 톤으로 구분 — AI 요약 `.bill-card-summary` 는 **세리프 14px `--text`**(무겁게), 원문 `.bill-card-summary.is-raw` 는 **산세리프 13.5px `--sub`**(가볍게). 분석 있는 카드가 계속 먼저 눈에 들어오는 위계 유지
+  - 원문에 "국회 원문" 같은 라벨을 안 붙인다 — 메타행의 `🤖` 배지가 이미 AI 여부를 말해주고, 18,000장에 같은 라벨이 반복되면 없애려던 "첫 줄이 다 똑같은" 문제가 되돌아온다
+  - 쿼리는 `LEFT(b.summary, 600)` 로 잘라서 가져온다 (원문 최대 10,349자 — 통째로 실으면 50건 페이지가 수백 KB). 실측 페이지 136KB
+  - ⚠️ **머리말 제거 필수** — 원문 99.8%가 `제안이유 및 주요내용` 줄로 시작한다. `summaryPreview()` 를 거치지 않으면 모든 카드 첫 줄이 같아져 원점으로 돌아간다
+- **대표발의자 얼굴** (2026-08-11, `.bill-card-avatar` 40px / 모바일 34px): 카드 그리드를 `auto 1fr auto` 로 바꿔 첫 열에 배치. 동명 카드가 20장 붙어 있을 때 **글자를 읽기 전에** 구분되는 유일한 단서 (이름은 87%가 같고 요약은 2줄 클램프라 훑을 땐 안 들어온다)
+  - 소스는 `getList.sql` 의 `p.photo_url AS proposer_photo` — `politicians p` JOIN 이 이미 있어서 SELECT 한 줄 추가로 끝
+  - 사진 없는 368건(퇴임 의원 등)은 `avatarHtml()` 의 이니셜 SVG 로 폴백
+  - ⚠️ **크기는 래퍼에 준다.** `avatarHtml()` 이 `style="width:100%;height:100%"` 인라인으로 반환해 부모를 채우는 설계라, 자식(`img`/`svg`)에 CSS 로 40px 을 걸면 인라인이 이겨서 무시된다 (실제로 이미지가 676×946 으로 터졌다). 원형은 래퍼 `border-radius:50% + overflow:hidden` 으로
+  - 모바일 ≤768: `auto 1fr` 2열 + `.bill-card-right { grid-column: 1 / -1 }` — 아바타를 별도 행으로 떨구면 카드만 길어지고 구분에 도움이 안 된다
+- **"같은 법률 N건 →" 칩** (2026-08-11, `.same-name-chip`): 반복돼 보이는 것이 중복이 아니라 원래 그런 계열임을 알려준다. 클릭 시 `?bill_name=` 계열 필터로 이동
+  - `same_name_count > 1` 이고 `bill_name` 필터가 안 걸려 있을 때만 노출
+  - ⚠️ **카드 전체가 `<a>` 라 중첩 링크를 못 쓴다** → `<span role="button" tabindex="0" data-href>` + document 위임 클릭에서 `stopPropagation()`. Enter/Space 키 핸들러도 같이 있어야 함
+  - 계열 필터가 켜지면 목록 위에 `.same-name-active` 해제 바 노출 (`{법안명} 만 보는 중 · N건` + `전체 법안 보기 ✕`)
 
 ### 공용 미들웨어
 - `middlewares/auth.js`
@@ -682,6 +753,7 @@ PC/모바일 동일 패턴으로 통일.
 |------|------|------|
 | `syncPoliticians.js` | 열린국회 API | 의원 마스터 동기화 |
 | `syncBills.js` | 열린국회 API (`nzmimeepazxkubdpn`) | 법안 + 발의자 + committee/committee_id |
+| `syncBillSummary.js` | 열린국회 API (`BPMBILLSUMMARY`) | 법안 제안이유·주요내용 원문 → `bills.summary`. **증분** (`summary_synced_at IS NULL` 만) — `--full` 로 전건 재수집, `--limit N` 으로 부분 실행 |
 | `syncVotes.js` | 열린국회 API (`nojepdqqaweusdfbi`) | 본회의 표결 (수집 완료 177,260건). **증분 스캔** — `--full` 로 전건 재스캔 |
 | `syncMissingBillDetails.js` | ALLBILL API | 상세 누락분 보강 |
 | `syncPhotos.js` | 크롤링 | 의원 프로필 사진 |
@@ -701,8 +773,9 @@ PC/모바일 동일 패턴으로 통일.
 ```
 1. syncPoliticians.js    # 의원 마스터
 2. syncBills.js          # 법안 + 발의자 — 의원과 JOIN. updated_at 이 nav "N시간 전 갱신" 배지 소스
-3. syncVotes.js          # 본회의 표결 — bills 참조
-4. calcGroupAxisAvg.js   # 인구 그룹별 4축 평균 (1~3 과 독립, 매일 새벽 권장)
+3. syncBillSummary.js    # 제안이유·주요내용 — bills 참조 (신규 법안만 조회, 평시 수 초)
+4. syncVotes.js          # 본회의 표결 — bills 참조
+5. calcGroupAxisAvg.js   # 인구 그룹별 4축 평균 (1~4 와 독립, 매일 새벽 권장)
 ```
 
 **조건부 (트리거 발생 시, 해당 sync 다음에)**:
@@ -717,7 +790,7 @@ PC/모바일 동일 패턴으로 통일.
 
 ### 크론 배포 (Railway, 2026-08-04)
 npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
-- `npm run batch:daily` — `syncPoliticians && syncBills && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg`
+- `npm run batch:daily` — `syncPoliticians && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg`
 - `npm run batch:full` — `syncVotes --full` (수동 전건 재스캔. 크론 불필요 — 아래 참조)
 
 Railway 설정 (웹 서비스와 **분리된 서비스 1개**, 같은 GitHub repo 연결):
@@ -928,6 +1001,22 @@ CURRENT_DATE                                   -- 한국 기준 오늘
 - 클라이언트는 `PB.timeAgo` (`public/scripts/interactions.js`). 서버 `timeAgo` 와 규칙 동일 (7일 컷오프)
 - `TZ=Asia/Seoul` 환경변수는 **안전망일 뿐** — 코드가 환경에 의존하지 않도록 위 헬퍼를 쓸 것
 
+---
+
+## 법안 원문 표시 — `utils/billSummary.js` (app.locals 전역 등록)
+
+`bills.summary` (국회 공식 "제안이유 및 주요내용")를 화면에 쓸 때 **반드시 이 헬퍼를 거칠 것.**
+
+| 헬퍼 | 하는 일 | 용도 |
+|---|---|---|
+| `summaryPreview(text, maxLen=220)` | 머리말 제거 + 개행·중복공백을 한 칸으로 접기 + 길이 절단 | 목록 카드 (CSS 2줄 클램프와 세트) |
+| `stripSummaryHeading(text)` | 머리말만 제거, 줄바꿈 보존 | 상세 페이지 전문 표시 |
+
+- ⚠️ **원문의 99.8%가 머리말 한 줄로 시작한다** — `제안이유 및 주요내용` 15,450건 / `제안이유` 3,107건 / `■ 제안이유 및 주요내용`·`제안이유 및 주요 내용`·`제안이유 및 주용내용`(오타) 등 15종 변형.
+  안 벗기면 모든 카드가 같은 첫 줄로 시작해서, 이 데이터를 넣은 이유(동명 법안 구분)가 그대로 무너진다
+- 판정 방식: 변형 15종을 개별 매칭하지 않고 **"20자 이하 + 이유/주요내용 계열 단어"** 로 본다 — 새 변형이 나와도 걸린다. 본문 첫 문장은 최소 40자를 넘어 충돌하지 않음. 실측 18,631건 전건 제거 성공, 잔여 0
+- 머리말로 판정되지 않으면 원문을 그대로 반환한다 (판정 실패 시 내용을 잃지 않도록)
+
 ### Git 안전 수칙
 - `.gitignore` 에 OAuth/secret 파일 패턴 등록됨 (`*OAuth*.json`, `*secret*.json` 등)
 - 실수로 시크릿 푸시된 경우: `git rm --cached` + `--amend` 로 로컬 커밋 정리, Google Console 에서 **Reset Secret** 권장
@@ -1079,6 +1168,7 @@ npm start          # ← 현재 동작하는 명령
 # 배치 실행 예시 (순서: 의원 → 법안 → 표결. "배치 실행 순서" 섹션 참조. Node 22 필수)
 node batch/syncPoliticians.js
 node batch/syncBills.js
+node batch/syncBillSummary.js          # 제안이유·주요내용 (증분. 전건 백필은 --full, 약 8분)
 node batch/syncVotes.js
 
 # AI 분석

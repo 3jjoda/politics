@@ -53,6 +53,7 @@
       status:           query.status,
       committee:        query.committee,
       party:            query.party,
+      bill_name:        query.bill_name,
       has_analysis:     query.has_analysis,
       ai_category_main: query.ai_category_main,
       request_status:   query.request_status,
@@ -392,7 +393,8 @@
     border-radius: 12px;
     padding: 20px 24px;
     display: grid;
-    grid-template-columns: 1fr auto;
+    /* [아바타] [본문] [표결·의안번호] — 아바타가 첫 열 */
+    grid-template-columns: auto 1fr auto;
     gap: 20px;
     align-items: start;
     text-decoration: none;
@@ -420,6 +422,23 @@
   .bill-card.status-alt       { --card-accent: var(--sub2); }
   .bill-card.status-withdrawn { --card-accent: var(--red); }
   .bill-card.status-rejected  { --card-accent: var(--red); }
+
+  /* 대표발의자 얼굴 — 동명 법안이 20장 붙어 있을 때, 글자를 읽기 전에 카드를 구분해주는 유일한 단서.
+     법안명은 87%가 같고 요약은 2줄 클램프라 훑을 때 안 들어온다. 얼굴은 즉시 다르다. */
+  /* ⚠️ 크기는 **래퍼**에 준다 — avatarHtml() 이 `style="width:100%;height:100%"` 인라인으로
+     반환해서 부모를 채우는 설계라, 자식(img/svg)에 CSS 로 40px 을 줘봐야 인라인이 이긴다.
+     (실제로 자식에 걸었다가 이미지가 676×946 으로 터졌다) */
+  .bill-card-avatar {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    line-height: 0;         /* svg/img 하단 여백 제거 */
+    margin-top: 2px;        /* 메타 배지행 광학 중심에 맞춤 */
+    border-radius: 50%;
+    overflow: hidden;       /* 채워 들어온 이미지를 원형으로 깎는다 */
+    border: 1px solid var(--border);
+    background: var(--bg3);
+  }
 
   .bill-card-meta {
     display: flex;
@@ -519,6 +538,60 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  /* 국회 원문(제안이유) — AI 요약과 시각적으로 구분한다.
+     AI 요약은 세리프 + 본문색으로 무겁게, 원문은 산세리프 + 보조색으로 가볍게.
+     "AI가 쓴 쉬운 말"과 "국회가 쓴 관 문체"를 톤으로 구분해주는 장치이고,
+     분석 있는 카드가 계속 눈에 먼저 들어오도록 하는 위계이기도 하다.
+     별도 라벨을 붙이지 않는 이유: 메타행의 🤖 배지가 이미 AI 여부를 말해주고,
+     18,000장 카드에 같은 라벨이 반복되면 애초에 없애려던 "첫 줄이 다 똑같은" 문제가 돌아온다. */
+  .bill-card-summary.is-raw {
+    font-family: inherit;
+    font-weight: 400;
+    font-size: 13.5px;
+    color: var(--sub);
+    line-height: 1.6;
+  }
+  /* "같은 법률 N건 →" — 반복돼 보이는 것이 중복이 아니라 원래 그런 계열임을 알려준다.
+     카드 전체가 <a> 라 중첩 링크가 불가능해서 span + JS 위임으로 동작한다
+     (그래서 role/tabindex 로 버튼 시맨틱과 키보드 접근을 직접 얹어야 한다). */
+  .same-name-chip {
+    font-size: 12px;
+    color: var(--sub2);
+    border-bottom: 1px dashed var(--border2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .same-name-chip:hover,
+  .same-name-chip:focus-visible {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    outline: none;
+  }
+
+  /* 계열 필터가 켜졌을 때 상단에 뜨는 해제 바 — 왜 결과가 좁아졌는지 설명하고 빠져나갈 길을 준다 */
+  .same-name-active {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    background: #FAF6EB;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .same-name-active .sn-name { font-weight: 600; }
+  .same-name-active .sn-clear {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+    white-space: nowrap;
+  }
+
   .ai-category-tag {
     color: var(--accent);
     font-size: 12px;
@@ -635,8 +708,11 @@
 
   @media (max-width: 768px) {
     .layout { grid-template-columns: 1fr; }
-    .bill-card { grid-template-columns: 1fr; }
-    .bill-card-right { flex-direction: row; align-items: center; }
+    /* 모바일: [아바타][본문] 한 줄, 표결·의안번호는 아래 줄 전체폭.
+       아바타를 별도 행으로 떨구면 카드가 세로로 늘어나기만 하고 구분에 도움이 안 된다. */
+    .bill-card { grid-template-columns: auto 1fr; gap: 14px; }
+    .bill-card-right { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+    .bill-card-avatar { width: 34px; height: 34px; }
 
     /* 필터 버튼 노출 — 검색 바 위에 전체 폭 */
     .filter-sheet-btn {
@@ -980,6 +1056,13 @@
   </aside>
 
   <div>
+    <%# 계열 필터가 켜져 있으면 왜 결과가 좁아졌는지 알리고 빠져나갈 길을 준다 %>
+    <% if (query.bill_name) { %>
+      <div class="same-name-active">
+        <span><span class="sn-name"><%= query.bill_name %></span> 만 보는 중 · <%= pagination.totalCount %>건</span>
+        <a class="sn-clear" href="<%= billHref({ bill_name: '', page: '' }) %>">전체 법안 보기 ✕</a>
+      </div>
+    <% } %>
     <% if (bills && bills.length > 0) { %>
       <div class="bill-cards">
         <% bills.forEach(b => {
@@ -1008,6 +1091,10 @@
             const isPriorityWaiting = !b.has_ai_analysis && reqCount >= requestThreshold;
           %>
           <a href="/bill/<%= b.bill_id %>" class="bill-card <%= scClass %> <%= b.has_ai_analysis ? 'has-analysis' : '' %>">
+            <%# 대표발의자 얼굴 — 카드 20장이 같은 이름일 때 글자를 읽기 전에 구분되는 유일한 단서 %>
+            <div class="bill-card-avatar" aria-hidden="true">
+              <%- avatarHtml(b.proposer_name || '', b.proposer_photo, 40) %>
+            </div>
             <div>
               <div class="bill-card-meta">
                 <% if (b.has_ai_analysis) { %><span class="badge-ai-analysis">🤖 AI 분석</span><% } %>
@@ -1024,8 +1111,16 @@
                 <% } %>
               </div>
               <div class="bill-card-name"><%= b.bill_name %></div>
+              <%
+                // 카드 본문 — 법안의 87%가 동명("○○법 일부개정법률안")이라 이름만으로는 구분이 안 된다.
+                // AI 요약이 있으면 그걸(쉬운 말), 없으면 국회 원문 제안이유를 보여준다.
+                // 원문은 전건 보유하므로 이 자리가 비는 카드는 40건(대안반영폐기·철회)뿐이다.
+                const rawPreview = b.has_ai_analysis && b.ai_summary ? null : summaryPreview(b.bill_summary);
+              %>
               <% if (b.has_ai_analysis && b.ai_summary) { %>
                 <div class="bill-card-summary"><%= b.ai_summary %></div>
+              <% } else if (rawPreview) { %>
+                <div class="bill-card-summary is-raw"><%= rawPreview %></div>
               <% } %>
               <div class="bill-card-info">
                 <% if (b.proposer_name) { %><span>대표발의 <%= b.proposer_name %></span><span>·</span><% } %>
@@ -1039,6 +1134,19 @@
                 <% } %>
                 <% if (!b.has_ai_analysis && reqCount > 0) { %>
                   <span>·</span><span class="request-count-mini">💡 AI 분석 <%= reqCount %>명 요청</span>
+                <% } %>
+                <%
+                  // 같은 법률의 개정안 건수 — 법안의 87%가 동명이라 "왜 똑같은 게 반복되지?" 를 먼저 해소한다.
+                  // 이미 그 계열만 보고 있으면(bill_name 필터) 중복 정보라 숨긴다.
+                  const sameCount = Number(b.same_name_count || 0);
+                  const showSameChip = sameCount > 1 && !query.bill_name;
+                %>
+                <% if (showSameChip) { %>
+                  <span>·</span>
+                  <%# 카드 전체가 <a> 라 중첩 링크를 만들 수 없다 → data-href + JS 위임으로 처리 %>
+                  <span class="same-name-chip" role="button" tabindex="0"
+                        data-href="<%= billHref({ bill_name: b.bill_name, search: '', status: '', page: '' }) %>"
+                        title="같은 법률의 개정안만 모아 보기">같은 법률 <%= sameCount %>건 →</span>
                 <% } %>
               </div>
             </div>
@@ -1271,6 +1379,33 @@
   applyBtn?.addEventListener('click', apply);
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && isOpen()) close();
+  });
+})();
+
+/* "같은 법률 N건 →" 칩 — 카드 전체가 <a> 라 중첩 링크를 못 쓴다.
+   위임으로 잡아서 카드 링크로의 전파를 막고 계열 필터로 보낸다. */
+(() => {
+  const go = (chip) => {
+    const href = chip.dataset.href;
+    if (!href) return;
+    window.pbShowLoader?.();
+    window.location.href = href;
+  };
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest('.same-name-chip');
+    if (!chip) return;
+    e.preventDefault();
+    e.stopPropagation();   // 카드 <a> 가 법안 상세로 끌고 가지 않도록
+    go(chip);
+  });
+  // role="button" 을 붙였으므로 Enter/Space 도 동작해야 한다
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const chip = e.target.closest?.('.same-name-chip');
+    if (!chip) return;
+    e.preventDefault();
+    e.stopPropagation();
+    go(chip);
   });
 })();
 </script>

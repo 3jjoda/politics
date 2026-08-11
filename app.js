@@ -15,6 +15,7 @@ import { dataFreshnessMiddleware } from './utils/dataFreshness.js';
 import expressLayouts from 'express-ejs-layouts';
 import { avatarHtml } from './utils/avatar.js';
 import { fmtDate, fmtDateTime, timeAgo } from './utils/datetime.js';
+import { summaryPreview, stripSummaryHeading } from './utils/billSummary.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -84,6 +85,10 @@ app.locals.avatarHtml = avatarHtml;
 app.locals.fmtDate = fmtDate;          // 2026.08.05
 app.locals.fmtDateTime = fmtDateTime;  // 2026.08.05 01:00
 app.locals.timeAgo = timeAgo;          // 3시간 전 (7일 초과 시 날짜)
+// 법안 원문(bills.summary) 표시 — 선두 "제안이유 및 주요내용" 머리말을 벗긴다.
+// 안 벗기면 모든 카드가 같은 첫 줄로 시작해 동명 법안 구분이 다시 불가능해진다.
+app.locals.summaryPreview = summaryPreview;              // 카드용 (머리말 제거 + 한 줄로 접기)
+app.locals.stripSummaryHeading = stripSummaryHeading;    // 상세용 (머리말만 제거, 줄바꿈 보존)
 
 /* ===== 세션 (PostgreSQL 저장) ===== */
 const PgSession = connectPgSimple(session);

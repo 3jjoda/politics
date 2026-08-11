@@ -10,6 +10,7 @@
    $9: sort (text)                          -- 'recent'(default) | 'ai_priority' | 'requested'
    $10: request_status (text, 'any'|'priority'|NULL)  -- 'any'=요청 1명+, 'priority'=요청 임계값 도달
    $11: priority_threshold (int)            -- request_status='priority' 일 때 임계값
+   $12: bill_name (text, nullable)          -- 법안명 완전일치. 카드의 "같은 법률 개정안 N건" 링크가 여기로 착지
 */
 SELECT b.bill_id
      , b.bill_no
@@ -33,9 +34,18 @@ SELECT b.bill_id
      , COALESCE(v.total_cnt, 0)   AS vote_total
      , (a.bill_id IS NOT NULL)    AS has_ai_analysis
      , a.summary                  AS ai_summary
+       -- 국회 공식 "제안이유 및 주요내용" 원문 (전건 보유). AI 요약이 없는 법안의 카드 본문.
+       -- 카드는 2줄 클램프라 앞부분만 있으면 된다. 최대 10,349자를 다 실어보내면
+       -- 20건 페이지 응답이 수백 KB 로 부푼다 (머리말 ~15자 + 2줄 분량 여유로 600 절단).
+     , LEFT(b.summary, 600)       AS bill_summary
      , a.category_main            AS ai_category_main
      , a.category_sub             AS ai_category_sub
      , COALESCE(rc.request_count, 0) AS analysis_request_count
+     , p.photo_url                AS proposer_photo
+       -- 같은 법률의 개정안이 몇 건인지. 법안의 87%가 동명이라 "중복 아님" 을 알려주는 장치.
+       -- 페이지당 50회 실행되므로 idx_bills_bill_name_btree (Index Only Scan) 이 전제다.
+       -- ⚠️ idx_bills_bill_name 은 전문검색용 GIN 이라 등치 비교에 못 쓴다 (이름이 비슷하니 주의).
+     , (SELECT COUNT(*) FROM bills sn WHERE sn.bill_name = b.bill_name)::int AS same_name_count
      , COUNT(*) OVER() AS total_count
      , (CURRENT_DATE - b.propose_dt)::int AS days_elapsed
   FROM bills b
@@ -64,6 +74,7 @@ SELECT b.bill_id
    AND ($10::text IS NULL
         OR ($10 = 'any'      AND COALESCE(rc.request_count, 0) >= 1)
         OR ($10 = 'priority' AND COALESCE(rc.request_count, 0) >= $11))
+   AND ($12::text IS NULL OR b.bill_name = $12)
  ORDER BY
    CASE WHEN $9 = 'ai_priority' THEN (a.bill_id IS NOT NULL)::int END DESC NULLS LAST,
    CASE WHEN $9 = 'requested'   THEN (a.bill_id IS NOT NULL)::int END DESC NULLS LAST,

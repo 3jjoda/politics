@@ -25,12 +25,13 @@ export default (db) => {
             sort = 'recent',           // 'recent' | 'ai_priority' | 'requested'
             requestStatus = null,      // 'any' | 'priority' | null
             priorityThreshold = 5,
+            billName = null,           // 법안명 완전일치 ("같은 법률 개정안 N건" 계열 필터)
             limit = 50,
             offset = 0
         } = {}) => {
             const { rows } = await db.query(
                 queries.getList,
-                [search, status, committee, limit, offset, party, hasAnalysis, aiCategoryMain, sort, requestStatus, priorityThreshold]
+                [search, status, committee, limit, offset, party, hasAnalysis, aiCategoryMain, sort, requestStatus, priorityThreshold, billName]
             );
             return rows;
         },
@@ -72,8 +73,8 @@ export default (db) => {
         },
 
         /* 법안 상태별 카운트 (committee/party 필터 지원) */
-        getStatusCounts: async (committee = null, party = null) => {
-            const { rows } = await db.query(queries.getStatusCounts, [committee, party]);
+        getStatusCounts: async (committee = null, party = null, billName = null) => {
+            const { rows } = await db.query(queries.getStatusCounts, [committee, party, billName]);
             return rows[0];
         },
 

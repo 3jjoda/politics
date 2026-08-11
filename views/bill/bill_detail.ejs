@@ -808,6 +808,132 @@
   }
   .bill-basic-header { margin-bottom: 20px; }
 
+  /* ===== 법안 원문 (제안이유 및 주요내용) — 분석 없는 분기 =====
+     5-Zone 분석의 --ba-* 토큰은 .bill-ai-analysis 스코프라 여기선 못 쓴다.
+     같은 값을 이 섹션에 다시 선언해 톤을 맞춘다 (골드 강조 · 세리프 헤드라인 · 롱폼 본문). */
+  .bill-raw-summary {
+    --raw-ink:        #0F1B1F;
+    --raw-meta:       #6B7280;
+    --raw-gold:       #8F5800;
+    --raw-gold-hover: #6B4200;
+    background: #FAFAF7;
+    border: 1px solid #E8E5DC;
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 20px;
+  }
+  .raw-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #E8E5DC;
+  }
+  .raw-h {
+    font-family: 'Noto Serif KR', serif;
+    font-weight: 700;
+    font-size: 19px;
+    color: var(--raw-ink);
+    margin: 0;
+  }
+  /* 출처 명시 — AI 분석 라벨과 짝을 이룬다.
+     위쪽에 "🤖 AI 분석 / 아직 분석되지 않은 법안입니다" 회색 라벨이 이미 떠 있으므로,
+     바로 아래 이 본문이 AI 생성물로 오해되지 않도록 출처를 못박아 둔다.
+     동시에 그 출처로 가는 링크를 겸한다 — 헤더에 따로 있던 `국회 원문 ↗` 버튼이
+     같은 URL 이라 중복이었고, 출처 표기와 링크를 한 요소로 합치는 편이 자연스럽다. */
+  .raw-src {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--raw-meta);
+    white-space: nowrap;
+    text-decoration: none;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  /* 링크일 때만 골드 — 이 사이트의 링크 색은 골드다 (`--accent` 계열).
+     회색 + 연한 보더로 두면 메타데이터처럼 보여서 클릭 가능한 줄 모른다.
+     ⚠️ 파란색은 쓰지 않는다: 정당색(파랑·빨강)은 중립성 브랜드 원칙상 금지. */
+  a.raw-src {
+    color: var(--raw-gold);
+    font-weight: 500;
+    border-bottom: 1px solid var(--raw-gold);
+    padding-bottom: 1px;
+  }
+  a.raw-src:hover,
+  a.raw-src:focus-visible {
+    color: var(--raw-gold-hover);
+    border-bottom-color: var(--raw-gold-hover);
+    outline: none;
+  }
+  /* link_url 이 없을 때의 폴백은 클릭 불가라 회색 그대로 둔다 (골드면 링크로 오인된다) */
+  .raw-body {
+    /* 원문의 문단 구분(개행)을 그대로 살린다. 연속 공백은 접혀 들여쓰기 잡음이 사라진다. */
+    white-space: pre-line;
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--raw-ink);
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
+  /* 긴 원문(최대 10,349자)은 접어둔다 — 중앙값 498자라 대부분은 접히지 않는다 */
+  .raw-body.is-collapsed {
+    max-height: 15em;
+    overflow: hidden;
+    /* 잘린 지점을 페이드로 알린다. 딱 잘리면 문장이 끝난 것처럼 보인다 */
+    -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 100%);
+            mask-image: linear-gradient(180deg, #000 72%, transparent 100%);
+  }
+  .raw-toggle {
+    margin-top: 12px;
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--raw-gold);
+    cursor: pointer;
+    border-bottom: 1px solid currentColor;
+  }
+  .raw-toggle:hover { color: var(--accent2, #925C09); }
+
+  /* ===== 대조 모드 (분석 있는 법안에서 5-Zone 아래에 붙는 변형) =====
+     역할이 "본문 전달" 이 아니라 "검증" 이라, 톤을 한 단계 죽이고 항상 접어 둔다. */
+  .bill-raw-summary.is-compare {
+    /* 5-Zone 콘텐츠(.ba-content 880px)와 좌우를 맞춘다 — bd-wrap(960px) 그대로면 어긋나 보인다 */
+    max-width: 880px;
+    margin-left: auto;
+    margin-right: auto;
+    background: transparent;          /* 분석 카드들과 경쟁하지 않게 배경 제거 */
+    border-style: dashed;             /* 참고자료라는 신호 */
+  }
+  .bill-raw-summary.is-compare .raw-h { font-size: 17px; }
+  /* 대조 모드는 **완전 접힘**이다. 미분석 분기의 "15em 엿보기 + 페이드" 를 그대로 쓰면
+     원문이 15em 보다 짧을 때(중앙값 498자 = 대부분) 접힘 높이 == 전체 높이가 되어
+     버튼을 눌러도 아무 일도 안 일어나는 것처럼 보인다. 여긴 원문이 본문이 아니라
+     펼쳐서 대조하는 참고자료라 accordion 이 의미상으로도 맞다. */
+  .bill-raw-summary.is-compare .raw-body.is-collapsed {
+    display: none;
+    max-height: none;
+    -webkit-mask-image: none;
+            mask-image: none;
+  }
+  .bill-raw-summary.is-compare .raw-toggle { margin-top: 0; }
+  .raw-note {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--raw-meta);
+  }
+
+  @media (max-width: 768px) {
+    .bill-raw-summary { padding: 1.25rem 1.25rem; }
+    .raw-body { font-size: 15px; line-height: 1.8; }
+  }
+
   /* 메타 + 국회 원문 링크를 한 줄에 배치 */
   .zone-1-top {
     display: flex;
@@ -1701,9 +1827,42 @@
     <% } %>
   </div>
 
+  <%
+    // 원문 첫 줄은 99.8%가 "제안이유 및 주요내용" 머리말 — 섹션 제목이 이미 그 역할을 하므로 제거
+    const rawSummary = stripSummaryHeading(bill.summary);
+    // 접기 기준이 두 분기에서 다르다:
+    //   미분석 → 원문이 본문 역할. 길 때만 접는다 (중앙값 498자라 대부분 안 접힘)
+    //   분석 있음 → 원문이 "대조용 참고자료". 길이와 무관하게 항상 접는다
+    const RAW_COLLAPSE_LEN = 700;
+    const rawNeedsCollapse = analysis ? Boolean(rawSummary) : rawSummary.length > RAW_COLLAPSE_LEN;
+  %>
+
   <!-- AI 분석 (5-Zone) — 분석 있으면 Zone 1이 히어로, 없으면 기본 헤더 -->
   <% if (analysis) { %>
     <section class="bill-ai-analysis" id="bill-analysis"></section>
+
+    <!-- ============ 원문 대조 (분석 있는 법안) ============
+         분석 상단에 "AI가 생성한 분석으로 사실과 다를 수 있습니다" 라고 써놓고
+         정작 대조할 원문은 사이트를 나가야 볼 수 있었다. 같은 페이지에 두면 검증이 클릭 한 번이다.
+         기본 접힘이라 안 펼치는 사람에겐 비용 0, 의심하는 사람에겐 가치가 크다 — 비대칭이 유리한 쪽.
+
+         ⚠️ 이건 **AI 가 읽은 그 문서가 아니다**. AI 분석은 pal.assembly.go.kr 입법예고 페이지를
+            크롤하고(syncBillAiAnalysis.js), 이건 열린국회 API BPMBILLSUMMARY 다.
+            둘 다 국회가 낸 "제안이유 및 주요내용" 이지만 동일 문서 보장은 없으므로
+            "AI 가 읽은 원문" 같은 표현을 쓰면 안 된다. 대조용 참고자료로만 제시한다. -->
+    <% if (rawSummary) { %>
+      <section class="bill-raw-summary is-compare" id="bill-summary-raw">
+        <div class="raw-head">
+          <h2 class="raw-h">국회 원문과 대조하기</h2>
+          <a class="raw-src" href="<%= bill.link_url %>" target="_blank" rel="noopener">국회 의안정보 원문 ↗</a>
+        </div>
+        <p class="raw-note">위 분석이 원문과 맞는지 직접 확인해 보세요. 국회가 공표한 제안이유 및 주요내용입니다.</p>
+        <div class="raw-body is-collapsed" id="raw-summary-body"><%= rawSummary %></div>
+        <button type="button" class="raw-toggle" id="raw-summary-toggle"
+                aria-expanded="false" aria-controls="raw-summary-body"
+                data-label-collapsed="원문 펼치기 ▾" data-label-expanded="접기 ▴">원문 펼치기 ▾</button>
+      </section>
+    <% } %>
   <% } else { %>
     <section class="bill-basic-header">
       <div class="zone-1-top">
@@ -1727,12 +1886,39 @@
             <% } %>
           </div>
         </div>
-        <% if (bill.link_url) { %>
+        <%# 원문 섹션이 렌더되면 그쪽 `.raw-src` 가 같은 링크(bill.link_url)를 이미 들고 있어 중복이다.
+            원문이 없는 40건(대안반영폐기·철회)에서만 여기가 국회로 가는 유일한 통로라 살려둔다. %>
+        <% if (bill.link_url && !rawSummary) { %>
           <a href="<%= bill.link_url %>" target="_blank" rel="noopener" class="original-link">국회 원문 ↗</a>
         <% } %>
       </div>
       <h1 class="analysis-hook-title" style="margin-bottom:0"><%= bill.bill_name %></h1>
     </section>
+
+    <!-- ============ 법안 원문 (제안이유 및 주요내용) ============
+         AI 분석이 없어도 최소한 "이 법안이 뭘 바꾸려는지"는 알 수 있어야 한다.
+         국회 공식 원문이라 전건(99.79%) 보유 — 이 섹션이 비는 건 40건뿐이다.
+         분석 요청 위젯보다 **위**에 둔다: 내용을 읽고 나서 요청을 누르는 순서가 맞다. -->
+    <% if (rawSummary) { %>
+      <section class="bill-raw-summary" id="bill-summary-raw">
+        <div class="raw-head">
+          <h2 class="raw-h">제안이유 및 주요내용</h2>
+          <%# 출처 표기 + 출처로 가는 링크를 한 요소로 겸한다.
+              헤더에 있던 별도 `국회 원문 ↗` 버튼은 같은 URL 이라 이 경우 제거했다. %>
+          <% if (bill.link_url) { %>
+            <a class="raw-src" href="<%= bill.link_url %>" target="_blank" rel="noopener">국회 의안정보 원문 ↗</a>
+          <% } else { %>
+            <span class="raw-src">국회 의안정보 원문</span>
+          <% } %>
+        </div>
+        <div class="raw-body<%= rawNeedsCollapse ? ' is-collapsed' : '' %>" id="raw-summary-body"><%= rawSummary %></div>
+        <% if (rawNeedsCollapse) { %>
+          <button type="button" class="raw-toggle" id="raw-summary-toggle"
+                  aria-expanded="false" aria-controls="raw-summary-body"
+                  data-label-collapsed="전문 보기 ▾" data-label-expanded="접기 ▴">전문 보기 ▾</button>
+        <% } %>
+      </section>
+    <% } %>
 
     <!-- AI 분석 요청 위젯 (미분석일 때만 노출) -->
     <%
@@ -1845,6 +2031,15 @@
       <% if (analysis.judgment_questions && analysis.judgment_questions.length) { %>
         <a class="pb-idx-item" href="#ba-questions" data-idx="ba-questions">함께 생각</a>
       <% } %>
+      <% if (bill.summary) { %>
+        <a class="pb-idx-item" href="#bill-summary-raw" data-idx="bill-summary-raw">원문 대조</a>
+      <% } %>
+    </div>
+  <% } else if (bill.summary) { %>
+    <%# 분석이 없는 법안은 원문 섹션이 유일한 내용 — 인덱스에 자리를 준다 %>
+    <div class="pb-idx-group">
+      <div class="pb-idx-label">법안 내용</div>
+      <a class="pb-idx-item" href="#bill-summary-raw" data-idx="bill-summary-raw">제안이유</a>
     </div>
   <% } %>
   <div class="pb-idx-group">
@@ -1866,6 +2061,8 @@
   <% if (analysis) { %>
     <a class="pb-jb-tab" href="#ba-summary"  data-idx="ba-summary">요약</a>
     <a class="pb-jb-tab" href="#ba-analysis" data-idx="ba-analysis">분석</a>
+  <% } else if (bill.summary) { %>
+    <a class="pb-jb-tab" href="#bill-summary-raw" data-idx="bill-summary-raw">제안이유</a>
   <% } %>
   <a class="pb-jb-tab" href="#citizen-vote-section" data-idx="citizen-vote-section">찬반</a>
   <a class="pb-jb-tab" href="#part-comments"     data-idx="part-comments">의견</a>
@@ -1969,6 +2166,25 @@
     const v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 100;
     return v + 20;
   };
+
+  /* 법안 원문 전문 보기 토글 (분석 없는 분기 · 긴 원문일 때만 버튼이 렌더됨) */
+  const rawToggle = document.getElementById('raw-summary-toggle');
+  const rawBody   = document.getElementById('raw-summary-body');
+  if (rawToggle && rawBody) {
+    rawToggle.addEventListener('click', () => {
+      const collapsed = rawBody.classList.toggle('is-collapsed');
+      // 라벨은 마크업이 정한다 — 미분석 분기는 "전문 보기", 분석 분기(대조용)는 "원문 펼치기"
+      rawToggle.textContent = collapsed
+        ? (rawToggle.dataset.labelCollapsed || '전문 보기 ▾')
+        : (rawToggle.dataset.labelExpanded  || '접기 ▴');
+      rawToggle.setAttribute('aria-expanded', String(!collapsed));
+      // 접을 때는 섹션 상단으로 돌려보낸다 — 안 하면 사라진 본문 아래 허공에 남는다
+      if (collapsed) {
+        const sec = document.getElementById('bill-summary-raw');
+        if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + window.scrollY - getScrollOffset(), behavior: 'smooth' });
+      }
+    });
+  }
 
   // 클릭 시 헤더 오프셋 보정 스크롤
   allIdxItems.forEach(a => {
