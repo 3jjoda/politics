@@ -15,12 +15,13 @@ export default (db) => {
     controller.getBriefingPage = wrapWithContext(async function getBriefingPage(req, res, next) {
         try {
             const [feed, data] = await Promise.all([
-                briefingService.getFeed(),
-                briefingService.get(),      // 상단 스트립용 주간 집계
+                briefingService.getFeed(req.query.page),   // 서비스가 범위 밖 page 를 접어준다
+                briefingService.get(),                     // 상단 스트립용 주간 집계
             ]);
 
             res.render('briefing/feed', {
-                pageTitle: '브리핑',
+                // 2페이지 이후는 제목에 표시 — 탭·검색결과에서 같은 제목이 반복되지 않게
+                pageTitle: feed.page > 1 ? `브리핑 ${feed.page}페이지` : '브리핑',
                 pageStyles: null,
                 currentUrl: '/briefing',
                 feed,

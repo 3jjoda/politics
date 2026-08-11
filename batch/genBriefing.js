@@ -10,10 +10,14 @@
 //    평가가 섞이기 쉽고, 그건 이 서비스 브랜드(정당색 배제)를 정면으로 깬다.
 //    프롬프트에서 금지하고, 생성 후 금지어 검사로 한 번 더 거른다.
 //
-// 인자: --date YYYY-MM-DD (기본: 가장 최근 발의가 있는 날)
-//       --limit N        (여러 날 소급 생성)
+// 인자: --date YYYY-MM-DD (기본: 카드 없는 가장 최근 발의일. 지정 시 창·중복검사 모두 무시)
+//       --limit N        (여러 날 소급 생성, 기본 1)
+//       --window N       (최근 N일만 대상. 기본 30, `0` 이면 제한 없음 = 전체 과거 백필)
 //       --force          (이미 있는 날도 다시 생성)
 //       --dry-run        (DB 안 씀)
+//
+// 크론(`batch:daily`)은 인자 없이 부른다 → 최근 30일 안에서 카드 없는 최신 발의일 1건.
+// 과거를 메우려면 의도적으로: `node batch/genBriefing.js --window 0 --limit 50`
 
 import pg from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
@@ -33,6 +37,12 @@ const argv = process.argv.slice(2);
 const argOf = (name) => { const i = argv.indexOf(name); return i > -1 ? argv[i + 1] : null; };
 const DATE_ARG = argOf('--date');
 const LIMIT = Number(argOf('--limit') || 1);
+// 자동 실행이 과거로 무한히 거슬러 올라가지 않게 하는 창.
+// 실측(2026-08-12): 발의일 537일 중 카드 없는 날이 527일 — 창이 없으면 새 발의일이 없는 날마다
+// 2024년까지 하나씩 파고들어 **피드 1페이지에 절대 안 보이는 카드**를 매일 만든다.
+// 과거 백필은 의도적으로 할 일이므로 `--window 0` 또는 `--date` 로 명시한다.
+const WINDOW_ARG = argOf('--window');
+const WINDOW_DAYS = WINDOW_ARG === null ? 30 : Number(WINDOW_ARG);   // 0 = 제한 없음
 const FORCE = argv.includes('--force');
 const DRY = argv.includes('--dry-run');
 
@@ -178,20 +188,37 @@ function neutralityCheck(text) {
    숫자 자체는 SQL 이 주므로 환각이 안 나지만, AI 가 하루치를 "7월 한 달간" 으로 옮기면
    24건이 651건(실제 7월 합계)의 자리에 앉는다 — 검증 불가능한 거짓이 된다.
 
-   판정: 본문에 나오는 모든 `N월` 은 뒤에 `N일` 이 따라와야 한다.
-     "8월 10일" ✅   "7월 한 달간" ❌   "7월 국회" ❌   "8월 발의 법안 26건" ❌
-   법안명에 월이 들어가면(예: "6월 항쟁") 오탐이 날 수 있으나, 탈락해도 폴백 카드로
-   내려갈 뿐이라 거짓이 나가는 쪽보다 안전하다. */
+   판정: **그 카드 자신의 월**이 `N일` 없이 나오면 탈락.
+     (07-31 카드) "7월 한 달간" ❌   "8월 10일" ✅
+     (08-07 카드) "8월 발의 법안 26건" ❌
+
+   ⚠️ **"모든 N월" 을 검사하면 안 된다.** 처음에 그렇게 만들었다가 15건 중 5건이 오탐으로
+      폴백됐다 — `"한편 6월 지방선거 때 투표용지 부족으로…"` 처럼 법안이 언급한 과거 사건·
+      시행 시기가 걸린 것이다. 그건 집계 기간과 무관하다.
+      AI 가 자기 집계에 기간을 잘못 붙일 때는 **반드시 그 카드의 월**을 쓴다 (7월 데이터를
+      "7월 한 달간" 이라 부르지 "10월 한 달간" 이라 하지 않는다). 그래서 자기 월만 본다.
+      남는 오탐은 "매년 7월" 류인데 훨씬 드물고, 걸려도 폴백일 뿐 거짓이 나가진 않는다. */
 const PERIOD_WORDS = [
     '한 달간', '한달간', '한 달 동안', '이번 주', '이번주', '지난 주', '지난주',
     '한 주간', '주간', '월간', '연간', '올 들어', '올해 들어',
+    '이번 달', '이번달', '이달', '지난달', '지난 달',
 ];
-function scopeCheck(text) {
+function scopeCheck(text, day) {
     const hits = PERIOD_WORDS.filter((w) => text.includes(w));
-    // `N월` 뒤에 `N일` 이 안 붙은 경우
-    const bareMonth = text.match(/\d+\s*월(?!\s*\d+\s*일)/g);
-    if (bareMonth) hits.push(...bareMonth.map((m) => `${m}(일 없음)`));
-    return { ok: hits.length === 0, hits };
+    // 이 카드의 월이 `N일` 없이 등장하는 경우 (다른 달은 법안 내용이므로 건드리지 않는다)
+    const month = Number(String(day).split('-')[1]);
+    if (Number.isFinite(month)) {
+        const own = text.match(new RegExp(`(?<!\\d)${month}\\s*월(?!\\s*\\d+\\s*일)`, 'g'));
+        if (own) hits.push(...own.map((m) => `${m}(일 없음)`));
+    }
+    // ⚠️ 탈락 사유에 **앞뒤 문맥을 같이 남긴다.** 히트 단어만 찍으면 오탐인지 진짜인지
+    //    판단할 수 없어 프롬프트를 고칠 근거가 없다 (실제로 "10월(일 없음)" 만 보고는 못 고쳤다).
+    const ctx = hits.map((h) => {
+        const w = h.replace(/\(일 없음\)$/, '');
+        const i = text.indexOf(w);
+        return i < 0 ? h : `${h} → "…${text.slice(Math.max(0, i - 25), i + w.length + 25)}…"`;
+    });
+    return { ok: hits.length === 0, hits: ctx };
 }
 
 /* ── threads 정리 — **개수는 코드가 센다** ──
@@ -250,7 +277,7 @@ async function generate(anthropic, d) {
     const check = neutralityCheck(full);
     if (!check.ok) throw new Error(`중립성 검사 탈락 — 금지 표현: ${check.hits.join(', ')}`);
 
-    const scope = scopeCheck(full);
+    const scope = scopeCheck(full, d.day);
     if (!scope.ok) throw new Error(`집계 범위 검사 탈락 — 하루치를 넓힌 표현: ${scope.hits.join(', ')}`);
 
     return {
@@ -311,14 +338,24 @@ function composeFallback(d) {
 /* ── 대상 날짜 고르기 ── */
 async function pickDays(pool) {
     if (DATE_ARG) return [DATE_ARG];
+
+    // 창은 파라미터로 바인딩한다 — 숫자를 SQL 문자열에 끼워넣지 않는다
+    const params = [LIMIT];
+    let windowClause = '';
+    if (Number.isFinite(WINDOW_DAYS) && WINDOW_DAYS > 0) {
+        params.push(WINDOW_DAYS);
+        windowClause = `AND propose_dt > CURRENT_DATE - $${params.length}::int`;
+    }
+
     const { rows } = await pool.query(`
         SELECT TO_CHAR(propose_dt, 'YYYY-MM-DD') AS day
           FROM bills
          WHERE propose_dt IS NOT NULL
            ${FORCE ? '' : 'AND NOT EXISTS (SELECT 1 FROM briefing_posts bp WHERE bp.briefing_date = bills.propose_dt)'}
+           ${windowClause}
          GROUP BY propose_dt
          ORDER BY propose_dt DESC
-         LIMIT $1`, [LIMIT]);
+         LIMIT $1`, params);
     return rows.map((r) => r.day);
 }
 
@@ -332,7 +369,8 @@ async function run() {
     try {
         const days = await pickDays(pool);
         if (days.length === 0) {
-            logger.info('[생성] 대상 날짜가 없습니다 (이미 전부 생성됨).');
+            // 창 안에 새 발의일이 없는 정상 상태다 (주말·휴회). 실패가 아니다.
+            logger.info(`[생성] 대상 날짜가 없습니다 — 최근 ${WINDOW_DAYS}일 내 새 발의일이 모두 생성됨.`);
             await finishBatchRun(pool, runId, { status: 'success', stats: { generated: 0, skipped: true } });
             return;
         }

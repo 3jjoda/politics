@@ -96,8 +96,27 @@
       <% }); %>
     </ol>
 
-    <% if (feed.total > feed.posts.length) { %>
-      <p class="bf-feed-more"><%= nf(feed.posts.length) %> / <%= nf(feed.total) %>건 표시 중</p>
+    <%# 페이저 — 이전엔 "N / total건 표시 중" 안내문만 있어 21번째 카드부터 도달 수단이 없었다.
+        배치가 매일 카드를 쌓는 구조라 링크가 없으면 만든 것의 대부분이 영영 안 보인다. %>
+    <% if (feed.totalPages > 1) { %>
+      <nav class="bf-pager" aria-label="브리핑 페이지">
+        <% if (feed.page > 1) { %>
+          <a class="bf-pager-btn" href="/briefing?page=<%= feed.page - 1 %>" rel="prev">← 최신</a>
+        <% } else { %>
+          <span class="bf-pager-btn is-off">← 최신</span>
+        <% } %>
+
+        <span class="bf-pager-now">
+          <%= nf(feed.page) %> / <%= nf(feed.totalPages) %>
+          <span class="bf-pager-total">· 전체 <%= nf(feed.total) %>건</span>
+        </span>
+
+        <% if (feed.page < feed.totalPages) { %>
+          <a class="bf-pager-btn" href="/briefing?page=<%= feed.page + 1 %>" rel="next">이전 날짜 →</a>
+        <% } else { %>
+          <span class="bf-pager-btn is-off">이전 날짜 →</span>
+        <% } %>
+      </nav>
     <% } %>
   <% } %>
 
@@ -182,7 +201,18 @@
   .bf-more { margin-left: auto; font-size: 12.5px; color: var(--accent); text-decoration: none; }
   .bf-more:hover { text-decoration: underline; }
 
-  .bf-feed-more { text-align: center; font-size: 12.5px; color: var(--sub2); margin: 20px 0 0; }
+  /* 페이저 — 라벨을 "이전/다음" 대신 "최신 / 이전 날짜" 로 쓴다.
+     시간 역순 피드에서 "다음 페이지" 는 더 과거를 뜻해 방향이 헷갈린다. */
+  .bf-pager { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+              margin: 24px 0 0; padding-top: 18px; border-top: 1px solid var(--border); }
+  .bf-pager-btn { font-size: 12.5px; color: var(--sub); text-decoration: none;
+                  border: 1px solid var(--border2); border-radius: 8px; padding: 9px 14px;
+                  min-height: 40px; display: inline-flex; align-items: center; white-space: nowrap; }
+  .bf-pager-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .bf-pager-btn.is-off { color: var(--sub2); border-color: var(--border); opacity: 0.5; }
+  .bf-pager-now { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--sub);
+                  text-align: center; }
+  .bf-pager-total { color: var(--sub2); }
   .bf-foot { font-size: 12.5px; color: var(--sub2); line-height: 1.7; margin: 28px 0 0; padding-top: 18px; border-top: 1px solid var(--border); word-break: keep-all; }
   .bf-foot strong { color: var(--sub); }
 

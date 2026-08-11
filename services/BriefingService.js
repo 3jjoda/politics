@@ -147,10 +147,16 @@ export default (db) => {
     }
 
     return {
-        /* ── AI 카드 피드 ── (캐시하지 않는다 — 댓글·좋아요 수가 실시간으로 바뀐다) */
-        getFeed: async (limit = FEED_PAGE, offset = 0) => {
-            const [rows, total] = await Promise.all([dao.getFeed(limit, offset), dao.countPosts()]);
-            return { posts: rows.map(shapePost), total };
+        /* ── AI 카드 피드 ── (캐시하지 않는다 — 댓글·좋아요 수가 실시간으로 바뀐다)
+           페이지 계산을 서비스가 소유한다 — 컨트롤러가 offset 을 직접 만들면 FEED_PAGE 와
+           어긋날 수 있고, 그러면 카드가 건너뛰어지거나 중복 노출된다.
+           총 건수를 **먼저** 구해 page 를 범위 안으로 접는다 (?page=999 로 빈 화면이 나오지 않게). */
+        getFeed: async (page = 1) => {
+            const total = await dao.countPosts();
+            const totalPages = Math.max(1, Math.ceil(total / FEED_PAGE));
+            const p = Math.min(totalPages, Math.max(1, Math.floor(Number(page) || 1)));
+            const rows = await dao.getFeed(FEED_PAGE, (p - 1) * FEED_PAGE);
+            return { posts: rows.map(shapePost), total, page: p, pageSize: FEED_PAGE, totalPages };
         },
         getPost: async (id) => {
             const p = await dao.getPost(id);
