@@ -1045,6 +1045,126 @@
     .raw-body { font-size: 15px; line-height: 1.8; }
   }
 
+  /* ===== 처리 경과 타임라인 (컴팩트) — 헤더/Zone 1 바로 아래 =====
+     히어로 근처라 카드 배경 없이 한 줄 흐름으로. 결과는 마지막 단계에만.
+     정당색 배제: 상태 구분은 **골드(완료) / 회색(미도달) / 점선+취소선(거치지 않음)** 으로만.
+     가결·부결에 색을 주지 않는다 — 결과는 텍스트로만 말한다. */
+  .bill-timeline {
+    --tl-gold: #8F5800;
+    --tl-meta: #646E7E;
+    max-width: 880px;
+    margin: 0 auto 24px;
+    padding: 12px 0 0;
+    border-top: 1px solid #E8E5DC;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+  /* 스크린리더 전용 — 상태(완료/거치지 않음/진행 전)를 점 모양이 아니라 텍스트로도 전달한다.
+     `title` 속성은 스크린리더가 일관되게 읽어주지 않는다 */
+  .pb-sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .tl-cap {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: #746C5D;          /* 대비 4.80 — 10px 이라 AA 필요 */
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .tl-track {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 0;
+    min-width: 0;
+  }
+  .tl-step {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding-right: 12px;
+    position: relative;
+  }
+  /* 단계 사이 화살표 — 진행 방향을 명시. 마지막 뒤에는 없음 */
+  .tl-step::after {
+    content: '›';
+    margin-left: 12px;
+    color: #C8C0AA;
+    font-size: 13px;
+  }
+  .tl-step:last-child { padding-right: 0; }
+  .tl-step:last-child::after { display: none; }
+  .tl-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1.5px solid #C8C0AA;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    align-self: center;
+  }
+  .tl-step.is-done .tl-dot    { background: var(--tl-gold); border-color: var(--tl-gold); }
+  .tl-step.is-skipped .tl-dot { border-style: dotted; }
+  .tl-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0F1B1F;
+    /* keep-all 은 한글 단어를 안 쪼개 읽기엔 좋지만, 공백 없는 긴 문자열을 통째 한 덩어리로 만든다.
+       마지막 단계 라벨은 DB 의 proc_result_name(varchar 50)이 그대로 들어오므로
+       예상 밖의 긴 값이 오면 페이지가 가로로 밀린다 (50자 주입 시 103px 오버플로 실측).
+       overflow-wrap: anywhere 는 **다른 줄바꿈 기회가 없을 때만** 강제로 쪼개므로
+       평소 한글 가독성은 그대로 두고 최악만 막는다. */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  /* 거치지 않은 단계는 취소선으로 "아직 안 온 것"과 구분한다 (점선 점만으로는 안 갈림) */
+  .tl-step.is-skipped .tl-label {
+    color: var(--tl-meta);
+    font-weight: 500;
+    text-decoration: line-through;
+    text-decoration-color: #C8C0AA;
+  }
+  .tl-step.is-pending .tl-label { color: var(--tl-meta); font-weight: 500; }
+  .tl-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--tl-gold);
+  }
+  /* 최종 결과 — 마지막 단계에만 붙는다 */
+  .tl-result {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0F1B1F;
+    word-break: keep-all;
+    overflow-wrap: anywhere;   /* .tl-label 과 같은 이유 — 같은 DB 값이 들어온다 */
+    min-width: 0;
+  }
+  /* 스텝 자체도 줄어들 수 있어야 내부 라벨의 줄바꿈이 실제로 발동한다
+     (inline-flex 기본 min-width:auto 면 콘텐츠 크기 아래로 안 줄어든다) */
+  .tl-step { min-width: 0; }
+  @media (max-width: 768px) {
+    .bill-timeline { gap: 6px 10px; }
+    .tl-step { padding-right: 8px; }
+    .tl-step::after { margin-left: 8px; }
+    .tl-label { font-size: 12.5px; }
+    .tl-date  { font-size: 11.5px; }
+  }
+
   /* 메타 + 국회 원문 링크를 한 줄에 배치 */
   .zone-1-top {
     display: flex;
@@ -1965,6 +2085,34 @@
   </div>
 
   <%
+    // ===== 처리 경과 타임라인 데이터 (헤더/Zone 1 아래에 붙는다, 파샬은 _bill_timeline.ejs) =====
+    // ⚠️ 마지막 단계를 무조건 "본회의" 로 쓰면 안 된다.
+    //    API 의 PROC_DT/PROC_RESULT 는 "최종 처리" 지 본회의 의결이 아니다.
+    //    가결·부결·대안반영폐기는 본회의에서 확정되지만, **철회(161건)는 발의자가 거두는 것**이라
+    //    본회의를 거치지 않는다. 그대로 두면 "본회의 / 철회" 라는 사실과 다른 표시가 된다.
+    const FLOOR_RESULTS = ['원안가결', '수정가결', '부결', '대안반영폐기', '수정안반영폐기'];
+    const tlLastLabel = FLOOR_RESULTS.includes(bill.proc_result_name)
+      ? '본회의'
+      : (bill.proc_result_name || '본회의');
+
+    const tlSteps = [
+      { label: '발의',        date: bill.propose_dt },
+      { label: '소관위 회부', date: bill.committee_dt },
+      { label: '위원회',      date: bill.cmt_proc_dt, result: bill.cmt_proc_result },
+      { label: '법사위',      date: bill.law_proc_dt, result: bill.law_proc_result },
+      { label: tlLastLabel,   date: bill.proc_dt,     result: bill.proc_result_name },
+    ];
+    // 뒤에 날짜가 있는 빈 단계 = 거치지 않음 / 뒤에도 없으면 = 아직 도달 전
+    let tlLastDone = -1;
+    tlSteps.forEach((s, i) => { if (s.date) tlLastDone = i; });
+    tlSteps.forEach((s, i) => {
+      s.state = s.date ? 'done' : (i < tlLastDone ? 'skipped' : 'pending');
+    });
+    // 압축형이라 결과는 **마지막 완료 단계에만** 남긴다 (중간 단계 결과까지 넣으면 한 줄이 무너진다).
+    // 라벨과 같은 값이면(철회 등) 중복이라 뺀다.
+    tlSteps.forEach((s, i) => { if (i !== tlLastDone || s.result === s.label) s.result = null; });
+    const tlHasAny = tlLastDone >= 0;
+
     // 원문 첫 줄은 99.8%가 "제안이유 및 주요내용" 머리말 — 섹션 제목이 이미 그 역할을 하므로 제거
     const rawSummary = stripSummaryHeading(bill.summary);
     // 접기 기준이 두 분기에서 다르다:
@@ -1977,6 +2125,10 @@
   <!-- AI 분석 (5-Zone) — 분석 있으면 Zone 1이 히어로, 없으면 기본 헤더 -->
   <% if (analysis) { %>
     <section class="bill-ai-analysis" id="bill-analysis"></section>
+    <%# Zone 1~5 는 JS 가 렌더하므로 EJS 에서 Zone 1 과 Zone 2 사이에 끼어들 수 없다.
+        여기 두고 mount 직후 JS 가 `.ba-z1` 뒤로 옮긴다 (모바일 jumpbar 이동과 같은 수법).
+        JS 가 실패하면 이 자리에 그대로 남는다 — 위치만 덜 이상적일 뿐 정보는 보인다. %>
+    <% if (tlHasAny) { %><%- include('_bill_timeline', { steps: tlSteps }) %><% } %>
 
     <!-- ============ 원문 대조 (분석 있는 법안) ============
          분석 상단에 "AI가 생성한 분석으로 사실과 다를 수 있습니다" 라고 써놓고
@@ -2031,6 +2183,9 @@
       </div>
       <h1 class="analysis-hook-title" style="margin-bottom:0"><%= bill.bill_name %></h1>
     </section>
+
+    <%# 미분석 분기는 SSR 위치가 곧 최종 위치라 JS 이동이 필요 없다 (레이아웃 시프트 없음) %>
+    <% if (tlHasAny) { %><%- include('_bill_timeline', { steps: tlSteps }) %><% } %>
 
     <!-- ============ 법안 원문 (제안이유 및 주요내용) ============
          AI 분석이 없어도 최소한 "이 법안이 뭘 바꾸려는지"는 알 수 있어야 한다.
@@ -2103,6 +2258,7 @@
       </div>
     </section>
   <% } %>
+
 
   <!-- ============ Zone 7: 분석 → 참여 챕터 디바이더 ============ -->
   <div class="ba-chapter">
@@ -2177,6 +2333,14 @@
     <div class="pb-idx-group">
       <div class="pb-idx-label">법안 내용</div>
       <a class="pb-idx-item" href="#bill-summary-raw" data-idx="bill-summary-raw">제안이유</a>
+    </div>
+  <% } %>
+  <%# 처리 경과 — 분석도 참여도 아닌 "사실 기록" 이라 별도 그룹. DOM 순서와 인덱스 순서가 일치해야
+      스크롤 활성 추적이 어긋나지 않으므로, 챕터 디바이더 앞에 있는 이 섹션이 참여보다 먼저 온다 %>
+  <% if (tlHasAny) { %>
+    <div class="pb-idx-group">
+      <div class="pb-idx-label">경과</div>
+      <a class="pb-idx-item" href="#bill-timeline" data-idx="bill-timeline">처리 경과</a>
     </div>
   <% } %>
   <div class="pb-idx-group">
@@ -2286,6 +2450,12 @@
         scrollTargetId: 'citizen-vote-section'
       });
       setupZone2Reveal();   // 5-Zone 은 JS 로 렌더되므로 mount 직후에 걸어야 한다
+      // 처리 경과를 Zone 1(요약·발의자) 바로 아래로 올린다.
+      // EJS 는 JS 가 렌더하는 Zone 1↔Zone 2 사이에 끼어들 수 없어서, 마운트 직후 여기서 옮긴다.
+      // 실패해도 SSR 위치(분석 섹션 다음)에 남으므로 정보는 사라지지 않는다.
+      const tl = document.getElementById('bill-timeline');
+      const z1 = document.querySelector('.ba-z1');
+      if (tl && z1 && z1.parentNode) z1.insertAdjacentElement('afterend', tl);
     }
     if (typeof PB.mountAnalysisRequest === 'function') {
       PB.mountAnalysisRequest({ containerId: 'analysis-request-widget' });

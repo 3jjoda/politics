@@ -113,6 +113,18 @@ $$ LANGUAGE plpgsql;
   - 근본 해결은 "역대 국회의원 API" 전환 — [ROADMAP.md](./ROADMAP.md) 베타 오픈 전 필수 3번
 - `politician_party_memberships` — 의원-정당 이력
 - `bills` (PK bill_id VARCHAR), `bill_co_proposers`, `bill_votes` — 법안·발의자·표결
+  - **처리 단계 날짜 9종** (2026-08-11 추가) — `syncBills` 가 쓰는 API(`nzmimeepazxkubdpn`)가 **원래부터 주던 값**인데 받아놓고 버리고 있었다. 저장만 하면 되므로 **추가 API 호출 0회 · 새 배치 0개 · 전건 소급**
+    ```
+    propose_dt → committee_dt → cmt_present_dt → cmt_proc_dt(+cmt_proc_result)
+               → law_submit_dt → law_present_dt → law_proc_dt(+law_proc_result) → proc_dt
+       발의        소관위 회부      위원회 상정      위원회 처리
+                   법사위 회부      법사위 상정      법사위 처리                     본회의 의결
+    ```
+    - 실측 채움: 소관위 회부 18,639 / 위원회 상정 14,397 / 위원회 처리 4,914 / 법사위 처리 601 / **본회의 의결 4,541**
+    - `proc_dt` 는 `proc_result_name` 이 있는 4,541건과 **정확히 1:1** — "언제 처리됐나" 를 이걸로 답한다
+    - ⚠️ **상태 변경 이력 테이블(`bill_status_history`)은 만들지 않았다.** 이력 테이블은 만든 시점부터만 쌓이지만 이 컬럼들은 과거까지 소급된다
+    - ⚠️ 컬럼명에서 `_cd` 를 뺐다 — API 필드는 `CMT_PROC_RESULT_CD` 지만 값은 코드가 아니라 텍스트('원안가결')다
+    - ⚠️ `ALLBILL` API 에도 같은 정보 + 공포일이 있지만 **`BILL_NO` 필수라 벌크 조회가 안 된다** (18,671콜). 반드시 `nzmimeepazxkubdpn` 을 쓸 것
   - `bills.summary` — 국회 공식 **"제안이유 및 주요내용" 원문** (2026-08-11 추가, `syncBillSummary.js`). 전체 18,671건 중 **18,631건(99.79%) 보유**, 11MB. 길이 140~10,349자(중앙값 498)
     - ⚠️ `bill_ai_analysis.summary` 와 **다른 것**. 이쪽은 가공 없는 원문(관 문체, "~하고자 함")이고 **전건** 보유. AI 분석은 쉬운 말·찬반 쟁점이고 요청·가결 건만
     - 빈 40건은 전부 `대안반영폐기`·`철회` — 국회가 요약을 공표하지 않은 건이라 정상. 재시도해도 안 채워짐
@@ -308,6 +320,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `ddl/migrations/2026-08-04-batch-incremental.sql` — **배치 증분화**. `bills.vote_synced_at` 컬럼 + 부분 인덱스, `batch_runs` 테이블 (배치 실행 기록 · nav 갱신 배지 소스 · 크론 실패 추적)
   - `ddl/migrations/2026-08-05-cross-party-vote-mv.sql` — **교차 표결 성향 MV**. `politician_cross_party_vote` + UNIQUE 인덱스(CONCURRENTLY 갱신용) + `gap` 부분 인덱스
   - `ddl/migrations/2026-08-10-dissent-mv.sql` — **당론 이탈 MV**. `politician_dissent` + UNIQUE 인덱스 + `dissent_rate` 인덱스. "숫자로 본 국회" 최대 병목(1,410ms)이었던 `getDissentRank` 를 45ms 로
+  - `ddl/migrations/2026-08-11-bill-stage-dates.sql` — **법안 처리 단계 날짜 9종**. `proc_dt`(본회의 의결일) 등 + 부분 인덱스 + 트리거 `ROW(...)` 목록 갱신. ⚠️ 실행 순서: 마이그레이션 → `syncBills` → 파일 하단의 `analyzed_at` 정리 쿼리
+  - `ddl/migrations/2026-08-11-bills-updated-at-trigger.sql` — **`bills` 전용 updated_at 트리거**. 공용 `update_updated_at()` 이 부기 컬럼 UPDATE 에도 `updated_at` 을 밀어 증분 배치 2종을 깨뜨린 문제 수정 (위 "⚠️ `bills.updated_at` 은 트리거가 지킨다" 참조)
   - `ddl/migrations/2026-08-11-bill-name-index.sql` — **동명 법안 계열 카운트용 btree**. `idx_bills_bill_name_btree`
     - ⚠️ **`idx_bills_bill_name` 이라는 이름은 이미 전문검색용 GIN(`to_tsvector('simple', bill_name)`)이 쓰고 있다.** 등치 비교에 못 쓴다
     - ⚠️ `CREATE INDEX IF NOT EXISTS` 는 **정의가 아니라 이름만** 본다 — 같은 이름으로 만들면 에러 없이 무시되고 btree 는 끝내 안 생긴다. 실제로 이 함정에 걸려 `enable_seqscan=off` 로도 Seq Scan 이 나왔다. 인덱스 추가 전 `SELECT indexname, indexdef FROM pg_indexes WHERE tablename='bills'` 로 확인할 것
@@ -463,6 +477,35 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - **Zone 9 — 본회의 표결** (`#part-floor-vote`): 데이터 없을 때 italic `#9B9486` empty state. 있을 때 4-박스 vote-dashboard 톤만 통일 (정당색은 객관 데이터라 그대로)
 - ~~**Zone 10 — 발의자**~~: **2026-04-27 폐기** — 발의자는 메타데이터의 일부라 Zone 1 헤더 컴팩트 스택으로 통합됨. 참여 영역에서 분리
 - **Zone 11 — 댓글** (`#part-comments`): 정렬 토글 알약 → 텍스트 underline. 카드 흰 배경 / `#E8E5DC` / radius 10. 닉네임 700, 본문 14/1.7. 좋아요 활성 골드
+
+### `/bill/:id` 처리 경과 타임라인 (2026-08-11)
+`#bill-timeline` — 파샬 `views/bill/_bill_timeline.ejs`, **두 분기 공통**. 소스는 `bills` 의 처리 단계 날짜 9종.
+이전엔 이 법안이 어디까지 왔는지를 `계류` / `원안가결` 단어 하나로만 알 수 있었다.
+
+**위치는 헤더/Zone 1 바로 아래다** (처음엔 챕터 디바이더 앞이었으나 이동):
+- 법안의 **76%가 계류**(14,130/18,671)라 "어디까지 왔나" 가 사실상 유일한 실질 정보다
+- 헤더 메타의 `결과` 한 단어를 **경로로 확장**하는 역할이라, 붙어 있어야 중복이 아니게 된다
+- 본문을 읽을지 정하는 재료라 읽고 난 뒤에 보여주면 늦다
+- (본회의 표결 섹션 옆이 주제상 가깝지만 표결 있는 법안은 602건(3%)뿐이라 97%에겐 성립 안 함)
+
+| 분기 | SSR 위치 | 최종 위치 |
+|---|---|---|
+| 미분석 | `bill-basic-header` 다음 | 그대로 (JS 불필요, 레이아웃 시프트 없음) |
+| 분석 있음 | `#bill-analysis` 다음 | **JS 가 `.ba-z1` 뒤로 이동** |
+
+- ⚠️ Zone 1~5 는 `PB.mountBillAnalysis` 가 렌더해서 EJS 가 Zone 1↔2 사이에 끼어들 수 없다. mount 직후 `insertAdjacentElement('afterend')` 로 옮긴다 (모바일 jumpbar 이동과 같은 수법). JS 실패 시 SSR 위치에 남아 정보는 유지된다
+- **컴팩트 한 줄 흐름** — 히어로 근처라 카드 배경·결과 칩·"상정" 보조줄을 뺐다. 실측 높이 61px(1280) / 114px(375). 결과는 **마지막 완료 단계에만** 붙인다 (중간 결과까지 넣으면 한 줄이 무너진다)
+- 상태 3종: `done`(골드 채운 점 + 날짜) / `pending`(빈 점, 흐린 라벨) / `skipped`(점선 점 + **취소선**)
+  - ⚠️ **"미도달" 과 "거치지 않음" 을 반드시 구분할 것.** 뒤 단계에 날짜가 있는데 앞이 비었으면 그 단계를 안 거친 것이다 (대안반영폐기는 법사위를 건너뛴다 — 법사위 통과는 601건뿐). 둘을 같게 그리면 데이터가 빠진 것처럼 보인다
+  - 컴팩트에선 점 모양만으로는 안 갈려서 skipped 에 취소선을 준다. 상태는 `.pb-sr-only` 로 텍스트도 제공 (`title` 은 스크린리더가 일관되게 안 읽는다)
+- ⚠️ **마지막 단계 라벨을 "본회의" 로 고정하면 안 된다.** API 의 `PROC_DT`/`PROC_RESULT` 는 "최종 처리" 지 본회의 의결이 아니다. **철회(161건)는 발의자가 거두는 것**이라 본회의를 안 거치는데 "본회의 / 철회" 로 나왔다. `FLOOR_RESULTS` 에 없으면 결과명을 라벨로 쓰고 결과는 중복이라 뺀다
+- 정당색 배제: 상태 구분은 **골드(완료) / 회색(미도달) / 점선+취소선(거치지 않음)** 으로만. 가결·부결에 색을 주지 않고 결과는 텍스트로만
+- **레이아웃 내구성** (스트레스 테스트 완료):
+  - 단계 수는 코드에 **5개 고정** — 늘거나 줄지 않는다. 그래도 `flex-wrap` 이라 3~9단계를 넣어도 줄바꿈으로 흡수된다(실측)
+  - ⚠️ **가변 요소는 단계 수가 아니라 마지막 라벨/결과 문자열이다.** `proc_result_name`(varchar 50)이 그대로 들어온다. 현행 값은 최장 7자(`수정안반영폐기`)지만 API 가 긴 값을 주면 `word-break: keep-all` 때문에 한 덩어리가 되어 **페이지가 가로로 밀렸다** (50자 주입 시 103px 오버플로 실측)
+  - → `.tl-label` / `.tl-result` 에 `overflow-wrap: anywhere` + `min-width: 0` (`.tl-step` 에도). 다른 줄바꿈 기회가 없을 때만 강제로 쪼개므로 평소 한글 가독성은 그대로다. 적용 후 **영문 200자를 넣어도 가로 오버플로 0**, 세로로만 늘어난다 (320px 포함)
+- sticky 인덱스에 `경과 > 처리 경과` 그룹 추가. ⚠️ 인덱스 순서는 **DOM 순서와 일치**해야 스크롤 활성 추적이 안 어긋난다
+- 날짜는 `getDetail.sql` 에서 `TO_CHAR(..., 'YYYY-MM-DD')` 로 문자열화해 넘긴다 — DATE 를 JS Date 로 받으면 타임존 해석이 끼어 하루 밀린다
 
 ### `/bill/:id` 법안 원문 섹션 (2026-08-11)
 `#bill-summary-raw` — **두 분기 모두** 노출되지만 역할과 형태가 다르다.
@@ -845,11 +888,39 @@ Railway 설정 (웹 서비스와 **분리된 서비스 1개**, 같은 GitHub rep
 
 ### syncBills.js 결과
 - RST_MONA_CD → bills.mona_cd, PUBL_MONA_CD → bill_co_proposers
-- committee / committee_id 동시 INSERT + ON CONFLICT UPDATE
-- 18,558건 법안 + 238,895건 발의자 (83초, 2026-08-04 실측)
+- committee / committee_id / **처리 단계 날짜 9종** 동시 INSERT + ON CONFLICT UPDATE
+- 18,692건 법안 + 240,391건 발의자 (88초, 2026-08-11 실측)
+- ⚠️ `BILL_UPDATE_SET` 과 `BILL_CHANGED_GUARD` 는 **반드시 같은 컬럼 집합**이어야 한다. 가드에 없는 컬럼을 SET 하면 그 컬럼만 바뀐 행이 UPDATE 되지 않아 조용히 낡는다
+- ⚠️ SET 절에 `updated_at = NOW()` 를 넣지 않는다 — `bills_touch_updated_at()` 트리거가 관리한다
 - **변경 가드** (2026-08-04): `ON CONFLICT DO UPDATE` 에 `IS DISTINCT FROM` WHERE 절 추가 (`BILL_CHANGED_GUARD`). 이전엔 매 실행마다 전건(18,558행) UPDATE → dead tuple 하루 18k. 이제 값이 실제로 바뀐 행만 기록
   - 로그 `bills: 조회 N건 중 신규·변경 M건` — M 은 이제 "바뀐 행" 수 (전체 조회 건수와 다름)
   - 부수효과: `bills.updated_at` 이 "배치 실행 시각" → "법안 실제 변경 시각" 으로 의미 변경. nav 갱신 배지는 `batch_runs` 로 소스 이관, `syncVotes` 증분 조회의 신호로 사용
+
+### ⚠️ `bills.updated_at` 은 트리거가 지킨다 — `bills_touch_updated_at()` (2026-08-11)
+`bills` 전용 트리거. **원천(열린국회 API) 컬럼이 실제로 바뀐 경우에만** `updated_at` 을 민다.
+동기화 부기 컬럼(`summary`, `summary_synced_at`, `vote_synced_at`)만 바뀌면 이전 값을 유지한다.
+
+- **왜 필요했나**: 원래 공용 트리거 `update_updated_at()` 이 걸려 있어 **어떤 UPDATE 든** `updated_at` 을 밀었다.
+  `syncBillSummary` 가 summary 백필로 18,631행을 UPDATE 하자 전건이 같은 시각으로 밀렸고,
+  `syncVotes` 증분(4,541건 전건 재스캔 예약) · `syncBillAiAnalysis` 재분석(116건 오탐)이 동시에 깨졌다
+- ⚠️ **공용 `update_updated_at()` 은 건드리지 않는다** — 다른 8개 트리거가 쓰고 있다
+- ⚠️ **`bills` 에 컬럼을 추가하면 트리거 함수의 `ROW(...)` 목록에도 넣을 것.**
+  안 넣으면 그 컬럼 변경이 `updated_at` 을 못 밀어 증분 배치가 조용히 놓친다
+- 마이그레이션: `ddl/migrations/2026-08-11-bills-updated-at-trigger.sql`
+
+> 🔴 **`bills.updated_at` 은 2026-08-11 이전 값이 전부 유실됐다. 그 전 시점의 변경 이력으로 쓰지 말 것.**
+> summary 백필이 18,671건 전건을 `2026-08-11 01:07` 로 덮었고 원본은 복구 불가다 (감사 테이블 없음).
+> - **신뢰 경계**: 2026-08-11 이후 실제로 바뀐 법안만 정상 값을 가진다. 그 이후로 안 바뀐 법안은 08-11 에 머문다
+> - **`created_at` 으로 되돌리지 않았다** — `created_at` 은 "법안이 생긴 날" 이 아니라 "우리가 처음 긁어온 날" 이라
+>   16,817건(90%)이 `2026-04-21` 최초 일괄수집일에 몰려 있다. 채워 넣으면 또 다른 거짓이 되고,
+>   syncVotes 재스캔까지 건너뛰게 만들어 진짜 표결을 놓친다
+> - 다행히 **사용자 노출은 0** 이다: `getListOne.sql`·`getAiAnalysis.sql` 의 SELECT 목록에만 있고 뷰·스크립트 참조가 없으며,
+>   `dataFreshness` 의 `MAX(bills.updated_at)` 은 `batch_runs` 가 비었을 때만 쓰는 COALESCE 폴백이다
+> - ⚠️ **"법안이 언제 처리됐나" 는 `updated_at` 으로 알 수 없다** (어느 컬럼이 바뀌었는지 기록이 없음).
+>   그건 `bills.proc_dt` 등 **처리 단계 날짜 컬럼**을 쓸 것 — 아래 참조
+- 검증된 동작: `summary`/`summary_synced_at`/`vote_synced_at` 단독 변경 → 유지 /
+  `committee`·`proc_result_name`·`bill_name` 변경 → 밀림 / 부기+원천 동시 → 밀림 / 값 동일 UPDATE → 유지
+- 참고: `NOW()` 는 트랜잭션 시작 시각 고정이라 한 배치 트랜잭션 안의 `updated_at` 은 모두 같은 값이다 (정상)
 
 ### syncVotes.js 증분 스캔 (2026-08-04)
 대상 조회에 `AND (vote_synced_at IS NULL OR updated_at > vote_synced_at)` 추가.

@@ -96,20 +96,52 @@ async function fetchAllBills(age) {
 }
 
 // --- Bulk Upsert ---
-const BILL_COLUMNS = '(bill_id, bill_no, bill_name, propose_dt, proc_result_name, age_cd, link_url, mona_cd, proposer_name, committee, committee_id, co_proposer_count)';
-const BILL_COL_COUNT = 12;
+// 처리 단계 날짜 9개는 API 가 이미 주던 값이다 (예전엔 받아놓고 버렸다).
+// 저장하면 "언제 처리됐나" 를 추가 호출 0회로 전건 소급 확보한다 — 상태 이력 테이블이 불필요해진다.
+const BILL_COLUMNS = `(bill_id, bill_no, bill_name, propose_dt, proc_result_name, age_cd, link_url,
+                       mona_cd, proposer_name, committee, committee_id, co_proposer_count,
+                       committee_dt, cmt_present_dt, cmt_proc_dt, cmt_proc_result,
+                       law_submit_dt, law_present_dt, law_proc_dt, law_proc_result, proc_dt)`;
+const BILL_COL_COUNT = 21;
+
+// UPDATE 대상 컬럼 — 아래 CHANGED_GUARD 와 **반드시 같은 집합**이어야 한다.
+// 가드에 없는 컬럼을 SET 하면 그 컬럼만 바뀐 행이 UPDATE 되지 않아 조용히 낡는다.
+const BILL_UPDATE_SET = `
+                bill_name        = EXCLUDED.bill_name,
+                proc_result_name = EXCLUDED.proc_result_name,
+                committee        = EXCLUDED.committee,
+                committee_id     = EXCLUDED.committee_id,
+                committee_dt     = EXCLUDED.committee_dt,
+                cmt_present_dt   = EXCLUDED.cmt_present_dt,
+                cmt_proc_dt      = EXCLUDED.cmt_proc_dt,
+                cmt_proc_result  = EXCLUDED.cmt_proc_result,
+                law_submit_dt    = EXCLUDED.law_submit_dt,
+                law_present_dt   = EXCLUDED.law_present_dt,
+                law_proc_dt      = EXCLUDED.law_proc_dt,
+                law_proc_result  = EXCLUDED.law_proc_result,
+                proc_dt          = EXCLUDED.proc_dt`;
 
 // ON CONFLICT DO UPDATE 가드 — 실제로 값이 바뀐 행만 UPDATE.
 // 없으면 매 실행마다 18,000+ 행을 무조건 재기록해 dead tuple 이 하루 18k씩 쌓인다.
-// DO UPDATE SET 이 건드리는 4개 컬럼만 비교하면 충분.
 // 부수효과: bills.updated_at 이 "실제 변경 시각"이 되므로
 //   · syncVotes 증분 조회(updated_at > vote_synced_at)의 신호가 되고
 //   · nav 갱신 배지는 batch_runs 로 소스를 옮겼다 (utils/dataFreshness.js).
+// ⚠️ updated_at 은 이제 `bills_touch_updated_at()` 트리거가 관리한다.
+//    SET 절의 `updated_at = NOW()` 는 트리거가 덮어쓰므로 넣지 않는다.
 const BILL_CHANGED_GUARD = `
              WHERE bills.bill_name        IS DISTINCT FROM EXCLUDED.bill_name
                 OR bills.proc_result_name IS DISTINCT FROM EXCLUDED.proc_result_name
                 OR bills.committee        IS DISTINCT FROM EXCLUDED.committee
-                OR bills.committee_id     IS DISTINCT FROM EXCLUDED.committee_id`;
+                OR bills.committee_id     IS DISTINCT FROM EXCLUDED.committee_id
+                OR bills.committee_dt     IS DISTINCT FROM EXCLUDED.committee_dt
+                OR bills.cmt_present_dt   IS DISTINCT FROM EXCLUDED.cmt_present_dt
+                OR bills.cmt_proc_dt      IS DISTINCT FROM EXCLUDED.cmt_proc_dt
+                OR bills.cmt_proc_result  IS DISTINCT FROM EXCLUDED.cmt_proc_result
+                OR bills.law_submit_dt    IS DISTINCT FROM EXCLUDED.law_submit_dt
+                OR bills.law_present_dt   IS DISTINCT FROM EXCLUDED.law_present_dt
+                OR bills.law_proc_dt      IS DISTINCT FROM EXCLUDED.law_proc_dt
+                OR bills.law_proc_result  IS DISTINCT FROM EXCLUDED.law_proc_result
+                OR bills.proc_dt          IS DISTINCT FROM EXCLUDED.proc_dt`;
 
 const CO_PROPOSER_COLUMNS = '(bill_id, bill_no, mona_cd, proposer_yn)';
 const CO_PROPOSER_COL_COUNT = 4;
@@ -120,12 +152,7 @@ async function bulkUpsertBills(pool, rows) {
     try {
         const result = await pool.query(
             `INSERT INTO bills ${BILL_COLUMNS} VALUES ${clause}
-             ON CONFLICT (bill_id) DO UPDATE SET
-                bill_name = EXCLUDED.bill_name,
-                proc_result_name = EXCLUDED.proc_result_name,
-                committee = EXCLUDED.committee,
-                committee_id = EXCLUDED.committee_id,
-                updated_at = NOW()
+             ON CONFLICT (bill_id) DO UPDATE SET ${BILL_UPDATE_SET}
              ${BILL_CHANGED_GUARD}`,
             params
         );
@@ -136,14 +163,10 @@ async function bulkUpsertBills(pool, rows) {
         let count = 0;
         for (const row of rows) {
             try {
+                const ph = row.map((_, i) => `$${i + 1}`).join(',');
                 await pool.query(
-                    `INSERT INTO bills ${BILL_COLUMNS} VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-                     ON CONFLICT (bill_id) DO UPDATE SET
-                        bill_name = EXCLUDED.bill_name,
-                        proc_result_name = EXCLUDED.proc_result_name,
-                        committee = EXCLUDED.committee,
-                        committee_id = EXCLUDED.committee_id,
-                        updated_at = NOW()
+                    `INSERT INTO bills ${BILL_COLUMNS} VALUES (${ph})
+                     ON CONFLICT (bill_id) DO UPDATE SET ${BILL_UPDATE_SET}
                      ${BILL_CHANGED_GUARD}`,
                     row
                 );
@@ -240,6 +263,16 @@ async function runBillSync(assemblyAge) {
                 bill.COMMITTEE || null,
                 bill.COMMITTEE_ID || null,
                 coProposerList.length,
+                // 처리 단계 날짜 — 계류 법안은 대부분 NULL 이고, 진행될수록 앞에서부터 채워진다
+                formatDate(bill.COMMITTEE_DT),      // 소관위 회부
+                formatDate(bill.CMT_PRESENT_DT),    // 위원회 상정
+                formatDate(bill.CMT_PROC_DT),       // 위원회 처리
+                bill.CMT_PROC_RESULT_CD || null,    // (필드명은 _CD 지만 값은 '원안가결' 같은 텍스트)
+                formatDate(bill.LAW_SUBMIT_DT),     // 법사위 회부
+                formatDate(bill.LAW_PRESENT_DT),    // 법사위 상정
+                formatDate(bill.LAW_PROC_DT),       // 법사위 처리
+                bill.LAW_PROC_RESULT_CD || null,
+                formatDate(bill.PROC_DT),           // 본회의 의결
             ]);
 
             // 대표발의자 — 공동대표 모두 proposer_yn=1
