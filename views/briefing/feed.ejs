@@ -48,8 +48,8 @@
             <a class="bf-card-date" href="/briefing/<%= p.id %>"><%= p.briefing_date.replace(/-/g, '.') %></a>
             <%# ⚠️ AI 가 쓴 것과 SQL 로 조립한 것을 반드시 구분해 표시한다.
                 폴백 카드를 "AI 브리핑" 으로 보이게 하면 안 된다. %>
-            <span class="bf-badge<%= p.isAi ? ' is-ai' : '' %>">
-              <%= p.isAi ? '🤖 AI 브리핑' : '데이터 요약' %>
+            <span class="bf-badge<%= p.isAi ? ' is-ai' : (p.isEmpty ? ' is-empty' : '') %>">
+              <%= p.isAi ? '🤖 AI 브리핑' : (p.isEmpty ? '활동 없음' : '데이터 요약') %>
             </span>
           </div>
 
@@ -161,6 +161,10 @@
     border: 1px solid var(--border2); border-radius: 5px; padding: 2px 8px; white-space: nowrap;
   }
   .bf-badge.is-ai { color: #8F5800; border-color: #8F5800; background: #FBF5EA; }
+  /* 활동 없음 — 카드 자체를 톤다운해서 스크롤 시 시선을 뺏지 않게 (내용이 없는 게 요점이다) */
+  .bf-badge.is-empty { color: var(--sub2); border-style: dashed; }
+  .bf-card:has(.is-empty) { background: var(--bg3); }
+  .bf-card:has(.is-empty) .bf-card-head { font-size: 17px; color: var(--sub); }
 
   .bf-card-head {
     display: block; font-family: 'Noto Serif KR', serif; font-size: 21px; font-weight: 700;

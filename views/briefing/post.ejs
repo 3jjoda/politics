@@ -13,8 +13,8 @@
     <div class="bp-top">
       <span class="bp-date"><%= p.briefing_date.replace(/-/g, '.') %></span>
       <%# AI 가 쓴 것 ↔ SQL 로 조립한 것을 구분. 폴백을 AI 로 보이게 하면 안 된다 %>
-      <span class="bp-badge<%= p.isAi ? ' is-ai' : '' %>">
-        <%= p.isAi ? '🤖 AI 브리핑' : '데이터 요약' %>
+      <span class="bp-badge<%= p.isAi ? ' is-ai' : (p.isEmpty ? ' is-empty' : '') %>">
+        <%= p.isAi ? '🤖 AI 브리핑' : (p.isEmpty ? '활동 없음' : '데이터 요약') %>
       </span>
     </div>
 
@@ -30,6 +30,10 @@
         문장과 주제 묶음은 AI가 법안 원문을 읽고 정리한 것으로,
         <strong>묶음이 어긋나거나 내용이 사실과 다를 수 있습니다.</strong>
         아래 법안 원문 링크로 직접 확인해보세요.
+      <% } else if (p.isEmpty) { %>
+        <%# AI 를 부르지 않은 카드다. AI 고지를 달면 안 나간 생성물을 나간 것처럼 말하는 게 된다 %>
+        국회 공식 데이터에 <strong>이날 기록된 활동이 없어</strong> 자동으로 남긴 카드입니다.
+        AI가 작성하지 않았습니다.
       <% } else { %>
         AI 없이 <strong>데이터 집계만으로 조립한 요약</strong>입니다.
       <% } %>
@@ -159,6 +163,7 @@
   .bp-date { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--sub2); letter-spacing: 0.06em; }
   .bp-badge { font-size: 11px; font-weight: 600; color: var(--sub2); border: 1px solid var(--border2); border-radius: 5px; padding: 2px 8px; }
   .bp-badge.is-ai { color: #8F5800; border-color: #8F5800; background: #FBF5EA; }
+  .bp-badge.is-empty { color: var(--sub2); border-style: dashed; }
 
   .bp-head { font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 900; line-height: 1.4; color: var(--text); margin: 0 0 14px; word-break: keep-all; }
   .bp-body { font-size: 16px; line-height: 1.85; color: var(--text); margin: 0 0 14px; word-break: keep-all; }

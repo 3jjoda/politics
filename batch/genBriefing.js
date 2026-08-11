@@ -10,14 +10,18 @@
 //    평가가 섞이기 쉽고, 그건 이 서비스 브랜드(정당색 배제)를 정면으로 깬다.
 //    프롬프트에서 금지하고, 생성 후 금지어 검사로 한 번 더 거른다.
 //
-// 인자: --date YYYY-MM-DD (기본: 카드 없는 가장 최근 발의일. 지정 시 창·중복검사 모두 무시)
-//       --limit N        (여러 날 소급 생성, 기본 1)
-//       --window N       (최근 N일만 대상. 기본 30, `0` 이면 제한 없음 = 전체 과거 백필)
-//       --force          (이미 있는 날도 다시 생성)
+// 인자: --date YYYY-MM-DD (특정일 강제. START_DATE·주말·지연·중복검사를 **전부** 무시)
+//       --limit N        (여러 날 한 번에, 기본 1)
+//       --force          (이미 카드가 있는 날도 다시 생성)
 //       --dry-run        (DB 안 씀)
 //
-// 크론(`batch:daily`)은 인자 없이 부른다 → 최근 30일 안에서 카드 없는 최신 발의일 1건.
-// 과거를 메우려면 의도적으로: `node batch/genBriefing.js --window 0 --limit 50`
+// 크론(`batch:daily`)은 인자 없이 부른다 → 카드 없는 가장 최근 대상일 1건.
+// 대상일 = START_DATE 이후 & (활동 있음 | 평일이고 지연 경과) — pickDays 참조.
+//
+// 카드 종류 3가지 (`model` 컬럼이 가른다):
+//   MODEL      🤖 AI 브리핑  — 정상
+//   'fallback' 데이터 요약    — AI 실패 시 SQL 집계로 조립
+//   'none'     활동 없음      — 그날 발의·처리가 0건 (AI 호출 안 함)
 
 import pg from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
@@ -37,12 +41,20 @@ const argv = process.argv.slice(2);
 const argOf = (name) => { const i = argv.indexOf(name); return i > -1 ? argv[i + 1] : null; };
 const DATE_ARG = argOf('--date');
 const LIMIT = Number(argOf('--limit') || 1);
-// 자동 실행이 과거로 무한히 거슬러 올라가지 않게 하는 창.
-// 실측(2026-08-12): 발의일 537일 중 카드 없는 날이 527일 — 창이 없으면 새 발의일이 없는 날마다
-// 2024년까지 하나씩 파고들어 **피드 1페이지에 절대 안 보이는 카드**를 매일 만든다.
-// 과거 백필은 의도적으로 할 일이므로 `--window 0` 또는 `--date` 로 명시한다.
-const WINDOW_ARG = argOf('--window');
-const WINDOW_DAYS = WINDOW_ARG === null ? 30 : Number(WINDOW_ARG);   // 0 = 제한 없음
+
+/* 🔴 서비스 시작일 — 이 날짜 **이전은 브리핑하지 않는다.**
+   과거 발의일이 527일(2024-05-30까지) 쌓여 있어서, 바닥을 두지 않으면 배치가 매일
+   과거로 한 칸씩 파고든다. 롤링 창(--window)으로도 막을 수 있지만 그건 "얼마나 과거까지" 가
+   시간이 갈수록 따라 움직인다 — 여기서 필요한 건 **고정된 시작점**이다.
+   과거 특정일을 굳이 만들려면 `--date 2026-07-01` 로 명시하면 이 바닥을 넘어간다. */
+const START_DATE = '2026-08-13';
+
+/* 원천 데이터 지연 — 발의일로부터 우리 DB 에 들어오기까지 걸리는 날 수.
+   실측(2026-08 기준) 1~2일. 여유를 둬 3일.
+   ⚠️ **"발의 없음" 카드를 쓸 때 이 값이 결정적이다.** 지연이 지나기 전에 "이날은 발의가
+      없었다" 고 단정하면, 실제로는 30건이 발의됐는데 아직 안 들어온 것일 수 있다.
+      카드는 한 번 쓰면 다시 안 고치므로 그 거짓이 영구히 남는다. */
+const INGEST_LAG_DAYS = 3;
 const FORCE = argv.includes('--force');
 const DRY = argv.includes('--dry-run');
 
@@ -335,27 +347,74 @@ function composeFallback(d) {
     };
 }
 
-/* ── 대상 날짜 고르기 ── */
-async function pickDays(pool) {
-    if (DATE_ARG) return [DATE_ARG];
+/* ── "활동 없음" 카드 ──
+   ⚠️ **AI 를 부르지 않는다.** 요약할 내용이 없는데 문장을 지어내라고 하면 없는 사실이 나온다.
+   그리고 "없습니다" 한 줄로 끝내면 정보량이 0이라 카드를 만든 의미가 없으므로,
+   **마지막 활동이 언제 몇 건이었는지**를 붙여 독자가 공백의 길이를 가늠할 수 있게 한다. */
+async function composeEmpty(pool, day) {
+    const { rows: [prev] } = await pool.query(`
+        WITH last AS (SELECT MAX(propose_dt) AS day FROM bills WHERE propose_dt < $1)
+        SELECT TO_CHAR(l.day, 'YYYY-MM-DD')                                        AS day
+             , ($1::date - l.day)::int                                             AS days_ago
+             , (SELECT COUNT(*) FROM bills b WHERE b.propose_dt = l.day)::int      AS cnt
+          FROM last l WHERE l.day IS NOT NULL`, [day]);
 
-    // 창은 파라미터로 바인딩한다 — 숫자를 SQL 문자열에 끼워넣지 않는다
-    const params = [LIMIT];
-    let windowClause = '';
-    if (Number.isFinite(WINDOW_DAYS) && WINDOW_DAYS > 0) {
-        params.push(WINDOW_DAYS);
-        windowClause = `AND propose_dt > CURRENT_DATE - $${params.length}::int`;
+    const s = ['이날 국회에 새로 발의된 법안이 없고, 본회의·위원회에서 처리된 안건도 없습니다.'];
+    if (prev) {
+        s.push(`가장 최근 발의는 ${prev.day.replace(/-/g, '.')}(${prev.days_ago}일 전) ${prev.cnt}건이었습니다.`);
     }
 
+    return {
+        headline: '이날 국회에 기록된 활동이 없습니다',
+        body: s.join(' '),
+        threads: [],
+        keywords: [],
+        usage: { input_tokens: 0, output_tokens: 0 },
+        empty: true,
+    };
+}
+
+/* ── 대상 날짜 고르기 ── */
+/* 대상 날짜 고르기 — **달력 기준**이다 (bills 에 있는 발의일 목록이 아니라).
+   발의가 0건인 날도 후보에 넣어야 "이날은 발의가 없었습니다" 카드를 쓸 수 있기 때문.
+   이전에는 `FROM bills` 로 뽑아서 발의 없는 날은 아예 존재하지 않는 것처럼 취급됐다.
+
+   ⚠️ **주말은 제외한다.** 실측 최근 119일에서 주말 34일은 **예외 없이 전부** 발의 0건이었다.
+      매주 토·일에 "발의 없음" 을 남기면 연 104장이 쌓이는데, 국회가 원래 안 하는 날이라
+      정보가 아니라 노이즈다. 평일 무발의는 85일 중 6일(7%)뿐이라 그건 진짜 신호다.
+      (주말에 본회의가 열리는 예외가 생기면 아래 `has_activity` 가 잡아준다.) */
+async function pickDays(pool) {
+    if (DATE_ARG) return [DATE_ARG];      // 명시 지정은 시작일·주말·지연을 전부 무시한다
+
     const { rows } = await pool.query(`
-        SELECT TO_CHAR(propose_dt, 'YYYY-MM-DD') AS day
-          FROM bills
-         WHERE propose_dt IS NOT NULL
-           ${FORCE ? '' : 'AND NOT EXISTS (SELECT 1 FROM briefing_posts bp WHERE bp.briefing_date = bills.propose_dt)'}
-           ${windowClause}
-         GROUP BY propose_dt
-         ORDER BY propose_dt DESC
-         LIMIT $1`, params);
+        WITH days AS (
+            SELECT generate_series($1::date, CURRENT_DATE - 1, '1 day')::date AS day
+        ), enriched AS (
+            SELECT d.day
+                 , EXISTS (SELECT 1 FROM bills b WHERE b.propose_dt = d.day) AS has_bills
+                 , EXISTS (SELECT 1 FROM bills b
+                            WHERE b.proc_dt = d.day OR b.cmt_proc_dt = d.day) AS has_proc
+              FROM days d
+        )
+        SELECT TO_CHAR(e.day, 'YYYY-MM-DD') AS day
+          FROM enriched e
+         WHERE (
+                 -- 활동이 있는 날은 주말이라도 대상 (주말 본회의 등 예외 대응)
+                 e.has_bills OR e.has_proc
+                 -- 활동이 없는 날은 평일만, 그리고 원천 지연이 지난 뒤에만 "없음" 으로 확정
+                 OR (EXTRACT(ISODOW FROM e.day) < 6 AND e.day <= CURRENT_DATE - $2::int)
+               )
+           ${FORCE ? '' : `AND (
+                 NOT EXISTS (SELECT 1 FROM briefing_posts bp WHERE bp.briefing_date = e.day)
+                 -- "발의 없음" 으로 써둔 카드는 나중에 법안이 들어오면 **다시 만든다.**
+                 -- 지연 때문에 빈 카드를 잘못 쓴 경우를 스스로 교정하는 유일한 장치다.
+                 OR EXISTS (SELECT 1 FROM briefing_posts bp
+                             WHERE bp.briefing_date = e.day
+                               AND COALESCE((bp.stats->>'proposed')::int, 0) = 0
+                               AND e.has_bills)
+               )`}
+         ORDER BY e.day DESC
+         LIMIT $3`, [START_DATE, INGEST_LAG_DAYS, LIMIT]);
     return rows.map((r) => r.day);
 }
 
@@ -370,25 +429,27 @@ async function run() {
         const days = await pickDays(pool);
         if (days.length === 0) {
             // 창 안에 새 발의일이 없는 정상 상태다 (주말·휴회). 실패가 아니다.
-            logger.info(`[생성] 대상 날짜가 없습니다 — 최근 ${WINDOW_DAYS}일 내 새 발의일이 모두 생성됨.`);
+            logger.info(`[생성] 대상 날짜가 없습니다 — ${START_DATE} 이후 대상일이 모두 생성됨.`);
             await finishBatchRun(pool, runId, { status: 'success', stats: { generated: 0, skipped: true } });
             return;
         }
         logger.info(`[생성] 대상 ${days.length}일: ${days.join(', ')}`);
 
         const anthropic = new Anthropic();
-        let ok = 0, failed = 0, fellBack = 0, cost = 0;
+        let ok = 0, failed = 0, fellBack = 0, empty = 0, cost = 0;
 
         for (const day of days) {
             const d = await collect(pool, day);
-            if (d.proposed.cnt === 0 && d.floor.length === 0) {
-                logger.info(`  ${day} — 발의·처리 모두 없음, 건너뜀`);
-                continue;
-            }
 
             try {
                 let g;
-                try {
+                const nothing = d.proposed.cnt === 0 && d.floor.length === 0 && d.committeeProc.length === 0;
+                if (nothing) {
+                    // AI 를 부르지 않는다 — 요약할 내용이 없는데 문장을 짓게 하면 없는 사실이 나온다
+                    g = await composeEmpty(pool, day);
+                    empty++;
+                    logger.info(`  ${day} — 활동 없음 카드 ("${g.headline}")`);
+                } else try {
                     g = await generate(anthropic, d);
                 } catch (aiErr) {
                     // AI 실패(키 만료·장애·중립성 탈락)해도 피드를 비우지 않는다.
@@ -431,7 +492,8 @@ async function run() {
                         [day, g.headline, g.body, JSON.stringify(g.keywords), JSON.stringify(stats),
                          JSON.stringify(d.topBills.map((b) => b.bill_id)),
                          JSON.stringify(g.threads || []),
-                         g.fallback ? 'fallback' : MODEL,   // 화면에서 "AI 브리핑" ↔ "데이터 요약" 을 가르는 값
+                         // 화면 배지를 가르는 값: none=활동 없음 / fallback=데이터 요약 / 그 외=AI 브리핑
+                         g.empty ? 'none' : (g.fallback ? 'fallback' : MODEL),
                          PROMPT_VERSION, g.usage.input_tokens, g.usage.output_tokens, c.toFixed(6)]);
                 }
                 ok++;
@@ -441,7 +503,7 @@ async function run() {
             }
         }
 
-        logger.info(`[Briefing Gen SUCCESS] 생성 ${ok}건 (AI ${ok - fellBack} / 폴백 ${fellBack}) / 실패 ${failed}건 / 비용 $${cost.toFixed(4)} (${((Date.now() - started) / 1000).toFixed(1)}초)`);
+        logger.info(`[Briefing Gen SUCCESS] 생성 ${ok}건 (AI ${ok - fellBack - empty} / 폴백 ${fellBack} / 활동없음 ${empty}) / 실패 ${failed}건 / 비용 $${cost.toFixed(4)} (${((Date.now() - started) / 1000).toFixed(1)}초)`);
         if (fellBack > 0) logger.warn(`  ⚠ 폴백 ${fellBack}건 — ANTHROPIC_API_KEY 확인 후 --force 로 다시 생성하세요.`);
         await finishBatchRun(pool, runId, { status: 'success', stats: { generated: ok, fallback: fellBack, failed, costUsd: Number(cost.toFixed(6)) } });
     } catch (error) {

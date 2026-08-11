@@ -37,10 +37,14 @@ export default (db) => {
        ⚠️ `model === 'fallback'` 이면 AI 가 아니라 **SQL 집계로 조립한 카드**다 (API 장애·키 만료 시).
           화면에서 "AI 브리핑" 이 아니라 "데이터 요약" 으로 표시해야 한다 — AI 가 쓴 것처럼 보이면 안 된다. */
     function shapePost(p) {
-        const isAi = p.model && p.model !== 'fallback';
+        // model 이 카드 종류를 가른다: 'none'=활동 없음 / 'fallback'=SQL 집계 / 그 외=AI
+        // ⚠️ isAi 를 `model !== 'fallback'` 로만 판정하면 'none' 이 AI 카드로 표시된다.
+        const isEmpty = p.model === 'none';
+        const isAi = !!p.model && p.model !== 'fallback' && !isEmpty;
         return {
             ...p,
             isAi,
+            isEmpty,
             keywords: Array.isArray(p.keywords) ? p.keywords : [],
             stats: p.stats || {},
             // 주제 묶음 (b2~). b1 카드·폴백 카드는 빈 배열이라 뷰가 그냥 안 그린다
