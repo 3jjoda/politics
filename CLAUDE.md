@@ -112,6 +112,10 @@ $$ LANGUAGE plpgsql;
   - 결과: `bill_votes` / `bill_co_proposers` 에 해당 mona_cd 기록은 남아있지만 JOIN miss → 이름·정당·사진 렌더 불가. UI 는 "(퇴임)" fallback 으로 처리 (voter-list / proposer-chip)
   - 근본 해결은 "역대 국회의원 API" 전환 — [ROADMAP.md](./ROADMAP.md) 베타 오픈 전 필수 3번
 - `politician_party_memberships` — 의원-정당 이력
+- `briefing_posts` — **브리핑 카드** (2026-08-11, `genBriefing.js`). `briefing_date` UNIQUE 라 하루 1장.
+  `stats`(SQL 집계) · `threads`(주제 묶음, v2) · `keywords` · `bill_ids` JSONB. 상세는 아래 "`/briefing` AI 카드 피드"
+  - ⚠️ `id` 가 **연속하지 않는다** — `GENERATED ALWAYS AS IDENTITY` 가 ON CONFLICT 판정 전에 값을 뽑아 `--force` 재실행이 시퀀스를 태운다
+  - ⚠️ `stats`·`threads[].bill_count` 는 **AI 출력이 아니라 SQL/코드 산출값**이다 (숫자를 생성물에서 받지 않는다는 원칙)
 - `politician_titles` — **의원 특수 직위** (2026-08-12 신규). 의장단·국무위원·교섭단체·당직 4종. **전부 수동 입력** (`ddl/seeds/politician_titles.sql`) — 자동 수집 경로가 없다. 상세는 아래 "특수 직위 배지" 참조. ⚠️ 상임위 직위는 여기가 아니라 `politician_committees`
 - `politician_committees` — **위원회 위원 명단** (2026-08-12 신규, `syncCommittees.js`). 실측 477행 / 23개 위원회 / 의원 298명(1~6개 중복 소속) / 미소속 11명
   - 소스 `nktulghcadyhmiqxi` 가 **`MONA_CD` 를 직접 준다** — 이름 매칭이 필요 없다 (발언영상 API 는 이름 문자열만 줘서 파싱이 필요한 것과 대조)
@@ -350,7 +354,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | 경로 | 뷰 | 설명 |
 |---|---|---|
 | `/` | `views/index.ejs` | 홈 (KPI, 주목 법안, 최근 표결, 최근 정당 이동, 활발 의원, 월별 추이) |
-| `/briefing` | `briefing/feed.ejs` | **브리핑 피드** — AI 카드가 하루 단위로 쌓인다 + 상단 주간 요약 스트립 |
+| `/briefing` | `briefing/feed.ejs` | **브리핑 피드** — AI 카드가 하루 단위로 쌓인다 + 상단 주간 요약 스트립. `?page=N` (20건/페이지) |
 | `/briefing/:id` | `briefing/post.ejs` | 브리핑 카드 상세 — **댓글·공유의 단위**. 그날 숫자 · 대표 법안 · 키워드별 뉴스 검색 링크 |
 | `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터) |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
@@ -724,6 +728,7 @@ v1 은 `"3~4문장. 무엇이 몇 건 있었고 어디에 몰렸는지"` 를 시
 - 입력: 상위 5건 × 160자 → **그날 전건 × 400자**. 5건만 주면 "여러 건을 관통하는 주제" 요구 자체가 성립하지 않는다
 - 출력에 `threads[{theme, what, bill_count, bill_ids}]` 추가 (0~3개, 2건 이상일 때만)
 - 비용: 하루 $0.0035 → **$0.014~0.028** (법안 수에 비례, 51건이 최대 실측). 연 $1.3 → **약 $6**
+- `prompt_version` 으로 세대를 가른다 — `'b1'`(집계 재서술, 폐기) / `'b2'`(주제 종합). 현재 25건 전부 b2
 - ⚠️ 폴백은 `threads: []` 다 — 내용을 읽어야 나오는 것이라 SQL 로 만들 수 없다. 뷰가 빈 배열을 정상 처리한다
 - ⚠️ `briefing_posts.id` 는 **연속하지 않는다** (실측 1~6, 13~16). `GENERATED ALWAYS AS IDENTITY` 가
   ON CONFLICT 판정 **전에** 값을 뽑아서 `--force` 재실행이 시퀀스를 태운다. 정상 동작이니 지우고 다시 넣지 말 것
@@ -780,8 +785,15 @@ offset 을 직접 만들면 `FEED_PAGE` 와 어긋나 카드가 건너뛰거나 
   프롬프트에도 `[집계 범위] … **하루**` 로 명시한다 — 날짜만 주면 AI 가 기간을 임의로 넓힌다
 - ⚠️ **`threads[].what` 도 `body` 와 같은 검사를 받아야 한다.** 화면에 그대로 나가므로, 본문만 검사하면 중립성·기간 문제가 threads 로 샌다
 - ⚠️ **중립성이 이 배치의 최대 리스크다.** 프롬프트에서 정당 평가·대립 구도·의도 추측을 금지하고, 생성 후 **금지어 검사**(`여당`·`밀어붙`·`강행`·`독주` 등)로 한 번 더 거른다. 탈락하면 폐기하고 폴백으로 간다
-- **AI 실패 시 SQL 폴백 카드** — API 장애·키 만료로 피드가 비는 것을 막는다. 집계된 사실만 문장으로 이어 붙이므로 거짓이 안 들어간다.
-  `model='fallback'` 로 저장되어 화면에서 **"데이터 요약"**(AI 카드는 "🤖 AI 브리핑")으로 구분된다. 키 복구 후 `--force` 로 덮어쓴다
+- **카드 종류는 3가지이고 `model` 컬럼이 가른다.** 화면 배지도 이 셋으로 갈린다:
+
+  | `model` | 배지 | 언제 |
+  |---|---|---|
+  | `claude-haiku-4-5-…` | 🤖 AI 브리핑 | 정상 |
+  | `'fallback'` | 데이터 요약 | AI 실패(장애·키 만료·검사 탈락) → SQL 집계로 조립. 키 복구 후 `--force` 로 덮어쓴다 |
+  | `'none'` | 활동 없음 | 그날 발의·처리가 0건. **AI 를 호출하지 않는다** ($0) |
+
+  폴백은 집계된 사실만 이어 붙이므로 거짓이 안 들어간다 — 피드가 비는 것을 막는 장치다.
 - 댓글·좋아요는 `comments.type` / `likes.type` 에 `'briefing'` 을 추가해 **기존 위젯을 그대로 재사용**한다
   - ⚠️ **DB CHECK 만 넓히면 안 된다.** `services/CommentService.js` 의 `VALID_TYPES`, `services/LikeService.js` 의 `VALID` 도 같이 넓혀야 한다 — 한쪽만 하면 조용히 400 이 난다 (실제로 겪음)
   - ⚠️ **`comments.target_id` 는 VARCHAR 인데 `likes.target_id` 는 INTEGER 다** (실측). 조인 시 전자는 `::text`, 후자는 그대로 비교해야 한다. 이 문서에 likes 가 VARCHAR(50) 으로 적혀 있었으나 실제 스키마와 다르다
@@ -790,7 +802,7 @@ offset 을 직접 만들면 `FEED_PAGE` 와 어긋나 카드가 건너뛰거나 
 
 ### `/briefing` 주간 요약 스트립 (구 1단계 대시보드)
 ```
-daos/queries/briefing/*.sql   ← 6개 쿼리
+daos/queries/briefing/*.sql   ← 9개 (스트립 7 + 피드 getFeed·getPost)
 daos/BriefingDao.js           ← XrayDao 와 같은 "파일명 = 키" 로더
 services/BriefingService.js   ← 조립 + 10분 메모리 캐시 + inflight 공유
 controllers/BriefingController.js
