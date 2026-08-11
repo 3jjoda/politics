@@ -1,0 +1,188 @@
+<%
+  const s = b.summary;
+  const avgPerDay = s.active_days > 0 ? Math.round(s.proposed / s.active_days * 10) / 10 : 0;
+%>
+
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <div>
+      <h1 class="pb-page-title">BRIEFING</h1>
+      <p class="pb-page-desc">
+        국회에 무슨 일이 있었는지 하루 단위로 정리합니다.
+        <% if (locals.dataFreshness && dataFreshness.relative) { %>
+          <span class="bf-fresh">· 데이터 <%= dataFreshness.relative %> 갱신</span>
+        <% } %>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="bf-wrap">
+
+  <!-- 주간 요약 스트립 — 피드가 본체이므로 집계는 한 줄로 압축 -->
+  <section class="bf-strip">
+    <div class="bf-strip-nums">
+      <span class="bf-strip-item">최근 <%= b.windowDays %>일 <b><%= nf(s.proposed) %></b>건 발의</span>
+      <span class="bf-strip-sep">·</span>
+      <span class="bf-strip-item">의원 <b><%= nf(s.proposers) %></b>명</span>
+      <span class="bf-strip-sep">·</span>
+      <span class="bf-strip-item">하루 평균 <%= avgPerDay %>건</span>
+    </div>
+    <div class="bf-spark" role="img" aria-label="최근 <%= b.trendDays %>일 일별 발의 추이">
+      <% b.daily.forEach((d) => { %>
+        <span class="bf-spark-col<%= d.isWeekend ? ' is-weekend' : '' %>" title="<%= d.day %> · <%= d.cnt %>건">
+          <span class="bf-spark-bar" style="height: <%= b.dailyMax > 0 ? Math.max(2, Math.round(d.cnt / b.dailyMax * 100)) : 2 %>%"></span>
+        </span>
+      <% }); %>
+    </div>
+  </section>
+
+  <!-- ===== 피드 ===== -->
+  <% if (!feed.posts.length) { %>
+    <p class="bf-empty">아직 브리핑이 없습니다. 배치가 돌면 하루 단위로 쌓입니다.</p>
+  <% } else { %>
+    <ol class="bf-feed">
+      <% feed.posts.forEach((p) => { %>
+        <li class="bf-card">
+          <div class="bf-card-top">
+            <a class="bf-card-date" href="/briefing/<%= p.id %>"><%= p.briefing_date.replace(/-/g, '.') %></a>
+            <%# ⚠️ AI 가 쓴 것과 SQL 로 조립한 것을 반드시 구분해 표시한다.
+                폴백 카드를 "AI 브리핑" 으로 보이게 하면 안 된다. %>
+            <span class="bf-badge<%= p.isAi ? ' is-ai' : '' %>">
+              <%= p.isAi ? '🤖 AI 브리핑' : '데이터 요약' %>
+            </span>
+          </div>
+
+          <a class="bf-card-head" href="/briefing/<%= p.id %>"><%= p.headline %></a>
+          <p class="bf-card-body"><%= p.body %></p>
+
+          <% if (p.stats && p.stats.proposed !== undefined) { %>
+            <div class="bf-card-stats">
+              <span>발의 <b><%= nf(p.stats.proposed) %></b></span>
+              <% if (p.stats.proposers) { %><span>의원 <b><%= nf(p.stats.proposers) %></b></span><% } %>
+              <% if (p.stats.floor && p.stats.floor.length) { %>
+                <span>본회의 <b><%= nf(p.stats.floor.reduce((t, f) => t + f.cnt, 0)) %></b></span>
+              <% } %>
+            </div>
+          <% } %>
+
+          <% if (p.keywords.length) { %>
+            <div class="bf-tags">
+              <% p.keywords.forEach((k) => { %><span class="bf-tag">#<%= k %></span><% }); %>
+            </div>
+          <% } %>
+
+          <div class="bf-card-foot">
+            <a class="bf-act" href="/briefing/<%= p.id %>">💬 <%= nf(p.comment_count) %></a>
+            <button type="button" class="bf-act bf-share-btn"
+                    data-url="/briefing/<%= p.id %>" data-title="<%= p.headline %>">↗ 공유</button>
+            <a class="bf-more" href="/briefing/<%= p.id %>">자세히 →</a>
+          </div>
+        </li>
+      <% }); %>
+    </ol>
+
+    <% if (feed.total > feed.posts.length) { %>
+      <p class="bf-feed-more"><%= nf(feed.posts.length) %> / <%= nf(feed.total) %>건 표시 중</p>
+    <% } %>
+  <% } %>
+
+  <p class="bf-foot">
+    출처: 열린국회정보 · 숫자는 공식 데이터 집계입니다.
+    <strong>AI 브리핑</strong>은 그 숫자를 문장으로 옮긴 것으로, 사실과 다를 수 있습니다.
+  </p>
+</div>
+
+<style>
+  .bf-wrap { max-width: 760px; margin: 0 auto; padding: 28px 24px 80px; }
+  .bf-fresh { color: var(--sub2); }
+  .bf-empty { font-size: 14px; color: var(--sub2); font-style: italic; }
+
+  /* 요약 스트립 */
+  .bf-strip {
+    display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 13px 18px; margin-bottom: 22px;
+  }
+  .bf-strip-nums { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; font-size: 13.5px; color: var(--sub); }
+  .bf-strip-item b { font-family: 'JetBrains Mono', monospace; font-size: 17px; color: var(--accent); font-weight: 700; }
+  .bf-strip-sep { color: var(--border2); }
+  .bf-spark { display: flex; align-items: flex-end; gap: 3px; height: 28px; flex-shrink: 0; }
+  .bf-spark-col { width: 6px; height: 100%; display: flex; align-items: flex-end; }
+  .bf-spark-bar { width: 100%; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .bf-spark-col.is-weekend .bf-spark-bar { background: var(--border2); }
+
+  /* 피드 카드 */
+  .bf-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+  .bf-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px; transition: border-color 0.15s;
+  }
+  .bf-card:hover { border-color: var(--border2); }
+  .bf-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .bf-card-date { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sub2); text-decoration: none; letter-spacing: 0.06em; }
+  .bf-card-date:hover { color: var(--accent); }
+  .bf-badge {
+    font-size: 11px; font-weight: 600; color: var(--sub2);
+    border: 1px solid var(--border2); border-radius: 5px; padding: 2px 8px; white-space: nowrap;
+  }
+  .bf-badge.is-ai { color: #8F5800; border-color: #8F5800; background: #FBF5EA; }
+
+  .bf-card-head {
+    display: block; font-family: 'Noto Serif KR', serif; font-size: 21px; font-weight: 700;
+    line-height: 1.45; color: var(--text); text-decoration: none; word-break: keep-all; margin-bottom: 9px;
+  }
+  .bf-card-head:hover { color: var(--accent2); }
+  .bf-card-body { font-size: 14.5px; line-height: 1.8; color: var(--sub); margin: 0 0 12px; word-break: keep-all; }
+
+  .bf-card-stats { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--sub2); margin-bottom: 10px; }
+  .bf-card-stats b { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text); margin-left: 2px; }
+
+  .bf-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .bf-tag { font-size: 12px; color: #8F5800; background: #FBF5EA; border-radius: 6px; padding: 3px 9px; word-break: keep-all; }
+
+  .bf-card-foot { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .bf-act {
+    background: none; border: 1px solid var(--border2); border-radius: 8px;
+    padding: 7px 12px; font-size: 12.5px; color: var(--sub); cursor: pointer;
+    text-decoration: none; font-family: inherit; min-height: 40px; display: inline-flex; align-items: center;
+  }
+  .bf-act:hover { border-color: var(--accent); color: var(--accent); }
+  .bf-more { margin-left: auto; font-size: 12.5px; color: var(--accent); text-decoration: none; }
+  .bf-more:hover { text-decoration: underline; }
+
+  .bf-feed-more { text-align: center; font-size: 12.5px; color: var(--sub2); margin: 20px 0 0; }
+  .bf-foot { font-size: 12.5px; color: var(--sub2); line-height: 1.7; margin: 28px 0 0; padding-top: 18px; border-top: 1px solid var(--border); word-break: keep-all; }
+  .bf-foot strong { color: var(--sub); }
+
+  @media (max-width: 768px) {
+    .bf-wrap { padding: 22px 16px 80px; }
+    .bf-card { padding: 17px 16px; }
+    .bf-card-head { font-size: 18.5px; }
+    .bf-spark { width: 100%; justify-content: space-between; gap: 2px; }
+    .bf-spark-col { flex: 1; width: auto; }
+  }
+</style>
+
+<script>
+(() => {
+  /* 카드 공유 — 차트와 같은 방식.
+     모바일은 navigator.share 로 시스템 시트(카톡·인스타 등), 데스크톱은 링크 복사로 폴백. */
+  document.querySelectorAll('.bf-share-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const url = location.origin + btn.dataset.url;
+      const title = btn.dataset.title || '당말사 브리핑';
+      if (navigator.share) {
+        try { await navigator.share({ title, text: title + ' — 당말사', url }); } catch {}
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        const orig = btn.textContent;
+        btn.textContent = '복사됨 ✓';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      } catch { window.prompt('아래 주소를 복사하세요', url); }
+    });
+  });
+})();
+</script>

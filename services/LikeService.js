@@ -1,6 +1,7 @@
 import LikeDao from '../daos/LikeDao.js';
 
-const VALID = new Set(['comment', 'post']);
+// ⚠️ DB 의 likes_type_check 제약과 **반드시 같은 집합**이어야 한다 (한쪽만 넓히면 조용히 400)
+const VALID = new Set(['comment', 'post', 'briefing']);
 
 export default (db) => {
     const dao = LikeDao(db);

@@ -7,6 +7,8 @@ import BillController from '../controllers/BillController.js';
 import BalanceGameController from '../controllers/BalanceGameController.js';
 import MyController from '../controllers/MyController.js';
 import XrayController from '../controllers/XrayController.js';
+import BriefingController from '../controllers/BriefingController.js';
+import ChartController from '../controllers/ChartController.js';
 import { requireLogin } from '../middlewares/auth.js';
 
 export default (db) => {
@@ -17,9 +19,17 @@ export default (db) => {
     const balanceGameController = BalanceGameController(db);
     const myController = MyController(db);
     const xrayController = XrayController(db);
+    const briefingController = BriefingController(db);
+    const chartController = ChartController(db);
 
     // 메인 페이지
     router.get('/', initController.getHomePage);
+
+    // 브리핑 — AI 카드 피드 (+ 상단 주간 요약 스트립)
+    //   /briefing      피드
+    //   /briefing/:id  카드 상세 (댓글·공유 단위)
+    router.get('/briefing', briefingController.getBriefingPage);
+    router.get('/briefing/:id', briefingController.getBriefingPost);
 
     // 소개 페이지
     router.get('/about', async (req, res, next) => {
@@ -74,7 +84,10 @@ export default (db) => {
     // 숫자로 본 국회 (구 "국회 X레이" — 표시명만 변경, 경로·식별자는 xray 유지)
     //   /xray      — 접힌 목록. DB 조회 0회
     //   /xray/s/:id — 섹션 HTML 조각. 펼칠 때만 호출 (layout 없음)
+    //   /xray/chart — 커스텀 차트 빌더 (스펙이 쿼리스트링에 담겨 URL 이 곧 공유 링크)
+    //   ⚠️ /xray/s/:id 보다 **먼저** 등록할 필요는 없다 (경로가 겹치지 않음) — 가독성 순서로 둔다
     router.get('/xray', xrayController.getXrayPage);
+    router.get('/xray/chart', chartController.getChartPage);
     router.get('/xray/s/:id', xrayController.getSectionFragment);
 
     // 국회의원 목록 / 상세

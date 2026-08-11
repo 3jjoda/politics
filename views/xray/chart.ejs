@@ -1,0 +1,456 @@
+<%
+  const r = result;
+  const dimNote = r.dim.note, msNote = r.measure.note;
+  const unit = r.measure.unit || '';
+  const fv = (id) => {                       // 현재 필터 값 (배열이면 그대로)
+    const v = spec.filters[id];
+    return v === undefined ? '' : (Array.isArray(v) ? v : String(v));
+  };
+  const hasRows = r.rows.length > 0;
+  const shareUrl = (locals.baseUrl || '') + '/xray/chart' + (specQuery ? '?' + specQuery : '');
+%>
+
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <div>
+      <h1 class="pb-page-title">MAKE A CHART</h1>
+      <p class="pb-page-desc">
+        국회 데이터를 직접 조합해 보세요. 만든 차트는 <strong>주소창 링크 그대로</strong> 공유됩니다.
+      </p>
+    </div>
+    <a class="ch-back" href="/xray">← 기본 지표로</a>
+  </div>
+</div>
+
+<div class="ch-wrap">
+
+  <!-- ===== 빌더 =====
+       GET 폼이라 제출하면 스펙이 그대로 쿼리스트링이 된다 → URL 이 곧 저장·공유 단위.
+       JS 없이도 동작한다 (change 시 자동 제출은 향상일 뿐). -->
+  <form class="ch-builder" method="get" action="/xray/chart" id="ch-form">
+    <%# ⚠️ 현재 소스를 **hidden 으로 들고 다녀야 한다.**
+        예전엔 소스 탭이 `<button type="submit" name="source">` 였는데,
+        폼 제출 시 브라우저는 **클릭한 submit 버튼의 name/value 만** 보낸다.
+        그래서 "차트 그리기" 나 select 자동 제출로는 source 가 아예 빠져
+        서버가 기본값(법안)으로 폴백했다 — 표결을 골라도 법안으로 되돌아가는 버그. %>
+    <input type="hidden" name="source" value="<%= spec.source %>">
+
+    <%# 소스 전환은 **링크**로 한다. 폼 안의 hidden 과 이름이 겹쳐 source 가 두 번 실리는 걸 피하고,
+        JS 없이도 동작한다. 축·지표·필터는 소스마다 다르므로 전환 시 그 소스 기본값으로 시작한다. %>
+    <div class="ch-sources">
+      <% SOURCES.forEach((s) => { %>
+        <a href="/xray/chart?source=<%= s.id %>"
+           class="ch-src-tab<%= spec.source === s.id ? ' is-on' : '' %>"
+           <%= spec.source === s.id ? 'aria-current="true"' : '' %>>
+          <span class="ch-src-tab-t"><%= s.label %></span>
+          <span class="ch-src-tab-k"><%= s.kicker %></span>
+        </a>
+      <% }); %>
+    </div>
+
+    <div class="ch-row">
+      <label class="ch-field">
+        <span class="ch-label">가를 축</span>
+        <select name="x">
+          <% DIMENSIONS.forEach((d) => { %>
+            <option value="<%= d.id %>" <%= spec.x === d.id ? 'selected' : '' %>><%= d.label %></option>
+          <% }); %>
+        </select>
+      </label>
+
+      <label class="ch-field">
+        <span class="ch-label">잴 지표</span>
+        <select name="y">
+          <% MEASURES.forEach((m) => { %>
+            <option value="<%= m.id %>" <%= spec.y === m.id ? 'selected' : '' %>><%= m.label %></option>
+          <% }); %>
+        </select>
+      </label>
+
+      <label class="ch-field">
+        <span class="ch-label">모양</span>
+        <select name="type">
+          <% CHART_TYPES.forEach((t) => { %>
+            <%# 선 그래프는 시간축에서만 의미가 있다 — 다른 축이면 서버가 막대로 되돌린다 %>
+            <option value="<%= t.id %>" <%= spec.type === t.id ? 'selected' : '' %>
+              <%= t.timeOnly && !r.dim.timeLike ? 'disabled' : '' %>><%= t.label %></option>
+          <% }); %>
+        </select>
+      </label>
+
+      <label class="ch-field">
+        <span class="ch-label">정렬</span>
+        <select name="sort">
+          <% SORTS.forEach((s) => { %>
+            <option value="<%= s.id %>" <%= spec.sort === s.id ? 'selected' : '' %>><%= s.label %></option>
+          <% }); %>
+        </select>
+      </label>
+    </div>
+
+    <details class="ch-filters" <%= Object.keys(spec.filters).length ? 'open' : '' %>>
+      <summary>필터 <% if (Object.keys(spec.filters).length) { %><b><%= Object.keys(spec.filters).length %></b><% } %></summary>
+      <%# 필터도 소스마다 다르다 — 컨트롤러가 현재 소스에서 쓸 수 있는 것만 내려준다 %>
+      <div class="ch-row">
+        <% FILTERS.forEach((f) => { %>
+          <label class="ch-field">
+            <span class="ch-label"><%= f.label %></span>
+            <% if (f.type === 'multi') { %>
+              <%# "전체" 를 명시 항목으로 둔다 — 아무것도 안 고른 상태가 곧 전체지만
+                  그건 암묵적이라 사용자가 알 수 없다. value="" 라 서버에서 자연히 걸러진다.
+                  전체 ↔ 개별 상호배타는 아래 JS 가 처리하고, JS 없이도 서버가 빈 값을 버려 동작한다. %>
+              <select name="f_<%= f.id %>" multiple size="5" data-multi>
+                <option value="" <%= (fv(f.id) || []).length === 0 ? 'selected' : '' %>>전체</option>
+                <% (options[f.optionsKey] || []).forEach((o) => { %>
+                  <option value="<%= o %>" <%= (fv(f.id) || []).includes(o) ? 'selected' : '' %>><%= o %></option>
+                <% }); %>
+              </select>
+            <% } else if (f.type === 'enum') { %>
+              <select name="f_<%= f.id %>">
+                <option value="">전체</option>
+                <% f.options.forEach((o) => { %>
+                  <option value="<%= o.value %>" <%= fv(f.id) === o.value ? 'selected' : '' %>><%= o.label %></option>
+                <% }); %>
+              </select>
+            <% } else { %>
+              <input type="date" name="f_<%= f.id %>" value="<%= fv(f.id) %>">
+            <% } %>
+          </label>
+        <% }); %>
+      </div>
+    </details>
+
+    <div class="ch-actions">
+      <button type="submit" class="ch-apply">차트 그리기</button>
+      <a class="ch-reset" href="/xray/chart">초기화</a>
+      <button type="button" class="ch-share" id="ch-share" data-url="<%= shareUrl %>">차트 공유</button>
+    </div>
+
+    <%# 공유 폴백 — navigator.share 가 없는 환경(주로 데스크톱)에서만 JS 가 연다.
+        ⚠️ 인스타그램은 **웹에서 링크 공유 수단을 제공하지 않는다** (스토리 공유는 네이티브 앱 전용).
+           모바일에서는 navigator.share 의 시스템 시트에 인스타·카톡이 뜨므로 그쪽이 정답이다.
+        ⚠️ 카카오톡 웹 공유는 Kakao JS SDK + JavaScript 키가 있어야 한다 (현재 미설정). %>
+    <div class="ch-share-menu" id="ch-share-menu" hidden>
+      <a class="ch-share-item" id="sh-x" target="_blank" rel="noopener">X (트위터)</a>
+      <a class="ch-share-item" id="sh-fb" target="_blank" rel="noopener">페이스북</a>
+      <a class="ch-share-item" id="sh-line" target="_blank" rel="noopener">라인</a>
+      <button type="button" class="ch-share-item" id="sh-copy">링크 복사</button>
+    </div>
+  </form>
+
+  <!-- ===== 결과 ===== -->
+  <section class="ch-result">
+    <div class="ch-result-head">
+      <h2 class="ch-title"><%= r.dim.label %>별 <%= r.measure.label %></h2>
+      <p class="ch-meta">
+        <%= r.src.label %> · <%= r.rows.length %>개 그룹 · 표본 <%= nf(r.total) %>건
+        <% if (Object.keys(spec.filters).length) { %> · 필터 적용됨<% } %>
+      </p>
+    </div>
+
+    <% if (!hasRows) { %>
+      <p class="ch-empty">조건에 맞는 데이터가 없습니다. 필터를 줄여보세요.</p>
+    <% } else { %>
+      <%
+        const rows = r.rows;
+        const max = r.max || 1;
+        const W = 1000;
+      %>
+
+      <% if (spec.type === 'hbar') { %>
+        <%# 가로 막대 — 라벨이 긴 축(위원회 25종)에 가장 잘 맞는다 %>
+        <div class="ch-hbars">
+          <% rows.forEach((row) => { %>
+            <div class="ch-hbar<%= row.n < 5 ? ' is-small' : '' %>">
+              <span class="ch-hbar-label" title="<%= row.label %>"><%= row.label %></span>
+              <span class="ch-hbar-track">
+                <span class="ch-hbar-fill" style="width: <%= Math.max(0.5, row.value / max * 100).toFixed(1) %>%"></span>
+              </span>
+              <span class="ch-hbar-val"><%= nf(row.value) %><i><%= unit %></i></span>
+              <span class="ch-hbar-n" title="표본 수">n=<%= nf(row.n) %></span>
+            </div>
+          <% }); %>
+        </div>
+
+      <% } else if (spec.type === 'donut') { %>
+        <%
+          const sum = rows.reduce((s, x) => s + x.value, 0) || 1;
+          let acc = 0;
+          const R = 80, C = 2 * Math.PI * R;
+        %>
+        <div class="ch-donut-box">
+          <svg viewBox="0 0 220 220" class="ch-donut">
+            <% rows.forEach((row, i) => {
+                 const frac = row.value / sum;
+                 const dash = (frac * C).toFixed(2);
+                 const off = (-acc * C).toFixed(2);
+                 acc += frac; %>
+              <%# 정당색을 쓰지 않는다 — 골드 단색의 명도만 계단식으로 (중립성 원칙) %>
+              <circle cx="110" cy="110" r="<%= R %>" fill="none" stroke="#B8740C"
+                      stroke-opacity="<%= (1 - i * 0.11).toFixed(2) %>"
+                      stroke-width="42" stroke-dasharray="<%= dash %> <%= (C - dash).toFixed(2) %>"
+                      stroke-dashoffset="<%= off %>" transform="rotate(-90 110 110)">
+                <title><%= row.label %> · <%= nf(row.value) %><%= unit %> (n=<%= nf(row.n) %>)</title>
+              </circle>
+            <% }); %>
+          </svg>
+          <ul class="ch-legend">
+            <% rows.forEach((row, i) => { %>
+              <li><span class="ch-dot" style="opacity: <%= (1 - i * 0.11).toFixed(2) %>"></span>
+                  <span class="ch-legend-label"><%= row.label %></span>
+                  <span class="ch-legend-val"><%= nf(row.value) %><%= unit %></span></li>
+            <% }); %>
+          </ul>
+        </div>
+
+      <% } else { %>
+        <%# 세로 막대 / 선 — 공통 좌표계 %>
+        <%
+          const H = 320, padL = 52, padR = 20, padT = 20, padB = 74;
+          const plotW = W - padL - padR, plotH = H - padT - padB;
+          const bw = plotW / rows.length;
+          const bx = (i) => padL + i * bw;
+          const by = (v) => padT + (1 - v / max) * plotH;
+          const step = Math.max(1, Math.ceil(rows.length / 14));   // x 라벨 과밀 방지
+          const pts = rows.map((row, i) => `${(bx(i) + bw / 2).toFixed(1)},${by(row.value).toFixed(1)}`).join(' ');
+        %>
+        <div class="ch-svg-box">
+          <svg viewBox="0 0 <%= W %> <%= H %>" style="width:100%;height:auto">
+            <% [0, 0.5, 1].forEach((p) => { const yy = padT + (1 - p) * plotH; %>
+              <line x1="<%= padL %>" y1="<%= yy.toFixed(1) %>" x2="<%= W - padR %>" y2="<%= yy.toFixed(1) %>"
+                    stroke="#E2DFD4" stroke-dasharray="<%= p === 0 ? '0' : '3 4' %>"/>
+              <text x="<%= padL - 8 %>" y="<%= (yy + 4).toFixed(1) %>" text-anchor="end"
+                    font-size="11" font-family="JetBrains Mono" fill="#7A8090"><%= nf(Math.round(max * p)) %></text>
+            <% }); %>
+
+            <% if (spec.type === 'line') { %>
+              <polyline points="<%= pts %>" fill="none" stroke="#B8740C" stroke-width="2.5"
+                        stroke-linejoin="round" stroke-linecap="round"/>
+              <% rows.forEach((row, i) => { %>
+                <circle cx="<%= (bx(i) + bw / 2).toFixed(1) %>" cy="<%= by(row.value).toFixed(1) %>" r="3.5" fill="#B8740C">
+                  <title><%= row.label %> · <%= nf(row.value) %><%= unit %> (n=<%= nf(row.n) %>)</title>
+                </circle>
+              <% }); %>
+            <% } else { %>
+              <% rows.forEach((row, i) => {
+                   const h = Math.max(row.value > 0 ? 2 : 0, padT + plotH - by(row.value)); %>
+                <rect x="<%= (bx(i) + bw * 0.15).toFixed(1) %>" y="<%= by(row.value).toFixed(1) %>"
+                      width="<%= (bw * 0.7).toFixed(1) %>" height="<%= h.toFixed(1) %>" rx="2"
+                      fill="#B8740C" opacity="<%= row.n < 5 ? 0.35 : 0.85 %>">
+                  <title><%= row.label %> · <%= nf(row.value) %><%= unit %> (n=<%= nf(row.n) %>)<%= row.n < 5 ? ' · 표본 적음' : '' %></title>
+                </rect>
+              <% }); %>
+            <% } %>
+
+            <% rows.forEach((row, i) => { if (i % step !== 0 && i !== rows.length - 1) return; %>
+              <text x="<%= (bx(i) + bw / 2).toFixed(1) %>" y="<%= H - padB + 16 %>"
+                    text-anchor="end" font-size="11" fill="#4B5362"
+                    transform="rotate(-38 <%= (bx(i) + bw / 2).toFixed(1) %> <%= H - padB + 16 %>)"><%= row.label.length > 14 ? row.label.slice(0, 13) + '…' : row.label %></text>
+            <% }); %>
+          </svg>
+        </div>
+      <% } %>
+
+      <%# 해석 각주 — 자동 부착. 사용자가 만든 차트가 그대로 공유되므로 이게 없으면 오독의 근거가 된다 %>
+      <% if (r.notes.length) { %>
+        <ul class="ch-notes">
+          <% r.notes.forEach((n) => { %><li><%= n %></li><% }); %>
+        </ul>
+      <% } %>
+      <p class="ch-source">출처: 열린국회정보 · 표본 n 은 각 그룹의 법안 수입니다.</p>
+    <% } %>
+  </section>
+</div>
+
+<style>
+  .ch-wrap { max-width: 1080px; margin: 0 auto; padding: 28px 24px 80px; }
+  .ch-back { font-size: 13px; color: var(--sub); text-decoration: none; white-space: nowrap; }
+  .ch-back:hover { color: var(--accent); }
+
+  /* ── 빌더 ── */
+  .ch-builder { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 26px; }
+
+  /* 소스 전환 — 탭처럼 보이지만 submit 버튼이라 JS 없이도 동작한다 */
+  .ch-sources { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  /* ⚠️ `.ch-source` 는 하단 "출처:" 문구가 이미 쓰고 있다 — 탭은 `.ch-src-tab` 으로 분리 */
+  .ch-src-tab {
+    display: flex; flex-direction: column; gap: 1px; align-items: flex-start; justify-content: center;
+    background: var(--bg); border: 1px solid var(--border2); border-radius: 10px;
+    padding: 9px 16px; cursor: pointer; min-height: 44px; font-family: inherit;
+    text-decoration: none;   /* <a> 로 바뀌었다 (submit 버튼이면 source 가 폼에서 빠지는 문제) */
+  }
+  .ch-src-tab:hover { border-color: var(--accent); }
+  .ch-src-tab.is-on { background: #FBF5EA; border-color: var(--accent); }
+  .ch-src-tab-t { font-size: 13.5px; font-weight: 700; color: var(--sub); }
+  .ch-src-tab.is-on .ch-src-tab-t { color: #8F5800; }
+  .ch-src-tab-k { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--sub2); }
+  .ch-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .ch-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1 1 170px; }
+  /* ⚠️ 예전엔 mono 10px + letter-spacing 0.18em 이었는데 **한글이 거의 안 읽혔다.**
+     JetBrains Mono 는 한글 글리프가 없어 시스템 폰트로 폴백되고, 거기에 넓은 자간까지 겹치면
+     "정당"·"위원회" 같은 짧은 한글 라벨이 흩어져 보인다.
+     라벨은 본문 산세리프로, 크기를 올리고 자간을 정상화한다. 대비도 4.5:1 을 넘긴다. */
+  .ch-label {
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0;
+    color: #4B5362;
+  }
+  .ch-field select, .ch-field input {
+    font-family: inherit; font-size: 13.5px; color: var(--text);
+    background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 9px 10px; min-height: 40px; width: 100%;
+  }
+  .ch-field select[multiple] { min-height: 92px; padding: 6px; }
+  .ch-field select:focus, .ch-field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .ch-filters { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .ch-filters summary { cursor: pointer; font-size: 13px; color: var(--sub); }
+  .ch-filters summary b { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .ch-filters .ch-row { margin-top: 12px; }
+
+  .ch-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+  .ch-apply {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 11px 22px; font-size: 14px; font-weight: 700; cursor: pointer; min-height: 44px;
+  }
+  .ch-apply:hover { background: var(--accent2); }
+  .ch-reset, .ch-share {
+    background: none; border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px 16px; font-size: 13px; color: var(--sub); cursor: pointer; text-decoration: none;
+    min-height: 44px; display: inline-flex; align-items: center;
+  }
+  .ch-reset:hover, .ch-share:hover { border-color: var(--accent); color: var(--accent); }
+  .ch-share { border-color: var(--accent); color: #8F5800; font-weight: 700; }
+
+  /* 공유 폴백 메뉴 — navigator.share 가 없을 때만 JS 가 연다 */
+  .ch-share-menu { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .ch-share-menu[hidden] { display: none; }   /* display:flex 가 [hidden] 을 덮어쓰는 함정 회피 */
+  .ch-share-item {
+    background: var(--bg); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 9px 14px; font-size: 12.5px; color: var(--sub); cursor: pointer;
+    text-decoration: none; font-family: inherit; min-height: 40px; display: inline-flex; align-items: center;
+  }
+  .ch-share-item:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── 결과 ── */
+  .ch-result-head { margin-bottom: 16px; }
+  .ch-title { font-family: 'Noto Serif KR', serif; font-size: 24px; font-weight: 700; color: var(--text); margin: 0 0 5px; word-break: keep-all; }
+  .ch-meta { font-size: 13px; color: var(--sub2); margin: 0; font-family: 'JetBrains Mono', monospace; }
+  .ch-empty { font-size: 14px; color: var(--sub2); font-style: italic; }
+  .ch-svg-box, .ch-donut-box, .ch-hbars {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+  }
+
+  /* 가로 막대 */
+  .ch-hbars { display: flex; flex-direction: column; gap: 7px; }
+  .ch-hbar { display: grid; grid-template-columns: minmax(0, 190px) 1fr auto auto; gap: 12px; align-items: center; }
+  .ch-hbar-label { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ch-hbar-track { height: 12px; background: var(--bg3); border-radius: 6px; overflow: hidden; }
+  /* 정당별 색 구분 없음 — 전부 골드 단색 (중립성 원칙) */
+  .ch-hbar-fill { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+  .ch-hbar.is-small .ch-hbar-fill { opacity: 0.4; }
+  .ch-hbar-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); min-width: 54px; text-align: right; }
+  .ch-hbar-val i { font-style: normal; color: var(--sub2); font-size: 11px; margin-left: 1px; }
+  .ch-hbar-n { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--sub2); min-width: 46px; text-align: right; }
+
+  /* 도넛 */
+  .ch-donut-box { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+  .ch-donut { width: 220px; height: 220px; flex-shrink: 0; }
+  .ch-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
+  .ch-legend li { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+  .ch-dot { width: 11px; height: 11px; border-radius: 3px; background: var(--accent); flex-shrink: 0; }
+  .ch-legend-label { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ch-legend-val { font-family: 'JetBrains Mono', monospace; color: var(--sub); margin-left: auto; }
+
+  /* 각주 */
+  .ch-notes { list-style: none; margin: 16px 0 0; padding: 14px 16px; background: #FBF5EA; border: 1px solid #EFE3CC; border-radius: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .ch-notes li { font-size: 12.5px; line-height: 1.65; color: #6B4200; word-break: keep-all; padding-left: 15px; position: relative; }
+  .ch-notes li::before { content: '⚠'; position: absolute; left: 0; }
+  .ch-source { font-size: 11.5px; color: var(--sub2); margin: 10px 0 0; font-family: 'JetBrains Mono', monospace; }
+
+  @media (max-width: 768px) {
+    .ch-wrap { padding: 22px 16px 80px; }
+    .ch-field { flex: 1 1 100%; }
+    .ch-hbar { grid-template-columns: minmax(0, 110px) 1fr auto; }
+    .ch-hbar-n { display: none; }   /* 좁은 화면에선 막대·값이 우선 (툴팁에 남아 있다) */
+    .ch-donut-box { gap: 18px; }
+  }
+</style>
+
+<script>
+(() => {
+  /* 선택만 바꿔도 바로 그려지게 — 폼 제출이라 JS 없이도 "차트 그리기" 버튼으로 동작한다 */
+  const form = document.getElementById('ch-form');
+  form.querySelectorAll('select[name="x"], select[name="y"], select[name="type"], select[name="sort"]')
+      .forEach((el) => el.addEventListener('change', () => {
+        window.pbShowLoader?.();
+        form.submit();
+      }));
+
+  /* "전체" ↔ 개별 상호배타.
+     ⚠️ change 이벤트만으로는 "방금 무엇을 눌렀는지" 알 수 없다 (activeElement 로 판별하려다 틀렸다).
+        이전 선택을 들고 있다가 **diff 로 판정**한다 — 전체가 새로 들어왔으면 전체만, 아니면 전체를 뺀다. */
+  form.querySelectorAll('select[data-multi]').forEach((sel) => {
+    const all = sel.querySelector('option[value=""]');
+    const read = () => [...sel.selectedOptions].map((o) => o.value);
+    let prev = read();
+
+    sel.addEventListener('change', () => {
+      let now = read();
+
+      if (now.length === 0) {
+        all.selected = true;                              // 전부 해제 → 전체로 복귀
+      } else if (now.includes('') && now.length > 1) {
+        if (!prev.includes('')) {
+          // 이번에 "전체" 가 새로 들어왔다 → 전체만 남긴다
+          [...sel.options].forEach((o) => { o.selected = o.value === ''; });
+        } else {
+          // 전체가 켜져 있는데 개별을 추가했다 → **전체만 끈다.**
+          // (여기서 개별 전부를 selected 로 만들면 사용자가 고른 것과 무관해진다 — 실제로 그 버그가 있었다)
+          all.selected = false;
+        }
+      }
+      prev = read();
+    });
+  });
+
+  /* 차트 공유 — 스펙이 URL 에 담겨 있으므로 링크 하나가 곧 차트다.
+     모바일은 navigator.share 로 시스템 공유 시트를 띄운다 → 카카오톡·인스타그램 등 설치된 앱이 모두 뜬다.
+     ⚠️ 인스타그램은 웹에서 링크 공유 API 를 제공하지 않는다. 시스템 시트가 유일한 경로다. */
+  const share = document.getElementById('ch-share');
+  const menu = document.getElementById('ch-share-menu');
+  const url = share?.dataset.url || location.href;
+  const title = document.querySelector('.ch-title')?.textContent.trim() || '당말사 차트';
+
+  const copy = async (btn) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      const orig = btn.textContent;
+      btn.textContent = '복사됨 ✓';
+      setTimeout(() => { btn.textContent = orig; }, 1600);
+    } catch {
+      window.prompt('아래 주소를 복사하세요', url);
+    }
+  };
+
+  if (menu) {
+    const e = encodeURIComponent;
+    menu.querySelector('#sh-x').href = `https://twitter.com/intent/tweet?text=${e(title)}&url=${e(url)}`;
+    menu.querySelector('#sh-fb').href = `https://www.facebook.com/sharer/sharer.php?u=${e(url)}`;
+    menu.querySelector('#sh-line').href = `https://social-plugins.line.me/lineit/share?url=${e(url)}`;
+    menu.querySelector('#sh-copy').addEventListener('click', (ev) => copy(ev.currentTarget));
+  }
+
+  share?.addEventListener('click', async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text: title + ' — 당말사', url });
+        return;
+      } catch { /* 사용자가 취소한 경우 — 폴백을 열지 않는다 */ return; }
+    }
+    menu.hidden = !menu.hidden;      // 데스크톱: 링크 목록 토글
+  });
+})();
+</script>

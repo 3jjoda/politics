@@ -155,7 +155,7 @@ CREATE UNIQUE INDEX ux_users_provider
 -- 댓글 (정치인/법안/게시글 공용)
 CREATE TABLE comments (
   id          BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  type        VARCHAR(20)  NOT NULL CHECK (type IN ('politician','bill','post')),
+  type        VARCHAR(20)  NOT NULL CHECK (type IN ('politician','bill','post','briefing')),
   target_id   VARCHAR(50)  NOT NULL,   -- mona_cd | bill_id | post.id(text)
   parent_id   BIGINT       REFERENCES comments(id) ON DELETE CASCADE,
   user_id     INT          NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -188,11 +188,14 @@ CREATE TABLE bill_citizen_votes (
   UNIQUE (bill_id, user_id)
 );
 
--- 좋아요 (토글, 댓글·게시글 공용)
+-- 좋아요 (토글, 댓글·게시글·브리핑 공용)
+-- ⚠️ target_id 가 **INTEGER** 다 (comments 는 VARCHAR). 2026-08-11 실측으로 확인 —
+--    이 문서에 VARCHAR(50) 으로 적혀 있었으나 실제 스키마와 달랐다.
+--    그래서 likes 는 bill_id('PRC_…')·mona_cd 같은 문자열 키를 담지 못한다 (숫자 PK 대상만).
 CREATE TABLE likes (
   id          BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  type        VARCHAR(20)  NOT NULL CHECK (type IN ('comment','post')),
-  target_id   VARCHAR(50)  NOT NULL,
+  type        VARCHAR(20)  NOT NULL CHECK (type IN ('comment','post','briefing')),
+  target_id   INTEGER      NOT NULL,
   user_id     INT          NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   created_at  TIMESTAMPTZ  DEFAULT NOW(),
   UNIQUE (type, target_id, user_id)
@@ -340,15 +343,19 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | 경로 | 뷰 | 설명 |
 |---|---|---|
 | `/` | `views/index.ejs` | 홈 (KPI, 주목 법안, 최근 표결, 최근 정당 이동, 활발 의원, 월별 추이) |
+| `/briefing` | `briefing/feed.ejs` | **브리핑 피드** — AI 카드가 하루 단위로 쌓인다 + 상단 주간 요약 스트립 |
+| `/briefing/:id` | `briefing/post.ejs` | 브리핑 카드 상세 — **댓글·공유의 단위**. 그날 숫자 · 대표 법안 · 키워드별 뉴스 검색 링크 |
 | `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터) |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (AI 분석 진행률 배너 + 통합 필터 카드 + 정렬 + 카테고리·정당 복수선택, 페이징) |
 | `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·요청 위젯·국민 찬반·본회의 표결·댓글) |
-| `/xray` | `xray/xray.ejs` | **숫자로 본 국회** (nav 라벨 "숫자") — 지표 **12종** 아코디언 목록. **페이지 자체는 DB 조회 0회**, 펼친 섹션만 `/xray/s/:id` 로 조각 로드 |
+| `/xray` | `xray/xray.ejs` | **숫자로 본 국회** (nav 라벨 **"차트"**, 2026-08-11 변경) — 기본 지표 **12종** 아코디언 + 우측 상단 `직접 만들어보기` 진입 |
 | `/xray/s/:id` | `xray/sections/*.ejs` | 섹션 HTML 조각 (layout 없음). 컨트롤러가 `layout: false` 로 렌더 |
+| `/xray/chart` | `xray/chart.ejs` | **차트 만들기** — 축·지표·필터를 골라 직접 조합. 스펙이 쿼리스트링에 담겨 **URL 이 곧 공유 링크** |
 
-> ⚠️ **표시명은 "숫자로 본 국회", 내부 식별자는 `xray`.** 2026-08-10 에 구 "국회 X레이" 에서 개명하면서
-> 사용자에게 보이는 5곳(nav 2 · h1 · pageTitle · 404 링크)만 바꿨다.
+> ⚠️ **nav 라벨은 "차트", 페이지 h1 은 "숫자로 본 국회", 내부 식별자는 `xray`** — 셋이 다르다.
+> 2026-08-10 구 "국회 X레이" → "숫자로 본 국회", 2026-08-11 nav 라벨만 "숫자" → **"차트"**
+> (커스텀 차트 빌더가 붙으면서 메뉴 성격이 "지표 열람" 에서 "차트" 로 바뀌었다).
 > URL `/xray`, `.xr-*` 클래스 223곳, 파일·디렉터리명은 **의도적으로 유지** — `.pb-*` 와 같은 판단.
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지) |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부) |
@@ -615,6 +622,129 @@ views/xray/sections/*.ejs  ← 섹션 본문 11개 (제목·설명은 목록이 
 - 접으면 DOM 은 남기고 `hidden` 만 토글 — 다시 펼칠 때 재요청 없음
 - **기본은 전부 접힘** — 자동 펼침을 두지 않으므로 진입 시 DB 조회가 정말로 0회
 - `/xray#xr-<id>` 로 진입하면 그 섹션만 자동 펼침 (링크 공유용)
+
+### `/xray/chart` 커스텀 차트 빌더 (2026-08-11, Phase A)
+`/xray` 한 메뉴 안에 **기본 지표(샘플, 손으로 고른 12개)** 와 **커스텀 차트** 두 영역을 둔다.
+진입은 `/xray` 페이지 헤더 우측의 `직접 만들어보기` 카드.
+
+```
+services/chartRegistry.js  ← 축·지표·필터 화이트리스트 (단일 소스)
+daos/ChartDao.js           ← 스펙 → 안전한 SQL 조립 + 실행
+services/ChartService.js   ← 쿼리스트링 파싱·검증 + 각주 조립
+controllers/ChartController.js
+views/xray/chart.ejs
+```
+
+**데이터 소스 2종** — base 테이블이 다르면 조인 대상도 달라진다 (레지스트리의 `per[source]`):
+
+| 소스 | base | 축 | 지표 |
+|---|---|---|---|
+| `bills` 법안 (18,692) | `FROM bills b` | 정당·위원회·처리결과·발의월·처리단계·AI주제·성별·선수 (8) | 건수·평균 공동발의자·가결률·**평균 처리 소요일**·계류 비율 (5) |
+| `votes` 본회의 표결 (177,260) | `FROM bill_votes v` | + 표결월·표결결과·**의원** / − 처리단계 (10) | 건수·**찬성률·반대기권률·불참률** (4) |
+
+- 조인 주체가 다르다: 법안 소스의 `p` 는 **대표발의자**, 표결 소스의 `p` 는 **표결한 의원**
+- **평균 처리 소요일**은 2026-08-11 단계 날짜 저장으로 **새로 가능해진 지표** (전체 평균 228일)
+- ⚠️ **찬성률·반대기권률의 분모에서 불참을 뺀다** (찬성·반대·기권만). 불참을 넣으면 "성향" 과 "출석" 이 섞여 출석률 낮은 쪽의 찬성률이 같이 깎인다 — 교차 표결 지표가 쓰는 기준과 동일
+- ⚠️ 정당 폴백 라벨은 `'명부 없음'` 이다. `'기타/무소속'` 으로 두면 **실제 정당인 '무소속' 과 나란히 떠서 구분이 안 된다** (실측: 무소속 99.2% / 명부 없음 98.4%). `/bill?party=` 의 라벨과 다른 건 의도된 것
+- ⚠️ **소스를 바꾸면 축·지표가 그 소스에 없을 수 있다** (법안→표결 전환 시 `평균 처리 소요일`). 에러가 아니라 그 소스의 기본값으로 폴백한다
+- 🔴 **현재 소스는 폼 안에 `<input type="hidden" name="source">` 로 들고 다녀야 한다.**
+  소스 탭을 `<button type="submit" name="source">` 로 만들었다가 버그를 냈다 —
+  브라우저는 폼 제출 시 **클릭한 submit 버튼의 name/value 만** 보내므로,
+  `차트 그리기` 나 select 자동 제출로는 `source` 가 통째로 빠져 서버가 기본값(법안)으로 폴백했다.
+  **표결을 골라도 법안으로 되돌아가는 증상.**
+  → 소스 전환은 **링크**(`<a href="?source=…">`)로 하고, 폼에는 hidden 하나만 둔다.
+  (탭도 name="source" 로 두면 hidden 과 겹쳐 `source` 가 두 번 실린다)
+
+**🔴 보안 — 이 원칙을 깨지 말 것:**
+- 사용자가 보낸 문자열은 **SQL 에 닿지 않는다.** 축/지표/필터/정렬은 레지스트리의 **키로만** 지정되고 SQL 조각은 전부 코드 상수
+- 필터 **값만** 파라미터 바인딩. 날짜는 `YYYY-MM-DD` 정규식까지 통과해야 함
+- 모르는 키는 에러가 아니라 **기본값으로 조용히 폴백** (URL 을 손으로 고쳐도 안전하고, 링크가 깨져도 빈 화면보다 낫다)
+- `ROW_LIMIT 60` + `statement_timeout 5초` (전용 커넥션에서 `SET LOCAL`)
+- 실측 검증: 소스·축·지표·정렬·필터값·날짜에 SQL 주입 13종 시도 → 전부 기본값 폴백/바인딩 처리, DB 무결성 유지
+- ⚠️ 레지스트리의 `sql` 문자열에 **변수를 템플릿 리터럴로 끼워넣지 말 것.** 이게 유일한 방어선이다
+
+**중립성 장치 (사용자가 만든 차트가 그대로 공유되므로 필수):**
+- 축·지표에 걸린 **해석 각주가 자동 부착**된다. 예: 정당 축 → "의석수가 다릅니다", 평균 처리일 → **"처리 완료 건만 — 계류 76% 제외, 생존 편향"**
+- 표본 `n` 항상 표시, 5건 미만 그룹은 흐리게 + 경고 각주
+- 정당별 색 구분 없음 — 전부 골드 단색 (도넛은 명도 계단)
+
+**공유 (`차트 공유` 버튼):**
+- 1순위 **`navigator.share()`** — 모바일에서 시스템 공유 시트가 뜨고, 거기에 **카카오톡·인스타그램 등 설치된 앱이 전부** 나온다. API 키 불필요
+- 폴백(주로 데스크톱) — X·페이스북·라인 인텐트 URL + 링크 복사. 전부 키 없이 되는 것들
+- ⚠️ **인스타그램은 웹에서 링크 공유 수단을 제공하지 않는다.** 스토리 공유(`instagram-stories://`)는 네이티브 앱 전용이고 이미지가 필요하다. 웹에서의 유일한 경로는 위 시스템 공유 시트다
+- ⚠️ **카카오톡 웹 공유(리치 카드)는 Kakao JS SDK + JavaScript 키가 있어야 한다** — 현재 미설정. OAuth 용 `KAKAO_CLIENT_ID`(REST 키)와 **다른 키**이고 도메인 등록도 필요하다
+- 링크 미리보기를 위해 **페이지가 `ogTitle`/`ogDesc`/`ogPath` 를 넘긴다** (2026-08-11 `layout.ejs` 에 오버라이드 지원 추가). 안 넘기면 브랜드 기본값이라 무슨 차트인지 안 보인다
+
+**필터 UI:**
+- 정당·위원회 다중 선택에 **`전체` 항목(value="")** 이 첫 줄에 있다. 아무것도 안 고른 상태가 곧 전체지만 그건 암묵적이라 사용자가 알 수 없다. 빈 값이라 서버에서 자연히 걸러진다
+- ⚠️ `전체` ↔ 개별 상호배타는 **이전 선택과 diff 로 판정**한다. `change` 이벤트만으로는 "방금 무엇을 눌렀는지" 알 수 없다 (`document.activeElement` 로 판별하려다 틀렸다)
+- ⚠️ 전체를 뺄 때는 **`all.selected = false` 만** 한다. 개별 옵션을 전부 `selected` 로 만들면 사용자가 고른 것과 무관해진다 (실제로 그 버그를 냈다)
+- ⚠️ 라벨(`.ch-label`)에 **mono 폰트 + 넓은 자간을 쓰지 말 것.** JetBrains Mono 는 한글 글리프가 없어 폴백되고 `letter-spacing: 0.18em` 까지 겹치면 "정당"·"위원회" 가 흩어져 거의 안 읽힌다. 본문 산세리프 12.5px/700 으로 (대비 7.74)
+
+- **URL 이 곧 저장이다.** 스펙이 쿼리스트링에 담겨 링크 복사만으로 공유된다 → Phase A 는 저장 테이블 0개.
+  Phase B(갤러리)는 이 URL 을 저장하는 것뿐이고, 샘플 차트를 시드해 콜드 스타트를 막는다
+- GET 폼이라 **JS 없이도 동작**한다 (select change 자동 제출은 향상일 뿐)
+
+### `/briefing` AI 카드 피드 (2026-08-11)
+원래 구상은 **"AI가 정리한 카드가 피드처럼 쌓이고, 댓글 달고 외부 공유"** 였다.
+1단계에서 만든 주간 데이터 대시보드는 **상단 요약 스트립으로 축소**하고 피드를 본체로 삼았다.
+
+```
+batch/genBriefing.js       ← 하루 1콜. 그날 SQL 집계 → Haiku → briefing_posts UPSERT
+ddl/migrations/2026-08-11-briefing-posts.sql
+views/briefing/feed.ejs    ← 카드 목록
+views/briefing/post.ejs    ← 카드 상세 (댓글·공유·뉴스 링크)
+```
+
+- **비용**: 입력 ~160 tok(집계는 짧다) + 출력 ~400 tok → **하루 $0.002 = 연 $0.8**. 법안별 분석($0.016/건)과 달리 하루치를 한 번에 넣는다
+- ⚠️ **숫자는 AI 에게서 받지 않는다.** `stats` 는 SQL 집계 결과를 그대로 저장하고 AI 에겐 "이미 계산된 숫자" 를 주고 문장만 쓰게 한다. 숫자를 생성물에서 받으면 환각을 검증할 방법이 없다
+- ⚠️ **중립성이 이 배치의 최대 리스크다.** 프롬프트에서 정당 평가·대립 구도·의도 추측을 금지하고, 생성 후 **금지어 검사**(`여당`·`밀어붙`·`강행`·`독주` 등)로 한 번 더 거른다. 탈락하면 폐기하고 폴백으로 간다
+- **AI 실패 시 SQL 폴백 카드** — API 장애·키 만료로 피드가 비는 것을 막는다. 집계된 사실만 문장으로 이어 붙이므로 거짓이 안 들어간다.
+  `model='fallback'` 로 저장되어 화면에서 **"데이터 요약"**(AI 카드는 "🤖 AI 브리핑")으로 구분된다. 키 복구 후 `--force` 로 덮어쓴다
+- 댓글·좋아요는 `comments.type` / `likes.type` 에 `'briefing'` 을 추가해 **기존 위젯을 그대로 재사용**한다
+  - ⚠️ **DB CHECK 만 넓히면 안 된다.** `services/CommentService.js` 의 `VALID_TYPES`, `services/LikeService.js` 의 `VALID` 도 같이 넓혀야 한다 — 한쪽만 하면 조용히 400 이 난다 (실제로 겪음)
+  - ⚠️ **`comments.target_id` 는 VARCHAR 인데 `likes.target_id` 는 INTEGER 다** (실측). 조인 시 전자는 `::text`, 후자는 그대로 비교해야 한다. 이 문서에 likes 가 VARCHAR(50) 으로 적혀 있었으나 실제 스키마와 다르다
+- **뉴스는 검색 링크만** 만든다 (네이버·구글). 기사를 수집·표시하지 않는다 — 저작권 + "어느 매체를 고르느냐" 가 곧 편집 입장이 되는 중립성 문제
+- 공유는 차트와 같은 방식 (`navigator.share` → 실패 시 링크 복사) + 카드별 OG 오버라이드
+
+### `/briefing` 주간 요약 스트립 (구 1단계 대시보드)
+```
+daos/queries/briefing/*.sql   ← 6개 쿼리
+daos/BriefingDao.js           ← XrayDao 와 같은 "파일명 = 키" 로더
+services/BriefingService.js   ← 조립 + 10분 메모리 캐시 + inflight 공유
+controllers/BriefingController.js
+views/briefing/briefing.ejs   ← 스타일 인라인 (페이지 전용)
+```
+
+**세 페이지의 역할 분담 — 이걸 어기면 곧 중복이 된다:**
+
+| | 역할 |
+|---|---|
+| `/xray` | 누적 통계 (구조적 사실) |
+| `/bill` | 검색·필터 **도구** (찾으러 가는 곳) |
+| `/briefing` | **이번 주 무슨 법안이 올라왔나** (읽으러 오는 곳) |
+
+- ⚠️ **집계 위주로 만들면 `/xray` 의 7일판이 된다.** 첫 버전이 그랬다 — "발의 많은 의원 TOP5" 는 xray 발의왕, "발의 리듬 큰 차트" 는 xray 월별추이와 같은 것이었다. **개별 법안 중심**으로 재편하고 집계는 맥락용 한 줄 스트립 + 스파크라인으로 압축했다
+- 구성: 요약 스트립 → **이번 주 몰린 법률** → **위원회별 새 법안**(본체) → 누가 냈나 → 마지막으로 처리된 날
+- **기간 창 `WINDOW_DAYS = 7`** (스파크라인만 14일). 발의는 평일마다 있어 7일이면 항상 찬다 (실측 98건)
+- ⚠️ **처리(본회의·위원회)에는 기간 창을 걸면 안 된다.** 처리는 드물다 — 최근 7일 발의 98건인데 **처리는 0건**이었고 본회의 최근 처리일이 11일 전이었다. 7일로 자르면 그 블록이 늘 비어 기능이 죽는다.
+  `getLatestProcessed.sql` 은 창 없이 **`MAX(proc_dt)` / `MAX(cmt_proc_dt)` 를 찾아 날짜와 `days_ago` 를 같이 준다** ("2026.07.31 · 11일 전")
+- **`getHotLaws.sql` 이 브리핑의 고유 가치**다. `/xray` 에도 `/bill` 에도 없다 — "이번 주 조세특례제한법에만 11건(22대 누적 792건)" 에서 그 주의 관심사가 SQL 만으로 드러난다. AI 없이 서사가 나오는 유일한 지점
+- ⚠️ `committee` 가 비어 있는 건 "미지정" 이 아니라 **아직 회부 전**이다. 그리고 **건수가 커서(실측 21건, 최다) 그냥 두면 첫 그룹으로 올라온다** — 주제가 아니라 상태라 브리핑 머리에 오면 안 된다. 서비스에서 실제 위원회를 먼저 세우고 **회부 전은 항상 맨 뒤**로 보낸다
+- 스파크라인은 `generate_series` 로 **0인 날도 채운다.** 안 채우면 주말이 사라져 매일 발의되는 것처럼 보인다 (주말은 회색)
+- **중립성**: 정당은 **표시하되 정당색을 쓰지 않는다.** 원칙은 "파랑·빨강 금지" 지 "정당 언급 금지" 가 아니다 — "누가 냈나" 는 브리핑의 핵심 질문이고 의원 목록·필터에서도 이미 정당을 쓴다. 막대는 정당 불문 **골드 단색**, 정렬·그룹 순서에 정당을 넣지 않는다
+- ⚠️ **숫자에 해석 한계를 반드시 병기**: "공동발의 수 = 이름을 얼마나 걸었는지일 뿐 중요도·통과 가능성과 다름", "정당별 건수는 의석수가 달라 그대로 비교하면 오해". 해석 없이 순위만 놓으면 순위표가 된다
+- **접기/펼치기**: 그룹당 기본 5건 + `이 위원회 N건 더` 토글, 페이지 하단에 `이번 주 발의 N건 전체 보기` (접힌 그룹 + 각 그룹 나머지를 한 번에). 기본 30건 → 전체 98건
+  - 쿼리는 창 안 **전체**를 돌려주고 접는 건 뷰가 한다 → 토글이 서버 왕복 없이 즉시 동작
+  - ⚠️ `.bf-rest` 는 `display: flex` 라 `[hidden]` 이 안 먹는다. `.bf-rest[hidden] { display: none }` 필수 (`bill_detail` 의 `.ba-proposers-grid` 와 같은 함정)
+  - ⚠️ 전체 펼침 시 그룹별 토글 버튼 라벨도 같이 바꿔야 한다. 안 그러면 "더 보기" 인데 이미 펼쳐진 상태가 된다
+  - ⚠️ "지금 N건 보이는 중" 안내는 접힘 상태 설명이라 펼치면 **숨긴다** (남기면 거짓말)
+- 성능: 쿼리 6개 `Promise.all` 병렬 + 10분 캐시. 실측 TTFB **12ms**
+  - ⚠️ **페이로드 178KB** — 창 안 전체(98건)를 한 번에 내려보내기 때문. 참고로 `/bill` 목록이 136KB
+  - `summary` 는 SQL `LEFT(...,150)` + `summaryPreview(...,95)` 로 이중 절단. 카드가 2줄 클램프라 화면에 들어가는 건 90자 남짓이고, 그 이상은 98건 × 초과분이 곧바로 전송 낭비가 된다
+  - ⚠️ **서버에 gzip 압축이 없다** (`compression` 미사용). 붙이면 이 페이지가 ~25KB 로 떨어지고 `/bill`·`/xray` 등 **전 페이지가 같이 좋아진다.** 발의 건수가 크게 늘면 `/xray` 처럼 조각 지연 로딩으로 바꾸는 것도 대안
+- nav 위치: **홈 다음** (진입점 성격). nav 는 2행 구조라 9개가 되어도 여유 685px (1280px 기준)
+- ⚠️ 서비스·컨트롤러(`.js`) 수정은 **서버 재시작** 해야 반영된다 (EJS 는 즉시). 그룹 정렬을 고치고 안 바뀌길래 한 번 헛짚었다
 
 ### `/politician/:id` 페이지 구조 (2026-04-25 재편)
 - **히어로**: breadcrumb → `.profile-identity` (아바타 240px + 이름·정당배지·메타) → `.profile-subinfo` (생년월일·성별 / 이메일 / 홈페이지·국회프로필 — flex-wrap, 이메일만 `.full` 로 단독 행). 카드 박스 없이 hero 배경에 자연스럽게 녹아듬

@@ -1,0 +1,205 @@
+<%
+  const p = post;
+  const st = p.stats || {};
+  const bills = Array.isArray(p.bills) ? p.bills : [];
+%>
+
+<div class="bp-wrap">
+  <nav class="bp-crumb">
+    <a href="/briefing">브리핑</a> <span>/</span> <span><%= p.briefing_date.replace(/-/g, '.') %></span>
+  </nav>
+
+  <article class="bp-card">
+    <div class="bp-top">
+      <span class="bp-date"><%= p.briefing_date.replace(/-/g, '.') %></span>
+      <%# AI 가 쓴 것 ↔ SQL 로 조립한 것을 구분. 폴백을 AI 로 보이게 하면 안 된다 %>
+      <span class="bp-badge<%= p.isAi ? ' is-ai' : '' %>">
+        <%= p.isAi ? '🤖 AI 브리핑' : '데이터 요약' %>
+      </span>
+    </div>
+
+    <h1 class="bp-head"><%= p.headline %></h1>
+    <p class="bp-body"><%= p.body %></p>
+
+    <p class="bp-disclaimer">
+      <% if (p.isAi) { %>
+        숫자는 국회 공식 데이터 집계이고, 문장은 AI가 그 숫자를 옮긴 것입니다. <strong>사실과 다를 수 있습니다.</strong>
+      <% } else { %>
+        AI 없이 <strong>데이터 집계만으로 조립한 요약</strong>입니다.
+      <% } %>
+    </p>
+
+    <!-- 그날 숫자 — AI 출력이 아니라 SQL 집계값 -->
+    <% if (st.proposed !== undefined) { %>
+      <section class="bp-sec">
+        <h2 class="bp-h">그날의 숫자</h2>
+        <div class="bp-stats">
+          <div class="bp-stat"><span class="v"><%= nf(st.proposed) %></span><span class="l">발의</span></div>
+          <div class="bp-stat"><span class="v"><%= nf(st.proposers || 0) %></span><span class="l">대표발의 의원</span></div>
+          <div class="bp-stat"><span class="v"><%= nf(st.cosign || 0) %></span><span class="l">공동발의 서명</span></div>
+          <% if (st.floor && st.floor.length) { %>
+            <div class="bp-stat"><span class="v"><%= nf(st.floor.reduce((t, f) => t + f.cnt, 0)) %></span><span class="l">본회의 처리</span></div>
+          <% } %>
+        </div>
+        <% if (st.committees && st.committees.length) { %>
+          <p class="bp-sub">위원회: <%= st.committees.map((c) => `${c.committee} ${c.cnt}`).join(' · ') %></p>
+        <% } %>
+        <% if (st.hotLaws && st.hotLaws.length) { %>
+          <p class="bp-sub">몰린 법률: <%= st.hotLaws.map((h) => `${h.bill_name} ${h.cnt}건`).join(' · ') %></p>
+        <% } %>
+      </section>
+    <% } %>
+
+    <!-- 대표 법안 -->
+    <% if (bills.length) { %>
+      <section class="bp-sec">
+        <h2 class="bp-h">그날의 법안</h2>
+        <ul class="bp-bills">
+          <% bills.forEach((bl) => { %>
+            <li>
+              <a class="bp-bill" href="/bill/<%= bl.bill_id %>">
+                <span class="bp-bill-avatar"><%- avatarHtml(bl.proposer_name || '', bl.photo_url, 34) %></span>
+                <span class="bp-bill-body">
+                  <span class="bp-bill-name"><%= bl.bill_name %></span>
+                  <% const prev = summaryPreview(bl.summary, 95); %>
+                  <% if (prev) { %><span class="bp-bill-sum"><%= prev %></span><% } %>
+                  <span class="bp-bill-foot">
+                    <b><%= bl.proposer_name || '—' %></b>
+                    <% if (bl.party_name) { %><span class="bp-party"><%= bl.party_name %></span><% } %>
+                    · 공동발의 <%= nf(bl.co_proposer_count) %>인
+                  </span>
+                </span>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <!-- 키워드 → 뉴스 검색 링크 -->
+    <% if (p.newsLinks.length) { %>
+      <section class="bp-sec">
+        <h2 class="bp-h">관련 뉴스 찾아보기</h2>
+        <p class="bp-sub">
+          이 사이트는 기사를 수집하거나 고르지 않습니다.
+          <strong>검색 링크만</strong> 드리니 어떤 매체를 볼지는 직접 정하세요.
+        </p>
+        <ul class="bp-news">
+          <% p.newsLinks.forEach((n) => { %>
+            <li class="bp-news-row">
+              <span class="bp-news-kw">#<%= n.keyword %></span>
+              <a href="<%= n.naver %>" target="_blank" rel="noopener noreferrer">네이버 뉴스 ↗</a>
+              <a href="<%= n.google %>" target="_blank" rel="noopener noreferrer">구글 뉴스 ↗</a>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
+    <div class="bp-actions">
+      <button type="button" class="bp-share" id="bp-share">↗ 이 브리핑 공유</button>
+      <a class="bp-back" href="/briefing">← 피드로</a>
+    </div>
+  </article>
+
+  <!-- 댓글 — comments.type='briefing' 으로 기존 위젯 재사용 -->
+  <section class="bp-sec bp-comments">
+    <h2 class="bp-h">의견</h2>
+    <div id="comment-widget"></div>
+  </section>
+</div>
+
+<style>
+  .bp-wrap { max-width: 760px; margin: 0 auto; padding: calc(var(--nav-h) + 28px) 24px 80px; }
+  .bp-crumb { font-size: 12.5px; color: var(--sub2); margin-bottom: 16px; display: flex; gap: 7px; }
+  .bp-crumb a { color: var(--sub); text-decoration: none; }
+  .bp-crumb a:hover { color: var(--accent); }
+
+  .bp-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 26px 28px; }
+  .bp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .bp-date { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--sub2); letter-spacing: 0.06em; }
+  .bp-badge { font-size: 11px; font-weight: 600; color: var(--sub2); border: 1px solid var(--border2); border-radius: 5px; padding: 2px 8px; }
+  .bp-badge.is-ai { color: #8F5800; border-color: #8F5800; background: #FBF5EA; }
+
+  .bp-head { font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 900; line-height: 1.4; color: var(--text); margin: 0 0 14px; word-break: keep-all; }
+  .bp-body { font-size: 16px; line-height: 1.85; color: var(--text); margin: 0 0 14px; word-break: keep-all; }
+  .bp-disclaimer { font-size: 12.5px; line-height: 1.7; color: #6B4200; background: #FBF5EA; border: 1px solid #EFE3CC; border-radius: 9px; padding: 11px 14px; margin: 0 0 24px; word-break: keep-all; }
+  .bp-disclaimer strong { font-weight: 700; }
+
+  .bp-sec { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .bp-h { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 12px; }
+  .bp-sub { font-size: 12.5px; line-height: 1.7; color: var(--sub); margin: 8px 0 0; word-break: keep-all; }
+  .bp-sub strong { color: var(--text); font-weight: 700; }
+
+  .bp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; }
+  .bp-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+  .bp-stat .v { font-family: 'JetBrains Mono', monospace; font-size: 21px; font-weight: 700; color: var(--accent); }
+  .bp-stat .l { font-size: 11.5px; color: var(--sub2); }
+
+  .bp-bills { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+  .bp-bill { display: grid; grid-template-columns: auto 1fr; gap: 11px; align-items: start;
+             background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+             text-decoration: none; color: inherit; }
+  .bp-bill:hover { border-color: var(--border2); }
+  .bp-bill-avatar { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; border: 1px solid var(--border); background: var(--bg3); line-height: 0; }
+  .bp-bill-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .bp-bill-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.5; word-break: keep-all; }
+  .bp-bill-sum { font-size: 12.5px; color: var(--sub); line-height: 1.6;
+                 display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .bp-bill-foot { font-size: 12px; color: var(--sub); }
+  .bp-bill-foot b { color: var(--text); }
+  .bp-party { color: var(--sub2); margin-left: 4px; }   /* 정당은 텍스트로만 — 정당색 안 씀 */
+
+  .bp-news { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .bp-news-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
+  .bp-news-kw { color: #8F5800; background: #FBF5EA; border-radius: 6px; padding: 3px 9px; word-break: keep-all; }
+  .bp-news-row a { color: var(--sub); text-decoration: none; border-bottom: 1px solid var(--border2); }
+  .bp-news-row a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .bp-actions { display: flex; align-items: center; gap: 10px; margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .bp-share { background: none; border: 1px solid var(--accent); border-radius: 8px; padding: 10px 18px;
+              font-size: 13px; font-weight: 700; color: #8F5800; cursor: pointer; font-family: inherit;
+              min-height: 44px; display: inline-flex; align-items: center; }
+  .bp-share:hover { background: #FBF5EA; }
+  .bp-back { margin-left: auto; font-size: 13px; color: var(--sub); text-decoration: none; }
+  .bp-back:hover { color: var(--accent); }
+
+  .bp-comments { margin-top: 34px; border-top: 0; padding-top: 0; }
+
+  @media (max-width: 768px) {
+    .bp-wrap { padding: calc(var(--nav-h) + 20px) 16px 80px; }
+    .bp-card { padding: 20px 17px; }
+    .bp-head { font-size: 23px; }
+    .bp-body { font-size: 15px; }
+  }
+</style>
+
+<script>
+  window.__BRIEFING_ID__ = '<%= p.id %>';
+</script>
+<script>
+(() => {
+  /* 댓글 — type='briefing' 으로 기존 위젯 재사용 (CHECK 확장만으로 붙는다) */
+  const mount = () => {
+    if (!window.PB) return setTimeout(mount, 30);
+    PB.mountComments({ containerId: 'comment-widget', type: 'briefing', targetId: window.__BRIEFING_ID__ });
+  };
+  mount();
+
+  const btn = document.getElementById('bp-share');
+  btn?.addEventListener('click', async () => {
+    const url = location.href;
+    const title = document.querySelector('.bp-head')?.textContent.trim() || '당말사 브리핑';
+    if (navigator.share) {
+      try { await navigator.share({ title, text: title + ' — 당말사', url }); } catch {}
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      const orig = btn.textContent;
+      btn.textContent = '복사됨 ✓';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch { window.prompt('아래 주소를 복사하세요', url); }
+  });
+})();
+</script>

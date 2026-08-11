@@ -25,10 +25,13 @@
     <link rel="manifest" href="<%= asset('/manifest.json') %>">
 
     <!-- Open Graph -->
+    <%# 페이지가 ogTitle/ogDesc/ogPath 를 넘기면 그걸 쓴다 (없으면 브랜드 기본값).
+        카톡·X 등에 링크를 붙였을 때 뜨는 미리보기라, 커스텀 차트처럼 "무엇을 공유하는지" 가
+        페이지마다 다른 경우엔 반드시 넘겨야 한다. %>
     <meta property="og:type" content="website">
-    <meta property="og:title" content="당말사 — 당 말고 사람">
-    <meta property="og:description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
-    <meta property="og:url" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.currentUrl || '/') %>">
+    <meta property="og:title" content="<%= locals.ogTitle || '당말사 — 당 말고 사람' %>">
+    <meta property="og:description" content="<%= locals.ogDesc || '당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다' %>">
+    <meta property="og:url" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.ogPath || locals.currentUrl || '/') %>">
     <meta property="og:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + asset('/assets/imgs/og-image.png') %>">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -37,8 +40,8 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="당말사 — 당 말고 사람">
-    <meta name="twitter:description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
+    <meta name="twitter:title" content="<%= locals.ogTitle || '당말사 — 당 말고 사람' %>">
+    <meta name="twitter:description" content="<%= locals.ogDesc || '당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다' %>">
     <meta name="twitter:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + asset('/assets/imgs/og-image.png') %>">
 
     <%# Google AdSense — ADSENSE_CLIENT_ID 환경변수가 있을 때만 나간다 (app.js 참조).
@@ -113,9 +116,11 @@
     <div class="pb-nav-menu">
       <ul class="pb-nav-links">
         <li><a href="/" class="<%= (locals.currentUrl === '/') ? 'active' : '' %>">홈</a></li>
+        <%# 브리핑은 "지금 무슨 일이 있나" 진입점이라 홈 바로 다음에 둔다 %>
+        <li><a href="/briefing" class="<%= (locals.currentUrl === '/briefing') ? 'active' : '' %>">브리핑</a></li>
         <li><a href="/politician" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/politician') === 0) ? 'active' : '' %>">의원</a></li>
         <li><a href="/bill" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/bill') === 0) ? 'active' : '' %>">법안</a></li>
-        <li><a href="/xray" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/xray') === 0) ? 'active' : '' %>">숫자</a></li>
+        <li><a href="/xray" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/xray') === 0) ? 'active' : '' %>">차트</a></li>
         <li><a href="/balance-game" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/balance-game') === 0) ? 'active' : '' %>">성향 진단</a></li>
         <li><a href="/community" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/community') === 0) ? 'active' : '' %>">커뮤니티</a></li>
         <li><a href="/glossary" class="<%= (locals.currentUrl === '/glossary') ? 'active' : '' %>">용어</a></li>
@@ -134,9 +139,10 @@
     <% } %>
     <ul>
         <li><a href="/">홈</a></li>
+        <li><a href="/briefing">브리핑</a></li>
         <li><a href="/politician">의원</a></li>
         <li><a href="/bill">법안</a></li>
-        <li><a href="/xray">숫자</a></li>
+        <li><a href="/xray">차트</a></li>
         <li><a href="/balance-game">성향 진단</a></li>
         <li><a href="/community">커뮤니티</a></li>
         <li><a href="/glossary">용어</a></li>

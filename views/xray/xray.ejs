@@ -30,6 +30,18 @@
      차트가 1000px 폭 SVG 라 열릴 땐 전체폭이 필요하고, 접힌 상태는 밀도가 중요하다. */
   /* align-items 기본값(stretch) — 같은 행 카드 높이를 맞춰 들쭉날쭉하지 않게.
      열이 많을수록 행 수가 줄어 접힌 목록이 짧아진다 (그룹 헤딩이 자리를 먹는 걸 상쇄) */
+  /* 커스텀 차트 진입 — page-header 우측 액션 자리 (커뮤니티 글쓰기 버튼과 같은 패턴) */
+  .xr-make {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 12px 18px; border: 1px solid var(--accent); border-radius: 10px;
+    background: #FBF5EA; text-decoration: none; white-space: nowrap;
+    transition: background 0.15s;
+  }
+  .xr-make:hover { background: #F6EBD8; }
+  .xr-make-t { font-size: 14px; font-weight: 700; color: #8F5800; }
+  .xr-make-s { font-size: 11.5px; color: var(--sub); }
+  @media (max-width: 768px) { .xr-make { white-space: normal; } }
+
   .xr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   @media (max-width: 1100px) { .xr-grid { grid-template-columns: repeat(2, 1fr); } }
 
@@ -190,6 +202,12 @@
       <h1 class="pb-page-title">숫자로 본 국회</h1>
       <p class="pb-page-desc">뉴스에 나오지 않는 국회의 구조를 공식 데이터 집계로 보여줍니다. 해석은 당신의 몫입니다.</p>
     </div>
+    <%# 커스텀 차트 진입점. 아래 12개는 손으로 고른 "기본 지표(샘플)" 이고,
+        여기 들어가면 같은 데이터를 사용자가 직접 조합한다. 한 메뉴 안의 두 영역. %>
+    <a class="xr-make" href="/xray/chart">
+      <span class="xr-make-t">직접 만들어보기</span>
+      <span class="xr-make-s">축과 지표를 골라 나만의 차트 →</span>
+    </a>
   </div>
 </div>
 
