@@ -690,14 +690,44 @@ views/xray/chart.ejs
 1단계에서 만든 주간 데이터 대시보드는 **상단 요약 스트립으로 축소**하고 피드를 본체로 삼았다.
 
 ```
-batch/genBriefing.js       ← 하루 1콜. 그날 SQL 집계 → Haiku → briefing_posts UPSERT
+batch/genBriefing.js       ← 하루 1콜. 그날 법안 전건 → Haiku → briefing_posts UPSERT
 ddl/migrations/2026-08-11-briefing-posts.sql
+ddl/migrations/2026-08-11-briefing-threads.sql   ← threads 컬럼 (v2)
 views/briefing/feed.ejs    ← 카드 목록
-views/briefing/post.ejs    ← 카드 상세 (댓글·공유·뉴스 링크)
+views/briefing/post.ejs    ← 카드 상세 (주제 묶음·댓글·공유·뉴스 링크)
 ```
 
-- **비용**: 입력 ~160 tok(집계는 짧다) + 출력 ~400 tok → **하루 $0.002 = 연 $0.8**. 법안별 분석($0.016/건)과 달리 하루치를 한 번에 넣는다
+#### 프롬프트 v2 — 🔴 AI 에게 집계를 다시 말하게 시키지 말 것 (2026-08-11)
+v1 은 `"3~4문장. 무엇이 몇 건 있었고 어디에 몰렸는지"` 를 시켰는데, 그건 **`composeFallback()` 의
+직무기술서**였다. 결과적으로 AI 카드와 폴백 카드가 어순만 다른 같은 글이 나왔고
+"AI 를 쓸 이유가 있나" 라는 결론에 도달했다. 되돌리지 말 것.
+
+| | 2026-07-30 (발의 51건) 을 어떻게 봤나 |
+|---|---|
+| v1 | "국토교통위 11건, 보건복지위 9건, 기후에너지위 8건에서 발의가 집중됐다" |
+| **v2** | **"인구감소지역 지원 25건"** — 지자체 의료·교육·주거 인프라에 국가가 우선 지원, 대학 설립기준 완화, 폐교를 체육·문화시설로 |
+
+51건 중 절반이 하나의 정책 패키지였는데 v1 은 세 위원회로 흩어놨다.
+⚠️ **이건 SQL 이 더 못하는 게 아니라 구조적으로 불가능한 일이다** — 집계 키가 `committee` 와
+`bill_name` 인데 이 묶음은 14개 부처·서로 다른 법률에 걸쳐 있어 두 키 모두 묶음을 쪼갠다.
+(08-10 "청년 자산 형성" 도 소득세법·조세특례제한법에 나뉘어 `bill_name` 그룹핑에 안 걸린다.)
+**AI 가 값을 더하는 지점은 여기 하나뿐이다. 요약만 시킬 거면 AI 를 빼는 게 맞다.**
+
+- 입력: 상위 5건 × 160자 → **그날 전건 × 400자**. 5건만 주면 "여러 건을 관통하는 주제" 요구 자체가 성립하지 않는다
+- 출력에 `threads[{theme, what, bill_count, bill_ids}]` 추가 (0~3개, 2건 이상일 때만)
+- 비용: 하루 $0.0035 → **$0.014~0.028** (법안 수에 비례, 51건이 최대 실측). 연 $1.3 → **약 $6**
+- ⚠️ 폴백은 `threads: []` 다 — 내용을 읽어야 나오는 것이라 SQL 로 만들 수 없다. 뷰가 빈 배열을 정상 처리한다
+- ⚠️ `briefing_posts.id` 는 **연속하지 않는다** (실측 1~6, 13~16). `GENERATED ALWAYS AS IDENTITY` 가
+  ON CONFLICT 판정 **전에** 값을 뽑아서 `--force` 재실행이 시퀀스를 태운다. 정상 동작이니 지우고 다시 넣지 말 것
+
 - ⚠️ **숫자는 AI 에게서 받지 않는다.** `stats` 는 SQL 집계 결과를 그대로 저장하고 AI 에겐 "이미 계산된 숫자" 를 주고 문장만 쓰게 한다. 숫자를 생성물에서 받으면 환각을 검증할 방법이 없다
+  - **`threads[].bill_count` 도 마찬가지다.** AI 는 입력 목록의 **번호**만 돌려주고 `shapeThreads()` 가 실제 법안에 매핑해 개수를 센다. 실험에서 AI 에게 직접 세게 했더니 인구감소지역을 **21건이라 답했으나 실제는 25건**이었다 — 주제를 찾는 능력과 세는 능력은 별개다
+  - 범위 밖 번호는 조용히 버리고, 유효 법안 2건 미만인 주제는 통째로 버린다
+- ⚠️ **집계 범위 검사 `scopeCheck()`** — 중립성과 **다른 실패 모드**다. 숫자는 맞는데 기간을 틀리게 붙이는 것.
+  실제로 하루치 24건이 **"7월 한 달간 24건"** 으로 나왔다 (7월 실제 합계 651건, 27배 오차).
+  판정: 본문의 모든 `N월` 뒤에 `N일` 이 와야 한다 (`8월 10일` ✅ / `7월 국회` ❌ / `8월 발의 26건` ❌) + 기간 단어 목록.
+  프롬프트에도 `[집계 범위] … **하루**` 로 명시한다 — 날짜만 주면 AI 가 기간을 임의로 넓힌다
+- ⚠️ **`threads[].what` 도 `body` 와 같은 검사를 받아야 한다.** 화면에 그대로 나가므로, 본문만 검사하면 중립성·기간 문제가 threads 로 샌다
 - ⚠️ **중립성이 이 배치의 최대 리스크다.** 프롬프트에서 정당 평가·대립 구도·의도 추측을 금지하고, 생성 후 **금지어 검사**(`여당`·`밀어붙`·`강행`·`독주` 등)로 한 번 더 거른다. 탈락하면 폐기하고 폴백으로 간다
 - **AI 실패 시 SQL 폴백 카드** — API 장애·키 만료로 피드가 비는 것을 막는다. 집계된 사실만 문장으로 이어 붙이므로 거짓이 안 들어간다.
   `model='fallback'` 로 저장되어 화면에서 **"데이터 요약"**(AI 카드는 "🤖 AI 브리핑")으로 구분된다. 키 복구 후 `--force` 로 덮어쓴다
@@ -713,8 +743,9 @@ daos/queries/briefing/*.sql   ← 6개 쿼리
 daos/BriefingDao.js           ← XrayDao 와 같은 "파일명 = 키" 로더
 services/BriefingService.js   ← 조립 + 10분 메모리 캐시 + inflight 공유
 controllers/BriefingController.js
-views/briefing/briefing.ejs   ← 스타일 인라인 (페이지 전용)
 ```
+> 스트립은 `views/briefing/feed.ejs` 상단에 통합돼 있다. 전용 뷰였던 `views/briefing/briefing.ejs`
+> 는 피드 전환 후 **참조하는 코드가 한 곳도 없는 고아 파일**이 되어 2026-08-11 삭제했다.
 
 **세 페이지의 역할 분담 — 이걸 어기면 곧 중복이 된다:**
 
@@ -967,6 +998,7 @@ PC/모바일 동일 패턴으로 통일.
 | `calcPoliticianAxis.js` | DB 집계 | `bill_axis_mapping × bill_votes` → `politician_axis_score`. 가중평균 (찬성→agree_score / 반대→disagree_score, 기권/불참 제외). 인자 `--version v1` `--min-votes 1`. 분포 히스토그램 + 정당별 평균 검증 출력 |
 | `refreshCrossPartyVote.js` | DB 집계 | `politician_cross_party_vote` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~0.4초). 의원 목록의 격차 필터·정렬이 이걸 읽는다. **syncBills·syncVotes 다음에 실행** |
 | `refreshDissent.js` | DB 집계 | `politician_dissent` MV 갱신 (`REFRESH ... CONCURRENTLY`). "숫자로 본 국회"의 소신 표결이 이걸 읽는다. **syncPoliticians·syncVotes 다음에 실행** |
+| `genBriefing.js` | 그날 법안 전건 + Claude Haiku 4.5 | 브리핑 카드 생성 (v2 프롬프트, 주제 묶음). 하루 1콜 · `--date` `--limit` `--force` `--dry-run`. **체인 맨 뒤** — 그날 법안·요약이 다 들어온 뒤 읽는다 |
 
 ### 배치 실행 순서 (2026-07-29 정리)
 > ⚠️ 실행 전 `node -v` 확인 — **Node 22** (`.nvmrc` 22.20.0). Node 18 이면 undici 7 이 전역 `File` 부재로 즉사 (`ReferenceError: File is not defined`)
@@ -992,7 +1024,10 @@ PC/모바일 동일 패턴으로 통일.
 
 ### 크론 배포 (Railway, 2026-08-04)
 npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
-- `npm run batch:daily` — `syncPoliticians && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg`
+- `npm run batch:daily` — `syncPoliticians && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg && genBriefing`
+  - ⚠️ `genBriefing` 은 **체인 맨 뒤**여야 한다 (그날 법안·요약이 다 들어온 뒤에 읽는다).
+    2026-08-11 누락이 발견됐다 — 체인에 없으면 피드가 마지막 수동 실행 시점에서 **영구히 멈춘다**
+  - ⚠️ 크론 서비스에 **`ANTHROPIC_API_KEY` 가 있어야 한다.** 없으면 매일 폴백 카드("데이터 요약")만 쌓인다
 - `npm run batch:full` — `syncVotes --full` (수동 전건 재스캔. 크론 불필요 — 아래 참조)
 
 Railway 설정 (웹 서비스와 **분리된 서비스 1개**, 같은 GitHub repo 연결):
@@ -1150,7 +1185,7 @@ ADSENSE_CLIENT_ID=ca-pub-0000000000000000
 | `ASSEMBLY_AGE=22` | — | ✅ |
 | `PORT` / `SESSION_SECRET` / `NODE_ENV` / `BASE_URL` | ✅ | — |
 | `GOOGLE_*` / `KAKAO_*` | ✅ | — |
-| `ANTHROPIC_API_KEY` | — | AI 분석 배치를 크론에 붙일 때만 |
+| `ANTHROPIC_API_KEY` | — | ✅ **필수** — `batch:daily` 의 `genBriefing` 이 쓴다 (없으면 폴백 카드만 쌓임) |
 | `ADSENSE_CLIENT_ID` | 승인 후 ✅ | — |
 
 ---

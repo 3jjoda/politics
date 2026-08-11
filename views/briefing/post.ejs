@@ -22,12 +22,51 @@
     <p class="bp-body"><%= p.body %></p>
 
     <p class="bp-disclaimer">
+      <%# ⚠️ v2 부터 AI 는 숫자를 옮기는 게 아니라 **법안 원문을 읽고 주제로 묶는다.**
+          해석이 개입하므로 고지도 그만큼 정확해야 한다 — "숫자를 문장으로 옮겼다" 고만 쓰면
+          실제보다 위험을 낮게 알리는 것이 된다. %>
       <% if (p.isAi) { %>
-        숫자는 국회 공식 데이터 집계이고, 문장은 AI가 그 숫자를 옮긴 것입니다. <strong>사실과 다를 수 있습니다.</strong>
+        발의 건수 같은 <strong>숫자는 국회 공식 데이터 집계</strong>입니다.
+        문장과 주제 묶음은 AI가 법안 원문을 읽고 정리한 것으로,
+        <strong>묶음이 어긋나거나 내용이 사실과 다를 수 있습니다.</strong>
+        아래 법안 원문 링크로 직접 확인해보세요.
       <% } else { %>
         AI 없이 <strong>데이터 집계만으로 조립한 요약</strong>입니다.
       <% } %>
     </p>
+
+    <%# 주제 묶음 — 위원회·법률명으로는 GROUP BY 가 안 되는 가로지르는 묶음.
+        묶인 법안을 전부 펼쳐 보여준다: 독자가 묶음이 맞는지 직접 확인할 수 있어야
+        AI 결과물을 믿을 근거가 생긴다. 건수는 코드가 센 값이다 (AI 가 센 값 아님). %>
+    <% const tb = p.thread_bills || {}; %>
+    <% if (p.threads.length) { %>
+      <section class="bp-sec">
+        <h2 class="bp-h">이날의 흐름</h2>
+        <p class="bp-sub">
+          법안 내용을 읽어 <strong>여러 건이 함께 다루는 문제</strong>로 묶은 것입니다.
+          위원회나 법률명이 달라도 같은 주제일 수 있습니다.
+        </p>
+        <ul class="bp-threads">
+          <% p.threads.forEach((t) => { %>
+            <li class="bp-thread">
+              <div class="bp-thread-top">
+                <span class="bp-thread-theme"><%= t.theme %></span>
+                <span class="bp-thread-cnt"><%= nf(t.bill_count) %>건</span>
+              </div>
+              <p class="bp-thread-what"><%= t.what %></p>
+              <% const named = (t.bill_ids || []).filter((id) => tb[id]); %>
+              <% if (named.length) { %>
+                <ul class="bp-thread-bills">
+                  <% named.forEach((id) => { %>
+                    <li><a href="/bill/<%= id %>"><%= tb[id].bill_name %></a></li>
+                  <% }); %>
+                </ul>
+              <% } %>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
 
     <!-- 그날 숫자 — AI 출력이 아니라 SQL 집계값 -->
     <% if (st.proposed !== undefined) { %>
@@ -130,6 +169,22 @@
   .bp-h { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 12px; }
   .bp-sub { font-size: 12.5px; line-height: 1.7; color: var(--sub); margin: 8px 0 0; word-break: keep-all; }
   .bp-sub strong { color: var(--text); font-weight: 700; }
+
+  /* 주제 묶음 — 정당색 배제 원칙에 따라 주제별 색 구분 없이 전부 골드 단색 */
+  .bp-threads { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .bp-thread { border-left: 3px solid var(--accent); background: #FBF5EA; border-radius: 0 10px 10px 0; padding: 13px 16px; }
+  .bp-thread-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .bp-thread-theme { font-size: 15px; font-weight: 700; color: var(--text); word-break: keep-all; }
+  .bp-thread-cnt {
+    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700;
+    color: #8F5800; border: 1px solid #8F5800; border-radius: 5px; padding: 1px 7px; white-space: nowrap;
+  }
+  .bp-thread-what { font-size: 13.5px; line-height: 1.75; color: var(--sub); margin: 0; word-break: keep-all; }
+  .bp-thread-bills { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid #EFE3CC;
+                     display: flex; flex-direction: column; gap: 5px; }
+  .bp-thread-bills a { font-size: 12.5px; color: var(--sub); text-decoration: none; line-height: 1.55;
+                       word-break: keep-all; border-bottom: 1px solid transparent; }
+  .bp-thread-bills a:hover { color: #8F5800; border-bottom-color: #8F5800; }
 
   .bp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 10px; }
   .bp-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 2px; }

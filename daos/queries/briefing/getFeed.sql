@@ -16,6 +16,7 @@ SELECT bp.id
      , bp.keywords
      , bp.stats
      , bp.bill_ids
+     , bp.threads
      , bp.model
      , COALESCE(c.cnt, 0)::int AS comment_count
      , COALESCE(l.cnt, 0)::int AS like_count

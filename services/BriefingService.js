@@ -43,6 +43,8 @@ export default (db) => {
             isAi,
             keywords: Array.isArray(p.keywords) ? p.keywords : [],
             stats: p.stats || {},
+            // 주제 묶음 (b2~). b1 카드·폴백 카드는 빈 배열이라 뷰가 그냥 안 그린다
+            threads: Array.isArray(p.threads) ? p.threads : [],
             // 키워드 → 뉴스 "검색 링크" 만 만든다. 기사를 수집·표시하지 않는다
             // (저작권 + 매체 선택이 곧 편집 입장이 되는 중립성 문제)
             newsLinks: (Array.isArray(p.keywords) ? p.keywords : []).map((k) => ({
