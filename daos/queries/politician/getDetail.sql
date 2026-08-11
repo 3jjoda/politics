@@ -18,6 +18,8 @@ SELECT p.politician_id
      , p.homepage
      , p.assem_addr
      , p.mem_title
+       /* ⚠️ p.cmit_nm / p.cmits 는 전원 NULL 인 죽은 컬럼이니 쓰지 말 것.
+          위원회 = politician_committees, 직위 = politician_titles (각각 getCommittees / getTitles) */
      , p.mona_cd
      , TO_CHAR(p.birthday, 'YYYY-MM-DD') AS birthday
      , (

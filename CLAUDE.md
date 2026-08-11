@@ -112,6 +112,13 @@ $$ LANGUAGE plpgsql;
   - 결과: `bill_votes` / `bill_co_proposers` 에 해당 mona_cd 기록은 남아있지만 JOIN miss → 이름·정당·사진 렌더 불가. UI 는 "(퇴임)" fallback 으로 처리 (voter-list / proposer-chip)
   - 근본 해결은 "역대 국회의원 API" 전환 — [ROADMAP.md](./ROADMAP.md) 베타 오픈 전 필수 3번
 - `politician_party_memberships` — 의원-정당 이력
+- `politician_titles` — **의원 특수 직위** (2026-08-12 신규). 의장단·국무위원·교섭단체·당직 4종. **전부 수동 입력** (`ddl/seeds/politician_titles.sql`) — 자동 수집 경로가 없다. 상세는 아래 "특수 직위 배지" 참조. ⚠️ 상임위 직위는 여기가 아니라 `politician_committees`
+- `politician_committees` — **위원회 위원 명단** (2026-08-12 신규, `syncCommittees.js`). 실측 477행 / 23개 위원회 / 의원 298명(1~6개 중복 소속) / 미소속 11명
+  - 소스 `nktulghcadyhmiqxi` 가 **`MONA_CD` 를 직접 준다** — 이름 매칭이 필요 없다 (발언영상 API 는 이름 문자열만 줘서 파싱이 필요한 것과 대조)
+  - ⚠️ **현재 스냅샷이지 이력이 아니다.** API 에 대수·기간 인자가 없다. 배치가 매번 전체 교체하므로 "과거에 어느 위원회였나" 는 답할 수 없다. 이력이 필요하면 별도 테이블을 만들 것 — 이걸 UPSERT 로 바꾸면 사임한 위원이 영원히 남는다
+  - ⚠️ **politicians 로의 FK 를 걸지 않았다.** politicians 는 현직만 담아서, 승계·보선으로 아직 없는 의원이 명단에 뜨면 FK 가 트랜잭션 전체를 깨뜨려 **명단이 통째로 비워진다**. `bill_votes` 가 mona_cd 를 FK 없이 들고 있는 것과 같은 판단
+  - ⚠️ 배치에 `MIN_EXPECTED = 300` 안전장치가 있다. 전체 교체 방식이라 API 가 부분 실패하면 DELETE 만 되고 명단이 사라진다
+  - ⚠️ **`politicians.cmit_nm` / `cmits` 는 죽은 컬럼이다** — 309명 전원 NULL. `syncPoliticians` 가 쓰는 현역의원 API 가 위원회를 안 준다. 이 컬럼들을 쓰지 말 것 (상세 페이지에 `cmit_nm` 분기가 있었으나 렌더된 적이 없어 2026-08-12 제거)
 - `bills` (PK bill_id VARCHAR), `bill_co_proposers`, `bill_votes` — 법안·발의자·표결
   - **처리 단계 날짜 9종** (2026-08-11 추가) — `syncBills` 가 쓰는 API(`nzmimeepazxkubdpn`)가 **원래부터 주던 값**인데 받아놓고 버리고 있었다. 저장만 하면 되므로 **추가 API 호출 0회 · 새 배치 0개 · 전건 소급**
     ```
@@ -370,6 +377,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/balance-game/connect` | `balance/connect.ejs` | 단계 5 연결 — D 레이어 안내 + 출구 5종 |
 | `/balance-game/mapping` | `balance/mapping_preview.ejs` | 매핑 미리 보기 (DB 조회, 게임팩별 섹션) |
 | `/auth/welcome` | `auth/welcome.ejs` | 가입 직후 환영 페이지 (1회 노출, [지금 풀기]/[둘러보기]) |
+| `/admin/titles` | `admin/titles.ejs` | **관리자 — 의원 직위 관리** (`requireAdmin`). 수동 직위 CRUD + 재확인 상태 |
 | `/about` | `about.ejs` | 사이트 소개 |
 | `/privacy` | `privacy.ejs` | 개인정보처리방침 (2026-07-29, AdSense 대비 광고 쿠키 조항 포함) |
 | `/terms` | `terms.ejs` | 이용약관 (AI 분석 면책·게시물 정책) |
@@ -825,6 +833,77 @@ controllers/BriefingController.js
 - **탭**: `[분석(기본), 법안 활동, 표결 내역, 국민 평가]`
 - **분석 탭** (기본 활성): KPI 행(발의·표결참여·가결율) → `overview-grid` 3카드(활동 레이더 / 표결 성향 / 관심분야 TOP 5) → `overview-grid.two` (월별 발의 + 정당별 공동발의 협력 | 주요 법안 이력 타임라인). "숫자 요약 → 시각화 → 시계열·관계" 흐름
 
+#### 특수 직위 배지 (`.profile-title-badge`, 2026-08-12 추가)
+이름·정당 배지 옆. `politician_titles` 테이블 — **전부 수동 관리**. 한 사람이 여러 개를 갖는다.
+- 값 입력은 `ddl/seeds/politician_titles.sql` (초안 + 확인 절차 포함)
+- category 4종 고정: `의장단` → `국무위원` → `교섭단체` → `당직` (표시 순서도 이 순서 = 공적 지위 → 정당 지위)
+- 당직은 회색 외곽선으로 한 단계 낮춘다. ⚠️ **당직 배지에 정당색을 쓰지 말 것** — 바로 옆 정당 배지가 이미 그 신호를 주고 있어 두 번 반복된다
+- ⚠️ **상임위원장·간사·위원은 여기 넣지 말 것.** `politician_committees` 가 API 로 자동 수집한다 (위원장 21 · 간사 39 · 위원 417). 중복 입력하면 화면에 두 번 나온다
+- ⚠️ 시드가 `DELETE` 로 시작하는 이유 — 직위는 교체되는 것이지 누적되지 않는다. 전임자를 안 지우면 **의장이 두 명으로 보인다**
+
+**왜 컬럼이 아니라 테이블인가**: 처음엔 `politicians.special_title` 컬럼으로 만들었다가 같은 날 바꿨다.
+한 사람이 여러 직위를 동시에 갖기 때문 (정책위의장 겸 최고위원, 관례상 여당 원내대표가 국회운영위원장 겸임).
+
+**🔴 왜 수동인가 — 자동 수집 경로가 아예 없다.** 소관 기관이 흩어져 있어서다:
+
+| 직위 | 정하는 곳 | 국회 API |
+|---|---|---|
+| 상임위원장·간사·위원 | 국회 원구성 | ✅ `politician_committees` |
+| 의장·부의장 | 국회 본회의 | △ `역대 국회의장단` 은 **연혁용**이라 현직이 늦다 (조정식 없음) |
+| 원내대표 | 정당 의원총회 | ❌ |
+| 당대표·최고위원·사무총장·정책위의장 | 정당 전당대회 | ❌ (정당법 소관) |
+| 국무총리·장관 | 대통령 임명 | ❌ (행정부) |
+
+열린국회정보는 국회사무처 보유 정보를 공개하는 창구다. 뒤의 셋은 **국회가 데이터 주인이 아니라** 줄 수가 없다.
+공공데이터포털에도 현직 장관 명단 API 는 없다 (정부24 조직도는 페이지지 데이터셋이 아니다).
+
+- ⚠️ **발언영상 API 로 자동 추출하는 안은 기각했다.** `ESSENTIAL_PERSON` 에 `조정식 국회의장` 처럼 찍혀서 실제로 의장 교체와 장관 7명을 찾아냈지만: 발언을 해야 잡히고(후반기 부의장 박덕흠 2건·남인순 1건 누락), MONA_CD 가 없어 이름 매칭이며, 임기가 아니라 "최근 발언일" 이고, 원구성 임시의장 사회를 본 주호영이 `국회의장` 3건으로 잡히는 노이즈가 있다. 10~40건짜리를 위해 감수할 오차가 아니다
+- 활동량 지표를 만들 때 **장관 겸직자는 반드시 보정**할 것 — 상임위 활동이 줄어드는 게 당연한데 "게으름" 으로 읽히면 안 된다
+
+**관리 화면 `/admin/titles`** (2026-08-12) — SQL 없이 직위를 넣고 고친다.
+- 인증: `requireAdmin` (env `ADMIN_EMAILS` 이메일 허용목록). ⚠️ 권한 없으면 **403 이 아니라 404** — 403 은 관리자 페이지의 존재를 알려준다
+- ⚠️ **카카오 계정은 이메일이 NULL 이라 못 들어간다.** 구글로 로그인할 것
+- 쓰기에 `sameOrigin` 미들웨어 (세션 쿠키가 `sameSite:'lax'` 라 기본 방어는 되지만 관리자 쓰기는 피해가 커 한 겹 더)
+- PRG 패턴 — 결과를 쿼리스트링으로 넘기고 리다이렉트. 새로고침 시 중복 INSERT 방지
+- 폼 기반이라 **JS 없이 동작**한다 (그래서 DELETE/PUT 대신 POST)
+- 🔴 **의원 목록을 select 마다 렌더하지 말 것.** 299명 × select 15개 = **546KB** 였다 (실측).
+  `<template>` 에 한 번만 싣고 JS 가 복제해 채운다 → 1/15. JS 실패 시엔 각 select 가 "현재 값" 하나만 갖고 있어 화면은 멀쩡하고 사람 변경만 안 된다
+- 상임위 직위는 **읽기 전용 안내로만** 표시 — 고쳐도 다음 배치에 덮인다
+
+**운영 — `review_after` 로 관리한다 (상시 모니터링 X)**
+직위 교체는 **대부분 시점을 미리 안다.** 그래서 값을 넣을 때 "다음에 언제 확인할지" 를 같이 적어두고,
+배치가 때가 됐을 때 알려주게 한다. **모니터링을 기억이 아니라 데이터로 옮기는 것.**
+
+| 직위 | 주기 | `review_after` 기준 |
+|---|---|---|
+| 상임위원장·간사·위원 | — | **자동** (`syncCommittees`, 손댈 것 없음) |
+| 의장단 | 2년 (원구성) | 임기 만료 직전 (후반기는 2028-05) |
+| 원내대표 | 1년 관례 | 선출 +1년 (민주 05월경 · 국힘 08월경) |
+| 당대표 | 2년 임기지만 사퇴 잦음 | 전당대회 **다음 날** |
+| 장관 | 개각 — 예측 불가 | 일괄 **3개월 뒤** |
+
+`syncCommittees.js` 끝의 `checkStaleTitles()` 가 매일 확인해서 로그로 알린다:
+- `review_after` 지난 직위 → `⚠ 재확인할 직위 N건` + 이름·직위·예정일
+- **30일 안에 다가오는 것** → `[직위] 곧 확인: 한병도 · 당대표 직무대행 (2026-08-18)` (캘린더를 따로 안 봐도 되게)
+- `source_url` 없는 직위, 테이블이 빈 경우
+- ⚠️ `review_after` 가 NULL 이면 `updated_at + 6개월` 로 **폴백**한다 — 빠뜨린 행이 감시에서 통째로 빠지지 않도록. 다만 6개월은 개각 주기보다 길어 장관에는 부적합하니 명시할 것
+- ⚠️ **`updated_at` 은 백데이팅이 안 된다** (`trg_politician_titles_updated_at` 트리거가 매 UPDATE 마다 NOW() 로 덮는다). 폴백 경로를 테스트하려면 값을 조작하지 말고 식을 직접 확인할 것
+- ⚠️ 점검 쿼리에서 컬럼은 **반드시 별칭으로 한정**할 것 — `politicians` 에도 `updated_at` 이 있어 조인 시 `ambiguous` 로 죽는다 (실제로 겪음)
+- ⚠️ 점검이 실패해도 **배치를 실패시키지 않는다** (try/catch). 명단 동기화가 본업이고 이건 부가 점검이다
+- 외부 호출도 파싱도 없어 정확도 리스크가 0이다
+- ⚠️ **네이버 등 포털 검색으로 값을 자동 수집하는 안은 기각했다**: ① 브리핑에서 세운 "뉴스는 검색 링크만, 기사 수집 안 함" 원칙과 충돌 ② 검색결과 크롤링은 약관·robots.txt 위반이고 공식 검색 API 는 문서 목록만 준다 ③ 뉴스 텍스트엔 "전 법무부 장관"·"당시 원내대표" 처럼 **과거 직위가 섞여** 발언 추출보다 정확도가 더 나쁘다 ④ `syncPoliticians` 는 체인 맨 앞이라 외부 호출을 넣으면 포털 장애 시 워치독이 죽여 **그날 전체 배치가 멈춘다**
+
+**유통기한이 있는 값** (2026-08-12 입력분): 민주당 당대표는 정청래 사퇴(06-24)로 공석이고 한병도 원내대표가 직무대행 —
+**08-17 전당대회 직후 반드시 갱신**할 것. 국민의힘 원내대표 정점식도 08-10 선출이라 갓 바뀐 값이다.
+
+#### 소속 위원회 칩 (`.profile-cmt`, 2026-08-12 추가)
+히어로의 지역구·선수 메타 **바로 아래**. 위원회는 의원이 실제로 일하는 자리라 지역구·선수와 같은 급의 정체 정보로 다룬다.
+- 쿼리 `getCommittees.sql` — 상임위 먼저 → 직위순(위원장·간사·위원) → 이름순
+- **직위로만 강조한다** (정당색 배제): 위원장·간사는 골드 칩 + 역할 배지, 위원은 무채색. 특위는 점선(한시 조직)
+- 링크: 상임위 칩 → `/bill?committee=<name>`. ⚠️ **`is_special` 로 링크 여부를 판정하지 말 것** — `EXISTS(bills.committee = dept_nm)` 로 실제 존재를 확인한다. 실측 23개 중 19개가 매칭되는데 그 경계가 특위 여부와 정확히 겹치지 않는다 (`기후위기 특별위원회`는 특위인데 법안이 있다). 링크했는데 0건 페이지로 보내는 게 최악
+- 🔴 **`overflow-wrap: anywhere` 필수.** 특위 중에 **공백이 하나도 없는 50자 이름**이 있다 (`제9회전국동시지방선거투표용지부족사태등…국정조사특별위원회`). `word-break: keep-all` 만 두면 375px 에서 `scrollWidth 581 / clientWidth 325` 로 **잘려서 안 보인다.** 문서 가로 스크롤은 안 생겨서 눈치채기 어렵다 — `bill_detail` 의 `.tl-label` 과 완전히 같은 함정
+- 미소속 11명은 블록 자체가 렌더되지 않음
+
 #### 표결 성향 카드 — 교차 표결 성향 (`.cpv-*`, 2026-08-05 추가)
 찬반 비율 4줄 아래에 붙는 블록. **"당을 보고 투표하나, 법안을 보고 투표하나"** 를 보여준다.
 - 쿼리: `daos/queries/politician/getCrossPartyVoteByMonaCd.sql`
@@ -1032,6 +1111,7 @@ PC/모바일 동일 패턴으로 통일.
 | `syncBillSummary.js` | 열린국회 API (`BPMBILLSUMMARY`) | 법안 제안이유·주요내용 원문 → `bills.summary`. **증분** (`summary_synced_at IS NULL` 만) — `--full` 로 전건 재수집, `--limit N` 으로 부분 실행 |
 | `syncVotes.js` | 열린국회 API (`nojepdqqaweusdfbi`) | 본회의 표결 (수집 완료 177,260건). **증분 스캔** — `--full` 로 전건 재스캔 |
 | `syncMissingBillDetails.js` | ALLBILL API | 상세 누락분 보강 |
+| `syncCommittees.js` | 열린국회정보 (`nktulghcadyhmiqxi`) | 위원회 위원 명단 → `politician_committees`. **전체 교체**(스냅샷) · `--dry-run`. 실측 477행 0.65초 |
 | `syncPhotos.js` | 크롤링 | 의원 프로필 사진 |
 | `updateCommittee.js` | 열린국회 API | `syncBills.js` 이전 레코드 committee 컬럼 보강 (pSize=1000, bulk VALUES UPDATE) |
 | `syncBillAiAnalysis.js` | pal.assembly.go.kr 크롤 + Claude Haiku 4.5 | AI 법안 분석 (v4.1, 16종 카테고리) |
@@ -1049,6 +1129,7 @@ PC/모바일 동일 패턴으로 통일.
 **정기 갱신 (의존 순서 고정)**:
 ```
 1. syncPoliticians.js    # 의원 마스터
+1-1. syncCommittees.js   # 위원회 위원 명단 — politicians 다음 (mona_cd 조인 대상)
 2. syncBills.js          # 법안 + 발의자 — 의원과 JOIN. updated_at 이 nav "N시간 전 갱신" 배지 소스
 3. syncBillSummary.js    # 제안이유·주요내용 — bills 참조 (신규 법안만 조회, 평시 수 초)
 4. syncVotes.js          # 본회의 표결 — bills 참조
@@ -1067,7 +1148,7 @@ PC/모바일 동일 패턴으로 통일.
 
 ### 크론 배포 (Railway, 2026-08-04)
 npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
-- `npm run batch:daily` — `syncPoliticians && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg && genBriefing`
+- `npm run batch:daily` — `syncPoliticians && syncCommittees && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg && genBriefing`
   - ⚠️ `genBriefing` 은 **체인 맨 뒤**여야 한다 (그날 법안·요약이 다 들어온 뒤에 읽는다).
     2026-08-11 누락이 발견됐다 — 체인에 없으면 피드가 마지막 수동 실행 시점에서 **영구히 멈춘다**
   - ⚠️ 크론 서비스에 **`ANTHROPIC_API_KEY` 가 있어야 한다.** 없으면 매일 폴백 카드("데이터 요약")만 쌓인다
@@ -1215,6 +1296,11 @@ ASSEMBLY_AGE=22
 # AI 분석 요청 임계값 (기본 5명 — 도달 시 "🔥 우선 분석 대기" 표시)
 ANALYSIS_REQUEST_THRESHOLD=5
 
+# 관리자 (2026-08-12) — 쉼표 구분 이메일 허용목록. /admin/* 접근 권한
+#   ⚠️ 비어 있으면 **아무도 못 들어간다** (설정 누락 시 열리는 것보다 닫히는 쪽이 안전)
+#   ⚠️ 카카오 로그인 계정은 이메일이 NULL 이라 통과 못 한다 — 관리자는 구글로 로그인할 것
+ADMIN_EMAILS=you@example.com
+
 # Google AdSense (2026-08-10) — 승인 후에만 세팅. 비워두면 광고 관련 출력이 전부 꺼진다
 ADSENSE_CLIENT_ID=ca-pub-0000000000000000
 ```
@@ -1230,6 +1316,7 @@ ADSENSE_CLIENT_ID=ca-pub-0000000000000000
 | `GOOGLE_*` / `KAKAO_*` | ✅ | — |
 | `ANTHROPIC_API_KEY` | — | ✅ **필수** — `batch:daily` 의 `genBriefing` 이 쓴다 (없으면 폴백 카드만 쌓임) |
 | `ADSENSE_CLIENT_ID` | 승인 후 ✅ | — |
+| `ADMIN_EMAILS` | ✅ | — |
 
 ---
 

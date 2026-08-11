@@ -1,0 +1,234 @@
+<%
+  // 🔴 의원 목록(299명)을 select 마다 넣으면 **페이지가 546KB 가 된다** (select 15개 × 299 option).
+  //    그래서 <template> 에 딱 한 번만 싣고, 각 select 에는 "현재 값" 하나만 렌더한다.
+  //    아래 스크립트가 로드 시 template 을 복제해 채운다 → 전송량 1/15.
+  //    JS 가 없으면 사람 변경만 안 되고(현재 값은 그대로 보임) 나머지 필드는 정상 편집된다.
+  const optionsHtml = politicians.map((p) =>
+    `<option value="${p.mona_cd}">${p.name} · ${p.party_name} · ${p.district}</option>`
+  ).join('');
+  const STATE_LABEL = { due: '재확인', soon: '임박', ok: '' };
+%>
+
+<template id="pol-opts"><%- optionsHtml %></template>
+
+<div class="ad-wrap">
+  <header class="ad-head">
+    <h1>직위 관리</h1>
+    <p class="ad-desc">
+      의장단·국무위원·교섭단체·당직은 <strong>자동 수집 경로가 없어</strong> 여기서 직접 관리합니다.
+      상임위 직위(위원장·간사·위원)는 매일 자동 갱신되므로 여기에 없습니다.
+    </p>
+  </header>
+
+  <% if (flash) { %><div class="ad-msg is-ok"><%= flash %></div><% } %>
+  <% if (error) { %><div class="ad-msg is-err"><%= error %></div><% } %>
+
+  <!-- 자동 수집분 안내 — 여기서 관리하지 말라는 신호 -->
+  <div class="ad-auto">
+    <span class="ad-auto-tag">자동</span>
+    상임위·특위에서
+    <% committeeRoles.forEach((r, i) => { %><%= i ? ' · ' : '' %><b><%= r.job_res_nm %> <%= r.cnt %></b><% }); %>명이
+    매일 갱신됩니다. <span class="ad-auto-sub">고쳐도 다음 배치에 덮이므로 이 화면에서 다루지 않습니다.</span>
+  </div>
+
+  <!-- ── 추가 ── -->
+  <section class="ad-sec">
+    <h2 class="ad-h">직위 추가</h2>
+    <form class="ad-form" method="post" action="/admin/titles">
+      <div class="ad-row">
+        <label>의원
+          <select name="mona_cd" data-pol-select data-current="" required>
+            <option value="">— 선택 —</option>
+          </select>
+        </label>
+        <label>구분
+          <select name="category" required>
+            <% categories.forEach((c) => { %><option value="<%= c %>"><%= c %></option><% }); %>
+          </select>
+        </label>
+        <label>직위명
+          <input type="text" name="title" maxlength="60" placeholder="예: 원내대표 / 법무부 장관" required>
+        </label>
+        <label>확인 예정일
+          <input type="date" name="review_after">
+        </label>
+      </div>
+      <div class="ad-row">
+        <label class="grow">출처 URL
+          <input type="url" name="source_url" placeholder="https://…">
+        </label>
+        <label class="grow">메모
+          <input type="text" name="note" placeholder="선출일, 확인 방법 등">
+        </label>
+        <button type="submit" class="ad-btn is-primary">추가</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ── 목록 ── -->
+  <section class="ad-sec">
+    <h2 class="ad-h">등록된 직위 <span class="ad-count"><%= titles.length %></span></h2>
+
+    <% if (!titles.length) { %>
+      <p class="ad-empty">등록된 직위가 없습니다. 위에서 추가하세요.</p>
+    <% } else { %>
+      <% let lastCat = null; %>
+      <% titles.forEach((t) => { %>
+        <% if (t.category !== lastCat) { lastCat = t.category; %>
+          <h3 class="ad-cat"><%= t.category %></h3>
+        <% } %>
+        <form class="ad-item<%= t.review_state === 'due' ? ' is-due' : (t.review_state === 'soon' ? ' is-soon' : '') %>"
+              method="post" action="/admin/titles/<%= t.id %>">
+          <div class="ad-item-top">
+            <span class="ad-person">
+              <%= t.name || '(politicians 에 없음)' %>
+              <% if (t.party_name) { %><em><%= t.party_name %></em><% } %>
+            </span>
+            <span class="ad-title-now"><%= t.title %></span>
+            <% if (STATE_LABEL[t.review_state]) { %>
+              <span class="ad-state"><%= STATE_LABEL[t.review_state] %></span>
+            <% } %>
+            <% if (!t.source_url) { %><span class="ad-state is-nosrc">출처 없음</span><% } %>
+            <span class="ad-updated">최종 <%= t.updated_at %></span>
+          </div>
+
+          <div class="ad-row">
+            <label>의원
+              <%# JS 로드 전/실패 시에도 현재 값은 보이도록 한 개만 렌더 %>
+              <select name="mona_cd" data-pol-select data-current="<%= t.mona_cd %>" required>
+                <option value="<%= t.mona_cd %>" selected><%= t.name || t.mona_cd %><%= t.party_name ? ' · ' + t.party_name : '' %></option>
+              </select>
+            </label>
+            <label>구분
+              <select name="category" required>
+                <% categories.forEach((c) => { %>
+                  <option value="<%= c %>"<%= c === t.category ? ' selected' : '' %>><%= c %></option>
+                <% }); %>
+              </select>
+            </label>
+            <label>직위명
+              <input type="text" name="title" maxlength="60" value="<%= t.title %>" required>
+            </label>
+            <label>확인 예정일
+              <input type="date" name="review_after" value="<%= t.review_after || '' %>">
+            </label>
+          </div>
+          <div class="ad-row">
+            <label class="grow">출처 URL
+              <input type="url" name="source_url" value="<%= t.source_url || '' %>" placeholder="https://…">
+            </label>
+            <label class="grow">메모
+              <input type="text" name="note" value="<%= t.note || '' %>">
+            </label>
+            <button type="submit" class="ad-btn">저장</button>
+            <%# 삭제는 같은 form 안에 두면 안 된다 (form 중첩 불가) — formaction 으로 목적지만 바꾼다.
+                confirm 은 JS 없으면 안 뜨지만, 그때도 삭제 자체는 정상 동작한다 %>
+            <button type="submit" class="ad-btn is-danger"
+                    formaction="/admin/titles/<%= t.id %>/delete"
+                    onclick="return confirm('삭제할까요?\n<%= t.name %> · <%= t.title %>')">삭제</button>
+          </div>
+        </form>
+      <% }); %>
+    <% } %>
+  </section>
+
+  <p class="ad-foot">
+    저장하면 <strong>최종 확인 시각이 자동으로 갱신</strong>됩니다 — 내용을 안 바꾸고 저장만 눌러도
+    "다시 확인했다" 로 기록되어 배치 경고가 초기화됩니다.
+    확인 예정일이 지나면 매일 배치 로그에 알림이 남습니다.
+  </p>
+</div>
+
+<style>
+  .ad-wrap { max-width: 1100px; margin: 0 auto; padding: calc(var(--nav-h) + 28px) 24px 80px; }
+  .ad-head h1 { font-size: 26px; font-weight: 800; margin: 0 0 8px; }
+  .ad-desc { font-size: 13.5px; color: var(--sub); line-height: 1.7; margin: 0 0 20px; word-break: keep-all; }
+  .ad-desc strong { color: var(--text); }
+
+  .ad-msg { padding: 11px 15px; border-radius: 9px; font-size: 13.5px; margin-bottom: 16px; }
+  .ad-msg.is-ok  { background: #EAF6F0; border: 1px solid #B9E0CD; color: #0B6B4B; }
+  .ad-msg.is-err { background: #FBEDED; border: 1px solid #E7C3C3; color: #A32B2B; }
+
+  .ad-auto { background: var(--bg3); border: 1px solid var(--border); border-radius: 9px;
+             padding: 11px 15px; font-size: 13px; color: var(--sub); margin-bottom: 26px; }
+  .ad-auto-tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--sub2);
+                 border: 1px solid var(--border2); border-radius: 4px; padding: 1px 7px; margin-right: 8px; }
+  .ad-auto b { color: var(--text); }
+  .ad-auto-sub { color: var(--sub2); }
+
+  .ad-sec { margin-bottom: 34px; }
+  .ad-h { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+  .ad-count { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent); margin-left: 6px; }
+  .ad-cat { font-size: 13px; font-weight: 700; color: var(--sub2); margin: 20px 0 8px;
+            padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+  .ad-empty { font-size: 13.5px; color: var(--sub2); font-style: italic; }
+
+  .ad-form, .ad-item { background: var(--bg2); border: 1px solid var(--border);
+                       border-radius: 11px; padding: 15px 17px; margin-bottom: 10px; }
+  /* 확인 예정일이 지난 행은 좌측 바로 즉시 눈에 띄게 (색만으로 구분하지 않도록 라벨도 같이 붙는다) */
+  .ad-item.is-due  { border-left: 3px solid #D03A3A; }
+  .ad-item.is-soon { border-left: 3px solid var(--accent); }
+
+  .ad-item-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 11px; }
+  .ad-person { font-size: 14.5px; font-weight: 700; color: var(--text); }
+  .ad-person em { font-style: normal; font-size: 12px; font-weight: 500; color: var(--sub2); margin-left: 5px; }
+  .ad-title-now { font-size: 13px; color: #8F5800; background: #FBF5EA;
+                  border: 1px solid var(--accent); border-radius: 5px; padding: 2px 9px; }
+  .ad-state { font-size: 11px; font-weight: 700; color: #A32B2B;
+              border: 1px solid #E7C3C3; background: #FBEDED; border-radius: 4px; padding: 1px 7px; }
+  .ad-state.is-nosrc { color: var(--sub2); background: transparent; border-color: var(--border2); }
+  .ad-updated { margin-left: auto; font-family: 'JetBrains Mono', monospace;
+                font-size: 11.5px; color: var(--sub2); }
+
+  .ad-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 9px; }
+  .ad-row:last-child { margin-bottom: 0; }
+  .ad-row label { display: flex; flex-direction: column; gap: 4px;
+                  font-size: 11.5px; color: var(--sub2); min-width: 0; }
+  .ad-row label.grow { flex: 1; min-width: 180px; }
+  .ad-row input, .ad-row select {
+    font-family: inherit; font-size: 13px; color: var(--text);
+    border: 1px solid var(--border2); border-radius: 7px; padding: 7px 9px;
+    background: var(--bg); min-height: 36px; max-width: 100%;
+  }
+  .ad-row input:focus, .ad-row select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ad-row select { min-width: 190px; }
+  .ad-row input[type="text"], .ad-row input[type="url"] { min-width: 150px; }
+
+  .ad-btn { font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+            border: 1px solid var(--border2); background: var(--bg2); color: var(--sub);
+            border-radius: 7px; padding: 8px 16px; min-height: 36px; }
+  .ad-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .ad-btn.is-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ad-btn.is-primary:hover { background: var(--accent2); color: #fff; }
+  .ad-btn.is-danger:hover { border-color: #D03A3A; color: #D03A3A; }
+
+  .ad-foot { font-size: 12.5px; color: var(--sub2); line-height: 1.7;
+             border-top: 1px solid var(--border); padding-top: 16px; word-break: keep-all; }
+  .ad-foot strong { color: var(--sub); }
+
+  @media (max-width: 768px) {
+    .ad-wrap { padding: calc(var(--nav-h) + 20px) 16px 80px; }
+    .ad-row label, .ad-row label.grow { width: 100%; }
+    .ad-row select, .ad-row input { width: 100%; }
+    .ad-btn { width: 100%; }
+  }
+</style>
+
+<script>
+(() => {
+  /* select 마다 299개 option 을 서버에서 내려보내면 546KB 가 된다 (실측).
+     template 하나만 받아서 클라이언트에서 복제한다.
+     ⚠️ 실패해도 각 select 는 "현재 값" 을 이미 갖고 있어 화면이 깨지지 않는다 —
+        사람 변경만 불가하고, 그건 삭제 후 추가로 대체할 수 있다. */
+  const tpl = document.getElementById('pol-opts');
+  if (!tpl) return;
+  document.querySelectorAll('select[data-pol-select]').forEach((sel) => {
+    const cur = sel.dataset.current || '';
+    const placeholder = cur ? null : sel.querySelector('option[value=""]');
+    sel.replaceChildren();
+    if (placeholder) sel.appendChild(placeholder);
+    sel.appendChild(tpl.content.cloneNode(true));
+    sel.value = cur;                       // 현재 값 재선택 (없으면 placeholder 가 잡힌다)
+  });
+})();
+</script>

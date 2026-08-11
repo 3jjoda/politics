@@ -4,6 +4,7 @@ import pageRoutes from './PageRoutes.js';
 import apiRoutes from './ApiRoutes.js';
 import authRoutes from './AuthRoutes.js';
 import communityRoutes from './CommunityRoutes.js';
+import adminRoutes from './AdminRoutes.js';
 import authApiRoutes from './api/AuthApiRoutes.js';
 import commentRoutes from './api/CommentRoutes.js';
 import ratingRoutes  from './api/RatingRoutes.js';
@@ -16,6 +17,9 @@ export default (app, db) => {
 
     // 커뮤니티 (페이지 + REST 혼합)
     app.use('/community', communityRoutes(db));
+
+    // 관리자 (라우터 전체에 requireAdmin — AdminRoutes.js 참조)
+    app.use('/admin', adminRoutes(db));
 
     // REST API
     app.use('/api/auth',     authApiRoutes(db));

@@ -351,6 +351,9 @@ input, textarea, select { font-family: inherit; }
   transition: background 0.1s;
 }
 .pb-user-item:hover { background: var(--bg3); }
+/* 관리자 전용 항목 — 운영 도구라 일반 메뉴와 구분되게 위에 선을 긋고 톤을 낮춘다 */
+.pb-user-admin { color: var(--sub); border-top: 1px solid var(--border); }
+.pb-user-admin::before { content: '⚙ '; color: var(--sub2); }
 .pb-user-logout { color: var(--red); border-top: 1px solid var(--border); }
 .pb-user-withdraw {
     color: var(--red);

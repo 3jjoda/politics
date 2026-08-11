@@ -114,6 +114,75 @@
   }
   .profile-content { min-width: 0; }
 
+  /* 소속 위원회 칩 — 정당색 배제 원칙에 따라 정당이 아니라 **직위**로만 강조한다
+     (위원장·간사만 골드, 나머지는 무채색). */
+  .profile-cmt {
+    margin-top: 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .profile-cmt-label {
+    font-size: 12px;
+    color: var(--sub2);
+    flex-shrink: 0;
+  }
+  .profile-cmt-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+  }
+  .cmt-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    background: var(--bg2);
+    font-size: 12.5px;
+    color: var(--text);
+    text-decoration: none;
+    line-height: 1.45;
+    word-break: keep-all;
+    max-width: 100%;
+    /* ⚠️ 특위 이름 중에 **공백이 하나도 없는 50자짜리**가 있다
+       ("제9회전국동시지방선거투표용지부족사태등국민참정권침해진상규명및선거관리개혁을위한국정조사특별위원회").
+       keep-all 만 두면 끊을 자리가 없어 375px 에서 scrollWidth 581 / clientWidth 325 로 **잘려서 안 보인다**
+       (문서 가로 스크롤은 안 생겨서 눈치채기 어렵다). bill_detail 의 .tl-label 과 같은 함정.
+       anywhere 는 다른 줄바꿈 기회가 없을 때만 강제로 쪼개므로 평소 한글 가독성은 그대로다. */
+    overflow-wrap: anywhere;
+  }
+  .cmt-name { min-width: 0; overflow-wrap: anywhere; }
+  a.cmt-chip:hover { border-color: var(--accent); color: var(--accent2); }
+  .cmt-chip.is-lead {
+    border-color: var(--accent);
+    background: #FBF5EA;
+  }
+  .cmt-chip.is-lead .cmt-name { font-weight: 700; }
+  .cmt-role {
+    font-size: 11px;
+    font-weight: 700;
+    color: #8F5800;
+    border: 1px solid #8F5800;
+    border-radius: 4px;
+    padding: 0 5px;
+    flex-shrink: 0;
+  }
+  /* 특별위원회 — 한시 조직이라 상임위와 구분. 점선으로 낮춘다 (색은 안 씀) */
+  .cmt-chip.is-special {
+    border-style: dashed;
+    color: var(--sub);
+    background: transparent;
+  }
+
+  @media (max-width: 768px) {
+    .profile-cmt { gap: 7px; }
+    .profile-cmt-label { flex-basis: 100%; }
+  }
+
   .profile-subinfo {
     margin-top: 20px;
     padding-top: 16px;
@@ -181,6 +250,29 @@
     color: <%= partyColor %>;
     border: 1px solid <%= partyColor %>44;
   }
+  /* 특수 직위 배지 — 정당 배지 옆. 여러 개가 붙을 수 있다.
+     ⚠️ 정당색(partyColor)을 쓰지 않는다. 공적 직위는 정당 소속과 무관하고,
+        의장은 관례상 당적을 이탈한다 (조정식 무소속). 브랜드 골드로 통일. */
+  .profile-title-badge {
+    padding: 5px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    background: #FBF5EA;
+    color: #8F5800;
+    border: 1px solid var(--accent);
+    white-space: nowrap;
+  }
+  /* 당직(당대표·최고위원 등)은 공적 지위가 아니라 정당 내부 지위다 — 한 단계 낮춰 표시.
+     여기에 정당색을 쓰고 싶어지지만 쓰지 말 것: 당직 배지에 정당색을 입히면
+     "이 사람은 이 당 사람" 이라는 신호가 이름 옆에서 두 번 반복된다 (정당 배지가 이미 한다) */
+  .profile-title-badge.is-party {
+    background: transparent;
+    color: var(--sub);
+    border-color: var(--border2);
+    font-weight: 600;
+  }
+
   .profile-meta {
     display: flex;
     align-items: center;
@@ -1112,6 +1204,14 @@
         <div class="profile-top">
           <h1 class="profile-name"><%= politician.name %></h1>
           <span class="profile-party-badge"><%= politician.party_name || '무소속' %></span>
+          <%# 특수 직위 — politician_titles (수동 관리). 한 사람이 여러 개를 가질 수 있다
+              (정책위의장 겸 최고위원 등). 정렬은 쿼리가 공적 지위 → 정당 지위 순으로 해준다.
+              상임위 직위(위원장·간사)는 여기가 아니라 아래 위원회 칩이 담당한다.
+              값 갱신은 ddl/seeds/politician_titles.sql %>
+          <% (locals.titles || []).forEach((t) => { %>
+            <span class="profile-title-badge<%= t.category === '당직' ? ' is-party' : '' %>"
+                  title="<%= t.category %><%= t.updated_at ? ` · ${t.updated_at} 확인` : '' %>"><%= t.title %></span>
+          <% }); %>
         </div>
         <div class="profile-meta">
           <span class="profile-meta-item">
@@ -1124,13 +1224,41 @@
               <%= politician.elect_gbn_nm %><% if (politician.reele_gbn_nm) { %> · <%= politician.reele_gbn_nm %><% } %>
             </span>
           <% } %>
-          <% if (politician.cmit_nm) { %>
-            <span class="profile-meta-item">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              <%= politician.cmit_nm %>
-            </span>
-          <% } %>
         </div>
+
+        <%# 소속 위원회 — politician_committees (열린국회정보 위원회 위원 명단).
+            ⚠️ 이전엔 politician.cmit_nm 을 meta 한 줄로 찍었는데 그 컬럼은 **309명 전원 NULL** 이라
+               렌더된 적이 없다. 되살리지 말 것.
+            위원회는 의원이 실제로 일하는 자리라 지역구·선수와 같은 급의 정체 정보로 다룬다. %>
+        <% const cmts = locals.committees || []; %>
+        <% if (cmts.length) { %>
+          <div class="profile-cmt">
+            <span class="profile-cmt-label">소속 위원회</span>
+            <div class="profile-cmt-list">
+              <% cmts.forEach((c) => {
+                   const role = c.job_res_nm || '위원';
+                   const lead = (role === '위원장' || role === '간사');
+                   const cls = 'cmt-chip'
+                     + (lead ? ' is-lead' : '')
+                     + (c.is_special ? ' is-special' : '');
+                   // 링크는 bills.committee 에 실제로 있는 이름에만 (특위는 대개 회부 대상이 아님)
+                   const href = c.has_bills ? `/bill?committee=${encodeURIComponent(c.dept_nm)}` : null;
+              %>
+                <% if (href) { %>
+                  <a class="<%= cls %>" href="<%= href %>" title="<%= c.dept_nm %> 회부 법안 보기">
+                    <span class="cmt-name"><%= c.dept_nm %></span>
+                    <% if (lead) { %><span class="cmt-role"><%= role %></span><% } %>
+                  </a>
+                <% } else { %>
+                  <span class="<%= cls %>">
+                    <span class="cmt-name"><%= c.dept_nm %></span>
+                    <% if (lead) { %><span class="cmt-role"><%= role %></span><% } %>
+                  </span>
+                <% } %>
+              <% }); %>
+            </div>
+          </div>
+        <% } %>
 
         <dl class="profile-subinfo">
           <% if (politician.birthday) { %>

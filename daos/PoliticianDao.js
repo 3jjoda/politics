@@ -34,6 +34,18 @@ export default (db) => {
             return rows;
         },
 
+        /* 의원 소속 위원회 (현재 스냅샷) */
+        getCommittees: async (monaCd) => {
+            const { rows } = await db.query(queries.getCommittees, [monaCd]);
+            return rows;
+        },
+
+        /* 의원 특수 직위 (수동 관리 — politician_titles) */
+        getTitles: async (monaCd) => {
+            const { rows } = await db.query(queries.getTitles, [monaCd]);
+            return rows;
+        },
+
         /* 홈 - 활발한 의원 TOP 5 */
         getTopProposers: async () => {
             const { rows } = await db.query(queries.getTopProposers);
