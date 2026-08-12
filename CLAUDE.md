@@ -57,6 +57,26 @@
 - Railway 커스텀 도메인 한도는 플랜당 2개 — apex·www 로 정확히 소진 중
 - 코드는 프록시 유무와 무관. `req.ip`/`X-Forwarded-For` 를 쓰는 곳이 0곳이라 `trust proxy: 1` 그대로 유효
 
+### Supabase Data API 는 꺼져 있다 (2026-08-12)
+Supabase 는 `public` 스키마를 **자동으로 PostgREST 엔드포인트로 노출**한다 (`https://<ref>.supabase.co/rest/v1/…`).
+이 API 는 `anon` 키만 있으면 통과하는데 anon 키는 **프론트에 박아 쓰라고 만든 공개용 키**다 —
+즉 RLS 가 없으면 키를 아는 사람 누구나 전 테이블을 읽고·쓰고·지울 수 있다.
+2026-08-09 보안 어드바이저가 `rls_disabled_in_public` / `sensitive_columns_exposed`(users 의 email·password) 2건을 보냈다.
+
+→ **Project Settings → API → Exposed schemas 에서 `public` 제거** (Data API 토글 OFF). `extensions`·`graphql_public` 도 같이.
+
+- 기능 영향 0 — 이 프로젝트는 PostgREST 를 한 줄도 안 쓴다. `@supabase/supabase-js` 미설치,
+  `config/database.js` 가 `pg` 로 pooler(6543) 직결, 인증은 Passport 자체 세션(`auth`/`storage`/`realtime` 스키마 미사용)
+- 남는 비밀은 **`DB_PASSWORD` 와 Supabase 계정 두 개**뿐. anon 키는 있어도 갈 곳이 없다
+- ⚠️ **RLS 를 켜는 쪽으로 되돌리지 말 것.** 구멍이 남는다 —
+  ① **머티리얼라이즈드 뷰는 RLS 문법 자체가 없다** (`politician_cross_party_vote`·`politician_dissent` 가 열린 채 남음)
+  ② 일반 뷰는 기본이 definer 권한이라(PG15 `security_invoker` OFF) `bill_analysis_request_counts` 로 아래 테이블 RLS 를 우회
+  ③ 테이블을 추가할 때마다 켜줘야 하고 빠뜨리면 같은 경고가 다시 온다.
+  Exposed schemas 제거는 **스키마 단위라 이후 생성물까지 커버**된다
+- ⚠️ 경고 메일이 한 주기 더 올 수 있다 (린트 스캔 반영 지연). 며칠 뒤에도 계속 뜨면 그때 재확인
+- 🔴 **DB 재생성 시 따라오지 않는다** — 타임존 설정과 같은 부류. 빠뜨려도 에러가 없고 조용히 전 테이블이 인터넷에 열린다.
+  검증 쿼리·폴백 RLS 스크립트는 `ddl/migrations/2026-08-12-supabase-data-api-off.sql`
+
 ### 기술 스택
 - Node.js + Express 5.1 + EJS (+ `express-ejs-layouts`)
 - PostgreSQL (Supabase) — pg 드라이버
@@ -342,6 +362,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
     - 효과: 계열 COUNT 6ms(Seq Scan) → **1.5ms(Index Only Scan, Heap Fetches 0)**. 목록 쿼리에서 서브쿼리 50회 비용 170ms → **6ms**. `?bill_name=` 필터 349ms → 100ms
   - `ddl/migrations/2026-08-11-bill-summary.sql` — **법안 제안이유·주요내용**. `bills.summary` + `bills.summary_synced_at` + 부분 인덱스(`WHERE summary_synced_at IS NULL`). 미분석 법안이 목록·상세에서 내용이 아예 없던 문제 해소 (전체의 87%가 동명 법안이라 카드 구분 불가였음)
   - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
+  - `ddl/migrations/2026-08-12-supabase-data-api-off.sql` — **Supabase Data API 노출 차단**. 실행할 SQL 이 아니라 **대시보드 설정의 기록** + 검증 쿼리 + 폴백 RLS 스크립트. ⚠️ DB 재생성 시 반드시 재설정 (빠뜨려도 에러 없이 전 테이블이 인터넷에 열림). 위 "Supabase Data API 는 꺼져 있다" 참조
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
 - `balance_game_seed_v1.sql` (root) — 밸런스 게임 60문항 시드 (종합 20 + 노동 10 + 부동산 10 + 안보 10 + 젠더 10). 별도 받아온 외부 시드 파일이라 root 에 위치

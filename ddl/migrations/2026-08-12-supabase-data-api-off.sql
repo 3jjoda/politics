@@ -1,0 +1,93 @@
+-- 2026-08-12 Supabase Data API(PostgREST) 노출 차단
+--
+-- ⚠️ 이 파일은 실행할 SQL 이 아니라 **대시보드 설정의 기록**이다.
+--    아래 검증 쿼리만 읽기 전용으로 돌려 상태를 확인한다.
+--
+-- 발단: Supabase 보안 어드바이저 메일 2건 (2026-08-09 기준)
+--         rls_disabled_in_public   — Table publicly accessible
+--         sensitive_columns_exposed — users 의 email/password/provider_id
+--
+-- 원인: Supabase 는 public 스키마를 자동으로 PostgREST 엔드포인트로 노출한다.
+--         https://<project-ref>.supabase.co/rest/v1/users?select=*
+--       이 API 는 anon 키만 있으면 통과하는데, anon 키는 **프론트에 박아 쓰라고 만든
+--       공개용 키**다. 따라서 RLS 가 없으면 = 키를 아는 사람 누구나 전건 조회·수정·삭제.
+--
+-- 조치: Supabase 대시보드 → Project Settings → API → Exposed schemas 에서
+--       public 제거 (또는 Data API 토글 OFF). extensions / graphql_public 도 같이 제거.
+--
+-- 영향 0 인 근거: 이 프로젝트는 PostgREST 를 한 줄도 쓰지 않는다.
+--   · @supabase/supabase-js 미설치, anon 키가 저장소·프론트·Railway 어디에도 없음
+--   · config/database.js 가 pg 드라이버로 pooler(6543) 에 직접 접속
+--   · 인증은 Passport + connect-pg-simple 자체 세션 (auth/storage/realtime 스키마 미사용)
+--   → 코드 변경·재배포·배치 재실행 전부 불필요
+--
+-- 🔴 DB 를 재생성하면(리전 이전 등) 이 설정은 따라오지 않는다.
+--    2026-08-06-db-timezone-kst.sql 과 같은 부류 — 데이터에 안 담기고,
+--    빠뜨려도 에러가 없으며, 조용히 전 테이블이 인터넷에 열린다.
+
+
+-- ---------------------------------------------------------------------------
+-- 검증 1. 현재 노출 스키마 (읽기 전용)
+--   Supabase 는 이 설정을 authenticator 롤의 pgrst.db_schemas 로 반영한다.
+--   결과에 public 이 없으면 차단된 상태.
+--   ⚠️ 대시보드가 원본(source of truth) 이다. 여기서 ALTER ROLE 로 직접 바꾸지 말 것 —
+--      다음 대시보드 저장에 덮어써진다.
+-- ---------------------------------------------------------------------------
+--   SELECT rolname, rolconfig
+--     FROM pg_roles WHERE rolname = 'authenticator';
+
+-- 검증 2. 바깥에서 실제로 막혔는지 (anon 키는 대시보드 API 설정에서 복사)
+--   200 이면 아직 열림 / 401·404 면 차단됨
+--   curl -s -o /dev/null -w "%{http_code}\n" \
+--     "https://<project-ref>.supabase.co/rest/v1/users?select=email&limit=1" \
+--     -H "apikey: <anon-key>"
+
+
+-- ---------------------------------------------------------------------------
+-- 왜 RLS 를 켜는 쪽을 택하지 않았나
+--
+-- 테이블마다 ENABLE ROW LEVEL SECURITY 를 거는 방법도 있다. 앱은 postgres 롤로
+-- 붙어 RLS 를 우회하므로 동작에는 지장이 없다. 그런데 구멍이 남는다:
+--
+--   1) 머티리얼라이즈드 뷰는 RLS 를 걸 수 있는 문법 자체가 없다.
+--      politician_cross_party_vote / politician_dissent 는 그대로 열린 채 남는다.
+--   2) 일반 뷰는 기본이 definer 권한이라(PG15 security_invoker 기본 OFF)
+--      postgres 소유 뷰를 통하면 아래 테이블의 RLS 를 우회해 읽힌다.
+--      → bill_analysis_request_counts
+--   3) 앞으로 테이블을 추가할 때마다 켜줘야 한다. 빠뜨리면 같은 경고가 다시 온다.
+--
+-- Exposed schemas 제거는 스키마 단위라 위 셋이 전부 사라진다. 이후 생성물까지 커버.
+--
+-- 상태 확인용 (참고):
+--   SELECT c.relkind, c.relname, c.relrowsecurity
+--     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+--    WHERE n.nspname = 'public' AND c.relkind IN ('r','p','v','m')
+--    ORDER BY c.relkind, c.relname;
+--   -- relkind: r=테이블 p=파티션 v=뷰 m=머티리얼라이즈드뷰
+--   -- m 은 relrowsecurity 가 영영 false 다 (설정 불가)
+-- ---------------------------------------------------------------------------
+
+
+-- ---------------------------------------------------------------------------
+-- 폴백: Data API 를 꼭 켜야 할 일이 생기면 (프론트에서 Supabase 직접 호출 등)
+-- 그때는 아래를 먼저 걸고 켤 것. 지금은 실행하지 않는다.
+--
+--   DO $$
+--   DECLARE r record;
+--   BEGIN
+--     FOR r IN
+--       SELECT c.relname
+--         FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+--        WHERE n.nspname = 'public' AND c.relkind IN ('r','p')
+--          AND NOT c.relrowsecurity
+--     LOOP
+--       EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', r.relname);
+--     END LOOP;
+--   END $$;
+--
+--   -- 정책을 하나도 만들지 않으면 anon 은 전부 차단된다 (기본 deny).
+--   -- 그래도 위 1)·2) 는 남으므로 MV·뷰는 REVOKE 로 따로 막아야 한다:
+--   --   REVOKE ALL ON public.politician_cross_party_vote FROM anon, authenticated;
+--   --   REVOKE ALL ON public.politician_dissent           FROM anon, authenticated;
+--   --   REVOKE ALL ON public.bill_analysis_request_counts FROM anon, authenticated;
+-- ---------------------------------------------------------------------------
