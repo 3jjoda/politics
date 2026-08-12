@@ -73,7 +73,15 @@ Supabase 는 `public` 스키마를 **자동으로 PostgREST 엔드포인트로 �
   ② 일반 뷰는 기본이 definer 권한이라(PG15 `security_invoker` OFF) `bill_analysis_request_counts` 로 아래 테이블 RLS 를 우회
   ③ 테이블을 추가할 때마다 켜줘야 하고 빠뜨리면 같은 경고가 다시 온다.
   Exposed schemas 제거는 **스키마 단위라 이후 생성물까지 커버**된다
+- ✅ **2026-08-12 차단 확인** — anon 키로 `users`/`session`/`bills` 등 8종 호출 시 전부 404.
+  ⚠️ **키 없이 때리면 노출 여부와 무관하게 항상 401 이라 판별이 안 된다.** `정상키=404 · 오키=401 · 무키=401` 조합이어야 차단 판정.
+  설정값은 DB 에서 읽을 수 없다(`pgrst.db_schemas` 비어 있음) — HTTP 로 때려보는 게 유일한 확인 수단
 - ⚠️ 경고 메일이 한 주기 더 올 수 있다 (린트 스캔 반영 지연). 며칠 뒤에도 계속 뜨면 그때 재확인
+- ⚠️ **`comments`·`likes`·`politician_ratings`·`bill_citizen_votes`·`reports` 의 RLS 정책은 가짜다** —
+  `USING(true) WITH CHECK(true)` / 대상롤 `public` / `cmd ALL` 이라 아무것도 막지 않는다.
+  Data API 가 꺼져 있어 현재는 무해하지만, **"RLS 켜져 있으니 안전" 으로 오판하지 말 것**
+- ⚠️ 노출 시 최고 위험은 `users` 가 아니라 **`session`** 이다 (connect-pg-simple) —
+  `sid` 가 곧 쿠키 값이고 `sess` JSON 에 로그인 `userId` 가 있어 읽으면 계정 탈취, 쓰면 세션 위조
 - 🔴 **DB 재생성 시 따라오지 않는다** — 타임존 설정과 같은 부류. 빠뜨려도 에러가 없고 조용히 전 테이블이 인터넷에 열린다.
   검증 쿼리·폴백 RLS 스크립트는 `ddl/migrations/2026-08-12-supabase-data-api-off.sql`
 

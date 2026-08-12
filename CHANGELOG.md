@@ -6,6 +6,58 @@
 
 ---
 
+## 2026-08-12 — Supabase Data API 노출 차단 (보안 어드바이저 경고 대응)
+
+Supabase 보안 어드바이저 메일 2건(`rls_disabled_in_public` / `sensitive_columns_exposed`, 2026-08-09 기준)에서 출발.
+Supabase 는 `public` 스키마를 **자동으로 PostgREST 엔드포인트로 노출**하는데, 이 API 는 `anon` 키만 있으면 통과한다.
+그리고 anon 키는 **프론트에 박아 쓰라고 만든 공개용 키**다 — RLS 가 없으면 키를 아는 사람 누구나 전 테이블을 읽고·쓰고·지운다.
+
+→ **Project Settings → API → Exposed schemas 에서 `public` 제거.** 코드 변경·재배포 0.
+
+### 기능 영향이 0인 근거
+이 프로젝트는 PostgREST 를 한 줄도 안 쓴다. `@supabase/supabase-js` 미설치, anon 키가 저장소·`.env`·프론트 어디에도 없고,
+`config/database.js` 가 `pg` 로 pooler(6543) 직결, 인증은 Passport 자체 세션이라 `auth`/`storage`/`realtime` 스키마도 미사용.
+
+### 열려 있었다면 어땠나 (실측, public 오브젝트 36개)
+| 상태 | 개수 |
+|---|---|
+| RLS 없음 + anon 쓰기 가능 | **27** (`users` `session` `bills` `bill_votes` …) |
+| RLS 켜짐인데 `USING(true)` | **5** (`comments` `likes` `politician_ratings` `bill_citizen_votes` `reports`) |
+| MV — RLS 문법 자체가 없음 | **2** (`politician_cross_party_vote` `politician_dissent`) |
+| 실제로 막힌 것 | **2** (`bill_ai_analysis` `posts` — RLS 켜짐 + 정책 0개) |
+
+`anon` 롤이 34개 오브젝트에 INSERT/UPDATE/DELETE 권한 102건 (Supabase 기본 GRANT).
+
+- ⚠️ **최고 위험은 `users` 가 아니라 `session` 이었다.** `connect-pg-simple` 테이블이라 `sid` 가 곧 브라우저 쿠키 값이고
+  `sess` JSON 에 로그인 `userId` 가 들어 있다 — 읽으면 계정 탈취, 쓰면 임의 `user_id` 로 세션 위조
+- ⚠️ **RLS 가 켜진 5개는 가짜였다.** 정책이 전부 `USING(true) WITH CHECK(true)` / 대상롤 `public` / `cmd ALL` —
+  모든 롤에 모든 명령을 무조건 허용한다. 대시보드에는 "RLS 켜짐" 으로 보여서 **안전하다고 오판하기 딱 좋다**
+
+### 왜 RLS 를 켜는 쪽을 안 골랐나
+테이블마다 `ENABLE ROW LEVEL SECURITY` 를 걸어도 구멍이 남는다 — ① **MV 는 RLS 를 걸 문법이 없다**,
+② 일반 뷰는 기본이 definer 권한(PG15 `security_invoker` OFF)이라 `bill_analysis_request_counts` 로 아래 테이블 RLS 를 우회,
+③ 테이블을 추가할 때마다 켜줘야 하고 빠뜨리면 같은 경고가 다시 온다.
+Exposed schemas 제거는 **스키마 단위라 이후 생성물까지 커버**된다.
+
+### 검증 방법 — 이게 이번의 진짜 수확
+- 🔴 **키 없이 한 번 때리는 건 무의미하다.** 노출 여부와 무관하게 항상 `401 No API key found` 가 온다
+- **3종 대조**로만 판정된다: `정상키=404 · 잘못된키=401 · 키없음=401` ⇒ 차단됨 (키는 통과했는데 테이블을 못 찾음).
+  `정상키=200` 이면 아직 열림, `정상키=401` 이면 키가 틀린 것이라 판정 불가
+- ⚠️ **DB 안에서는 확인할 수 없다.** `authenticator` 롤의 `pgrst.db_schemas` 가 비어 있다 (`statement_timeout` 등만 존재) —
+  이 프로젝트는 Supabase 인프라 쪽이 설정을 들고 있어서, **바깥에서 HTTP 로 때려보는 게 유일한 확인 수단**
+- 확인 시 `limit=0` + `Prefer: count=exact` 를 쓸 것 — 개인정보를 끌어오지 않고 행 수만 받는다
+- ✅ 2026-08-12 실측: `users`/`session`/`bills`/`bill_votes`/`comments`/`politician_dissent`/`bill_ai_analysis`/`posts`
+  8종 전부 404 → 차단 확인
+
+### 남은 것
+- `USING(true)` 정책 5개는 그대로 (Data API 가 꺼져 있어 무해하지만 오판 소지). 정리 여부 미결
+- 🔴 **DB 재생성 시 따라오지 않는다** — 타임존 설정과 같은 부류. 빠뜨려도 에러가 없고 조용히 전 테이블이 인터넷에 열린다
+- `ddl/migrations/2026-08-12-supabase-data-api-off.sql` — 실행할 SQL 이 아니라 **대시보드 설정의 기록** +
+  검증 스크립트 + 폴백 RLS 스크립트(가짜 정책 5개 `DROP` 이 선행돼야 함을 명시)
+- [CLAUDE.md](./CLAUDE.md) 인프라 섹션에 `### Supabase Data API 는 꺼져 있다` 추가
+
+---
+
 ## 2026-08-12 — 의원 직위: 위원회 명단 자동 수집 + 특수 직위 수동 관리 + 관리자 페이지
 
 "의원 평가의 축이 부족하다" 에서 출발해 공공 API 를 뒤졌고, **위원회 소속**부터 붙였다.

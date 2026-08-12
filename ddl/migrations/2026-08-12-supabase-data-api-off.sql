@@ -27,20 +27,43 @@
 
 
 -- ---------------------------------------------------------------------------
--- 검증 1. 현재 노출 스키마 (읽기 전용)
---   Supabase 는 이 설정을 authenticator 롤의 pgrst.db_schemas 로 반영한다.
---   결과에 public 이 없으면 차단된 상태.
---   ⚠️ 대시보드가 원본(source of truth) 이다. 여기서 ALTER ROLE 로 직접 바꾸지 말 것 —
+-- 검증 1. 노출 스키마를 DB 에서 읽으려는 시도 — **이 프로젝트에선 안 통한다**
+--   Supabase 가 이 설정을 authenticator 롤의 pgrst.db_schemas 로 반영하는 경우가 있어
+--   아래를 먼저 봤으나, 2026-08-12 실측 결과 statement_timeout 등만 있고 db_schemas 는 없었다.
+--   설정을 인프라 쪽이 들고 있다 → 검증 2(HTTP)로 갈 것.
+--   ⚠️ 대시보드가 원본(source of truth) 이다. ALTER ROLE 로 직접 바꾸지 말 것 —
 --      다음 대시보드 저장에 덮어써진다.
 -- ---------------------------------------------------------------------------
 --   SELECT rolname, rolconfig
 --     FROM pg_roles WHERE rolname = 'authenticator';
 
--- 검증 2. 바깥에서 실제로 막혔는지 (anon 키는 대시보드 API 설정에서 복사)
---   200 이면 아직 열림 / 401·404 면 차단됨
---   curl -s -o /dev/null -w "%{http_code}\n" \
---     "https://<project-ref>.supabase.co/rest/v1/users?select=email&limit=1" \
---     -H "apikey: <anon-key>"
+-- 검증 2. 바깥에서 실제로 막혔는지 (anon 키는 대시보드 → Project Settings → API 에서 복사)
+--
+--   ⚠️ **단독 호출로는 판별할 수 없다.** 키 없이 때리면 노출 여부와 무관하게 항상 401 이다.
+--      반드시 아래 3종을 같이 돌려 대조할 것 — 응답 코드의 조합이 곧 판정이다:
+--
+--        정상 키 → 404 · 잘못된 키 → 401 · 키 없음 → 401   ⇒ 차단됨 (키는 통과, 테이블 미노출)
+--        정상 키 → 200                                    ⇒ 아직 열림
+--        정상 키 → 401                                    ⇒ 키가 틀렸다. 판정 불가
+--
+--   KEY='<anon-key>'; BASE="https://<project-ref>.supabase.co/rest/v1"
+--   for T in users session bills; do
+--     printf "%-10s 정상=%s 오키=%s 무키=%s\n" "$T" \
+--       "$(curl -s -o /dev/null -w '%{http_code}' -H "apikey: $KEY" "$BASE/$T?select=*&limit=0")" \
+--       "$(curl -s -o /dev/null -w '%{http_code}' -H "apikey: bogus"  "$BASE/$T?select=*&limit=0")" \
+--       "$(curl -s -o /dev/null -w '%{http_code}'                     "$BASE/$T?select=*&limit=0")"
+--   done
+--
+--   # 개인정보를 끌어오지 않도록 limit=0 을 쓴다. 행 수만 필요하면 -H "Prefer: count=exact"
+--   # 후 Content-Range 헤더를 읽을 것 (본문은 빈 배열).
+--
+-- ✅ 2026-08-12 실측: users / session / bills / bill_votes / comments /
+--    politician_dissent / bill_ai_analysis / posts 8종 전부 `정상키=404, 오키=401, 무키=401`
+--    → public 미노출 확인. 루트(`/rest/v1/`)는 service_role 전용이라 anon 으로 거절되는 게 정상.
+--
+--   ⚠️ 이 설정은 DB 안에서 읽을 수 없다. authenticator 롤의 pgrst.db_schemas 는 비어 있고
+--      (검증 1 은 이 프로젝트에서 아무것도 알려주지 못했다) Supabase 인프라 쪽이 들고 있다.
+--      → **바깥에서 HTTP 로 때려보는 위 방법이 유일한 확인 수단이다.**
 
 
 -- ---------------------------------------------------------------------------
@@ -57,6 +80,22 @@
 --   3) 앞으로 테이블을 추가할 때마다 켜줘야 한다. 빠뜨리면 같은 경고가 다시 온다.
 --
 -- Exposed schemas 제거는 스키마 단위라 위 셋이 전부 사라진다. 이후 생성물까지 커버.
+--
+-- 2026-08-12 실측 (public 오브젝트 36개):
+--   RLS 없음 + anon 쓰기 가능     27개   users / session / bills / bill_votes …
+--   RLS 켜짐인데 USING(true)       5개   comments / likes / politician_ratings
+--                                        / bill_citizen_votes / reports
+--   MV (RLS 불가)                  2개   politician_cross_party_vote / politician_dissent
+--   실제로 막힌 것                 2개   bill_ai_analysis / posts (RLS 켜짐 + 정책 0개)
+--   anon 롤의 INSERT/UPDATE/DELETE 권한 102건 (34개 오브젝트) — Supabase 기본 GRANT
+--
+-- ⚠️ 위 5개는 **보호처럼 보이는 가짜 정책**이다. 정책 본문이
+--      USING(true) WITH CHECK(true), 대상롤 public, cmd ALL
+--    이라 모든 롤에 모든 명령을 무조건 허용한다. RLS 를 켜고 문을 열어둔 상태.
+--
+-- ⚠️ 노출 시 가장 위험한 건 users 가 아니라 **session** 이다 (connect-pg-simple).
+--    sid 가 곧 브라우저 쿠키 값이고 sess JSON 에 로그인한 userId 가 들어 있다 —
+--    읽으면 계정 탈취, 쓰면 임의 user_id 로 세션 위조가 된다.
 --
 -- 상태 확인용 (참고):
 --   SELECT c.relkind, c.relname, c.relrowsecurity
@@ -86,6 +125,15 @@
 --   END $$;
 --
 --   -- 정책을 하나도 만들지 않으면 anon 은 전부 차단된다 (기본 deny).
+--
+--   -- 🔴 기존 USING(true) 정책 5개를 **먼저 지워야 한다.** 안 지우면 RLS 를 켜도
+--   --    이 정책이 모든 롤에 ALL 을 허용해서 아무 효과가 없다:
+--   --   DROP POLICY comments_all  ON public.comments;
+--   --   DROP POLICY likes_all     ON public.likes;
+--   --   DROP POLICY ratings_all   ON public.politician_ratings;
+--   --   DROP POLICY bcv_all       ON public.bill_citizen_votes;
+--   --   DROP POLICY reports_all   ON public.reports;
+--
 --   -- 그래도 위 1)·2) 는 남으므로 MV·뷰는 REVOKE 로 따로 막아야 한다:
 --   --   REVOKE ALL ON public.politician_cross_party_vote FROM anon, authenticated;
 --   --   REVOKE ALL ON public.politician_dissent           FROM anon, authenticated;
