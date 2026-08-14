@@ -30,7 +30,8 @@ import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
 
 const W = 1080;
-const H = 1350;
+const H = 1350;          // 피드 캐러셀 (4:5)
+const STORY_H = 1920;    // 스토리 (9:16)
 
 const arg = (name, dflt = null) => {
     const i = process.argv.indexOf(`--${name}`);
@@ -67,14 +68,14 @@ function pngSize(file) {
     return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
 }
 
-function shoot(browser, url, outFile) {
+function shoot(browser, url, outFile, height = H) {
     execFileSync(browser, [
         '--headless=new',
         '--disable-gpu',
         '--hide-scrollbars',
         // 1 로 고정하지 않으면 고DPI 장비에서 2배 크기로 찍힌다
         '--force-device-scale-factor=1',
-        `--window-size=${W},${H}`,
+        `--window-size=${W},${height}`,
         // 웹폰트가 로드되기 전에 찍히는 걸 막는다 (가상 시계를 돌려 로드를 끝낸 뒤 캡처)
         '--virtual-time-budget=6000',
         // 사용자가 크롬을 켜둔 상태여도 프로필 충돌이 없게 별도 프로필
@@ -206,17 +207,27 @@ async function main() {
         logger.info(`         "${post.headline}"`);
 
         let bad = 0;
+        const check = (file, label, expectH) => {
+            const size = pngSize(file);
+            if (!size || size.w !== W || size.h !== expectH) {
+                bad++;
+                logger.warn(`  ${label} ⚠ ${size ? `${size.w}x${size.h}` : '읽기 실패'} — 기대값 ${W}x${expectH}`);
+            } else {
+                logger.info(`  ${label} ✓ ${size.w}x${size.h} (${Math.round(fs.statSync(file).size / 1024)}KB)`);
+            }
+        };
+
         for (let n = 1; n <= count; n++) {
             const file = path.join(dir, `${String(n).padStart(2, '0')}.png`);
             shoot(browser, `${cardUrl}?slide=${n}`, file);
-            const size = pngSize(file);
-            if (!size || size.w !== W || size.h !== H) {
-                bad++;
-                logger.warn(`  ${n}/${count} ⚠ ${size ? `${size.w}x${size.h}` : '읽기 실패'} — 기대값 ${W}x${H}`);
-            } else {
-                logger.info(`  ${n}/${count} ✓ ${size.w}x${size.h} (${Math.round(fs.statSync(file).size / 1024)}KB)`);
-            }
+            check(file, `${n}/${count}`, H);
         }
+
+        // 스토리 1장 — 인스타에서 **탭 한 번에 사이트로 가는 유일한 통로**가 스토리 링크 스티커다.
+        // 피드 게시물은 프로필 → 링크로 2단계라 이탈이 크다.
+        const storyFile = path.join(dir, 'story.png');
+        shoot(browser, `${cardUrl}?story=1`, storyFile, STORY_H);
+        check(storyFile, 'story', STORY_H);
 
         const capFile = path.join(dir, 'caption.txt');
         fs.writeFileSync(capFile, buildCaption(post), 'utf8');

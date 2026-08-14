@@ -18,12 +18,16 @@
   //    Date.UTC 로 고정해 계산하면 어느 환경에서도 같은 값이 나온다.
   const [dY, dM, dD] = p.briefing_date.split('-').map(Number);
   const DOW = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(dY, dM - 1, dD)).getUTCDay()];
-  const shown = single ? [slides[single - 1]] : slides;
+  const shown = story ? [] : (single ? [slides[single - 1]] : slides);
+  // 1:1 캡처 모드 — 슬라이드 단건이거나 스토리 단건
+  const one = story || !!single;
 
   // 헤드라인은 길이가 제각각이라 **서버가 크기를 정한다.**
   // JS 로 줄이면 캡처 타이밍에 따라 크기가 달라진다 (자동화가 폰트 로드 전에 찍을 수 있음).
   const hl = p.headline || '';
   const hlSize = hl.length <= 18 ? 112 : hl.length <= 30 ? 94 : hl.length <= 44 ? 76 : 62;
+  // 스토리는 세로가 570px 더 길어 헤드라인을 키울 수 있다
+  const hlStory = hl.length <= 18 ? 128 : hl.length <= 30 ? 108 : hl.length <= 44 ? 88 : 72;
 
   // 표지 하단 숫자 — 헤드라인만 두면 세로가 크게 남고, 무엇보다 **문장 옆에 근거가 붙는다.**
   // (AI 가 쓴 문장 바로 아래 SQL 집계 숫자가 오는 배치)
@@ -35,7 +39,7 @@
 
   const badge = p.isAi ? 'AI 정리' : (p.isEmpty ? '활동 없음' : '데이터 집계');
 %><!doctype html>
-<html lang="ko" class="<%= single ? 'one' : '' %>">
+<html lang="ko" class="<%= one ? 'one' : '' %><%= story ? ' story' : '' %>">
 <head>
 <meta charset="utf-8">
 <title><%= D %> 인스타 카드 · 당말사</title>
@@ -184,6 +188,7 @@
   .pv { display: flex; flex-wrap: wrap; gap: 26px; padding: 26px; }
   .pv-item { width: 378px; }
   .pv-box { width: 378px; height: 472px; overflow: hidden; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
+  .pv-box.is-story { height: 672px; }   /* 1920 × 0.35 */
   .pv-box .sl { transform: scale(.35); transform-origin: top left; }
   .pv-cap { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: #C8C2B4; }
   .pv-cap a { margin-left: auto; color: #E8B562; text-decoration: none; border-bottom: 1px solid currentColor; }
@@ -191,15 +196,38 @@
   /* 1:1 모드 — 문서 자체가 곧 캔버스. 전체 페이지 캡처가 그대로 1080×1350 이 된다.
      ⚠️ body 에만 걸면 안 된다 — html 이 뷰포트 폭(예: 1280)까지 늘어나 오른쪽에 빈 띠가 붙는다 */
   html.one, body.one { width: 1080px; height: 1350px; overflow: hidden; background: var(--bg); }
+  html.story, body.story { height: 1920px; }
+
+  /* ── 스토리 (1080×1920, 9:16) ──────────────────────────────
+     🔴 인스타 스토리 UI 가 **위아래를 덮는다** — 상단은 프로필·진행바, 하단은 답장 입력바.
+        안전영역 밖에 글자를 두면 앱에서 가려진다. 그래서 위 250 / 아래 240 을 비운다.
+     🔴 하단에 **링크 스티커 자리를 디자인에 포함**한다. 안 비워두면 사용자가 카드 위에
+        스티커를 얹게 되고, 그러면 스티커가 카드 디자인의 일부처럼 보여 눌러야 할 것으로 안 읽힌다 */
+  .sl.is-story { width: 1080px; height: 1920px; }
+  .sl.is-story .sl-in { padding: 236px 76px 240px; }
+  .sl-sticker {
+    flex: 0 0 auto; height: 300px; margin-top: 44px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* 캡처에는 안 나오는 안내선 — 미리보기에서 "여기가 스티커 자리" 를 보여주기 위한 것 */
+  .sl-sticker-hint {
+    font-family:'JetBrains Mono',monospace; font-size: 26px; letter-spacing: .12em;
+    color: #C9C5B6; border: 2px dashed #C9C5B6; border-radius: 14px; padding: 18px 34px;
+  }
+  body.story .sl-sticker-hint { display: none; }   /* 실제 캡처에서는 숨긴다 */
 </style>
 </head>
-<body class="<%= single ? 'one' : '' %>">
+<body class="<%= one ? 'one' : '' %><%= story ? ' story' : '' %>">
 
-<% if (!single) { %>
+<% if (story) { %>
+  <%- include('_card_story', { p, D, DOW, badge, hlStory, coverNums }) %>
+<% } %>
+
+<% if (!one) { %>
   <div class="tb">
     <b><%= D %> 인스타 카드</b>
-    <span><%= slides.length %>장</span>
-    <span>1080 × 1350 (4:5)</span>
+    <span>피드 <%= slides.length %>장 + 스토리 1장</span>
+    <span>1080 × 1350 (4:5) · 스토리 1080 × 1920 (9:16)</span>
     <span class="sp">
       <%# 창 캡처는 화면 배율·DPI 를 타서 1080px 이 안 나온다. 노드 캡처가 항상 정확하다 %>
       캡처: <code>1:1로 열기</code> → F12 → Elements 에서 <code>&lt;section class="sl"&gt;</code> 우클릭 →
@@ -211,7 +239,7 @@
 <% } %>
 
 <% shown.forEach((s, i) => { const no = single || (i + 1); %>
-  <% if (!single) { %><div class="pv-item"><div class="pv-box"><% } %>
+  <% if (!one) { %><div class="pv-item"><div class="pv-box"><% } %>
 
   <section class="sl <%= s.kind === 'cover' ? '' : 'is-sub' %>" data-slide="<%= no %>">
     <div class="sl-rule"></div>
@@ -342,7 +370,7 @@
     </div>
   </section>
 
-  <% if (!single) { %>
+  <% if (!one) { %>
     </div>
     <div class="pv-cap">
       <span><%= no %>. <%= { cover:'표지', stats:'숫자', thread:'흐름', laws:'몰린 법률', outro:'마무리' }[s.kind] %></span>
@@ -352,6 +380,19 @@
   <% } %>
 <% }); %>
 
-<% if (!single) { %></div><% } %>
+<%# 미리보기 그리드 끝에 스토리도 붙인다 — 비율이 달라 박스만 세로로 길게 %>
+<% if (!one) { %>
+  <div class="pv-item">
+    <div class="pv-box is-story">
+      <%- include('_card_story', { p, D, DOW, badge, hlStory, coverNums }) %>
+    </div>
+    <div class="pv-cap">
+      <span>스토리 (9:16)</span>
+      <a href="?story=1" target="_blank" rel="noopener">1:1로 열기 ↗</a>
+    </div>
+  </div>
+<% } %>
+
+<% if (!one) { %></div><% } %>
 </body>
 </html>

@@ -146,11 +146,17 @@ export default (db) => {
                 ? null
                 : Math.min(slides.length, Math.max(1, Math.floor(Number(raw) || 1)));
 
+            // ?story=1 — 스토리 전용 1080×1920 한 장.
+            // `slide` 와 별도 파라미터로 둔 이유: 크기가 달라서 같은 번호 체계에 못 들어간다
+            // (배치가 캡처할 때 --window-size 를 다르게 줘야 한다).
+            const story = req.query.story === '1' || req.query.story === 'true';
+
             res.render('briefing/card', {
                 layout: false,
                 post,
                 slides,
                 single,          // null = 전체 미리보기 / 1-based 인덱스 = 그 장만
+                story,
                 nf
             });
         } catch (error) {
