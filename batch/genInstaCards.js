@@ -84,34 +84,71 @@ function shoot(browser, url, outFile) {
     ], { stdio: 'pipe', timeout: 60000 });
 }
 
-/* 인스타 캡션 — 이미지에 다 못 담는 맥락과 **고지**가 여기 들어간다.
-   ⚠️ 카드가 사이트 밖으로 나가므로 AI 고지·출처는 이미지와 캡션 양쪽에 있어야 한다. */
+/* 인스타 캡션 — 그대로 복사해 캡션 칸에 붙여넣는 텍스트.
+ *
+ * 🔴 캡션은 **이미지를 반복하는 자리가 아니다.** 카드에 이미 있는 것(날짜·헤드라인·숫자·흐름)을
+ *    다시 적으면 자막이 될 뿐이다. 캡션만 할 수 있는 일 세 가지에 집중한다:
+ *      ① 검색 유입(해시태그)  ② 프로필 링크 유도  ③ 고지
+ *
+ * ⚠️ **인스타 캡션의 URL 은 클릭되지 않는다.** `→ dangmalsa.kr` 처럼 링크 모양으로 써두면
+ *    눌러도 아무 일이 안 일어나 안 쓴 것만 못하다. 반드시 "프로필 링크" 로 유도할 것.
+ * ⚠️ 첫 2줄만 보이고 나머지는 `... 더 보기` 로 접힌다 → 첫 줄은 **헤드라인**이어야 한다.
+ *    날짜를 앞에 두면 가장 비싼 자리를 카드 표지(54px 날짜)와 중복시키는 셈이다.
+ */
 function buildCaption(p) {
-    const d = p.briefing_date.replace(/-/g, '.');
-    const L = [`[${d} 국회] ${p.headline}`, '', p.body];
+    const [, mm, dd] = p.briefing_date.split('-');
+    const isAi = p.model && p.model !== 'fallback' && p.model !== 'none';
+    const isEmpty = p.model === 'none';
+    const st = p.stats || {};
 
+    // ① 첫 2줄 — 더 보기 이전에 노출되는 전부
+    const L = [p.headline, `${Number(mm)}월 ${Number(dd)}일 국회 기록입니다.`];
+
+    // ② 숫자 (SQL 집계값)
+    const nums = [];
+    if (!isEmpty && st.proposed !== undefined) {
+        nums.push(`발의 ${st.proposed}건`);
+        if (st.proposers) nums.push(`대표발의 ${st.proposers}명`);
+        if (st.cosign) nums.push(`공동발의 서명 ${st.cosign}건`);
+    }
+    if (nums.length) L.push('', nums.join(' · '));
+
+    // ③ 흐름 — AI 가 값을 더한 유일한 지점이라 캡션에도 남긴다
     const threads = Array.isArray(p.threads) ? p.threads : [];
     if (threads.length) {
-        L.push('', '─────');
+        L.push('', '이날의 흐름');
         threads.forEach((t) => L.push(`· ${t.theme} (${t.bill_count}건) — ${t.what}`));
     }
 
-    L.push('', '─────');
-    L.push('발의된 법안 전문과 의원별 표결 기록 → dangmalsa.kr');
-    L.push('데이터: 열린국회정보');
-    if (p.model && p.model !== 'fallback' && p.model !== 'none') {
-        L.push('※ 숫자는 국회 공식 데이터 집계입니다. 문장과 주제 묶음은 AI가 법안 원문을 읽고 정리한 것으로 사실과 다를 수 있습니다.');
-    } else {
-        L.push('※ AI 없이 국회 공식 데이터 집계만으로 만들었습니다.');
-    }
+    // ④ 프로필 링크 유도 + 소개와 같은 문장 (계정 전체가 같은 말을 반복해야 정체성이 된다)
+    L.push('', '법안 원문과 의원별 표결 기록은 프로필 링크에서 볼 수 있습니다.', '직접 보고 판단하세요.');
 
-    // 해시태그는 **정책 주제만** 쓴다 (keywords 는 이미 중립성 검사를 통과한 값).
-    // 정당·인물 태그는 절대 넣지 말 것 — 그 순간 계정이 편을 든 것이 된다.
-    const tags = ['국회', '법안', '입법', '당말사',
-        ...(Array.isArray(p.keywords) ? p.keywords : [])]
-        .map((k) => `#${String(k).replace(/[\s#·]/g, '')}`)
-        .filter((t) => t.length > 1);
-    L.push('', [...new Set(tags)].join(' '));
+    // ⑤ 고지 — 카드가 사이트 밖으로 나가므로 이미지와 캡션 양쪽에 있어야 한다
+    L.push('');
+    if (isAi) {
+        L.push('숫자는 국회 공식 데이터 집계입니다. 문장과 주제 묶음은 AI가 법안 원문을 읽고 정리한 것으로 사실과 다를 수 있습니다.');
+    } else if (isEmpty) {
+        L.push('국회 공식 데이터에 이날 기록된 활동이 없어 자동으로 남긴 기록입니다.');
+    } else {
+        L.push('AI 없이 국회 공식 데이터 집계만으로 만들었습니다.');
+    }
+    L.push('출처: 열린국회정보');
+
+    /* ⑥ 해시태그
+       ⚠️ `#518민주유공자보훈` 같은 긴 키워드는 **아무도 검색하지 않는다.** 태그는 실제로
+          검색되는 말이어야 의미가 있다 → 고정 태그 + 짧은 키워드만 소수.
+       ⚠️ `#정치`·`#시사` 는 넣지 않는다. 쓰레드에서 `정치뉴스` 태그가 진영 글을 끌어온 것과
+          같은 위험이 있다. 사안 중심 태그(#국회·#법안·#입법·#정책)는 안전하다.
+       ⚠️ 정당·인물 태그는 절대 금지 — 그 순간 계정이 편을 든 것이 된다. */
+    const BASE = ['국회', '법안', '입법', '정책', '국회의원', '법안발의', '당말사'];
+    const extra = (Array.isArray(p.keywords) ? p.keywords : [])
+        .map((k) => String(k).replace(/[\s#·]/g, ''))
+        // 길이는 거친 대용치다 — `조세특례제한법`(7) 같은 실제 법률명은 살리고
+        // `필수항공운송노선`(8) 처럼 AI 가 지어낸 구절은 거른다. 완벽하진 않으니
+        // 올리기 전에 caption.txt 를 한 번 훑고 손대도 된다
+        .filter((k) => k.length >= 2 && k.length <= 7)
+        .slice(0, 3);
+    L.push('', [...new Set([...BASE, ...extra])].map((k) => `#${k}`).join(' '));
 
     return L.join('\n');
 }
@@ -129,7 +166,7 @@ async function main() {
         const date = arg('date');
         const { rows } = await pool.query(`
             SELECT id, TO_CHAR(briefing_date,'YYYY-MM-DD') AS briefing_date,
-                   headline, body, keywords, threads, model
+                   headline, body, keywords, threads, stats, model
               FROM briefing_posts
              WHERE ($1::bigint IS NULL OR id = $1::bigint)
                AND ($2::date   IS NULL OR briefing_date = $2::date)
