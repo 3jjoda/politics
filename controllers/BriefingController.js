@@ -3,6 +3,7 @@
 // 1단계: 데이터만. AI 호출 0회.
 
 import BriefingService from '../services/BriefingService.js';
+import { buildThreadsChain, THREADS_LIMIT } from '../utils/threadsPost.js';
 import { nf, pct } from '../utils/xrayFormat.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
@@ -154,6 +155,35 @@ export default (db) => {
             });
         } catch (error) {
             logger.error('브리핑 카드 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    /* 쓰레드(Threads) 연결 게시물 — 복사해 붙이는 자리
+     *
+     * 파일이 아니라 페이지로 만든 이유: 쓰레드는 **모바일에서 올린다.**
+     * 배치가 텍스트 파일을 떨궈봐야 폰으로 옮기는 일이 남는다. */
+    controller.getBriefingThreads = wrapWithContext(async function getBriefingThreads(req, res, next) {
+        try {
+            const id = Number(req.params.id);
+            const post = Number.isInteger(id) && id > 0 ? await briefingService.getPost(id) : null;
+            if (!post) {
+                return res.status(404).render('error_pages/404', {
+                    pageTitle: '찾을 수 없음', pageStyles: 'error', currentUrl: '/briefing',
+                    message: '브리핑을 찾을 수 없습니다.'
+                });
+            }
+
+            res.render('briefing/threads', {
+                pageTitle: `쓰레드 · ${post.briefing_date}`,
+                pageStyles: null,
+                currentUrl: '/briefing',
+                post,
+                chain: buildThreadsChain(post),
+                limit: THREADS_LIMIT
+            });
+        } catch (error) {
+            logger.error('브리핑 쓰레드 렌더링 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });

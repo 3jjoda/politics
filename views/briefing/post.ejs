@@ -146,6 +146,7 @@
           막아두면 로그인 상태에 따라 미리보기가 안 되는 상황이 생긴다 (noindex 는 걸어둠) %>
       <% if (locals.isAdmin) { %>
         <a class="bp-card-link" href="/briefing/<%= p.id %>/card" target="_blank" rel="noopener">▦ 인스타 카드</a>
+        <a class="bp-card-link" href="/briefing/<%= p.id %>/threads" target="_blank" rel="noopener">≡ 쓰레드</a>
       <% } %>
       <a class="bp-back" href="/briefing">← 피드로</a>
     </div>

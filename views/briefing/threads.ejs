@@ -1,0 +1,147 @@
+<%
+  /* 쓰레드 연결 게시물 — 위에서부터 순서대로 복사해 이어 올린다.
+     ⚠️ 모바일에서 쓰는 화면이다 (쓰레드는 폰에서 올린다). 복사 버튼이 손가락에 맞아야 한다. */
+  const D = post.briefing_date.replace(/-/g, '.');
+%>
+
+<div class="th-wrap">
+  <nav class="th-crumb">
+    <a href="/briefing">브리핑</a> <span>/</span>
+    <a href="/briefing/<%= post.id %>"><%= D %></a> <span>/</span> <span>쓰레드</span>
+  </nav>
+
+  <header class="th-head">
+    <h1>쓰레드 게시물 <span class="th-cnt"><%= chain.length %>개</span></h1>
+    <p>
+      위에서부터 순서대로 올려 <strong>연결 게시물(체인)</strong>로 만드세요.
+      1번이 피드에 노출되는 유일한 게시물입니다.
+    </p>
+    <div class="th-actions">
+      <button type="button" class="th-btn is-main" id="th-copy-all">전체 복사</button>
+      <a class="th-btn" href="https://www.threads.net/" target="_blank" rel="noopener noreferrer">쓰레드 열기 ↗</a>
+    </div>
+  </header>
+
+  <ol class="th-list">
+    <% chain.forEach((p) => { %>
+      <li class="th-item<%= p.over ? ' is-over' : '' %>">
+        <div class="th-item-top">
+          <span class="th-no"><%= p.n %></span>
+          <span class="th-role"><%= p.role %></span>
+          <span class="th-len"><%= p.len %> / <%= limit %></span>
+          <button type="button" class="th-copy" data-copy="<%= p.n %>">복사</button>
+        </div>
+        <pre class="th-text" id="th-text-<%= p.n %>"><%= p.text %></pre>
+        <% if (p.over) { %>
+          <p class="th-warn">⚠ <%= limit %>자를 넘습니다. 올리기 전에 줄여주세요.</p>
+        <% } %>
+      </li>
+    <% }); %>
+  </ol>
+
+  <p class="th-note">
+    <%# 해시태그를 만들어 주지 않는 이유를 적어둔다 — 안 적으면 "빠뜨린 것" 으로 읽힌다 %>
+    해시태그는 넣지 않았습니다. 쓰레드는 게시물당 태그를 <strong>하나만</strong> 달 수 있고,
+    정치 주제 태그는 그 자체로 특정 진영의 피드에 묶일 수 있어 중립성에 불리합니다.
+  </p>
+</div>
+
+<style>
+  .th-wrap { max-width: 760px; margin: 0 auto; padding: calc(var(--nav-h) + 28px) 24px 80px; }
+  .th-crumb { font-size: 12.5px; color: var(--sub2); margin-bottom: 16px; display: flex; gap: 7px; flex-wrap: wrap; }
+  .th-crumb a { color: var(--sub); text-decoration: none; }
+  .th-crumb a:hover { color: var(--accent); }
+
+  .th-head { margin-bottom: 22px; }
+  .th-head h1 { font-size: 24px; font-weight: 700; margin: 0 0 8px; display: flex; align-items: center; gap: 10px; }
+  .th-cnt { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #8F5800;
+            border: 1px solid #8F5800; border-radius: 6px; padding: 2px 9px; background: #FBF5EA; }
+  .th-head p { font-size: 13.5px; line-height: 1.75; color: var(--sub); margin: 0; word-break: keep-all; }
+  .th-head strong { color: var(--text); font-weight: 700; }
+
+  .th-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .th-btn { font-size: 13px; font-weight: 700; color: var(--sub); background: var(--bg2);
+            border: 1px solid var(--border2); border-radius: 8px; padding: 0 18px;
+            min-height: 44px; display: inline-flex; align-items: center; cursor: pointer;
+            font-family: inherit; text-decoration: none; }
+  .th-btn:hover { color: #8F5800; border-color: #8F5800; }
+  .th-btn.is-main { color: #8F5800; border-color: #8F5800; background: #FBF5EA; }
+
+  .th-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .th-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .th-item.is-over { border-color: var(--red); }
+
+  .th-item-top { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+  .th-no { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--bg2);
+           background: var(--text); border-radius: 50%; width: 22px; height: 22px;
+           display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+  .th-role { font-size: 12.5px; color: var(--sub); }
+  .th-len { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--sub2); }
+  .is-over .th-len { color: var(--red); font-weight: 700; }
+  .th-copy { font-size: 12.5px; font-weight: 700; color: var(--sub); background: none;
+             border: 1px solid var(--border2); border-radius: 7px; padding: 0 14px;
+             min-height: 34px; cursor: pointer; font-family: inherit; flex: 0 0 auto; }
+  .th-copy:hover { color: #8F5800; border-color: #8F5800; }
+  .th-copy.is-done { color: #0F9D6E; border-color: #0F9D6E; }
+
+  /* 실제 올라갈 모양 그대로 보여준다 — 줄바꿈이 곧 게시물의 형태다.
+     ⚠️ pre 는 기본이 nowrap 이라 긴 줄이 가로로 삐져나간다. 반드시 wrap 시킬 것 */
+  .th-text {
+    margin: 0; font-family: inherit; font-size: 14px; line-height: 1.75; color: var(--text);
+    white-space: pre-wrap; overflow-wrap: anywhere; word-break: keep-all;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px;
+  }
+  .th-warn { margin: 9px 0 0; font-size: 12.5px; color: var(--red); }
+
+  .th-note { margin: 22px 0 0; font-size: 12.5px; line-height: 1.75; color: var(--sub2);
+             border-top: 1px solid var(--border); padding-top: 16px; word-break: keep-all; }
+  .th-note strong { color: var(--sub); font-weight: 700; }
+
+  @media (max-width: 768px) {
+    .th-wrap { padding: calc(var(--nav-h) + 20px) 16px 80px; }
+    .th-head h1 { font-size: 20px; }
+  }
+</style>
+
+<script>
+(() => {
+  /* 복사는 clipboard API — HTTPS·localhost 에서만 동작한다.
+     실패하면 조용히 넘기지 말고 선택 상태로 만들어 손으로 복사할 수 있게 한다. */
+  const flash = (btn, msg) => {
+    const orig = btn.textContent;
+    btn.textContent = msg;
+    btn.classList.add('is-done');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('is-done'); }, 1400);
+  };
+
+  const copy = async (text, btn) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      flash(btn, '복사됨 ✓');
+    } catch {
+      const el = btn.closest('.th-item')?.querySelector('.th-text');
+      if (el) {
+        const r = document.createRange();
+        r.selectNodeContents(el);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      }
+      flash(btn, '직접 복사하세요');
+    }
+  };
+
+  document.querySelectorAll('.th-copy').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const el = document.getElementById('th-text-' + btn.dataset.copy);
+      if (el) copy(el.textContent, btn);
+    });
+  });
+
+  const all = document.getElementById('th-copy-all');
+  all?.addEventListener('click', () => {
+    // 게시물 사이를 구분선으로 나눠 한 번에 복사 (데스크톱에서 메모장에 옮길 때용)
+    const txt = [...document.querySelectorAll('.th-text')]
+      .map((e, i) => `[${i + 1}]\n${e.textContent}`).join('\n\n─────\n\n');
+    copy(txt, all);
+  });
+})();
+</script>
