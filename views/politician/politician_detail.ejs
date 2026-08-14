@@ -273,6 +273,20 @@
     font-weight: 600;
   }
 
+  /* 퇴임 — 목록 칩과 같은 판단. 무채색으로만: 상태지 평가가 아니다.
+     ⚠️ 골드(브랜드 강조)를 쓰지 말 것 — 특수 직위 배지가 골드라 같은 급으로 읽힌다.
+        직위는 "무엇을 맡고 있다" 이고 퇴임은 "이제 없다" 라 반대 방향이다. */
+  .profile-retired {
+    padding: 5px 14px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--bg3);
+    color: var(--sub);
+    border: 1px solid var(--border2);
+    white-space: nowrap;
+  }
+
   .profile-meta {
     display: flex;
     align-items: center;
@@ -1204,6 +1218,11 @@
         <div class="profile-top">
           <h1 class="profile-name"><%= politician.name %></h1>
           <span class="profile-party-badge"><%= politician.party_name || '무소속' %></span>
+          <%# 현역 API 에 없는 의원. 목록의 칩 줄과 같은 자리(정당 배지 옆)에 둔다.
+              ⚠️ 이유는 쓰지 않는다 — 사퇴·퇴임·당선무효가 섞여 있고 원천이 사유를 안 준다 %>
+          <% if (politician.active_yn === false) { %>
+            <span class="profile-retired">퇴임</span>
+          <% } %>
           <%# 특수 직위 — politician_titles (수동 관리). 한 사람이 여러 개를 가질 수 있다
               (정책위의장 겸 최고위원 등). 정렬은 쿼리가 공적 지위 → 정당 지위 순으로 해준다.
               상임위 직위(위원장·간사)는 여기가 아니라 아래 위원회 칩이 담당한다.

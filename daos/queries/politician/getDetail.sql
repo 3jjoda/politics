@@ -13,6 +13,10 @@ SELECT p.politician_id
      , p.reele_gbn_nm
      , p.units
      , p.sex_gbn_nm
+     /* 현역 API 에 없는 의원 — 히어로에 `퇴임` 배지로 표시한다.
+        ⚠️ 상세는 원래부터 active_yn 으로 거르지 않았다(그래서 목록에 없어도 URL 로는 열렸다).
+           그런데 표시가 없으면 퇴임자인지 모른 채 "왜 최근 활동이 없지" 로 읽힌다. */
+     , p.active_yn
      , p.tel_no
      , p.e_mail
      , p.homepage
