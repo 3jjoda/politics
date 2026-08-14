@@ -12,6 +12,12 @@
   const p = post;
   const st = p.stats || {};
   const D = p.briefing_date.replace(/-/g, '.');
+
+  // 요일 — 날짜를 "기록" 처럼 읽히게 한다.
+  // ⚠️ `new Date('YYYY-MM-DD').getDay()` 는 실행 환경 타임존을 탄다 (프로젝트 규칙: 로컬 getter 금지).
+  //    Date.UTC 로 고정해 계산하면 어느 환경에서도 같은 값이 나온다.
+  const [dY, dM, dD] = p.briefing_date.split('-').map(Number);
+  const DOW = ['일', '월', '화', '수', '목', '금', '토'][new Date(Date.UTC(dY, dM - 1, dD)).getUTCDay()];
   const shown = single ? [slides[single - 1]] : slides;
 
   // 헤드라인은 길이가 제각각이라 **서버가 크기를 정한다.**
@@ -67,7 +73,14 @@
   .sl-in, .sl-in * { word-break: keep-all; overflow-wrap: anywhere; }
 
   .sl-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex: 0 0 auto; }
-  .sl-date { font-family:'JetBrains Mono',monospace; font-size: 34px; font-weight: 700; letter-spacing: .16em; color: var(--sub2); }
+  .sl-head-r { display: flex; align-items: center; gap: 18px; flex: 0 0 auto; }
+  /* 표지의 날짜는 **메타가 아니라 정체**다 (일간 기록물이라 날짜가 곧 제목의 일부).
+     다른 장은 반복 노출이라 워터마크 수준으로 낮춘다 — 같은 크기로 두면 5장 내내 시끄럽다 */
+  .sl-date { font-family:'JetBrains Mono',monospace; font-size: 34px; font-weight: 700; letter-spacing: .16em; color: var(--sub); }
+  .sl-date.is-hero { font-size: 54px; letter-spacing: .08em; color: var(--ink); display: inline-flex; align-items: baseline; }
+  <%# ⚠️ .sl-date 가 mono 라 물려받는다. JetBrains Mono 에 한글 글리프가 없어 '(수)' 만 폴백된다 %>
+  .sl-dow { font-family:'Noto Sans KR',sans-serif; font-size: 30px; font-weight: 500;
+            color: var(--sub2); letter-spacing: 0; margin-left: 14px; }
   .sl-tag {
     font-size: 26px; font-weight: 700; letter-spacing: .04em; color: var(--gold-d);
     border: 2px solid var(--gold-d); border-radius: 10px; padding: 7px 18px; background: var(--tint);
@@ -206,7 +219,7 @@
 
       <% if (s.kind === 'cover') { %>
         <div class="sl-head">
-          <span class="sl-date"><%= D %></span>
+          <span class="sl-date is-hero"><%= D %><span class="sl-dow">(<%= DOW %>)</span></span>
           <span class="sl-tag<%= p.isAi ? '' : ' is-plain' %>"><%= badge %></span>
         </div>
         <div class="sl-body">
@@ -244,9 +257,13 @@
         </div>
 
       <% } else if (s.kind === 'thread') { %>
+        <%# 흐름 장에만 날짜가 없었다 — 캐러셀에서 한 장만 캡처돼 돌아다니면 언제 건지 알 수 없다 %>
         <div class="sl-head">
           <span class="sl-label">이날의 흐름 <%= s.idx %>/<%= s.of %></span>
-          <span class="th-cnt"><%= nf(s.t.bill_count) %>건</span>
+          <span class="sl-head-r">
+            <span class="sl-date"><%= D %></span>
+            <span class="th-cnt"><%= nf(s.t.bill_count) %>건</span>
+          </span>
         </div>
         <div class="sl-body">
           <h2 class="th-theme"><%= s.t.theme %></h2>
