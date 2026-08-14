@@ -526,6 +526,16 @@
     );
     color: #fff;
   }
+  /* 퇴임 표시 — 정당색을 쓰지 않고 무채색 외곽선으로만. 상태지 평가가 아니다.
+     그리드 카드는 사진 위 오버레이(어두운 배경)라 밝은 색, 리스트는 흰 배경이라 회색 */
+  .pol-retired {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap;
+    border: 1px solid currentColor; border-radius: 4px; padding: 1px 5px; margin-left: 5px;
+    vertical-align: middle;
+  }
+  .pol-overlay .pol-retired { color: rgba(255,255,255,0.82); }
+  .pol-list-name-row .pol-retired { color: var(--sub2); }
+
   .pol-name {
     font-size: 16px;
     font-weight: 800;
@@ -1152,7 +1162,11 @@
             </div>
 
             <div class="pol-overlay">
-              <div class="pol-name"><%= p.name %></div>
+              <%# 현역 API 에서 빠진 의원. **이유는 쓰지 않는다** — 사퇴·퇴임·당선무효 등이
+                  섞여 있고 원천이 사유를 주지 않는다. 홈 화면(index.ejs)과 같은 라벨 %>
+              <div class="pol-name">
+                <%= p.name %><% if (p.active_yn === false) { %><span class="pol-retired">퇴임</span><% } %>
+              </div>
               <div class="pol-district"><%= p.electoral_district || '—' %></div>
               <div class="pol-stats-line">
                 <span><span class="num"><%= p.propose_cnt %></span><span class="label">발의</span></span>
@@ -1206,6 +1220,7 @@
             <div>
               <div class="pol-list-name-row">
                 <span class="pol-list-name"><%= p.name %></span>
+                <% if (p.active_yn === false) { %><span class="pol-retired">퇴임</span><% } %>
                 <span class="pol-party-badge <%= pClass %>"><%= p.party_name || '무소속' %></span>
               </div>
               <div class="pol-list-sub"><%= p.electoral_district || '—' %></div>
@@ -1287,7 +1302,15 @@
       const gapVal = el.dataset.gap || '';
 
       // 이름·지역구 — 직접 부분일치 + 한글 초성 매칭 (PB.matchesQuery)
-      const textHit = !q || (window.PB && (PB.matchesQuery(name, q) || PB.matchesQuery(district, q)));
+      // ⚠️ PB(interactions.js) 로딩 전에 applyFilter() 가 돌 수 있다. 초기 1회는
+      //    `loadFromUrl(); applyFilter();` 가 스크립트 실행 시점에 바로 도는데,
+      //    이때 window.PB 가 없으면 조건 전체가 falsy 가 되어 **카드가 전부 숨겨진다**
+      //    (`/politician?q=강득구` 로 들어오면 빈 화면. 타이핑하면 그땐 PB 가 있어 정상).
+      //    → PB 가 없을 땐 일반 부분일치로 폴백한다 (초성 검색만 못 쓸 뿐 화면은 산다).
+      const hit = (t) => (window.PB
+        ? PB.matchesQuery(t, q)
+        : String(t).toLowerCase().includes(q.toLowerCase()));
+      const textHit = !q || hit(name) || hit(district);
       const matches = textHit &&
         (!state.party || party === state.party) &&
         (state.cmit.length === 0       || state.cmit.includes(cmit)) &&

@@ -2,6 +2,8 @@
    나이 계산: 현재연도 - 출생연도, 생일 아직 안 지났으면 -1
    → getListWithStats.sql 의 age_bucket 계산과 동일한 공식 사용
 */
+/* ⚠️ 현직(active_yn) 으로 거르지 않는다 — getListWithStats.sql 과 같은 이유.
+   한쪽만 풀면 사이드바 카운트와 실제 카드 수가 어긋난다. */
 WITH ages AS (
   SELECT (
           EXTRACT(YEAR FROM CURRENT_DATE)::int
@@ -9,8 +11,7 @@ WITH ages AS (
         - CASE WHEN TO_CHAR(CURRENT_DATE, 'MMDD') < TO_CHAR(birthday, 'MMDD') THEN 1 ELSE 0 END
        ) AS age
     FROM politicians
-   WHERE active_yn = TRUE
-     AND birthday IS NOT NULL
+ WHERE birthday IS NOT NULL
 )
 SELECT COUNT(*) FILTER (WHERE age BETWEEN 20 AND 29) AS age_20s
      , COUNT(*) FILTER (WHERE age BETWEEN 30 AND 39) AS age_30s

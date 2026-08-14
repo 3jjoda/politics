@@ -139,6 +139,19 @@ $$ LANGUAGE plpgsql;
   - ⚠️ **현직 22대 의원만 저장** (2026-08-04 현재 299명). `syncPoliticians.js` 가 열린국회 "현역 의원 API" 기반이라 중도 퇴임·사직·당선무효·사망·승계 등으로 빠진 ~11명은 미포함
   - 결과: `bill_votes` / `bill_co_proposers` 에 해당 mona_cd 기록은 남아있지만 JOIN miss → 이름·정당·사진 렌더 불가. UI 는 "(퇴임)" fallback 으로 처리 (voter-list / proposer-chip)
   - 근본 해결은 "역대 국회의원 API" 전환 — [ROADMAP.md](./ROADMAP.md) 베타 오픈 전 필수 3번
+  - **`active_yn` — 한때 있었지만 지금 현역 API 에 없는 사람** (실측 10명, 위 "없는 11명" 과 별개다)
+    - `syncPoliticians` 가 API 응답에 없는 mona_cd 를 `FALSE` 로 내린다. 다시 나타나면 UPSERT 가 `TRUE` 로 되돌린다
+    - 실측 10명(추미애·권성동·박찬대·추경호·전재수·민형배·위성곤·이원택·박수현·김상욱)은
+      **지역구가 10개 광역단체와 하나씩 대응**하고 마지막 표결이 전부 `2026-04-23`(현직은 `2026-07-23`)이다
+      → 2026-06 지방선거 출마 사퇴로 보이지만 **원천이 사유를 주지 않는다. 화면에 이유를 쓰지 말 것**
+    - 🔴 **의원 목록은 `active_yn` 으로 거르지 않는다** (2026-08-14 변경). 거르면 22대에서 실제로
+      활동한 기록이 있는 사람이 통째로 사라진다 — 상세 페이지는 원래 열려 있어서 목록만 막힌 상태가 더 이상했다.
+      화면에서 `퇴임` 배지로 구분한다 (무채색 외곽선 — 상태지 평가가 아니므로 정당색 금지)
+    - ⚠️ **목록과 사이드바 카운트 5종을 같이 풀어야 한다** (`getListWithStats` + `getPartyCounts`·
+      `getCommitteeCounts`·`getElectTypeCounts`·`getGenderStats`·`getAgeGroupStats`).
+      한쪽만 풀면 "정당 169" 라고 써놓고 카드는 더 나온다
+    - ⚠️ **`/xray`·홈 KPI·차트·admin 은 `active_yn = TRUE` 를 유지한다** — 그쪽은 "현재 국회" 를
+      묻는 통계라 퇴임자가 섞이면 답이 틀린다. 목록만 기록 보관소 성격이다
 - `politician_party_memberships` — 의원-정당 이력
 - `briefing_posts` — **브리핑 카드** (2026-08-11, `genBriefing.js`). `briefing_date` UNIQUE 라 하루 1장.
   `stats`(SQL 집계) · `threads`(주제 묶음, v2) · `keywords` · `bill_ids` JSONB. 상세는 아래 "`/briefing` AI 카드 피드"
