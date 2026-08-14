@@ -174,12 +174,16 @@ export default (db) => {
                 });
             }
 
+            // 모르는 값은 에러가 아니라 기본값으로 접는다 (URL 을 손으로 고쳐도 빈 화면이 안 나오게)
+            const mode = req.query.mode === 'short' ? 'short' : 'full';
+
             res.render('briefing/threads', {
                 pageTitle: `쓰레드 · ${post.briefing_date}`,
                 pageStyles: null,
                 currentUrl: '/briefing',
                 post,
-                chain: buildThreadsChain(post),
+                mode,
+                chain: buildThreadsChain(post, { mode }),
                 limit: THREADS_LIMIT
             });
         } catch (error) {

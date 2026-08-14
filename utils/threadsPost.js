@@ -68,13 +68,24 @@ export function splitToPosts(text, limit = LIMIT) {
 }
 
 /* 카드 한 장 → 게시물 배열 [{ role, text, len }]
-   role 은 화면에서 각 게시물이 무슨 역할인지 보여주는 용도 (텍스트에는 안 들어간다). */
+ *
+ * opts.mode
+ *   'full'  (기본) 6개 — 흐름을 하나씩 나누고 법안 목록·대표발의자까지 싣는다
+ *   'short' 3개    — 복사 횟수를 줄이고 **링크를 첫 게시물로 올린다**
+ *
+ * 🔴 `short` 를 만든 이유는 길이가 아니라 **링크 위치**다.
+ *    full 은 링크가 6번째라 체인을 끝까지 펼친 사람만 본다 — 쓰레드를 쓰는 유일한 이유가
+ *    "링크가 살아 있다" 인데 그걸 맨 뒤에 둔 건 설계 착오였다.
+ *    부수적으로 매일 복사가 6번 → 3번이 된다 (매일 하는 일이라 이 마찰이 곧 이탈이 된다).
+ */
 export function buildThreadsChain(post, opts = {}) {
     const site = siteUrl(opts.baseUrl);
+    const short = opts.mode === 'short';
     const st = post.stats || {};
     const date = post.briefing_date.replace(/-/g, '.');
     const [, mm, dd] = post.briefing_date.split('-');
     const day = `${Number(mm)}월 ${Number(dd)}일`;
+    const url = `${site}/briefing/${post.id}`;
 
     // 카드 종류 표시 — 첫 게시물에 짧게 붙인다.
     // ⚠️ 긴 고지문을 여기 넣으면 훅이 죽는다. 상세 고지는 마지막 게시물에 둔다.
@@ -90,16 +101,50 @@ export function buildThreadsChain(post, opts = {}) {
         if (st.cosign) nums.push(`공동발의 서명 ${st.cosign}건`);
     }
     posts.push({
-        role: '훅 (피드 노출)',
+        role: short ? '훅 (피드 노출 · 링크)' : '훅 (피드 노출)',
         text: [
             `[${day} 국회]`,
             '',
             post.headline,
             ...(nums.length ? ['', nums.join(' · ')] : []),
+            // short 에서만 링크를 여기 둔다 — 펼치지 않아도 유입이 되게
+            ...(short ? ['', `전문 → ${url}`] : []),
             '',
             `※ ${kind}`,
         ].join('\n'),
     });
+
+    /* ── short: 본문 → 흐름 요약 + 고지 (3개) ────────────────── */
+    if (short) {
+        splitToPosts(post.body).forEach((t, i, arr) => {
+            posts.push({ role: arr.length > 1 ? `본문 ${i + 1}/${arr.length}` : '본문', text: t });
+        });
+
+        // 흐름은 주제·설명만. 법안 목록은 버린다 — 그건 링크 너머에 전부 있다
+        const lines = (post.threads || [])
+            .flatMap((t) => [`· ${t.theme} (${t.bill_count}건)`, `  ${t.what}`]);
+        const notice = post.isAi
+            ? '숫자는 국회 공식 데이터 집계입니다. 문장과 주제 묶음은 AI가 법안 원문을 읽고 정리한 것으로 사실과 다를 수 있습니다.'
+            : (post.isEmpty
+                ? '국회 공식 데이터에 이날 기록된 활동이 없어 자동으로 남긴 기록입니다.'
+                : 'AI 없이 국회 공식 데이터 집계만으로 만들었습니다.');
+
+        const tail = [
+            ...(lines.length ? ['이날의 흐름', '', ...lines, ''] : []),
+            // ⚠️ 링크를 마지막에도 다시 둔다 — 쓰레드는 게시물 하나만 따로 돌아다닐 수 있어
+            //    이 게시물만 본 사람에게도 출처로 가는 길이 있어야 한다
+            `법안 원문과 의원별 표결 → ${url}`,
+            '',
+            notice,
+            '출처: 열린국회정보',
+        ].join('\n');
+
+        splitToPosts(tail).forEach((text, i, arr) => {
+            posts.push({ role: `흐름·마무리${arr.length > 1 ? ` ${i + 1}/${arr.length}` : ''}`, text });
+        });
+
+        return posts.map((p, i) => ({ ...p, n: i + 1, len: charLen(p.text), over: charLen(p.text) > LIMIT }));
+    }
 
     /* ② 본문 — 500자 넘으면 문장 단위로 나뉜다 */
     splitToPosts(post.body).forEach((t, i, arr) => {
@@ -143,7 +188,7 @@ export function buildThreadsChain(post, opts = {}) {
         role: '마무리 (링크·고지)',
         text: [
             `${date} 브리핑 전문과 법안 원문`,
-            `${site}/briefing/${post.id}`,
+            url,
             '',
             '의원별 표결 기록까지 전부 볼 수 있습니다.',
             '',

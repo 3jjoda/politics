@@ -16,6 +16,17 @@
       위에서부터 순서대로 올려 <strong>연결 게시물(체인)</strong>로 만드세요.
       1번이 피드에 노출되는 유일한 게시물입니다.
     </p>
+
+    <%# 두 버전을 오가며 며칠 써보고 굳히는 용도. 링크 위치가 다르다 %>
+    <div class="th-modes" role="group" aria-label="버전 선택">
+      <a class="th-mode<%= mode === 'full' ? ' is-on' : '' %>" href="?mode=full">
+        긴 버전 <b>6개</b><span>흐름별로 분리 · 법안 목록 포함 · 링크 맨 뒤</span>
+      </a>
+      <a class="th-mode<%= mode === 'short' ? ' is-on' : '' %>" href="?mode=short">
+        짧은 버전 <b>3개</b><span>복사 3번 · <strong>링크가 1번에</strong> · 법안 목록 생략</span>
+      </a>
+    </div>
+
     <div class="th-actions">
       <button type="button" class="th-btn is-main" id="th-copy-all">전체 복사</button>
       <a class="th-btn" href="https://www.threads.net/" target="_blank" rel="noopener noreferrer">쓰레드 열기 ↗</a>
@@ -58,6 +69,17 @@
             border: 1px solid #8F5800; border-radius: 6px; padding: 2px 9px; background: #FBF5EA; }
   .th-head p { font-size: 13.5px; line-height: 1.75; color: var(--sub); margin: 0; word-break: keep-all; }
   .th-head strong { color: var(--text); font-weight: 700; }
+
+  .th-modes { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .th-mode { flex: 1 1 240px; text-decoration: none; background: var(--bg2);
+             border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px;
+             font-size: 13.5px; color: var(--sub); display: flex; flex-direction: column; gap: 3px; }
+  .th-mode b { font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--text); }
+  .th-mode span { font-size: 12px; line-height: 1.6; color: var(--sub2); word-break: keep-all; }
+  .th-mode strong { color: #8F5800; font-weight: 700; }
+  .th-mode:hover { border-color: var(--border2); }
+  .th-mode.is-on { border-color: #8F5800; background: #FBF5EA; }
+  .th-mode.is-on b { color: #8F5800; }
 
   .th-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
   .th-btn { font-size: 13px; font-weight: 700; color: var(--sub); background: var(--bg2);
