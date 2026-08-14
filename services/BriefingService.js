@@ -23,6 +23,10 @@ const HOT_LAWS = 5;
 const SAMPLE_PER_STAGE = 4;
 const FEED_PAGE = 20;          // 피드 한 페이지 카드 수
 
+// "대기 중" 을 몇 일치까지 그릴지. INGEST_LAG_DAYS(3) 에 오늘을 더한 값.
+// ⚠️ 이 상한이 안전장치다 — 배치가 오래 멈추면 "곧 올라옵니다" 가 2주치 쌓여 거짓말이 된다.
+const PENDING_MAX_DAYS = 4;
+
 const CACHE_TTL_MS = 10 * 60 * 1000;   // 배치가 하루 1회만 바꾸므로 10분이면 충분
 
 const PENDING_KEY = '__PENDING__';     // getBillsByCommittee.sql 의 "아직 회부 전" 마커
@@ -160,7 +164,12 @@ export default (db) => {
             const totalPages = Math.max(1, Math.ceil(total / FEED_PAGE));
             const p = Math.min(totalPages, Math.max(1, Math.floor(Number(page) || 1)));
             const rows = await dao.getFeed(FEED_PAGE, (p - 1) * FEED_PAGE);
-            return { posts: rows.map(shapePost), total, page: p, pageSize: FEED_PAGE, totalPages };
+
+            // 대기 카드는 **1페이지에만** 붙인다. 2페이지 이후는 과거 구간이라
+            // 맨 위에 "오늘 진행 중" 이 뜨면 그 자리에서 거짓이 된다
+            const pending = p === 1 ? await dao.getPendingDays(PENDING_MAX_DAYS) : [];
+
+            return { posts: rows.map(shapePost), total, page: p, pageSize: FEED_PAGE, totalPages, pending };
         },
         getPost: async (id) => {
             const p = await dao.getPost(id);

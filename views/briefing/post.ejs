@@ -141,6 +141,12 @@
 
     <div class="bp-actions">
       <button type="button" class="bp-share" id="bp-share">↗ 이 브리핑 공유</button>
+      <%# 인스타 카드 — 링크만 운영자에게 노출한다.
+          라우트 자체는 막지 않았다: 어차피 같은 공개 데이터를 다르게 그린 것뿐이고,
+          막아두면 로그인 상태에 따라 미리보기가 안 되는 상황이 생긴다 (noindex 는 걸어둠) %>
+      <% if (locals.isAdmin) { %>
+        <a class="bp-card-link" href="/briefing/<%= p.id %>/card" target="_blank" rel="noopener">▦ 인스타 카드</a>
+      <% } %>
       <a class="bp-back" href="/briefing">← 피드로</a>
     </div>
   </article>
@@ -221,6 +227,10 @@
               font-size: 13px; font-weight: 700; color: #8F5800; cursor: pointer; font-family: inherit;
               min-height: 44px; display: inline-flex; align-items: center; }
   .bp-share:hover { background: #FBF5EA; }
+  .bp-card-link { font-size: 13px; font-weight: 600; color: var(--sub); text-decoration: none;
+                  border: 1px solid var(--border2); border-radius: 8px; padding: 10px 16px;
+                  min-height: 44px; display: inline-flex; align-items: center; }
+  .bp-card-link:hover { color: #8F5800; border-color: #8F5800; }
   .bp-back { margin-left: auto; font-size: 13px; color: var(--sub); text-decoration: none; }
   .bp-back:hover { color: var(--accent); }
 

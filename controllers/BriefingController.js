@@ -7,6 +7,55 @@ import { nf, pct } from '../utils/xrayFormat.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
+// 인스타 카드 — 한 브리핑을 캐러셀 여러 장으로 쪼갠다.
+// 주제 묶음이 많아도 3장까지만: 캐러셀이 길면 끝까지 넘기지 않는다.
+const MAX_THREAD_SLIDES = 3;
+
+/* 카드 한 장 → 슬라이드 배열.
+   ⚠️ 슬라이드 수는 **데이터가 정한다** (폴백 카드는 threads 가 비어 4장, AI 카드는 최대 7장).
+      뷰에서 개수를 가정하지 말 것. */
+function buildSlides(p) {
+    const st = p.stats || {};
+    const slides = [{ kind: 'cover' }];
+
+    // 활동 없는 날은 숫자가 전부 0이라 보여줄 게 없다 (애초에 올릴 카드가 아니다)
+    if (p.isEmpty) return [...slides, { kind: 'outro' }];
+
+    // ⚠️ 단위를 '건' 으로 뭉뚱그리지 말 것 — **사람은 '명'** 이다 ("대표발의 의원 13건" 이 나갔었다)
+    const nums = [];
+    if (st.proposed !== undefined) {
+        nums.push({ v: st.proposed, l: '발의', u: '건' });
+        if (st.proposers) nums.push({ v: st.proposers, l: '대표발의 의원', u: '명' });
+        if (st.cosign) nums.push({ v: st.cosign, l: '공동발의 서명', u: '건' });
+        const floorTotal = (st.floor || []).reduce((s, f) => s + Number(f.cnt), 0);
+        if (floorTotal > 0) nums.push({ v: floorTotal, l: '본회의 처리', u: '건' });
+    }
+    if (nums.length) {
+        slides.push({ kind: 'stats', nums, committees: (st.committees || []).slice(0, 4) });
+    }
+
+    // 주제 묶음 — AI 카드의 핵심. 묶인 법안 이름을 같이 실어야 검증이 가능하다
+    const tb = p.thread_bills || {};
+    const threads = (p.threads || []).slice(0, MAX_THREAD_SLIDES);
+    threads.forEach((t, i) => {
+        slides.push({
+            kind: 'thread',
+            t,
+            idx: i + 1,
+            of: threads.length,
+            // ⚠️ 대표발의자를 반드시 같이 실을 것 — 법안의 87%가 동명이라 이름만 늘어놓으면
+            //    같은 줄이 두 번 찍힌 것처럼 보인다 (실제로 "소득세법 일부개정법률안" 이 2줄 나왔다)
+            bills: (t.bill_ids || []).filter((id) => tb[id]).slice(0, 4)
+                .map((id) => ({ name: tb[id].bill_name, by: tb[id].proposer_name })),
+        });
+    });
+
+    if ((st.hotLaws || []).length) slides.push({ kind: 'laws', laws: st.hotLaws.slice(0, 5) });
+
+    slides.push({ kind: 'outro' });
+    return slides;
+}
+
 export default (db) => {
     const briefingService = BriefingService(db);
     const controller = {};
@@ -65,6 +114,46 @@ export default (db) => {
             });
         } catch (error) {
             logger.error('브리핑 상세 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    /* 인스타 카드 — 1080×1350 세로 캔버스
+     *
+     * 두 모드가 **같은 마크업**을 쓴다. 미리보기에서 본 것과 캡처한 것이 달라지면 안 되기 때문:
+     *   (없음)     전체 슬라이드를 축소 배열 (사람이 훑는 용도, 툴바 포함)
+     *   ?slide=N   그 장만 정확히 1080×1350 (캡처용 · 나중에 Playwright 가 그대로 돌면 됨)
+     *
+     * layout:false — nav·footer 가 캔버스에 딸려오면 안 된다. 폰트는 뷰가 직접 로드한다.
+     */
+    controller.getBriefingCard = wrapWithContext(async function getBriefingCard(req, res, next) {
+        try {
+            const id = Number(req.params.id);
+            const post = Number.isInteger(id) && id > 0 ? await briefingService.getPost(id) : null;
+            if (!post) {
+                return res.status(404).render('error_pages/404', {
+                    pageTitle: '찾을 수 없음', pageStyles: 'error', currentUrl: '/briefing',
+                    message: '브리핑을 찾을 수 없습니다.'
+                });
+            }
+
+            const slides = buildSlides(post);
+
+            // ?slide 는 범위를 벗어나면 에러가 아니라 접는다 (손으로 URL 을 고쳐도 빈 화면이 안 나오게)
+            const raw = req.query.slide;
+            const single = raw === undefined || raw === ''
+                ? null
+                : Math.min(slides.length, Math.max(1, Math.floor(Number(raw) || 1)));
+
+            res.render('briefing/card', {
+                layout: false,
+                post,
+                slides,
+                single,          // null = 전체 미리보기 / 1-based 인덱스 = 그 장만
+                nf
+            });
+        } catch (error) {
+            logger.error('브리핑 카드 렌더링 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });

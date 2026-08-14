@@ -38,10 +38,35 @@
   </section>
 
   <!-- ===== 피드 ===== -->
-  <% if (!feed.posts.length) { %>
+  <% const pending = feed.pending || []; %>
+  <% if (!feed.posts.length && !pending.length) { %>
     <p class="bf-empty">아직 브리핑이 없습니다. 배치가 돌면 하루 단위로 쌓입니다.</p>
   <% } else { %>
     <ol class="bf-feed">
+      <%# 대기 중인 날 — DB 에 없는 카드다. 없으면 "고장인지 정상인지" 구분이 안 된다.
+          ⚠️ 상세 페이지가 없으므로 **링크를 걸지 않는다** (누르면 404 가 된다) %>
+      <% let whyShown = false; %>
+      <% pending.forEach((d) => { %>
+        <li class="bf-card is-pending">
+          <div class="bf-card-top">
+            <span class="bf-card-date"><%= d.day.replace(/-/g, '.') %></span>
+            <span class="bf-badge is-wait"><%= d.is_today ? '진행 중' : '데이터 대기' %></span>
+          </div>
+          <p class="bf-pending-head">
+            <%= d.is_today ? '오늘은 아직 진행 중입니다' : '국회 데이터를 기다리는 중입니다' %>
+          </p>
+          <%# 같은 문구가 3~4장 반복되면 그 자체가 고장처럼 보인다 → 오늘 것과, 과거분 중 첫 장만 이유를 단다 %>
+          <% if (d.is_today) { %>
+            <p class="bf-pending-why">하루가 끝나면 내일 새벽에 정리해 이 자리에 올립니다.</p>
+          <% } else if (!whyShown) { whyShown = true; %>
+            <p class="bf-pending-why">
+              국회가 발의 목록을 공개하기까지 보통 1~2일 걸립니다.
+              데이터가 도착하면 이 자리에 카드가 올라옵니다.
+            </p>
+          <% } %>
+        </li>
+      <% }); %>
+
       <% feed.posts.forEach((p) => { %>
         <li class="bf-card">
           <div class="bf-card-top">
@@ -165,6 +190,15 @@
   .bf-badge.is-empty { color: var(--sub2); border-style: dashed; }
   .bf-card:has(.is-empty) { background: var(--bg3); }
   .bf-card:has(.is-empty) .bf-card-head { font-size: 17px; color: var(--sub); }
+
+  /* 대기 중 — 아직 카드가 없는 날. **실제 카드와 확실히 구분돼야 한다** (읽을 게 있는 줄 알고 누르면 안 됨).
+     점선 + 투명 배경 + hover 무반응으로 "여긴 아직 비어 있다" 를 형태로 말한다.
+     ⚠️ .bf-badge.is-empty(활동 없음, 확정된 사실) 와 다른 상태다 — 이건 "아직 모른다" 다 */
+  .bf-card.is-pending { background: transparent; border-style: dashed; }
+  .bf-card.is-pending:hover { border-color: var(--border); }
+  .bf-badge.is-wait { color: var(--sub2); border-style: dashed; }
+  .bf-pending-head { font-size: 15px; font-weight: 600; color: var(--sub); margin: 0; word-break: keep-all; }
+  .bf-pending-why { font-size: 13px; line-height: 1.7; color: var(--sub2); margin: 7px 0 0; word-break: keep-all; }
 
   .bf-card-head {
     display: block; font-family: 'Noto Serif KR', serif; font-size: 21px; font-weight: 700;

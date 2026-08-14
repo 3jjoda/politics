@@ -27,8 +27,10 @@ export default (db) => {
 
     // 브리핑 — AI 카드 피드 (+ 상단 주간 요약 스트립)
     //   /briefing      피드
-    //   /briefing/:id  카드 상세 (댓글·공유 단위)
+    //   /briefing/:id       카드 상세 (댓글·공유 단위)
+    //   /briefing/:id/card  인스타 카드 (1080×1350, layout 없음)
     router.get('/briefing', briefingController.getBriefingPage);
+    router.get('/briefing/:id/card', briefingController.getBriefingCard);
     router.get('/briefing/:id', briefingController.getBriefingPost);
 
     // 소개 페이지

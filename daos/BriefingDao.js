@@ -43,6 +43,11 @@ export default (db) => {
 
         /* ── AI 브리핑 피드 ── */
         getFeed: (limit, offset) => run('getFeed', [limit, offset]),
+
+        /* 아직 카드가 없는 최근 평일 (피드 상단 "대기 중" 표시용).
+           테이블에 미리 넣지 않고 매번 계산한다 — getPendingDays.sql 주석 참조 */
+        getPendingDays: (maxDays) => run('getPendingDays', [maxDays]),
+
         getPost: (id) => run('getPost', [id]).then((r) => r[0] || null),
         countPosts: () => db.query('SELECT COUNT(*)::int AS cnt FROM briefing_posts').then((r) => r.rows[0].cnt),
     };
