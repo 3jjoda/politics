@@ -55,6 +55,78 @@ async function fetchAll(key) {
     return rows;
 }
 
+/* ── 소속 이력 기록 (politician_committee_history) ──
+   politician_committees 는 스냅샷이라 "언제 배정됐나" 를 못 준다. 그 값이 없으면
+   상임위 참여율의 **분모를 정할 수 없다** (지금은 "첫 발언일" 로 근사하는데, 배정 후
+   조용히 있던 기간이 빠져 값이 후하다).
+   원천이 안 주므로 **우리가 매일 보고 차이를 적는다.** 외부 호출 0회.
+
+   🔴 반드시 politician_committees 를 교체하기 **전에**, **같은 트랜잭션 안에서** 호출할 것.
+      교체 후에 부르면 비교 대상이 이미 새 값이라 아무 변화도 감지하지 못한다.
+   ⚠️ 날짜는 `(NOW() AT TIME ZONE 'Asia/Seoul')::date` 로 박는다. 달력 날짜를 저장하는
+      자리라 CURRENT_DATE 에 기대면 안 된다 (프로젝트 날짜 규칙 — 저장만 명시). */
+async function recordHistory(client, incoming) {
+    // 현재 열려 있는 구간
+    const { rows: open } = await client.query(
+        `SELECT mona_cd, dept_nm, job_res_nm FROM politician_committee_history WHERE ended_on IS NULL`);
+    const openKeys = new Map(open.map((r) => [`${r.mona_cd}|${r.dept_nm}`, r]));
+    const nextKeys = new Map(incoming.map((r) => [`${r.MONA_CD}|${r.DEPT_NM}`, r]));
+
+    const added = incoming.filter((r) => !openKeys.has(`${r.MONA_CD}|${r.DEPT_NM}`));
+    const removed = open.filter((r) => !nextKeys.has(`${r.mona_cd}|${r.dept_nm}`));
+
+    // ① 사라진 구간을 닫는다.
+    //    ⚠️ ended_on 에 **오늘이 아니라 last_seen** 을 찍는다 — 배치가 며칠 멈췄다면
+    //       "어제까지 있었다" 고 단정할 수 없다. 마지막으로 실제로 본 날이 우리가 아는 전부다.
+    if (removed.length > 0) {
+        await client.query(
+            `UPDATE politician_committee_history
+                SET ended_on = last_seen
+              WHERE ended_on IS NULL
+                AND (mona_cd, dept_nm) IN (
+                    SELECT * FROM UNNEST($1::varchar[], $2::varchar[]))`,
+            [removed.map((r) => r.mona_cd), removed.map((r) => r.dept_nm)]);
+    }
+
+    // ② 새로 나타난 구간을 연다 (started_on = 오늘 = 관측일)
+    if (added.length > 0) {
+        const vals = [];
+        const params = [];
+        added.forEach((r, i) => {
+            const b = i * 4;
+            vals.push(`($${b + 1},$${b + 2},$${b + 3},$${b + 4})`);
+            params.push(r.MONA_CD, r.DEPT_CD || null, r.DEPT_NM, r.JOB_RES_NM || null);
+        });
+        await client.query(
+            `INSERT INTO politician_committee_history
+                    (mona_cd, dept_cd, dept_nm, job_res_nm, started_on, last_seen, is_seed)
+             SELECT v.mona_cd, v.dept_cd, v.dept_nm, v.job_res_nm
+                  , (NOW() AT TIME ZONE 'Asia/Seoul')::date
+                  , (NOW() AT TIME ZONE 'Asia/Seoul')::date
+                  , FALSE
+               FROM (VALUES ${vals.join(',')}) AS v(mona_cd, dept_cd, dept_nm, job_res_nm)`, params);
+    }
+
+    // ③ 살아 있는 구간은 last_seen 을 밀고 직위만 갱신한다.
+    //    ⚠️ 위원→간사 승격으로 **구간을 끊지 않는다.** 끊으면 참여율 분모가 조각나서
+    //       "간사 된 뒤 3번 중 3번" 같은 표본 3짜리가 생긴다. 소속은 이어진 게 맞다.
+    const kept = incoming.filter((r) => openKeys.has(`${r.MONA_CD}|${r.DEPT_NM}`));
+    if (kept.length > 0) {
+        await client.query(
+            `UPDATE politician_committee_history h
+                SET last_seen  = (NOW() AT TIME ZONE 'Asia/Seoul')::date
+                  , job_res_nm = v.job_res_nm
+               FROM (SELECT * FROM UNNEST($1::varchar[], $2::varchar[], $3::varchar[])
+                       AS t(mona_cd, dept_nm, job_res_nm)) v
+              WHERE h.ended_on IS NULL
+                AND h.mona_cd = v.mona_cd
+                AND h.dept_nm = v.dept_nm`,
+            [kept.map((r) => r.MONA_CD), kept.map((r) => r.DEPT_NM), kept.map((r) => r.JOB_RES_NM || null)]);
+    }
+
+    return { added: added.length, removed: removed.length, kept: kept.length };
+}
+
 /* politician_titles 는 수동 입력이라 자동으로 낡는다. 오래된 행·출처 없는 행을 로그로 알린다.
    ⚠️ 값을 고치지 않는다 — 무엇을 확인해야 하는지만 알려준다. 판단은 사람이 한다. */
 const STALE_MONTHS = 6;
@@ -159,8 +231,13 @@ async function run() {
 
         // 전체 교체 — 트랜잭션 안에서 하므로 실패 시 옛 명단이 그대로 남는다
         const client = await pool.connect();
+        let hist = { added: 0, removed: 0, kept: 0 };
         try {
             await client.query('BEGIN');
+
+            // 🔴 DELETE **전에** 비교해야 한다. 교체 후에는 비교 대상이 이미 새 값이다.
+            hist = await recordHistory(client, uniq);
+
             await client.query('DELETE FROM politician_committees');
 
             const vals = [];
@@ -195,11 +272,33 @@ async function run() {
         // ⚠️ 여기서 실패해도 배치를 실패시키지 않는다 — 명단 동기화가 본업이고 이건 부가 점검이다.
         const titleCheck = await checkStaleTitles(pool);
 
+        // ── 소속 이력 상태 ──
+        // 시드분(started_on 을 모르는 행)이 줄어드는 만큼 참여율 분모가 정확해진다.
+        // 그 진행 상황을 눈에 보이게 남긴다 — 안 남기면 언제부터 믿어도 되는지 알 수 없다.
+        if (hist.added > 0 || hist.removed > 0) {
+            logger.info(`  [이력] 신규 ${hist.added}건 · 종료 ${hist.removed}건 · 유지 ${hist.kept}건`);
+        }
+        const { rows: [hs] } = await pool.query(`
+            SELECT COUNT(*) FILTER (WHERE ended_on IS NULL)::int                      AS open_rows
+                 , COUNT(*) FILTER (WHERE ended_on IS NULL AND is_seed)::int          AS seeded
+                 , COUNT(*) FILTER (WHERE ended_on IS NOT NULL)::int                  AS closed
+              FROM politician_committee_history`);
+        logger.info(`  [이력] 열린 구간 ${hs.open_rows}건 (시작일 미상 ${hs.seeded}건) · 종료 ${hs.closed}건`);
+        if (hs.open_rows !== uniq.length) {
+            // 열린 구간과 현재 명단은 항상 1:1 이어야 한다 — 어긋나면 이력 기록이 깨진 것이다
+            logger.warn(`  ⚠ 열린 구간(${hs.open_rows})과 현재 명단(${uniq.length})이 다릅니다 — 이력 기록을 확인하세요`);
+        }
+
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         logger.info(`[Committees SUCCESS] ${uniq.length}행 교체 (${duration}초)`);
         await finishBatchRun(pool, runId, {
             status: 'success',
-            stats: { rows: uniq.length, committees: depts.size, members: members.size, orphan: orphan.n, ...titleCheck },
+            stats: {
+                rows: uniq.length, committees: depts.size, members: members.size, orphan: orphan.n,
+                histAdded: hist.added, histRemoved: hist.removed,
+                histOpen: hs.open_rows, histSeeded: hs.seeded, histClosed: hs.closed,
+                ...titleCheck,
+            },
         });
     } catch (error) {
         logger.error('[Committees FAILED]:', error.message);

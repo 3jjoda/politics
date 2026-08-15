@@ -54,6 +54,8 @@ const shapeRates = (rateRows) => {
             chairMeetings: r.chair_meetings,
             isSpecial: r.is_special,
             proxyStart: r.proxy_start,
+            // 시작일이 관측 이력에서 왔나(true) 첫 발언일 근사인가(false)
+            startExact: r.start_exact,
             // 분모가 얇으면 비율을 감춘다. 건수는 그대로 보여준다 (섹션이 사라지면 더 이상하다)
             showRate: show,
             rate: show ? rate : null,
@@ -69,13 +71,23 @@ const shapeRates = (rateRows) => {
         };
     });
 
+    /* 근사 시작일을 쓴 행이 하나라도 있으면 "값이 후하다" 는 주의 문구를 낸다.
+       소속 이력이 쌓여 전부 exact 가 되면 그 문구는 **저절로 사라진다** — 그게 이력을 넣은 이유다.
+       섞여 있는 동안에는 어느 행이 근사인지 표시해야 하므로 mixed 를 따로 준다. */
+    const shown = items.filter((i) => i.showRate);
+    const hasApprox = shown.some((i) => !i.startExact);
+    const hasExact = shown.some((i) => i.startExact);
+
     return {
         items,
         cohortAvg,
         cohortSize: rateRows[0].cohort_size,
         minDenom: MIN_RATE_DENOM,
         // 하나라도 비율을 낼 수 있는가 (전부 얇으면 화면에서 평균 설명을 감춘다)
-        hasAny: items.some((i) => i.showRate),
+        hasAny: shown.length > 0,
+        hasApprox,
+        // 근사와 정확이 섞여 있으면 행마다 어느 쪽인지 밝혀야 한다
+        mixedStart: hasApprox && hasExact,
     };
 };
 

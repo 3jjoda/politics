@@ -2064,6 +2064,8 @@
                       <% } %>
                       <span class="sp-rate-frac">
                         소속 후 회의 <strong><%= nf(r.denom) %>번</strong> 중 <strong><%= nf(r.spoke) %>번</strong> 발언
+                        <%# 근사와 정확이 섞여 있을 때만 행별로 밝힌다. 전부 근사면 아래 주의 문구가 대신한다 %>
+                        <% if (r.showRate && speeches.rates.mixedStart && !r.startExact) { %><em class="sp-rate-thin">(시작일 추정)</em><% } %>
                         <% if (!r.showRate) { %>
                           <%# 아예 숨기지 않고 이유를 쓴다 — 안 쓰면 "왜 이 위원회만 %가 없지" 가 된다 %>
                           <em class="sp-rate-thin">— 회의 <%= speeches.rates.minDenom %>번이 쌓이기 전이라 비율은 표시하지 않습니다</em>
@@ -2081,7 +2083,10 @@
                   ⚠️ <ul> 이어야 한다 — <p> 안에 <li> 를 넣으면 브라우저가 문단을 닫아버려
                      문구가 통째로 사라진다 (실제로 그렇게 렌더됐다) %>
               <ul class="sp-caveat sp-caveat-tight">
-                <li>배정일 기록이 없어 <strong>그 위원회에서 처음 발언한 날</strong>을 소속 시작으로 봅니다 — 그 전에 조용히 앉아 있던 기간은 분모에 없어, 실제보다 <strong>후한 값</strong>입니다.</li>
+                <%# 이력이 쌓여 전부 정확해지면 이 줄은 저절로 사라진다 — 그게 이력을 넣은 이유다 %>
+                <% if (speeches.rates.hasApprox) { %>
+                  <li>배정일 기록이 없는 기간은 <strong>그 위원회에서 처음 발언한 날</strong>을 소속 시작으로 봅니다 — 그 전에 조용히 앉아 있던 기간은 분모에 없어, 실제보다 <strong>후한 값</strong>입니다.</li>
+                <% } %>
                 <li>분모는 <strong>상임위 회의</strong>만입니다. 국정감사·본회의는 회의 제목에 위원회명이 없어 빠집니다.</li>
               </ul>
             <% } %>

@@ -47,35 +47,70 @@ cmt_mt AS (
 /* ⚠️ 여기서도 LIKE 를 쓰면 안 된다. `politician_committees`(477) × `politician_speeches`(66,882) 를
       LIKE 로 붙이면 3,200만 번 평가돼 MV 생성이 15초를 넘는다.
       위에서 만든 cmt_mt 에 **등치 조인**으로 붙이면 같은 결과가 1초대에 나온다. */
-pair AS (
-    SELECT s.mona_cd
-         , c.dept_nm
-         , pc.job_res_nm
-         , MIN(s.taking_date)                                     AS proxy_start
-         , COUNT(DISTINCT (s.taking_date, s.conf_title))::int     AS spoke
-         , COUNT(DISTINCT (s.taking_date, s.conf_title))
-             FILTER (WHERE s.role_kind = 'chair')::int            AS chair_meetings
+first_spoke AS (
+    SELECT s.mona_cd, c.dept_nm, MIN(s.taking_date) AS d
       FROM politician_speeches s
       JOIN cmt_mt c
         ON c.taking_date = s.taking_date
        AND c.conf_title  = s.conf_title
-      JOIN politician_committees pc
-        ON pc.mona_cd = s.mona_cd
-       AND pc.dept_nm = c.dept_nm
      WHERE s.role_kind IN ('member', 'chair')   -- 정부측·참고인 제외 (이름 매칭 오귀속)
-     GROUP BY 1, 2, 3
+     GROUP BY 1, 2
 ),
+/* 🔴 소속 시작일 — **이력이 있으면 이력을, 없으면 첫 발언일을** 쓴다 (2026-08-15 이력 도입).
+   `politician_committee_history` 는 배치가 매일 명단을 비교해 쌓는 관측 이력이다.
+   ⚠️ `is_seed` 행은 제외한다 — 최초 적재분이라 `started_on` 이 NULL 이고, 있다 쳐도
+      "언제부터인지 모름" 이라 근사보다 나을 게 없다.
+   이력이 붙은 쌍부터 하나씩 정확해진다 (`start_exact`). 지금은 전부 시드라 전부 근사다. */
+hist AS (
+    SELECT mona_cd, dept_nm, MAX(started_on) AS d
+      FROM politician_committee_history
+     WHERE ended_on IS NULL AND NOT is_seed AND started_on IS NOT NULL
+     GROUP BY 1, 2
+),
+/* base 를 **현재 명단(politician_committees)** 에서 시작하는 게 중요하다.
+   발언 기록에서 시작하면 "배정됐지만 아직 한 번도 발언 안 한 사람" 이 통째로 사라진다.
+   이력이 정확해지면 그런 사람도 `0 / N` 으로 정직하게 드러나야 한다. */
+base AS (
+    SELECT pc.mona_cd
+         , pc.dept_nm
+         , pc.job_res_nm
+         , COALESCE(h.d, fs.d)          AS window_start
+         , (h.d IS NOT NULL)            AS start_exact
+      FROM politician_committees pc
+      LEFT JOIN hist        h  ON h.mona_cd  = pc.mona_cd AND h.dept_nm  = pc.dept_nm
+      LEFT JOIN first_spoke fs ON fs.mona_cd = pc.mona_cd AND fs.dept_nm = pc.dept_nm
+),
+/* 분모(그 위원회 회의)와 분자(그중 발언한 회의)를 한 번에 센다.
+   ⚠️ cmt_mt 를 먼저 걸고 speeches 를 LEFT JOIN 해야 **발언 0건도 0/N 으로 남는다.**
+      speeches 부터 걸면 0건인 사람이 행 자체를 잃는다. */
 x AS (
-    SELECT p.*
-         , (SELECT COUNT(*)::int FROM cmt_mt c
-             WHERE c.dept_nm = p.dept_nm
-               AND c.taking_date >= p.proxy_start)                AS denom
-      FROM pair p
+    SELECT b.mona_cd
+         , b.dept_nm
+         , b.job_res_nm
+         , b.window_start                                          AS proxy_start
+         , b.start_exact
+         , COUNT(DISTINCT (c.taking_date, c.conf_title))::int      AS denom
+         , COUNT(DISTINCT (s.taking_date, s.conf_title))
+             FILTER (WHERE s.mona_cd IS NOT NULL)::int             AS spoke
+         , COUNT(DISTINCT (s.taking_date, s.conf_title))
+             FILTER (WHERE s.role_kind = 'chair')::int             AS chair_meetings
+      FROM base b
+      JOIN cmt_mt c
+        ON c.dept_nm     = b.dept_nm
+       AND c.taking_date >= b.window_start
+      LEFT JOIN politician_speeches s
+        ON s.mona_cd    = b.mona_cd
+       AND s.taking_date = c.taking_date
+       AND s.conf_title  = c.conf_title
+       AND s.role_kind IN ('member', 'chair')
+     WHERE b.window_start IS NOT NULL   -- 이력도 발언도 없으면 시작점을 모른다 → 제외
+     GROUP BY 1, 2, 3, 4, 5
 )
 SELECT x.mona_cd
      , x.dept_nm
      , x.job_res_nm
      , x.proxy_start
+     , x.start_exact
      , x.spoke
      , x.chair_meetings
      , x.denom
@@ -103,8 +138,12 @@ COMMENT ON MATERIALIZED VIEW politician_committee_speech IS
   '⚠️ in_cohort=false 인 행은 평균 계산에서 빼야 한다 (분모 11개 미만·위원장·장관·퇴임). '
   '⚠️ 국정감사·본회의는 제목에 위원회명이 없어 분모에서 빠진다 — "상임위 회의" 참여율이다.';
 COMMENT ON COLUMN politician_committee_speech.proxy_start IS
-  '소속 시작일의 **근사값**(그 위원회 첫 발언일). 실제 배정일이 아니다 — 첫 발언 전 침묵기가 '
-  '분모에서 빠지므로 이 값은 실제보다 후하다. 소속 이력 테이블이 생기면 대체할 것.';
+  '분모를 세기 시작한 날. start_exact=TRUE 면 politician_committee_history 의 관측 배정일, '
+  'FALSE 면 **근사값**(그 위원회 첫 발언일)이다.';
+COMMENT ON COLUMN politician_committee_speech.start_exact IS
+  'TRUE = 소속 이력에서 온 시작일 (배치가 명단 변화를 실제로 관측한 날). '
+  'FALSE = 첫 발언일 근사 — **첫 발언 전 침묵기가 분모에서 빠져 값이 실제보다 후하다.** '
+  '화면의 해석 주의 문구를 이 값으로 분기할 것. 이력이 쌓이면 TRUE 비율이 올라간다.';
 
 -- 실측 (2026-08-15):
 --   388쌍 / 코호트 164쌍(151명) · 평균 49.7% · 중앙값 50.7% · 평균 분모 46개

@@ -183,7 +183,16 @@ $$ LANGUAGE plpgsql;
 - `politician_titles` — **의원 특수 직위** (2026-08-12 신규). 의장단·국무위원·교섭단체·당직 4종. **전부 수동 입력** (`ddl/seeds/politician_titles.sql`) — 자동 수집 경로가 없다. 상세는 아래 "특수 직위 배지" 참조. ⚠️ 상임위 직위는 여기가 아니라 `politician_committees`
 - `politician_committees` — **위원회 위원 명단** (2026-08-12 신규, `syncCommittees.js`). 실측 477행 / 23개 위원회 / 의원 298명(1~6개 중복 소속) / 미소속 11명
   - 소스 `nktulghcadyhmiqxi` 가 **`MONA_CD` 를 직접 준다** — 이름 매칭이 필요 없다 (발언영상 API 는 이름 문자열만 줘서 파싱이 필요한 것과 대조)
-  - ⚠️ **현재 스냅샷이지 이력이 아니다.** API 에 대수·기간 인자가 없다. 배치가 매번 전체 교체하므로 "과거에 어느 위원회였나" 는 답할 수 없다. 이력이 필요하면 별도 테이블을 만들 것 — 이걸 UPSERT 로 바꾸면 사임한 위원이 영원히 남는다
+  - ⚠️ **현재 스냅샷이지 이력이 아니다.** API 에 대수·기간 인자가 없다. 배치가 매번 전체 교체하므로 "과거에 어느 위원회였나" 는 이 테이블로 답할 수 없다 — 그건 `politician_committee_history` 가 맡는다 (아래). 이걸 UPSERT 로 바꾸면 사임한 위원이 영원히 남으니 되돌리지 말 것
+- `politician_committee_history` — **위원회 소속 관측 이력** (2026-08-15 신규). `syncCommittees` 가 전체 교체 **전에** 스냅샷을 비교해 변경분만 기록한다. 외부 호출 0회
+  - 존재 이유: 스냅샷만으로는 "언제 배정됐나" 를 몰라 **상임위 참여율의 분모를 정할 수 없었다.** 원천이 안 주므로 **우리가 매일 보고 차이를 적는다**
+  - 🔴 **공식 배정 기록이 아니라 관측 기록이다.** `started_on` 은 "명단에서 처음 본 날" 이다 (최대 하루 오차 + 배치가 멈춘 기간만큼). 화면에 "배정일" 이라고 쓰지 말 것
+  - 🔴 **최초 적재분(시드 477행)은 `started_on = NULL` · `is_seed = TRUE`.** 오늘 명단엔 2024년부터 있던 사람과 지난주 배정자가 섞여 있는데 구분할 방법이 없다. 여기에 오늘 날짜를 찍으면 **전원이 "오늘 배정" 이 되어 분모가 0에 수렴하고 참여율이 통째로 망가진다.** 소비하는 쪽(MV)이 `is_seed` 를 보고 근사로 폴백한다
+  - ⚠️ **`ended_on` 에 오늘이 아니라 `last_seen` 을 찍는다** — 배치가 며칠 멈췄다면 "어제까지 있었다" 고 단정할 수 없다
+  - ⚠️ **위원→간사 승격은 구간을 끊지 않고 `job_res_nm` 만 갱신한다.** 끊으면 참여율 분모가 조각나 "간사 된 뒤 3번 중 3번" 같은 표본 3짜리가 생긴다. 대신 "언제 간사가 됐나" 는 답할 수 없다
+  - ⚠️ 열린 구간은 쌍당 하나 (`ux_pch_open` 부분 UNIQUE). 없으면 배치 중복 실행이 구간을 복제한다
+  - 타이밍: **22대 후반기 원구성 직후에 시작**했다 (현 소속 위원회 첫 발언이 2026-07 에 137명·08 에 48명 — 477쌍의 39%가 최근 두 달). 이번 임기 내내 정확한 분모를 갖는다
+  - 진행 상황은 `refreshCommitteeSpeech` 로그의 `[시작일] 이력 기준 N/388` 로 본다 (도입 시점 0%)
   - ⚠️ **politicians 로의 FK 를 걸지 않았다.** politicians 는 현직만 담아서, 승계·보선으로 아직 없는 의원이 명단에 뜨면 FK 가 트랜잭션 전체를 깨뜨려 **명단이 통째로 비워진다**. `bill_votes` 가 mona_cd 를 FK 없이 들고 있는 것과 같은 판단
   - ⚠️ 배치에 `MIN_EXPECTED = 300` 안전장치가 있다. 전체 교체 방식이라 API 가 부분 실패하면 DELETE 만 되고 명단이 사라진다
   - ⚠️ **`politicians.cmit_nm` / `cmits` 는 죽은 컬럼이다** — 309명 전원 NULL. `syncPoliticians` 가 쓰는 현역의원 API 가 위원회를 안 준다. 이 컬럼들을 쓰지 말 것 (상세 페이지에 `cmit_nm` 분기가 있었으나 렌더된 적이 없어 2026-08-12 제거)
@@ -408,6 +417,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
   - `ddl/migrations/2026-08-12-politician-speeches.sql` — **의원 발언 기록 테이블**. 2026-08-15 에 **라이브 스키마에서 복원**한 것 (원본 유실). `(clip_id, mona_cd)` UNIQUE + mona/date/mona_kind 인덱스 3종
   - `ddl/migrations/2026-08-15-speeches-role-kind-split.sql` — **`role_kind` 구 `gov` 를 `government`/`witness`/`other` 로 3분할** + CHECK 제약. ⚠️ **`syncSpeeches.js --full` 을 먼저 돌린 뒤** 실행할 것 (값을 바꾸는 건 배치고 이 파일은 제약·주석만 건다)
+  - `ddl/migrations/2026-08-15-committee-history.sql` — **위원회 소속 관측 이력** `politician_committee_history` + 현재 명단 시드(477행, `is_seed=TRUE`). ⚠️ 시드에 오늘 날짜를 찍지 말 것 (위 테이블 항목 참조)
   - `ddl/migrations/2026-08-15-committee-speech-mv.sql` — **상임위 발언 참여율 MV** `politician_committee_speech`. 소속기간으로 정규화한 참여율 + 코호트 판정. **어떤 대안을 왜 버렸는지가 파일 주석에 전부 있다** — 되돌리기 전에 읽을 것
     - ⚠️ **LIKE 조인 위치가 성능을 좌우한다.** `politician_committees`(477) × `politician_speeches`(66,882) 를 LIKE 로 붙이면 3,200만 번 평가돼 **15초**, 회의↔위원회를 먼저 매칭해두고 등치 조인하면 **2.4초**. 결과는 동일
   - `ddl/migrations/2026-08-12-supabase-data-api-off.sql` — **Supabase Data API 노출 차단**. 실행할 SQL 이 아니라 **대시보드 설정의 기록** + 검증 쿼리 + 폴백 RLS 스크립트. ⚠️ DB 재생성 시 반드시 재설정 (빠뜨려도 에러 없이 전 테이블이 인터넷에 열림). 위 "Supabase Data API 는 꺼져 있다" 참조
@@ -1150,8 +1160,10 @@ controllers/BriefingController.js
 분석 탭 **맨 아래** 전체폭 카드. 소스는 `politician_speeches`.
 발의·표결 지표가 전부 본회의·법안 기준이라 안 보이던 **상임위**를 메우는 자리다.
 
-- 배선: `getSpeechSummaryByMonaCd.sql`(요약 + 회의종류 분포를 한 쿼리로) + `getSpeechMeetingsByMonaCd.sql`(회의 목록 전체)
-  → `PoliticianService.getSpeechesByMonaCd()` 가 합쳐서 모양을 잡는다. 발언 0건이면 **`null` 을 돌려 뷰가 섹션을 안 그린다**
+- 배선: 쿼리 3개 — `getSpeechSummaryByMonaCd.sql`(요약 + 회의종류 분포를 한 쿼리로) ·
+  `getSpeechMeetingsByMonaCd.sql`(회의 목록 전체) · `getSpeechRatesByMonaCd.sql`(참여율 + 코호트 평균, MV 를 읽는다)
+  → `PoliticianService.getSpeechesByMonaCd()` 가 셋을 병렬로 받아 모양을 잡는다. 발언 0건이면 **`null` 을 돌려 뷰가 섹션을 안 그린다**
+- 🔴 **세 쿼리의 `role_kind` 필터가 같아야 한다** (`IN ('member','chair')`). 어긋나면 "질의석 12건" 이라고 써놓고 목록·비율에 장관 답변이 섞인다
 - 🔴 **순위를 매기지 않는다** — 평균 대비·백분위·"N명 중 M위" 를 넣지 않는다.
   위원회마다 회의 빈도가 다르고 위원장·장관은 구조가 달라, 숫자를 나란히 세우는 순간 오해가 된다.
   비율은 **그 의원 안에서의 구성비**(회의 종류 분포)까지만 낸다
@@ -1163,8 +1175,17 @@ controllers/BriefingController.js
 - ⚠️ `.sp-kind-fill` 에 `min-width: 3px` 필수 — 1% 미만 구간(실측 소위원회 4건 = 0.38%)이 폭 0px 으로 렌더돼 막대가 아예 안 그려진다
 
 **상임위 회의 참여율 (`.sp-rate`) — 건수에 분모를 붙이는 자리 (2026-08-15)**
-소스는 MV `politician_committee_speech`. **소속 시작을 "그 위원회 첫 발언일" 로 근사**하고 그 이후 회의를 분모로 삼는다.
+소스는 MV `politician_committee_speech`. 소속 시작은 **이력이 있으면 이력(`politician_committee_history`),
+없으면 "그 위원회 첫 발언일" 로 근사**하고, 그 이후 회의를 분모로 삼는다.
 왜 이 형태여야 하는지(어떤 대안을 실측으로 버렸는지)는 마이그레이션 파일 주석에 전부 있다.
+
+- **`start_exact` 가 두 경로를 가른다.** TRUE = 이력 기준 / FALSE = 첫 발언일 근사.
+  근사면 **첫 발언 전 침묵기가 분모에서 빠져 값이 후하다** → 화면 주의 문구를 이 값으로 분기한다
+  (`hasApprox` 면 문구 노출, `mixedStart` 면 행마다 `(시작일 추정)` 표기).
+  이력이 쌓여 전부 TRUE 가 되면 **그 문구는 저절로 사라진다** — 그게 이력을 넣은 이유다
+- ⚠️ MV 의 `base` 는 **`politician_committees` 에서 시작해야 한다.** 발언 기록에서 시작하면
+  "배정됐지만 아직 한 번도 발언 안 한 사람" 이 행 자체를 잃는다. 이력이 정확해지면 그런 사람도 `0 / N` 으로 드러나야 한다
+- ⚠️ 분모·분자를 셀 때 `cmt_mt` 를 먼저 걸고 speeches 를 **LEFT JOIN** 할 것 (같은 이유)
 
 - 🔴 **순위(N명 중 M위)를 붙이지 않는다.** 쌍마다 분모가 3~103개로 달라 한 줄로 세우면 **순위가 활동이 아니라 표본 크기를 잰다.** 코호트 평균 대비 위치까지만
 - 🔴 **`MIN_RATE_DENOM = 11` 이 이 지표의 생명선이다.** 근사 소속기간 2개월 미만 구간은 평균 분모가 2.4개뿐이라 **중앙값이 100%** 다 — "첫 회의는 정의상 발언한 회의" 라 1/1 이 보장되기 때문. 11개 위쪽은 소속기간과 무관하게 45~55% 로 수렴한다 (6~12개월 53.4 · 1~1.6년 45.0 · 1.6년+ 53.6)
@@ -1177,7 +1198,7 @@ controllers/BriefingController.js
 - **평균선(`.sp-rate-avg`)을 반드시 같이 긋는다** — 숫자만 두면 50%가 높은 건지 낮은 건지 알 수 없다
 - 평균 위쪽만 골드. **아래쪽에 빨강을 쓰지 않는다** (근사값이라 단정할 수 없고, 정당색은 금지)
 - 코호트에서 **위원장을 뺀 것은 예방적 조치**다. 실측상 위원장이 더 높지 않았다 (분모 11+ 중앙값: 간사 54.3 · 위원 50.0 · **위원장 48.7**). 6쌍뿐이라 평균에 영향도 없다 — 그래도 빼두는 건 "사회 보는 자리가 평균을 올렸다" 는 반론을 없애기 위함
-- ⚠️ **해석 주의 2줄은 숫자의 전제다**: ① 첫 발언 전 침묵기가 분모에서 빠져 **실제보다 후한 값** ② 분모는 상임위 회의만 (국감·본회의는 제목에 위원회명이 없어 253개 회의가 0개 매칭)
+- ⚠️ **해석 주의는 숫자의 전제다**: ① (근사 구간이 있을 때만) 첫 발언 전 침묵기가 분모에서 빠져 **실제보다 후한 값** ② 분모는 상임위 회의만 (국감·본회의는 제목에 위원회명이 없어 253개 회의가 0개 매칭)
   - ⚠️ 이걸 `<p>` 안의 `<li>` 로 쓰면 **브라우저가 문단을 닫아 문구가 통째로 사라진다** (실제로 그렇게 렌더됐다). `<ul>` 이어야 한다
 - 실측 (2026-08-15): 388쌍 / 코호트 164쌍(151명) · 평균 **49.7%** · 중앙값 50.7% · 평균 분모 46개.
   **분모 미달이 55.2%인 건 후반기 원구성 직후라서**다 (현재 소속 위원회 첫 발언이 2026-07 에 137명 · 08 에 48명). 연말이면 대부분 11개를 넘긴다 — 배치가 이 비율을 매일 로그로 남긴다
@@ -1409,7 +1430,7 @@ PC/모바일 동일 패턴으로 통일.
 | `syncBillSummary.js` | 열린국회 API (`BPMBILLSUMMARY`) | 법안 제안이유·주요내용 원문 → `bills.summary`. **증분** (`summary_synced_at IS NULL` 만) — `--full` 로 전건 재수집, `--limit N` 으로 부분 실행 |
 | `syncVotes.js` | 열린국회 API (`nojepdqqaweusdfbi`) | 본회의 표결 (수집 완료 177,260건). **증분 스캔** — `--full` 로 전건 재스캔 |
 | `syncMissingBillDetails.js` | ALLBILL API | 상세 누락분 보강 |
-| `syncCommittees.js` | 열린국회정보 (`nktulghcadyhmiqxi`) | 위원회 위원 명단 → `politician_committees`. **전체 교체**(스냅샷) · `--dry-run`. 실측 477행 0.65초 |
+| `syncCommittees.js` | 열린국회정보 (`nktulghcadyhmiqxi`) | 위원회 위원 명단 → `politician_committees`. **전체 교체**(스냅샷) · `--dry-run`. 실측 477행 1.0초. 교체 **전에** 스냅샷을 비교해 `politician_committee_history` 에 변경분 기록 |
 | `syncSpeeches.js` | 열린국회정보 (`npeslxqbanwkimebr`) | 발언영상 → `politician_speeches`. **연도 단위 UPSERT**(증분 인자가 없다) · 기본 올해분 · `--full` `--year N` `--dry-run`. 실측 올해분 6초 / 전건 54초 |
 | `refreshCommitteeSpeech.js` | DB 집계 | `politician_committee_speech` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~2.4초). 상임위 발언 참여율. **syncSpeeches·syncCommittees 다음에 실행** |
 | `syncPhotos.js` | 크롤링 | 의원 프로필 사진 |

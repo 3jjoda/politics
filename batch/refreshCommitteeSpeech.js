@@ -50,10 +50,18 @@ async function run() {
 
         // 분모 미달로 빠진 쌍이 얼마나 되는지 — 시간이 가면 줄어야 정상이다
         const { rows: [d] } = await pool.query(`
-            SELECT COUNT(*) FILTER (WHERE denom < 11)::int AS thin
-                 , COUNT(*)::int AS total FROM politician_committee_speech`);
+            SELECT COUNT(*) FILTER (WHERE denom < 11)::int      AS thin
+                 , COUNT(*) FILTER (WHERE start_exact)::int     AS exact_start
+                 , COUNT(*)::int                                AS total
+              FROM politician_committee_speech`);
         logger.info(`  [분모] 11개 미만이라 비율을 감추는 쌍 ${d.thin}/${d.total}`
             + ` (${(d.thin / d.total * 100).toFixed(1)}%)`);
+
+        /* 소속 이력이 얼마나 정확해졌나 — 이 비율이 오를수록 "값이 후하다" 는 주의 문구가 걷힌다.
+           2026-08-15 이력 도입 시점엔 0% 다 (전부 시드). 원구성·사보임이 생길 때마다 오른다.
+           ⚠️ 이 줄이 없으면 언제부터 값을 믿어도 되는지 알 방법이 없다. */
+        logger.info(`  [시작일] 이력 기준 ${d.exact_start}/${d.total}`
+            + ` (${(d.exact_start / d.total * 100).toFixed(1)}%) · 나머지는 첫 발언일 근사`);
 
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         logger.info(`[CommitteeSpeech SUCCESS] 완료 (${duration}초)`);
