@@ -878,9 +878,39 @@
   .sp-kind-fill { display: block; height: 100%; min-width: 3px; border-radius: 3px; background: var(--accent); }
   .sp-kind-val { font-size: 11.5px; font-weight: 700; color: var(--text); text-align: right; }
 
+  /* ===== 상임위 회의 참여율 ===== */
+  .sp-rates { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+  .sp-rate.is-special { opacity: 0.82; }   /* 특위는 한시 조직이라 회의 리듬이 다르다 */
+  .sp-rate-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .sp-rate-name { font-size: 13px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+  .sp-rate-val { font-size: 20px; font-weight: 800; color: var(--sub); line-height: 1; white-space: nowrap; }
+  .sp-rate-val small { font-size: 12px; font-weight: 700; margin-left: 1px; }
+  /* 평균 위쪽만 골드. 아래쪽에 빨강을 쓰지 않는다 — 근사값이라 단정할 수 없고,
+     정당색(빨강)은 이 사이트에서 금지다 */
+  .sp-rate-val.is-above { color: var(--accent); }
+  .sp-rate-bar { margin-top: 6px; }
+  .sp-rate-track {
+    position: relative; display: block; height: 8px;
+    background: var(--bg3); border-radius: 4px; overflow: hidden;
+  }
+  .sp-rate-fill { display: block; height: 100%; min-width: 3px; border-radius: 4px; background: var(--accent); }
+  /* 평균선 — 숫자만 두면 50%가 높은 건지 낮은 건지 알 수 없다 */
+  .sp-rate-avg {
+    position: absolute; top: -2px; bottom: -2px; width: 2px;
+    background: var(--text); opacity: 0.55; transform: translateX(-1px);
+  }
+  .sp-rate-frac { display: block; margin-top: 5px; font-size: 11px; color: var(--sub2); line-height: 1.6; }
+  .sp-rate-frac strong { color: var(--sub); font-weight: 700; }
+  .sp-rate-thin { font-style: normal; color: var(--sub2); opacity: 0.9; }
+  .sp-caveat-tight { margin-top: 0; margin-bottom: 20px; }
+
   .sp-recent { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .sp-clips { display: flex; flex-direction: column; gap: 2px; }
-  .sp-clip {
+  .sp-sub-count { font-weight: 500; color: var(--sub2); }
+  .sp-mts { display: flex; flex-direction: column; gap: 2px; }
+  /* ⚠️ flex 라 [hidden] 이 안 먹는다 — 이 한 줄이 없으면 "더 보기" 가 처음부터 펼쳐진 채 나온다
+     (bill_detail 의 .ba-proposers-grid, briefing 의 .bf-rest 와 같은 함정) */
+  .sp-mts[hidden] { display: none; }
+  .sp-mt {
     display: grid;
     grid-template-columns: 78px 1fr auto;
     align-items: baseline;
@@ -891,18 +921,33 @@
     color: inherit;
     transition: background 0.15s;
   }
-  .sp-clip:hover { background: var(--bg3); }
-  .sp-clip-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
-  .sp-clip-title { font-size: 12.5px; color: var(--text); line-height: 1.5; overflow-wrap: anywhere; }
-  .sp-clip-meta { display: block; margin-top: 2px; font-size: 10.5px; color: var(--sub2); }
-  .sp-clip-role { font-weight: 700; }
-  .sp-clip-len { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); white-space: nowrap; }
+  .sp-mt:hover { background: var(--bg3); }
+  .sp-mt:hover .sp-mt-go { color: var(--accent); }
+  .sp-mt-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
+  .sp-mt-title { font-size: 12.5px; color: var(--text); line-height: 1.5; overflow-wrap: anywhere; }
+  .sp-mt-meta { display: block; margin-top: 2px; font-size: 10.5px; color: var(--sub2); }
+  .sp-mt-role { font-weight: 700; }
+  .sp-mt-go { font-size: 12px; color: var(--sub2); transition: color 0.15s; }
+  .sp-more {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 9px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sub);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .sp-more:hover { color: var(--accent); border-color: var(--border2); }
   .sp-caveat { margin: 14px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.7; }
   .sp-caveat li { margin-left: 14px; }
 
   @media (max-width: 560px) {
-    .sp-clip { grid-template-columns: 1fr auto; }
-    .sp-clip-date { grid-column: 1 / -1; }
+    .sp-mt { grid-template-columns: 1fr auto; }
+    .sp-mt-date { grid-column: 1 / -1; }
   }
 
   .info-list { display: flex; flex-direction: column; gap: 12px; }
@@ -1983,10 +2028,68 @@
               </div>
             </div>
 
-            <% if (speeches.meetings.length > 0) { %>
+            <%#
+              상임위 회의 참여율 — 건수에 **분모**를 붙이는 자리.
+              🔴 순위(N명 중 M위)를 붙이지 않는다. 쌍마다 분모가 3~103개로 달라 한 줄로 세우면
+                 순위가 활동이 아니라 표본 크기를 잰다. 코호트 평균 대비 위치까지만 낸다.
+              🔴 분모 11개 미만이면 비율을 감춘다 — 근사 소속기간이 짧으면 "첫 회의는 정의상
+                 발언한 회의" 라 100% 가 보장된다 (실측 2개월 미만 구간 중앙값 100%).
+            %>
+            <% if (speeches.rates && speeches.rates.items.length > 0) { %>
+              <p class="sp-sub-title">상임위 회의 참여
+                <% if (speeches.rates.hasAny && speeches.rates.cohortAvg != null) { %>
+                  <span class="sp-sub-count">의원 평균 <%= speeches.rates.cohortAvg %>%</span>
+                <% } %>
+              </p>
+              <div class="sp-rates">
+                <% speeches.rates.items.forEach(r => { %>
+                  <div class="sp-rate<%= r.isSpecial ? ' is-special' : '' %>">
+                    <div class="sp-rate-head">
+                      <span class="sp-rate-name"><%= r.deptNm %></span>
+                      <% if (r.showRate) { %>
+                        <span class="sp-rate-val is-<%= r.vsAvg %>"><%= r.rate %><small>%</small></span>
+                      <% } %>
+                    </div>
+                    <div class="sp-rate-bar">
+                      <% if (r.showRate) { %>
+                        <span class="sp-rate-track">
+                          <span class="sp-rate-fill" style="width:<%= Math.min(100, r.rate) %>%"></span>
+                          <%# 평균선 — 숫자 하나만 두면 50%가 높은 건지 낮은 건지 알 수 없다.
+                              단 겸직·퇴임 행에는 긋지 않는다 (겨룰 대상이 아니다) %>
+                          <% if (!r.offDuty && speeches.rates.cohortAvg != null) { %>
+                            <span class="sp-rate-avg" style="left:<%= speeches.rates.cohortAvg %>%"
+                                  title="의원 평균 <%= speeches.rates.cohortAvg %>%"></span>
+                          <% } %>
+                        </span>
+                      <% } %>
+                      <span class="sp-rate-frac">
+                        소속 후 회의 <strong><%= nf(r.denom) %>번</strong> 중 <strong><%= nf(r.spoke) %>번</strong> 발언
+                        <% if (!r.showRate) { %>
+                          <%# 아예 숨기지 않고 이유를 쓴다 — 안 쓰면 "왜 이 위원회만 %가 없지" 가 된다 %>
+                          <em class="sp-rate-thin">— 회의 <%= speeches.rates.minDenom %>번이 쌓이기 전이라 비율은 표시하지 않습니다</em>
+                        <% } else if (r.offDuty) { %>
+                          <%# 🔴 값을 숨기지 않고 이유를 적는다. 상임위 활동이 줄어드는 게 당연한 자리라
+                              평균과 나란히 두면 그대로 오해가 된다 (실측 평균 37.2% vs 전체 49.7%) %>
+                          <em class="sp-rate-thin">— <%= r.offDutyNote %>이라 평균과 비교하지 않습니다</em>
+                        <% } %>
+                      </span>
+                    </div>
+                  </div>
+                <% }); %>
+              </div>
+              <%# 🔴 이 두 줄이 위 숫자의 전제다. 빼면 "출석률" 로 읽힌다.
+                  ⚠️ <ul> 이어야 한다 — <p> 안에 <li> 를 넣으면 브라우저가 문단을 닫아버려
+                     문구가 통째로 사라진다 (실제로 그렇게 렌더됐다) %>
+              <ul class="sp-caveat sp-caveat-tight">
+                <li>배정일 기록이 없어 <strong>그 위원회에서 처음 발언한 날</strong>을 소속 시작으로 봅니다 — 그 전에 조용히 앉아 있던 기간은 분모에 없어, 실제보다 <strong>후한 값</strong>입니다.</li>
+                <li>분모는 <strong>상임위 회의</strong>만입니다. 국정감사·본회의는 회의 제목에 위원회명이 없어 빠집니다.</li>
+              </ul>
+            <% } %>
+
+            <% if (speeches.kinds.length > 0) { %>
               <p class="sp-sub-title">회의 종류</p>
               <div class="sp-kinds">
-                <% speeches.meetings.forEach(m => { %>
+                <% speeches.kinds.forEach(m => { %>
                   <div class="sp-kind-row">
                     <span class="sp-kind-lab"><%= m.meeting_kind %></span>
                     <span class="sp-kind-track"><span class="sp-kind-fill" style="width:<%= m.pct %>%"></span></span>
@@ -1996,31 +2099,55 @@
               </div>
             <% } %>
 
-            <% if (speeches.recent.length > 0) { %>
+            <%#
+              발언한 회의 목록 — 단위가 **클립이 아니라 회의**다.
+              🔴 한 회의에서 클립이 최대 83개 나온다 (실측). 클립 단위로 늘어놓으면 같은 회의
+                 제목이 수십 번 반복돼 기록이 아니라 노이즈가 된다. 회의로 묶으면 최민희
+                 2,598클립 → 121회의. 위 "발언한 날 N일" 과도 같은 축이 된다.
+              ⚠️ 전체를 한 번에 내려보내고 접는 것만 화면이 한다 (토글에 서버 왕복 없음).
+                 실측 최대 155행이라 페이로드 부담이 없다.
+            %>
+            <% if (speeches.meetings.length > 0) {
+                 const HEAD = 8;
+                 const head = speeches.meetings.slice(0, HEAD);
+                 const rest = speeches.meetings.slice(HEAD);
+                 /* ⚠️ 행 마크업을 **평평하게** 쓴다 (들여쓰기 없음 + 개행 제거 태그).
+                    EJS 는 들여쓰기를 그대로 출력하는데, 최대 155행이라 그 공백만 36KB 였다
+                    (섹션 전체의 43%). 여기만 읽기를 조금 포기하면 절반이 사라진다.
+                    ⚠️ 이 주석에 EJS 닫는 태그 문자열을 쓰지 말 것 — EJS 는 주석 안이든
+                       문자열 안이든 가리지 않고 **텍스트로** 찾아서 거기서 스크립틀릿을 닫는다
+                       (실제로 그렇게 컴파일 에러를 냈다).
+                    ⚠️ 한 회의에 질의석·위원장석이 섞이면 **둘 다** 적는다 (위원장이 질의도 한다).
+                       우세한 쪽만 적으면 나머지가 사라진다. */
+                 const meetingRow = (m) => { -%>
+<a class="sp-mt" href="<%= m.url %>" target="_blank" rel="noopener noreferrer"><span class="sp-mt-date"><%= m.takingDate %></span><span class="sp-mt-title"><%= m.confTitle %><span class="sp-mt-meta"><span class="sp-mt-role"><%= m.mixed ? '질의석·위원장석' : (m.role === 'chair' ? '위원장석' : '질의석') %></span> · 영상 <%= m.clipCnt %>개</span></span><span class="sp-mt-go" aria-hidden="true">↗</span></a>
+<% };
+            -%>
               <div class="sp-recent">
-                <p class="sp-sub-title">최근 발언 영상</p>
-                <div class="sp-clips">
-                  <% speeches.recent.forEach(c => { %>
-                    <a class="sp-clip" href="<%= c.link_url %>" target="_blank" rel="noopener noreferrer">
-                      <span class="sp-clip-date"><%= c.taking_date %></span>
-                      <span class="sp-clip-title">
-                        <%= c.conf_title %>
-                        <span class="sp-clip-meta">
-                          <span class="sp-clip-role"><%= c.role_kind === 'chair' ? '위원장석' : '질의석' %></span><% if (c.act) { %> · <%= c.act %><% } %>
-                        </span>
-                      </span>
-                      <% if (c.clipLen) { %><span class="sp-clip-len"><%= c.clipLen %></span><% } %>
-                    </a>
-                  <% }); %>
+                <p class="sp-sub-title">발언한 회의 <span class="sp-sub-count"><%= nf(speeches.meetingCnt) %>개</span></p>
+                <div class="sp-mts">
+                  <% head.forEach(m => meetingRow(m)); -%>
                 </div>
+
+                <% if (rest.length > 0) { %>
+                  <%# ⚠️ .sp-mts 가 flex 라 [hidden] 이 안 먹는다 — CSS 에 [hidden]{display:none} 필수
+                      (bill_detail 의 .ba-proposers-grid, briefing 의 .bf-rest 와 같은 함정) %>
+                  <div class="sp-mts sp-mts-rest" id="sp-mts-rest" hidden>
+                    <% rest.forEach(m => meetingRow(m)); -%>
+                  </div>
+                  <button type="button" class="sp-more" id="sp-more"
+                          aria-expanded="false" aria-controls="sp-mts-rest"
+                          data-label-collapsed="회의 <%= nf(rest.length) %>개 더 보기 ▾"
+                          data-label-expanded="접기 ▴">회의 <%= nf(rest.length) %>개 더 보기 ▾</button>
+                <% } %>
               </div>
             <% } %>
 
-            <%# 🔴 이 세 줄은 반드시 함께 간다. 하나라도 빠지면 위 숫자가 곧바로 오해가 된다. %>
+            <%# 🔴 이 네 줄은 숫자와 세트다. 하나라도 빠지면 위 숫자가 곧바로 오해가 된다. %>
             <ul class="sp-caveat">
               <li>위원회마다 회의 빈도가 달라 <strong>의원 간 건수 비교로는 쓸 수 없습니다.</strong></li>
               <li>위원장석 발언은 회의 진행·안건 호명이라 질의와 성격이 다릅니다.</li>
-              <li>영상 재생시간은 <strong>개인 발언시간이 아닙니다</strong> — 한 클립에 질의와 답변이 함께 녹화됩니다.</li>
+              <li>영상 길이는 표시하지 않습니다 — 한 클립에 질의와 답변이 함께 녹화돼 있어 <strong>개인 발언시간이 아니기</strong> 때문입니다.</li>
               <li>국회 영상회의록에 발언자로 기록된 건만 집계합니다 (정부측 답변·외부 참고인 발언은 제외).</li>
             </ul>
           </div>
@@ -2147,6 +2274,25 @@
   // On first load: ensure filter didn't hide anything, then render page.
   if (billsContainer && pagerEl) {
     renderPage();
+  }
+
+  /* ── 발언한 회의 "더 보기" ──
+     서버가 전체를 이미 내려보냈으므로 hidden 만 토글한다 (왕복 없음).
+     라벨은 마크업의 data-label-* 가 정한다 — JS 는 읽기만 (bill_detail 원문 섹션과 같은 규약). */
+  const spMore = document.getElementById('sp-more');
+  const spRest = document.getElementById('sp-mts-rest');
+  if (spMore && spRest) {
+    spMore.addEventListener('click', () => {
+      const open = spRest.hidden;
+      spRest.hidden = !open;
+      spMore.setAttribute('aria-expanded', String(open));
+      spMore.textContent = open
+        ? spMore.dataset.labelExpanded
+        : spMore.dataset.labelCollapsed;
+      // 접을 때는 목록 머리로 되돌린다 (안 하면 사라진 목록 아래 허공에 남는다)
+      if (!open) document.getElementById('speech-record')
+        ?.querySelector('.sp-recent')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
 })();

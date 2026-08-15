@@ -408,6 +408,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
   - `ddl/migrations/2026-08-12-politician-speeches.sql` — **의원 발언 기록 테이블**. 2026-08-15 에 **라이브 스키마에서 복원**한 것 (원본 유실). `(clip_id, mona_cd)` UNIQUE + mona/date/mona_kind 인덱스 3종
   - `ddl/migrations/2026-08-15-speeches-role-kind-split.sql` — **`role_kind` 구 `gov` 를 `government`/`witness`/`other` 로 3분할** + CHECK 제약. ⚠️ **`syncSpeeches.js --full` 을 먼저 돌린 뒤** 실행할 것 (값을 바꾸는 건 배치고 이 파일은 제약·주석만 건다)
+  - `ddl/migrations/2026-08-15-committee-speech-mv.sql` — **상임위 발언 참여율 MV** `politician_committee_speech`. 소속기간으로 정규화한 참여율 + 코호트 판정. **어떤 대안을 왜 버렸는지가 파일 주석에 전부 있다** — 되돌리기 전에 읽을 것
+    - ⚠️ **LIKE 조인 위치가 성능을 좌우한다.** `politician_committees`(477) × `politician_speeches`(66,882) 를 LIKE 로 붙이면 3,200만 번 평가돼 **15초**, 회의↔위원회를 먼저 매칭해두고 등치 조인하면 **2.4초**. 결과는 동일
   - `ddl/migrations/2026-08-12-supabase-data-api-off.sql` — **Supabase Data API 노출 차단**. 실행할 SQL 이 아니라 **대시보드 설정의 기록** + 검증 쿼리 + 폴백 RLS 스크립트. ⚠️ DB 재생성 시 반드시 재설정 (빠뜨려도 에러 없이 전 테이블이 인터넷에 열림). 위 "Supabase Data API 는 꺼져 있다" 참조
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
@@ -1148,19 +1150,57 @@ controllers/BriefingController.js
 분석 탭 **맨 아래** 전체폭 카드. 소스는 `politician_speeches`.
 발의·표결 지표가 전부 본회의·법안 기준이라 안 보이던 **상임위**를 메우는 자리다.
 
-- 배선: `getSpeechSummaryByMonaCd.sql`(요약 + 회의종류 분포를 한 쿼리로) + `getRecentSpeechesByMonaCd.sql`(최근 8건)
+- 배선: `getSpeechSummaryByMonaCd.sql`(요약 + 회의종류 분포를 한 쿼리로) + `getSpeechMeetingsByMonaCd.sql`(회의 목록 전체)
   → `PoliticianService.getSpeechesByMonaCd()` 가 합쳐서 모양을 잡는다. 발언 0건이면 **`null` 을 돌려 뷰가 섹션을 안 그린다**
 - 🔴 **순위를 매기지 않는다** — 평균 대비·백분위·"N명 중 M위" 를 넣지 않는다.
   위원회마다 회의 빈도가 다르고 위원장·장관은 구조가 달라, 숫자를 나란히 세우는 순간 오해가 된다.
   비율은 **그 의원 안에서의 구성비**(회의 종류 분포)까지만 낸다
-- 표시하는 것은 사실 4종뿐: **질의석 건수 / 위원장석 건수 / 발언한 날 / 회의 종류 분포** + 최근 발언 영상 링크
-- 🔴 **해석 주의 4줄은 숫자와 세트다** (위원회별 회의 수 차이 · 위원장석은 사회 · 재생시간은 개인 발언시간 아님 · 정부측/외부인 제외). 하나라도 빼면 위 숫자가 곧바로 오해가 된다
+- 표시하는 것은 사실 4종뿐: **질의석 건수 / 위원장석 건수 / 발언한 날 / 회의 종류 분포** + 발언한 회의 목록
+- 🔴 **해석 주의 4줄은 숫자와 세트다** (위원회별 회의 수 차이 · 위원장석은 사회 · 영상 길이는 개인 발언시간 아님 · 정부측/외부인 제외). 하나라도 빼면 위 숫자가 곧바로 오해가 된다
 - 위원장석 타일은 `chairCnt > 0` 일 때만 — 모두가 채워야 할 칸처럼 보이면 그 자체가 점수판이 된다.
   값 색도 골드가 아니라 `--sub` 로 낮춘다 (같은 골드면 질의와 같은 축으로 읽힌다)
 - 정당색 금지 — 막대·강조는 골드 단일색
 - ⚠️ `.sp-kind-fill` 에 `min-width: 3px` 필수 — 1% 미만 구간(실측 소위원회 4건 = 0.38%)이 폭 0px 으로 렌더돼 막대가 아예 안 그려진다
-- ⚠️ 최근 영상 목록은 **시간순 그대로** 둔다. "질의석 우선" 같은 선별을 넣으면 사실 나열이 아니라 편집이 된다
-  (위원장은 한 회의에서 클립이 수십 개 나와 목록이 한 회의로 채워지는데, 그게 실제 모습이다)
+
+**상임위 회의 참여율 (`.sp-rate`) — 건수에 분모를 붙이는 자리 (2026-08-15)**
+소스는 MV `politician_committee_speech`. **소속 시작을 "그 위원회 첫 발언일" 로 근사**하고 그 이후 회의를 분모로 삼는다.
+왜 이 형태여야 하는지(어떤 대안을 실측으로 버렸는지)는 마이그레이션 파일 주석에 전부 있다.
+
+- 🔴 **순위(N명 중 M위)를 붙이지 않는다.** 쌍마다 분모가 3~103개로 달라 한 줄로 세우면 **순위가 활동이 아니라 표본 크기를 잰다.** 코호트 평균 대비 위치까지만
+- 🔴 **`MIN_RATE_DENOM = 11` 이 이 지표의 생명선이다.** 근사 소속기간 2개월 미만 구간은 평균 분모가 2.4개뿐이라 **중앙값이 100%** 다 — "첫 회의는 정의상 발언한 회의" 라 1/1 이 보장되기 때문. 11개 위쪽은 소속기간과 무관하게 45~55% 로 수렴한다 (6~12개월 53.4 · 1~1.6년 45.0 · 1.6년+ 53.6)
+  - ⚠️ **서비스의 `MIN_RATE_DENOM` 과 MV 의 `in_cohort` 조건은 같은 값이어야 한다.** 어긋나면 "평균 계산엔 안 들어갔는데 화면엔 비율이 뜨는" 행이 생긴다
+  - 분모 미달이면 **비율만 감추고 건수는 보여준다** + 이유를 쓴다. 행을 통째로 빼면 "이 위원회는 왜 안 보이지" 가 된다
+- 🔴 **장관·의장단·퇴임은 비율을 보여주되 평균과 겨루지 않는다** (`offDuty` — 평균선·강조색 끄고 사유 표기).
+  상임위 활동이 줄어드는 게 당연한 자리라(실측 평균 **37.2%** vs 전체 49.7%) 평균선 옆에 두면 곧바로 "게으르다" 로 읽힌다.
+  **값을 숨기지도 않는다** — 사실이고, 숨기면 왜 없는지 설명할 수 없다. 실측: 김윤덕(국토부 장관) 11.5% · 정동영(통일부 장관) 38.4%
+  - ⚠️ 그래서 쿼리가 `excluded_reason` 을 따로 내린다. MV 의 `in_cohort` 는 4개 조건을 뭉친 불리언이라 **"분모가 얇아서" 와 "장관이라서" 를 구분하지 못하는데 화면 처리가 정반대다**
+- **평균선(`.sp-rate-avg`)을 반드시 같이 긋는다** — 숫자만 두면 50%가 높은 건지 낮은 건지 알 수 없다
+- 평균 위쪽만 골드. **아래쪽에 빨강을 쓰지 않는다** (근사값이라 단정할 수 없고, 정당색은 금지)
+- 코호트에서 **위원장을 뺀 것은 예방적 조치**다. 실측상 위원장이 더 높지 않았다 (분모 11+ 중앙값: 간사 54.3 · 위원 50.0 · **위원장 48.7**). 6쌍뿐이라 평균에 영향도 없다 — 그래도 빼두는 건 "사회 보는 자리가 평균을 올렸다" 는 반론을 없애기 위함
+- ⚠️ **해석 주의 2줄은 숫자의 전제다**: ① 첫 발언 전 침묵기가 분모에서 빠져 **실제보다 후한 값** ② 분모는 상임위 회의만 (국감·본회의는 제목에 위원회명이 없어 253개 회의가 0개 매칭)
+  - ⚠️ 이걸 `<p>` 안의 `<li>` 로 쓰면 **브라우저가 문단을 닫아 문구가 통째로 사라진다** (실제로 그렇게 렌더됐다). `<ul>` 이어야 한다
+- 실측 (2026-08-15): 388쌍 / 코호트 164쌍(151명) · 평균 **49.7%** · 중앙값 50.7% · 평균 분모 46개.
+  **분모 미달이 55.2%인 건 후반기 원구성 직후라서**다 (현재 소속 위원회 첫 발언이 2026-07 에 137명 · 08 에 48명). 연말이면 대부분 11개를 넘긴다 — 배치가 이 비율을 매일 로그로 남긴다
+
+**회의 목록 (`.sp-mt`) — 단위가 클립이 아니라 회의다**
+- 🔴 **클립 단위로 늘어놓으면 안 된다.** 한 회의에서 클립이 최대 **83개** 나온다 (이인선 · 2025-07-14 여성가족위).
+  의원당 클립은 중앙값 147 · 최대 **2,598**(최민희)인데 회의로 묶으면 **121개**로 줄어든다 (압축비 21.5:1).
+  같은 회의 제목이 수십 번 반복되면 기록이 아니라 노이즈다 — 동명 법안 카드가 20장 붙어 있던 것과 같은 문제
+  - 회의 단위는 화면의 **"발언한 날 N일" 과 같은 축**이기도 하다. 클립 8건만 보여주면 "144일 발언" 이라 써놓고 목록은 **3일치**만 나온다 (실측)
+  - 의원당 회의 수: 최소 2 · 중앙값 **58** · 최대 **155**
+- **회의 영상 URL 은 클립 URL 에서 `no=` 만 떼면 된다** (2026-08-15 실측 확인 — 그 회의 전체 영상 페이지로 이동).
+  `mc·ct1·ct2·ct3` 가 회의를 특정하므로 아무 클립이나 재료로 쓴다. 원천이 `http` 라 `https` 로 올린다
+- 기본 8개 + `회의 N개 더 보기` 토글. **전체를 SSR 로 내려보내고 접는 것만 화면이 한다** (토글에 서버 왕복 없음)
+  - ⚠️ `.sp-mts` 가 flex 라 `[hidden]` 이 안 먹는다 → `.sp-mts[hidden] { display: none }` 필수
+    (`bill_detail` 의 `.ba-proposers-grid`, `briefing` 의 `.bf-rest` 와 같은 함정)
+- ⚠️ 한 회의에 질의석·위원장석이 섞이면 **둘 다** 적는다 (위원장이 질의도 한다 — 김현 실측 19회).
+  우세한 쪽만 적으면 나머지가 사라진다
+- ⚠️ 목록은 **시간순 그대로** 둔다. "질의석 우선" 같은 선별을 넣으면 사실 나열이 아니라 편집이 된다
+- ⚠️ **행 마크업을 들여쓰기 없이 한 줄로 쓴다.** EJS 는 들여쓰기를 그대로 출력하는데 최대 155행이라
+  그 공백만 **36KB(섹션의 43%)** 였다. 평평하게 고쳐 48KB / 3% 로 내렸다
+  - 🔴 **EJS 주석·문자열 안에 닫는 태그(`%` + `>`)를 쓰지 말 것** — EJS 는 주석 안이든 문자열 안이든
+    가리지 않고 **텍스트로** 찾아 거기서 스크립틀릿을 닫는다. 실제로 이 주석을 쓰다가 컴파일 에러를 냈다
+  - 섹션 실측: 김현(113회의) 48KB · 최민희(121) 46KB. 근본 해법은 gzip 이다 (`compression` 미사용 — 반복 들여쓰기는 가장 잘 압축되는 것)
 
 #### 표결 성향 카드 — 교차 표결 성향 (`.cpv-*`, 2026-08-05 추가)
 찬반 비율 4줄 아래에 붙는 블록. **"당을 보고 투표하나, 법안을 보고 투표하나"** 를 보여준다.
@@ -1371,6 +1411,7 @@ PC/모바일 동일 패턴으로 통일.
 | `syncMissingBillDetails.js` | ALLBILL API | 상세 누락분 보강 |
 | `syncCommittees.js` | 열린국회정보 (`nktulghcadyhmiqxi`) | 위원회 위원 명단 → `politician_committees`. **전체 교체**(스냅샷) · `--dry-run`. 실측 477행 0.65초 |
 | `syncSpeeches.js` | 열린국회정보 (`npeslxqbanwkimebr`) | 발언영상 → `politician_speeches`. **연도 단위 UPSERT**(증분 인자가 없다) · 기본 올해분 · `--full` `--year N` `--dry-run`. 실측 올해분 6초 / 전건 54초 |
+| `refreshCommitteeSpeech.js` | DB 집계 | `politician_committee_speech` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~2.4초). 상임위 발언 참여율. **syncSpeeches·syncCommittees 다음에 실행** |
 | `syncPhotos.js` | 크롤링 | 의원 프로필 사진 |
 | `updateCommittee.js` | 열린국회 API | `syncBills.js` 이전 레코드 committee 컬럼 보강 (pSize=1000, bulk VALUES UPDATE) |
 | `syncBillAiAnalysis.js` | pal.assembly.go.kr 크롤 + Claude Haiku 4.5 | AI 법안 분석 (v4.1, 16종 카테고리) |
@@ -1407,11 +1448,15 @@ PC/모바일 동일 패턴으로 통일.
 | `syncBillAiAnalysis.js` | 분석 요청 임계값(5명) 도달 또는 신규 가결 법안 (syncBills·syncVotes 이후 — `proc_result` 필요) |
 | `calcPoliticianAxis.js` | `bill_axis_mapping` 시드 변경 또는 syncVotes 갱신 시 |
 
+> `refreshCommitteeSpeech.js` 는 정기 체인(`batch:daily`)의 `refreshDissent` 다음에 있다.
+> 입력이 `politician_speeches` · `politician_committees` · `politician_titles` · `politicians.active_yn` 이라
+> **`syncSpeeches` 와 `syncCommittees` 뒤여야** 한다.
+
 **일회성 (완료, 재실행 불필요)**: `updateCommittee.js` (구레코드 committee 보강), `reclassifyCategories.js` (v4→v4.1 재분류 — 카테고리 체계 변경 시에만)
 
 ### 크론 배포 (Railway, 2026-08-04)
 npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
-- `npm run batch:daily` — `syncPoliticians && syncCommittees && syncSpeeches && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg && genBriefing`
+- `npm run batch:daily` — `syncPoliticians && syncCommittees && syncSpeeches && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && refreshCommitteeSpeech && calcPoliticianAxis && calcGroupAxisAvg && genBriefing`
   - ⚠️ `genBriefing` 은 **체인 맨 뒤**여야 한다 (그날 법안·요약이 다 들어온 뒤에 읽는다).
     2026-08-11 누락이 발견됐다 — 체인에 없으면 피드가 마지막 수동 실행 시점에서 **영구히 멈춘다**
   - ⚠️ 크론 서비스에 **`ANTHROPIC_API_KEY` 가 있어야 한다.** 없으면 매일 폴백 카드("데이터 요약")만 쌓인다

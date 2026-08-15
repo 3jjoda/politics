@@ -143,9 +143,15 @@ export default (db) => {
             return rows[0] || null;
         },
 
-        /* 의원 최근 발언 영상 */
-        getRecentSpeechesByMonaCd: async (monaCd, limit = 8) => {
-            const { rows } = await db.query(queries.getRecentSpeechesByMonaCd, [monaCd, limit]);
+        /* 의원 발언 회의 목록 (클립이 아니라 회의 단위 — 쿼리 주석 참조) */
+        getSpeechMeetingsByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getSpeechMeetingsByMonaCd, [monaCd]);
+            return rows;
+        },
+
+        /* 의원 상임위 발언 참여율 (politician_committee_speech MV + 코호트 평균) */
+        getSpeechRatesByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getSpeechRatesByMonaCd, [monaCd]);
             return rows;
         },
 
