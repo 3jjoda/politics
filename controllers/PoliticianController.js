@@ -75,8 +75,8 @@ export default (db) => {
             }
             const politician = politicianData[0];
 
-            const [bills, votes, topics, monthly, timeline, voteSummary, crossPartyVote, partyCoop, radarScale, committees, titles, speeches] = await Promise.all([
-                politicianService.getBillsByMonaCd(monaCd),
+            const [billCounts, votes, topics, monthly, timeline, voteSummary, crossPartyVote, partyCoop, partyCoopOut, committees, titles, speeches, kpiRank] = await Promise.all([
+                politicianService.getBillCounts(monaCd),
                 politicianService.getVotesByMonaCd(monaCd),
                 politicianService.getTopicsByMonaCd(monaCd),
                 politicianService.getMonthlyBillsByMonaCd(monaCd),
@@ -84,10 +84,11 @@ export default (db) => {
                 politicianService.getVoteSummaryByMonaCd(monaCd),
                 politicianService.getCrossPartyVoteByMonaCd(monaCd),
                 politicianService.getPartyCoopByMonaCd(monaCd),
-                politicianService.getRadarScale(),
+                politicianService.getPartyCoopOutByMonaCd(monaCd),
                 politicianService.getCommittees(monaCd),
                 politicianService.getTitles(monaCd),
-                politicianService.getSpeechesByMonaCd(monaCd)
+                politicianService.getSpeechesByMonaCd(monaCd),
+                politicianService.getKpiPercentiles(monaCd)
             ]);
 
             res.render('politician/politician_detail', {
@@ -95,7 +96,7 @@ export default (db) => {
                 pageStyles: 'politician/politician_detail',
                 currentUrl: `/politician/${monaCd}`,
                 politician,
-                bills,
+                billCounts,
                 votes,
                 topics,
                 monthly,
@@ -103,14 +104,47 @@ export default (db) => {
                 voteSummary: voteSummary || { for_cnt: 0, against_cnt: 0, abstain_cnt: 0, absent_cnt: 0, total_cnt: 0 },
                 crossPartyVote,
                 partyCoop,
-                radarScale,
+                partyCoopOut,
                 committees,
                 titles,
-                speeches
+                speeches,
+                kpiRank
             });
 
         } catch (error) {
             logger.error('웹 컨트롤러에서 정치인 상세 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    /* ===== 법안 활동 탭 지연 로딩 =====
+       🔴 전건 SSR 을 대체한다 — 887행을 다 뿌리면 페이지가 **1.1MB** 가 된다 (실측).
+       ⚠️ `kind` 는 서비스가 화이트리스트로 접는다. 여기서 SQL 을 만들지 않는다. */
+    controller.getBillsPageApi = wrapWithContext(async function getBillsPageApi(req, res, next) {
+        try {
+            const monaCd = req.params.monaCd;
+            const [{ rows, kind, page, per }, counts] = await Promise.all([
+                politicianService.getBillsPage(monaCd, req.query),
+                politicianService.getBillCounts(monaCd),
+            ]);
+            const total = kind === 'rep' ? counts.rep : kind === 'co' ? counts.co : counts.total;
+            res.status(200).json({ rows, kind, page, per, total, pages: Math.max(1, Math.ceil(total / per)) });
+        } catch (error) {
+            logger.error('API 컨트롤러에서 법안 활동 페이지 조회 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    /* 월별 표결 참여 차트의 클릭 패널 — 그 달치만.
+       🔴 예전엔 598건 전건을 JSON 으로 심어 75KB 였다. 실제로 보는 건 클릭한 달 하나뿐이다. */
+    controller.getVotesByMonthApi = wrapWithContext(async function getVotesByMonthApi(req, res, next) {
+        try {
+            const rows = await politicianService.getVotesByMonth(req.params.monaCd, req.query.ym);
+            // ⚠️ 형식이 틀리면 빈 배열이 아니라 400 — 조용히 빈 화면이 되면 원인을 못 찾는다
+            if (rows === null) return res.status(400).json({ error: 'ym 형식은 YYYY-MM 이어야 합니다' });
+            res.status(200).json({ rows });
+        } catch (error) {
+            logger.error('API 컨트롤러에서 월별 표결 조회 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });

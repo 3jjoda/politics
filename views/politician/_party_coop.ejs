@@ -1,0 +1,132 @@
+<%#
+  정당별 공동발의 협력 — **두 방향을 다 보여준다** (2026-08-15).
+
+  🔴 왜 두 개인가: 이건 의원 **상세** 페이지다. "내 법안에 어떤 당이 합류했나"(받은 것)보다
+     "내가 어떤 당 법안에 합류했나"(**본인의 선택**)가 이 사람을 설명하는 데 더 가깝다 (사용자 지적).
+     둘은 서로 다른 질문이라 어느 하나로 대체되지 않으므로 나란히 낸다. **본인의 선택이 왼쪽**이다.
+
+  🔴 두 패널은 **세는 단위가 다르다.** 섞어 쓰면 합계가 왜 다른지 설명이 안 된다:
+       내가 참여한  = 법안 **건수** (한 법안에 내가 이름을 올리는 건 한 번뿐) — 실측 강경숙 798건
+       내 법안에    = (법안 × 의원) **쌍의 횟수** (한 법안에 여러 의원이 올린다) — 실측 976회
+
+  🔴 정당색 금지. 강조는 **자당(골드) / 타당(무채색)** 로만 — 정당이 아니라 **관계**를 가른다.
+  🔴 무소속(실측 8명)은 자당/타당으로 나누지 않는다. "자당" 이 정당이 아니라 그냥 다른 무소속 의원이라
+     타당 99% 가 나오는데, 그건 초당적이라는 뜻이 아니라 소속이 없다는 뜻이다.
+  🔴 분모는 **전체**다. 상위 N개만 표시하되 잘린 나머지는 `그 외 N개 정당` 으로 반드시 보여준다 —
+     예전엔 상위 4개 합을 100%로 삼아 비율이 부풀어 있었다 (실측 70.0% → 실제 68.2%).
+
+  locals: partyCoop(inbound) · partyCoopOut(outbound) · politician · nf
+%>
+<%
+  const PC_TOP = 4;
+  const _pcHasOwn = !!politician.party_name && politician.party_name !== '무소속';
+
+  /* 한 패널 분량을 통째로 계산한다 — 두 패널이 같은 규칙을 따라야 비교가 성립한다 */
+  const _pcShape = (rows) => {
+    const all = rows || [];
+    const total = all.reduce((s, r) => s + Number(r.cnt || 0), 0);
+    if (total === 0) return null;
+    const top = all.slice(0, PC_TOP);
+    const rest = all.slice(PC_TOP);
+    const restCnt = rest.reduce((s, r) => s + Number(r.cnt || 0), 0);
+    const own = _pcHasOwn
+      ? all.filter((r) => r.party_name === politician.party_name)
+           .reduce((s, r) => s + Number(r.cnt || 0), 0)
+      : 0;
+    return {
+      total, top, restLen: rest.length, restCnt,
+      own, other: total - own,
+      hasUnknown: top.some((r) => r.party_name === '명부 없음'),
+    };
+  };
+
+  const _out = _pcShape(locals.partyCoopOut);   // 본인의 선택 — 왼쪽
+  const _in  = _pcShape(locals.partyCoop);      // 받은 것 — 오른쪽
+%>
+
+<% if (_out || _in) { %>
+  <div class="card pc-card">
+    <div class="card-header">
+      <span class="card-title">정당별 공동발의 협력 <span class="card-title-mono">대표발의자 정당 기준</span></span>
+    </div>
+    <div class="card-body">
+      <div class="pc-grid">
+
+        <%
+          /* 패널 하나를 그리는 공통 조각. 두 패널의 규칙이 갈리면 비교가 무너지므로 반드시 같은 함수로 */
+          const _panel = (d, opts) => { %>
+          <section class="pc-panel">
+            <h4 class="pc-h"><%= opts.title %></h4>
+            <p class="pc-lede"><%- opts.lede %></p>
+
+            <% if (!d) { %>
+              <%# ⚠️ 빈 칸으로 두지 말 것 — 왜 없는지 쓴다 %>
+              <p class="pc-note"><%= opts.empty %></p>
+            <% } else { %>
+              <% if (_pcHasOwn) { %>
+                <p class="pc-split">자당 <strong><%= (d.own / d.total * 100).toFixed(1) %>%</strong>
+                  · 타당 <strong><%= (d.other / d.total * 100).toFixed(1) %>%</strong></p>
+              <% } %>
+
+              <div class="party-coop">
+                <% d.top.forEach((pc) => {
+                     const w = Number(pc.cnt) / d.total * 100;
+                     const isOwn = _pcHasOwn && pc.party_name === politician.party_name;
+                %>
+                  <div class="party-coop-item">
+                    <span class="party-coop-name<%= isOwn ? ' is-own' : '' %>"><%= pc.party_name %></span>
+                    <div class="party-coop-bar-wrap"><div class="party-coop-bar<%= isOwn ? ' is-own' : '' %>" style="width:<%= w %>%"></div></div>
+                    <span class="party-coop-val"><%= nf(pc.cnt) %><%= opts.unit %></span>
+                    <span class="party-coop-pct"><%= w.toFixed(1) %>%</span>
+                  </div>
+                <% }); %>
+                <%# 🔴 잘린 나머지를 반드시 보여준다 — 없으면 비율 합이 100%가 안 되는 이유를 알 수 없다 %>
+                <% if (d.restLen > 0) { %>
+                  <div class="party-coop-item is-rest">
+                    <span class="party-coop-name">그 외 <%= d.restLen %>개 정당</span>
+                    <div class="party-coop-bar-wrap"><div class="party-coop-bar" style="width:<%= d.restCnt / d.total * 100 %>%"></div></div>
+                    <span class="party-coop-val"><%= nf(d.restCnt) %><%= opts.unit %></span>
+                    <span class="party-coop-pct"><%= (d.restCnt / d.total * 100).toFixed(1) %>%</span>
+                  </div>
+                <% } %>
+              </div>
+
+              <p class="pc-note">
+                총 <strong><%= nf(d.total) %><%= opts.unit %></strong><%- opts.unitNote %>
+                <% if (d.hasUnknown) { %>
+                  <br><strong>명부 없음</strong>은 현재 의원 명부에 없는 사람으로, 대개 퇴임 의원입니다.
+                <% } %>
+              </p>
+            <% } %>
+          </section>
+        <% }; %>
+
+        <%# 🔴 왼쪽이 **본인의 선택**이다. 순서를 바꾸지 말 것 %>
+        <%- _panel(_out, {
+              title: '내가 참여한 법안',
+              lede: '다른 의원이 대표발의한 법안에 <strong>내가 이름을 올린</strong> 것입니다. 그 법안을 낸 의원의 소속 정당으로 묶었습니다.',
+              unit: '건',
+              unitNote: ' — 한 법안에 한 번씩 셉니다.',
+              empty: '다른 의원의 법안에 공동발의로 참여한 기록이 없습니다.',
+            }) %>
+        <%- _panel(_in, {
+              title: '내 법안에 참여한 의원',
+              lede: '내가 대표발의한 법안에 <strong>다른 의원이 이름을 올려준</strong> 것입니다.',
+              unit: '회',
+              unitNote: ' — 한 의원이 여러 법안에 올리면 여러 번 셉니다.',
+              empty: '대표발의한 법안이 없어 표시할 내용이 없습니다.',
+            }) %>
+      </div>
+
+      <p class="pc-foot">
+        정당마다 의석수가 달라 건수를 그대로 비교하면 오해가 됩니다.
+        <% if (_pcHasOwn) { %>
+          소수당 의원은 자당 의원 수 자체가 적어 타당 비중이 구조적으로 높게 나옵니다.
+        <% } else { %>
+          <%# ⚠️ 무소속은 "자당" 이 없어 타당 비중이 거의 100%가 된다 — 초당적이라는 뜻이 아니다 %>
+          이 의원은 <strong>무소속</strong>이라 자당·타당으로 나누지 않았습니다.
+        <% } %>
+      </p>
+    </div>
+  </div>
+<% } %>

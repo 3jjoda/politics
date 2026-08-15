@@ -94,6 +94,24 @@ export default (db) => {
             return rows;
         },
 
+        /* 법안 활동 탭 — 한 페이지만. 🔴 전건(getBillsByMonaCd)을 SSR 로 뿌리면 887행 1.1MB 다 */
+        getBillsPageByMonaCd: async (monaCd, kind, limit, offset) => {
+            const { rows } = await db.query(queries.getBillsPageByMonaCd, [monaCd, kind, limit, offset]);
+            return rows;
+        },
+
+        /* 법안 활동 탭 — 개수만 (탭 라벨용). 개수 때문에 전건을 들고 오지 않는다 */
+        getBillCountsByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getBillCountsByMonaCd, [monaCd]);
+            return rows[0] || { total: 0, rep: 0, co: 0 };
+        },
+
+        /* 월별 표결 참여 차트의 클릭 패널 — 그 달치만 */
+        getVotesByMonthByMonaCd: async (monaCd, ym) => {
+            const { rows } = await db.query(queries.getVotesByMonthByMonaCd, [monaCd, ym]);
+            return rows;
+        },
+
         /* 의원별 표결 내역 */
         getVotesByMonaCd: async (monaCd) => {
             const { rows } = await db.query(queries.getVotesByMonaCd, [monaCd]);
@@ -136,6 +154,13 @@ export default (db) => {
             return rows;
         },
 
+        /* 내가 **참여한** 법안의 대표발의자 정당 (outbound) — 위와 방향이 반대다.
+           의원 상세에서는 이쪽이 **본인의 선택**이라 화면에서도 먼저 온다 (쿼리 주석 참조) */
+        getPartyCoopOutByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getPartyCoopOutByMonaCd, [monaCd]);
+            return rows;
+        },
+
         /* 의원 발언 요약 (질의석·위원장석 건수 · 발언한 날 · 회의 종류 분포)
            ⚠️ member·chair 만 센다 — 나머지는 이름 매칭 오귀속이 섞인다 (쿼리 주석 참조) */
         getSpeechSummaryByMonaCd: async (monaCd) => {
@@ -155,10 +180,11 @@ export default (db) => {
             return rows;
         },
 
-        /* 레이더 스케일 기준값 (현역 의원 중 최대치) */
-        getRadarScale: async () => {
-            const { rows } = await db.query(queries.getRadarScale);
-            return rows[0];
+        /* KPI 백분위 — **코호트 전체(309행)를 한 번에** 돌려준다. 의원별 인자가 없다.
+           서비스가 캐시하고 mona_cd 로 찾아 쓴다 (상세 진입마다 돌리면 안 되는 무게다) */
+        getKpiPercentiles: async () => {
+            const { rows } = await db.query(queries.getKpiPercentiles);
+            return rows;
         }
     };
 };

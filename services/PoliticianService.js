@@ -46,6 +46,11 @@ const shapeRates = (rateRows) => {
            두면 곧바로 "게으르다" 로 읽힌다. 값을 숨기지도 않는다 — 사실이고, 숨기면 왜 없는지
            설명할 수 없다. 대신 이유를 옆에 적는다. */
         const offDuty = r.excluded_reason === 'office' || r.excluded_reason === 'retired';
+        const comparable = show && !offDuty && cohortAvg != null;
+        /* 평균 대비 차이. 🔴 화면에서 **글자로** 쓰라고 만든 값이다 — 막대 위 마커만으로는
+           "그래서 평균보다 위인가" 를 눈으로 재야 하고, 폭 1,186px 짜리 막대에서 2px 선은
+           사실상 안 보인다. 소수 1자리까지만 (분모가 얇아 그 이상은 정밀도가 없다). */
+        const delta = comparable ? Math.round((rate - cohortAvg) * 10) / 10 : null;
         return {
             deptNm: r.dept_nm,
             jobResNm: r.job_res_nm,
@@ -65,9 +70,18 @@ const shapeRates = (rateRows) => {
                 ? '임기 종료'
                 : (r.office_title || '겸직'),
             // 평균 대비 — 5%p 안쪽은 '비슷' 으로 묶는다 (그 아래는 표본 오차 범위다)
-            vsAvg: show && !offDuty && cohortAvg != null
+            vsAvg: comparable
                 ? (rate >= cohortAvg + 5 ? 'above' : rate <= cohortAvg - 5 ? 'below' : 'near')
                 : null,
+            delta,
+            /* ⚠️ '비슷' 구간에까지 ±0.4%p 같은 숫자를 붙이지 않는다 — 분모가 얇아 그 정도 차이는
+               의미가 없는데, 숫자를 쓰는 순간 의미가 있는 것처럼 읽힌다.
+               ⚠️ 하이픈(-)이 아니라 진짜 빼기 기호(−, U+2212). 하이픈은 폭이 좁아 글머리로 보인다. */
+            deltaLabel: delta == null
+                ? null
+                : (Math.abs(delta) < 5
+                    ? '평균과 비슷'
+                    : `평균 ${delta > 0 ? '+' : '−'}${Math.abs(delta)}%p`),
         };
     });
 
@@ -83,11 +97,69 @@ const shapeRates = (rateRows) => {
         cohortAvg,
         cohortSize: rateRows[0].cohort_size,
         minDenom: MIN_RATE_DENOM,
-        // 하나라도 비율을 낼 수 있는가 (전부 얇으면 화면에서 평균 설명을 감춘다)
-        hasAny: shown.length > 0,
+        /* 평균 마커가 실제로 그려지는 행이 하나라도 있는가 — 소제목의 범례를 이걸로 켠다.
+           분모가 얇거나(비율 없음) 겸직·퇴임(비교 안 함)뿐이면 마커가 한 줄도 안 그려지는데,
+           그때 범례만 남으면 "이 표시가 어디 있다는 거지" 가 된다 */
+        hasComparable: shown.some((i) => !i.offDuty),
         hasApprox,
         // 근사와 정확이 섞여 있으면 행마다 어느 쪽인지 밝혀야 한다
         mixedStart: hasApprox && hasExact,
+    };
+};
+
+/* ===== KPI 백분위 =====
+   🔴 쿼리가 **코호트 전체(309행, 실측 695ms)** 를 한 번에 낸다. 의원마다 돌리면 안 되는 무게라
+      여기서 10분 캐시하고 mona_cd 로 찾아 쓴다. 입력이 하루 1회(syncBills·syncVotes)만 바뀌어 안전하다.
+   ⚠️ inflight 공유가 없으면 캐시가 비었을 때 동시 요청이 전부 같은 쿼리를 돌린다
+      (XrayService 섹션 캐시·utils/sitemap.js 와 같은 수법). */
+const KPI_TTL_MS = 10 * 60 * 1000;
+let kpiCache = null;        // { at, byMona: Map }
+let kpiInflight = null;
+
+/* 백분위 → 사람이 읽는 말.
+   ⚠️ 항상 "상위 N%" 로 쓰면 최하위가 **"상위 100%"** 가 되어 정반대로 읽힌다.
+      절반을 기준으로 상위/하위를 뒤집는다 (pr=0 → 하위 1%, pr=1 → 상위 1%). */
+const rankLabel = (pr) => {
+    if (pr == null) return null;
+    const top = Math.max(1, Math.round((1 - pr) * 100));
+    return top <= 50 ? `상위 ${top}%` : `하위 ${101 - top}%`;
+};
+
+/* 백분위를 못 내는 이유. 🔴 화면이 **이유를 써야** 하므로 불리언 하나로 뭉치지 말 것 —
+   "왜 나만 순위가 없지" 가 되면 고장으로 읽힌다 (발언기록 excluded_reason 과 같은 판단). */
+const kpiExclusion = (row, kind) => {
+    if (!row.active_yn)  return '임기 종료';
+    if (row.is_minister) return '국무위원 겸직';
+    if (kind === 'vote') {
+        if (row.is_speaker)    return '의장단';
+        if (row.vote_tot < 100) return '표결 기록 부족';
+    } else if (!row.full_tenure) {
+        return '임기 중 합류';
+    }
+    return null;
+};
+
+const shapeKpiRow = (row) => {
+    if (!row) return null;
+    const one = (pr, kind) => {
+        const reason = kpiExclusion(row, kind);
+        if (reason) return { excluded: reason };
+        if (pr == null) return { excluded: '비교 대상 없음' };
+        return { pr, pct: Math.round(pr * 100), label: rankLabel(pr) };
+    };
+    return {
+        cohortCnt:  row.n_cnt,
+        cohortVote: row.n_vote,
+        median: {
+            propose:   row.med_propose,
+            copropose: row.med_copropose,
+            vote:      row.med_vote,
+            passRate:  row.med_pass_rate,
+            leadShare: row.med_lead_share,
+        },
+        propose:   one(row.pr_propose,   'cnt'),
+        copropose: one(row.pr_copropose, 'cnt'),
+        vote:      one(row.pr_vote,      'vote'),
     };
 };
 
@@ -145,6 +217,25 @@ export default (db) => {
         getGenderStats:     async () => politicianDao.getGenderStats(),
         getAgeGroupStats:   async () => politicianDao.getAgeGroupStats(),
         getBillsByMonaCd: async (monaCd) => politicianDao.getBillsByMonaCd(monaCd),
+
+        /* 법안 활동 탭 지연 로딩. 🔴 `kind` 는 **화이트리스트**로만 통과시킨다 —
+           모르는 값은 에러가 아니라 'all' 로 조용히 접는다 (/xray/chart 와 같은 판단:
+           URL 을 손으로 고쳐도 안전하고, 링크가 깨져도 빈 화면보다 낫다). */
+        getBillsPage: async (monaCd, { kind, page, per } = {}) => {
+            const k = ['all', 'rep', 'co'].includes(kind) ? kind : 'all';
+            const p = Math.max(1, parseInt(page, 10) || 1);
+            const n = Math.min(50, Math.max(1, parseInt(per, 10) || 20));
+            const rows = await politicianDao.getBillsPageByMonaCd(monaCd, k, n, (p - 1) * n);
+            return { rows, kind: k, page: p, per: n };
+        },
+        getBillCounts: async (monaCd) => politicianDao.getBillCountsByMonaCd(monaCd),
+
+        /* 월별 표결 참여 차트의 클릭 패널 — 그 달치만.
+           ⚠️ `ym` 은 반드시 형식 검증할 것 (YYYY-MM). 안 하면 임의 문자열이 SQL 인자로 간다 */
+        getVotesByMonth: async (monaCd, ym) => {
+            if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) return null;
+            return politicianDao.getVotesByMonthByMonaCd(monaCd, ym);
+        },
         getVotesByMonaCd: async (monaCd) => politicianDao.getVotesByMonaCd(monaCd),
         getTopicsByMonaCd: async (monaCd) => politicianDao.getTopicsByMonaCd(monaCd),
         getMonthlyBillsByMonaCd: async (monaCd) => politicianDao.getMonthlyBillsByMonaCd(monaCd),
@@ -152,7 +243,31 @@ export default (db) => {
         getVoteSummaryByMonaCd: async (monaCd) => politicianDao.getVoteSummaryByMonaCd(monaCd),
         getCrossPartyVoteByMonaCd: async (monaCd) => politicianDao.getCrossPartyVoteByMonaCd(monaCd),
         getPartyCoopByMonaCd: async (monaCd) => politicianDao.getPartyCoopByMonaCd(monaCd),
-        getRadarScale: async () => politicianDao.getRadarScale(),
+        getPartyCoopOutByMonaCd: async (monaCd) => politicianDao.getPartyCoopOutByMonaCd(monaCd),
+
+        /* KPI 백분위 — 코호트 표를 10분 캐시하고 mona_cd 로 찾는다.
+           ⚠️ 실패해도 **null 을 돌려 페이지는 살린다.** 백분위는 부가 정보라 이것 때문에
+              의원 상세가 500 이 나면 안 된다 (발언기록·성향과 같은 판단). */
+        getKpiPercentiles: async (monaCd) => {
+            try {
+                const fresh = kpiCache && (Date.now() - kpiCache.at) < KPI_TTL_MS;
+                if (!fresh) {
+                    if (!kpiInflight) {
+                        kpiInflight = politicianDao.getKpiPercentiles()
+                            .then((rows) => {
+                                kpiCache = { at: Date.now(), byMona: new Map(rows.map((r) => [r.mona_cd, r])) };
+                                return kpiCache;
+                            })
+                            .finally(() => { kpiInflight = null; });
+                    }
+                    await kpiInflight;
+                }
+                return shapeKpiRow(kpiCache?.byMona.get(monaCd));
+            } catch (err) {
+                logger.error(`KPI 백분위 조회 실패: ${err.message}`);
+                return null;
+            }
+        },
 
         /* 의원 발언 기록 — 요약 + 회의 목록을 한 덩어리로.
            발언이 0건이면 null (뷰가 섹션 자체를 안 그린다). */

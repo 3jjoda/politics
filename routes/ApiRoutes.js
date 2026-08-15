@@ -21,6 +21,9 @@ export default (db) => {
     /* 정치인 */
     router.get('/politician', politicianController.getList);        // 국회의원 목록
     router.get('/politician:id', politicianController.getDetail);   // 국회의원 상세
+    /* 의원 상세 지연 로딩 — 🔴 전건 SSR 을 대체한다 (887행 = 1.1MB 였다) */
+    router.get('/politician/:monaCd/bills', politicianController.getBillsPageApi);  // 법안 활동 탭 한 페이지
+    router.get('/politician/:monaCd/votes', politicianController.getVotesByMonthApi); // 월별 표결 참여 패널
 
     /* 법안 */
     router.get('/bill', billController.getList);            // 법안 목록

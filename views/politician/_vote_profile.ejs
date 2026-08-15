@@ -1,0 +1,377 @@
+<%#
+  표결 성향 카드 (2026-08-15 재구성).
+
+  왜 바꿨나:
+    · 찬반 4종을 **0~100% 막대 4줄**로 그렸다. 찬성 98.3% 짜리 560px 막대는 길이에서 읽을 게 없다.
+      구성비는 **누적 막대 한 줄**이 맞는 형태다 (4줄 → 1줄).
+    · 🔴 자당 100.0% vs 타당 98.2% 를 0~100% 막대로 그렸다. 두 막대가 사실상 같은 길이라
+      **정작 핵심인 1.8%p 격차가 막대에서 안 보인다.** 격차를 재는 눈금을 따로 그린다.
+    · 카드를 전체폭으로 넓혀 두 분석("어떻게 투표했나" / "누구 법안에 찬성했나")을 가로로 나눈다.
+
+  🔴 친절 원칙 (2026-08-15 사용자 방침) — 이 카드는 특히 설명이 필요하다:
+    · **찬성·반대·기권의 분모(536)와 불참의 분모(598)가 다르다.** 이걸 안 밝히면 합이 안 맞는
+      것처럼 보인다. 불참을 구분선 아래로 내리고 분모를 각각 명시한다.
+    · `자당/타당`, `격차`, `%p` 는 일상어가 아니다. 각 블록 머리에 한 줄 설명을 붙인다.
+
+  ⚠️ 초록·빨강은 **본회의 표결 결과(객관 데이터)** 에만 허용된 색이다 (CLAUDE.md 토큰 규칙).
+     정당을 가르는 데는 절대 쓰지 않는다 — 자당/타당은 골드·무채색으로만.
+
+  🔴 vs·vsTotal·vsAttended·nf 는 부모의 **지역 const** 라 include 시 명시적으로 넘겨야 한다
+     (EJS include 는 res.render 의 locals 만 물려받는다 — 그냥 include 하면 ReferenceError).
+  locals: vs, vsTotal, vsAttended, nf (명시 전달) · crossPartyVote (컨트롤러 locals)
+%>
+<%
+  const _vs = vs, _tot = vsTotal, _att = vsAttended;
+  /* 찬성·반대·기권은 **참여분(불참 제외)** 이 분모, 불참만 전체가 분모다. 원래 그렇게 계산돼 있었지만
+     화면이 그 사실을 말하지 않아 "합이 100을 넘는데?" 로 읽혔다. */
+  const _seg = [
+    { key: 'for',     name: '찬성', cnt: Number(_vs.for_cnt || 0),     color: 'var(--green)' },
+    { key: 'against', name: '반대', cnt: Number(_vs.against_cnt || 0), color: 'var(--red)' },
+    { key: 'abstain', name: '기권', cnt: Number(_vs.abstain_cnt || 0), color: 'var(--accent)' },
+  ].map((x) => ({ ...x, rate: _att > 0 ? (x.cnt / _att * 100) : 0 }));
+  const _absent = Number(_vs.absent_cnt || 0);
+  const _absentRate = _tot > 0 ? (_absent / _tot * 100) : 0;
+
+  const _cpv = locals.crossPartyVote;
+  const _hasCpv = _cpv && _cpv.own_total > 0 && _cpv.other_total > 0;
+  const _gap       = _hasCpv ? Number(_cpv.gap) : 0;
+  const _median    = _hasCpv && _cpv.cohort_median != null ? Number(_cpv.cohort_median) : null;
+  const _rank      = _hasCpv && _cpv.in_cohort ? Number(_cpv.gap_rank) : null;
+  const _cohort    = _hasCpv ? Number(_cpv.cohort_size) : 0;
+  const _pctile    = _rank ? Math.round(_rank / _cohort * 100) : null;
+  const _dissent   = _hasCpv ? Number(_cpv.dissent_total) : 0;
+  const _dissentO  = _hasCpv ? Number(_cpv.dissent_other) : 0;
+  /* 격차 눈금 상한. 실측 분포는 -1.2 ~ 30.9%p 이고 10%p 이상이 10.9% 뿐이라 20 에서 끊는다.
+     ⚠️ 넘는 값은 자르지 말고 **막대만 꽉 채우고 숫자는 그대로** 쓴다 (값을 숨기면 안 된다). */
+  const GAP_MAX = 20;
+  const _gapPos = (v) => Math.max(0, Math.min(100, (v / GAP_MAX) * 100));
+  /* 🔴 눈금 라벨은 **끝으로 갈수록 정렬을 바꿔야** 한다. 가운데 정렬만 두면 눈금 밖으로 삐져나간다 —
+     실측상 격차 1%p 미만이 266명 중 77명(29%)이라 왼쪽 끝은 예외가 아니라 다수 케이스다.
+     (음수 12명은 0 으로, 20%p 초과 2명은 오른쪽 끝으로 붙는다)
+
+     🔴 임계값 20 은 **모바일 기준**이다. 375px 에서 눈금 폭이 약 280px 이고 라벨 절반이 약 44px 이라,
+        가운데 정렬을 20% 안쪽까지 허용하면 0.2×280 − 44 = 12px 여유가 남는다.
+        데스크톱(551px)만 보고 14 로 잡으면 모바일에서 왼쪽으로 삐져나간다.
+     ⚠️ 정렬이 바뀌어도 **가리키는 지점은 안 흔들린다** — 정확한 위치는 골드 점(이 의원)과
+        삼각캡 마커(중앙값)가 잡고 있고, 라벨은 색으로 그 둘에 묶인다. */
+  const _labAlign = (pos) => (pos < 20 ? ' is-start' : (pos > 80 ? ' is-end' : ''));
+  const _selfPos = _gapPos(_gap);
+  const _medPos  = _median !== null ? _gapPos(_median) : null;
+  /* 🔴 구간 정의는 utils/gapBands.js 단일 소스다 — **의원 목록의 격차 필터와 같은 값**이어야 한다.
+     여기에 숫자를 직접 쓰면 두 화면이 조용히 어긋난다 (상세는 "뚜렷한 편" 인데 목록 필터엔 안 잡힘). */
+  const _bands = locals.GAP_BANDS || [];
+  const _band  = _hasCpv && locals.gapBandOf ? locals.gapBandOf(_gap) : null;
+
+  /* 월별 표결 참여 추이.
+     🔴 **추가 쿼리 0** — `votes` 배열(표결 내역 탭용)이 이미 전건 로드돼 있어 그대로 접는다.
+     🔴 표결이 **없었던 달은 그리지 않는다.** generate_series 로 0을 채우면 "그 달에 안 나왔다" 로
+        읽히는데 실제로는 **본회의 표결 자체가 없었던 달**이다. 둘은 완전히 다른 사실이다.
+        (실측 강경숙: 2024-07~2026-07 25개월 중 표결이 있었던 달은 23개)
+     ⚠️ 그래서 x축은 달력이 아니라 **표결이 있었던 달의 순서**다. 화면에 그렇게 쓴다.
+     실측 근거 — 이 차트가 정보가 되는 이유: 305명 중 **304명**이 100% 미만인 달을 갖고 있고,
+     월별 최대−최소 차이가 평균 **83.4%p** 다. 장관 겸직자는 취임 시점부터 0% 로 뚝 떨어져 그대로 드러난다. */
+  const _byMonth = new Map();
+  (locals.votes || []).forEach((v) => {
+    const ym = String(v.vote_date || '').slice(0, 7);
+    if (ym.length !== 7) return;
+    const m = _byMonth.get(ym) || { ym, tot: 0, yes: 0, no: 0, abs: 0, absent: 0 };
+    m.tot += 1;
+    if      (v.vote_result === '찬성') m.yes += 1;
+    else if (v.vote_result === '반대') m.no  += 1;
+    else if (v.vote_result === '기권') m.abs += 1;
+    else                               m.absent += 1;
+    /* 🔴 법안 **목록은 여기 담지 않는다** (2026-08-15). 598건 전건을 JSON 으로 심었더니 **75KB** 였는데,
+       실제로 보는 건 클릭한 달 하나뿐이다 → `/api/politician/:monaCd/votes?ym=` 로 그때 가져온다.
+       여기서는 막대·점을 그릴 **요약 숫자만** 만든다. */
+    _byMonth.set(ym, m);
+  });
+  const _months = [..._byMonth.values()]
+    .sort((a, b) => a.ym.localeCompare(b.ym))
+    .map((m) => {
+      const att = m.yes + m.no + m.abs;
+      return { ...m, att, rate: m.tot > 0 ? (att / m.tot * 100) : 0, dissent: m.no + m.abs };
+    });
+  /* 달이 너무 적으면 추이라고 부를 게 없다 (중도 합류자 등) */
+  const _hasTrend = _months.length >= 4;
+  const _dissentMonths = _months.filter((m) => m.dissent > 0).length;
+  const _dissentTotal  = _months.reduce((s, m) => s + m.dissent, 0);
+
+  /* 🔴 **연도별로 끊는다** (2026-08-15). 표결이 있었던 달을 한 줄에 늘어놓으면 임기가 길어질수록
+     막대가 얇아진다 — 22대는 2024-05~2028-05 라 **최대 48개월**이고, 579px 패널에서 막대가 10px 이 된다.
+     연도별이면 최대 12칸이라 45px 씩 확보된다.
+     ⚠️ 12칸을 **달력 그대로** 그린다. 예전엔 "표결이 있었던 달의 순서" 라 x축이 달력이 아니었는데,
+        연도로 끊으면 1~12월 슬롯이 고정되므로 진짜 달력 축이 된다 — 훨씬 읽기 쉽다.
+     🔴 표결이 없었던 달은 **빈 슬롯**으로 둔다 (0으로 채우지 않는다). 0% 막대로 그리면
+        "그 달에 안 나왔다" 로 읽히는데 실제로는 본회의 표결 자체가 없었던 달이다. */
+  const _monthMap = new Map(_months.map((m) => [m.ym, m]));
+  const _years = [...new Set(_months.map((m) => m.ym.slice(0, 4)))].sort();
+  /* 기본은 **가장 최근 연도** — 지금 무슨 일이 있었나가 먼저다 */
+  const _curYear = _years.length ? _years[_years.length - 1] : null;
+  const _yearRows = _years.map((y) => ({
+    y,
+    slots: Array.from({ length: 12 }, (_, i) => {
+      const ym = y + '-' + String(i + 1).padStart(2, '0');
+      return { ym, mm: i + 1, m: _monthMap.get(ym) || null };
+    }),
+    hit: _months.filter((m) => m.ym.slice(0, 4) === y).length,
+  }));
+%>
+
+<div class="card vp-card">
+  <div class="card-header">
+    <span class="card-title">표결 성향 <span class="card-title-mono">본회의 <%= nf(_tot) %>건</span></span>
+  </div>
+  <div class="card-body">
+    <% if (_tot === 0) { %>
+      <div class="notice-block">표결 기록이 아직 수집되지 않았습니다. 데이터 배치 완료 후 표시됩니다.</div>
+    <% } else { %>
+      <div class="vp-grid">
+
+        <%# ===== 왼쪽 — 어떻게 투표했나 ===== %>
+        <section class="vp-panel">
+          <h4 class="vp-h">어떻게 투표했나</h4>
+          <p class="vp-lede">표결에 참여한 <strong><%= nf(_att) %>건</strong>이 어떻게 갈렸는지입니다.</p>
+
+          <%# 구성비는 누적 막대 하나로. 4줄짜리 0~100% 막대는 길이에서 읽을 게 없었다.
+              ⚠️ min-width 필수 — 0.6%(3건) 같은 구간이 폭 0px 으로 사라진다 (발언기록 .sp-kind-fill 과 같은 함정) %>
+          <div class="vp-stack" role="img" aria-label="찬성 <%= _seg[0].rate.toFixed(1) %>% · 반대 <%= _seg[1].rate.toFixed(1) %>% · 기권 <%= _seg[2].rate.toFixed(1) %>%">
+            <% _seg.forEach((g) => { if (g.cnt > 0) { %>
+              <span class="vp-seg" style="width:<%= g.rate %>%;background:<%= g.color %>" title="<%= g.name %> <%= nf(g.cnt) %>건 (<%= g.rate.toFixed(1) %>%)"></span>
+            <% } }); %>
+          </div>
+
+          <dl class="vp-legend">
+            <% _seg.forEach((g) => { %>
+              <div>
+                <dt><i style="background:<%= g.color %>"></i><%= g.name %></dt>
+                <dd><strong><%= g.rate.toFixed(1) %>%</strong><span><%= nf(g.cnt) %>건</span></dd>
+              </div>
+            <% }); %>
+          </dl>
+
+          <%# 🔴 불참은 **분모가 다르다** (전체 598건). 위 셋과 같은 자리에 두면 합이 안 맞는 것처럼 보인다 %>
+          <div class="vp-absent">
+            <div class="vp-absent-row">
+              <span class="vp-absent-lab">불참</span>
+              <span class="vp-absent-val"><strong><%= _absentRate.toFixed(1) %>%</strong><span><%= nf(_absent) %>건</span></span>
+            </div>
+            <p class="vp-note">
+              위 찬성·반대·기권은 <strong>불참 <%= nf(_absent) %>건을 뺀 <%= nf(_att) %>건</strong>이 분모이고,
+              불참률만 <strong>전체 <%= nf(_tot) %>건</strong>이 분모입니다. 기준이 달라 네 값을 더해도 100%가 되지 않습니다.
+            </p>
+          </div>
+
+          <%# 🔴 이 자리는 원래 328px 이 비어 있었다. 채울 때 **이 패널의 주제("어떻게 투표했나")** 에
+              맞는 것을 넣어야 한다 — 월별 **발의** 현황을 넣자는 안이 있었으나, 크기는 맞아도
+              "표결 성향" 카드 안에 발의 차트가 들어가 주제가 어긋나고, 3열 행 높이는 타임라인(449)이
+              정하고 있어 **페이지 높이는 1px 도 줄지 않는다** (빈 공간이 옮겨갈 뿐).
+              월별 **표결 참여**는 같은 패널의 주제이고 추가 쿼리도 0이다. %>
+          <% if (_hasTrend) { %>
+            <div class="vp-trend">
+              <div class="vp-trend-top">
+                <h5 class="vp-trend-h">월별 표결 참여</h5>
+                <%# 연도 탭 — 데이터가 있는 연도만. ⚠️ 임기가 길어지면 5개까지 늘어난다 %>
+                <div class="vp-trend-years">
+                  <% _years.forEach((y) => { %>
+                    <button type="button" class="vp-year<%= y === _curYear ? ' is-on' : '' %>" data-y="<%= y %>"><%= y %></button>
+                  <% }); %>
+                </div>
+              </div>
+              <p class="vp-trend-lede">막대 높이가 그 달의 참여율입니다. <strong>표결이 없었던 달은 빈 칸</strong>입니다.</p>
+
+              <% _yearRows.forEach((yr) => { %>
+                <div class="vp-trend-year" data-y="<%= yr.y %>"<%= yr.y === _curYear ? '' : ' hidden' %>>
+                  <div class="vp-trend-plot">
+                    <span class="vp-trend-axis"><i style="bottom:100%">100%</i><i style="bottom:50%">50%</i></span>
+                    <div class="vp-trend-bars">
+                      <% yr.slots.forEach((sl) => { %>
+                        <% if (sl.m) { %>
+                          <button type="button" class="vp-trend-col" data-ym="<%= sl.ym %>"
+                                  aria-label="<%= sl.ym.replace('-', '.') %> 표결 <%= nf(sl.m.tot) %>건 중 <%= nf(sl.m.att) %>건 참여">
+                            <span class="vp-trend-bar" style="height:<%= Math.max(2, sl.m.rate) %>%"></span>
+                          </button>
+                        <% } else { %>
+                          <%# 🔴 표결이 없었던 달 — 0% 막대가 아니라 **빈 칸**이다. 둘을 같게 그리면
+                              "안 나왔다" 와 "표결이 없었다" 가 구분되지 않는다 %>
+                          <span class="vp-trend-col is-none" aria-hidden="true"></span>
+                        <% } %>
+                      <% }); %>
+                    </div>
+                    <% if (_dissentMonths > 0) { %>
+                      <%# 🔴 점 줄은 반드시 .vp-trend-plot 안에 — 밖에 두면 축 라벨 자리(padding-left)를
+                          못 받아 막대와 어긋난다 (실제로 그렇게 나갔다) %>
+                      <div class="vp-trend-dots" aria-hidden="true">
+                        <% yr.slots.forEach((sl) => { %>
+                          <span class="vp-trend-dot<%= sl.m && sl.m.dissent > 0 ? ' is-on' : '' %>"></span>
+                        <% }); %>
+                      </div>
+                    <% } %>
+                    <%# 달력 축 — 연도로 끊으니 1~12월 슬롯이 고정이라 진짜 월 라벨을 쓸 수 있다 %>
+                    <div class="vp-trend-mlabels">
+                      <% yr.slots.forEach((sl) => { %>
+                        <span class="vp-trend-ml<%= sl.m ? '' : ' is-none' %>"><%= sl.mm %></span>
+                      <% }); %>
+                    </div>
+                  </div>
+                  <div class="vp-trend-foot">
+                    <span><%= yr.y %>년</span>
+                    <span class="vp-trend-mid">표결이 있었던 <%= yr.hit %>개월</span>
+                  </div>
+                </div>
+              <% }); %>
+
+              <% if (_dissentMonths > 0) { %>
+                <p class="vp-trend-note"><i class="vp-trend-dot is-on"></i>
+                  반대·기권 <strong><%= nf(_dissentTotal) %>건</strong>이 <strong><%= _dissentMonths %>개 달</strong>에 있었습니다
+                  (전체 기간). 막대에 겹쳐 그리기엔 너무 드물어 점으로만 표시합니다.
+                </p>
+              <% } %>
+              <%# 🔴 `기권` 과 `불참` 은 다르다 — 원천이 네 값으로 구분해 준다 (실측 기권 2,412 / 불참 43,871).
+                  용어를 안 풀면 같은 말로 읽힌다 %>
+              <p class="vp-trend-note is-term">
+                <strong>기권</strong>은 표결에 참여해 찬반 어느 쪽도 택하지 않은 것,
+                <strong>불참</strong>은 그 표결에 참여하지 않은 것입니다.
+              </p>
+
+              <%# 클릭한 달의 상세. 비어 있을 땐 사용법을 안내한다 — 클릭 가능하다는 걸 알려야 눌러본다 %>
+              <div class="vp-trend-detail" id="vp-trend-detail" data-empty="1">
+                <span class="vp-trend-hint">막대를 클릭하면 그 달의 표결 내역이 나옵니다.</span>
+              </div>
+
+              <%# 요약 숫자만 심는다 (23개월 × 7개 값 ≈ 2KB). 법안 목록은 클릭 시 API 로 가져온다 —
+                  전건을 심었을 땐 75KB 였다. ⚠️ 법안명이 없으므로 XSS 이스케이프가 필요 없다 %>
+              <script>
+                window.__VOTE_MONTHS__ = <%- JSON.stringify(
+                  Object.fromEntries(_months.map((m) => [m.ym, {
+                    tot: m.tot, att: m.att, rate: Math.round(m.rate),
+                    yes: m.yes, no: m.no, abs: m.abs, absent: m.absent,
+                  }]))
+                ) %>;
+                window.__MONA_CD__ = '<%= politician.mona_cd %>';
+              </script>
+            </div>
+          <% } %>
+        </section>
+
+        <%# ===== 오른쪽 — 누구 법안에 찬성했나 ===== %>
+        <% if (_hasCpv) { %>
+          <section class="vp-panel">
+            <h4 class="vp-h">누구 법안에 찬성했나</h4>
+            <p class="vp-lede">
+              법안을 <strong>대표발의한 의원의 소속 정당</strong>으로 나눠, 각각에 얼마나 찬성했는지 본 값입니다.
+              <span class="vp-lede-sub">자당 = 본인과 같은 정당 · 타당 = 다른 정당</span>
+            </p>
+
+            <%# ⚠️ 0~100% 막대를 되살리지 말 것 — 자당 100.0% / 타당 98.2% 는 막대에서 구분되지 않는다.
+                두 값은 숫자로 나란히 놓고, **격차만** 눈금으로 그린다 %>
+            <div class="vp-cmp">
+              <div class="vp-cmp-item">
+                <span class="vp-cmp-lab">자당 발의</span>
+                <span class="vp-cmp-val is-own"><%= Number(_cpv.own_rate).toFixed(1) %><small>%</small></span>
+                <span class="vp-cmp-n"><%= nf(_cpv.own_total) %>건 중 찬성</span>
+              </div>
+              <div class="vp-cmp-item">
+                <span class="vp-cmp-lab">타당 발의</span>
+                <span class="vp-cmp-val"><%= Number(_cpv.other_rate).toFixed(1) %><small>%</small></span>
+                <span class="vp-cmp-n"><%= nf(_cpv.other_total) %>건 중 찬성</span>
+              </div>
+            </div>
+
+            <div class="vp-gap">
+              <div class="vp-gap-top">
+                <span class="vp-gap-num"><%= (_gap > 0 ? '+' : '') + _gap.toFixed(1) %><small>%p</small></span>
+                <%# 결론은 구간 이름이다 — 숫자보다 이게 먼저 읽힌다 %>
+                <% if (_band) { %><span class="vp-gap-band"><%= _band.name %></span><% } %>
+                <%# 🔴 여기서 **구간의 뜻**을 문장으로 말한다. `뚜렷한 편` 같은 이름은 세기만 말할 뿐
+                    무엇이 뚜렷한지를 말하지 않는다 (사용자 지적). 숫자는 괄호로 뒤에 붙인다.
+                    ⚠️ 음수는 방향이 반대라 구간 문장을 그대로 쓰면 거짓이 된다 — 따로 쓴다 %>
+                <span class="vp-gap-desc">
+                  <% if (_gap < 0) { %>
+                    타당 법안에 오히려 <strong><%= Math.abs(_gap).toFixed(1) %>%p</strong> 더 찬성했습니다
+                  <% } else if (_band) { %>
+                    <%= _band.sentence %> <span class="vp-gap-desc-n">(타당보다 <%= _gap.toFixed(1) %>%p 높음)</span>
+                  <% } %>
+                </span>
+              </div>
+
+              <%# 격차 눈금 — 숫자 하나만 두면 4.6%p 가 큰 건지 작은 건지 알 수 없다.
+                  🔴 라벨은 **가리키는 지점 바로 아래(위)** 에 둘 것. 예전엔 중앙값 라벨을 footer 의
+                     space-between 가운데 칸에 뒀는데, 그러면 마커가 17% 에 있어도 라벨은 **항상 50%**
+                     자리에 찍혀 서로 다른 값을 가리키는 것처럼 보였다 (사용자 지적).
+                  🔴 칠해진 구간이 무엇인지도 반드시 쓸 것 — 라벨 없이 두면 "이 구간은 뭐지" 가 된다.
+                     이 의원은 **위**, 중앙값은 **아래** 로 층을 갈라야 값이 가까울 때도 라벨이 겹치지 않는다
+                     (실측 4.6 vs 3.4 는 눈금에서 6%p 차이라 같은 줄에 두면 반드시 겹친다).
+                  마커·halo·삼각캡은 상임위 참여율 평균선과 **같은 시각 언어**다 %>
+              <div class="vp-scale">
+                <span class="vp-scale-self<%= _labAlign(_selfPos) %>" style="left:<%= _selfPos %>%">이 의원 <%= _gap.toFixed(1) %>%p</span>
+                <span class="vp-scale-track">
+                  <span class="vp-scale-fill" style="width:<%= _selfPos %>%"></span>
+                  <%# 구간 경계선 — 눈금 위에서 구간이 어디서 갈리는지 보이게. 마지막 구간의 끝(상한)은 긋지 않는다 %>
+                  <% _bands.forEach((b) => { if (b.min > 0) { %>
+                    <span class="vp-scale-div" style="left:<%= _gapPos(b.min) %>%"></span>
+                  <% } }); %>
+                </span>
+                <%# 채운 구간의 끝점 = 이 의원 위치. 점으로 찍어야 "어디까지가 이 의원" 인지가 명확하다 %>
+                <span class="vp-scale-dot" style="left:<%= _selfPos %>%"></span>
+                <% if (_medPos !== null) { %>
+                  <span class="vp-scale-mark" style="left:<%= _medPos %>%"></span>
+                  <span class="vp-scale-med<%= _labAlign(_medPos) %>" style="left:<%= _medPos %>%">의원 중앙값 <%= _median.toFixed(1) %>%p</span>
+                <% } %>
+              </div>
+              <div class="vp-scale-foot">
+                <span>0%p<em>정당과 무관</em></span>
+                <span><%= GAP_MAX %>%p 이상<em>정당 따라 갈림</em></span>
+              </div>
+
+              <%# 🔴 구간을 **화면에 명시**한다. 눈금 위치만으로는 4.6%p 가 어느 구간인지 알 수 없고,
+                  의원 목록의 격차 필터(`법안 중심`/`중간`/…)와 말이 맞아야 한다.
+                  ⚠️ 구간 이름은 **서술이지 평가가 아니다** — 좋다/나쁘다로 읽히는 말을 쓰지 말 것 %>
+              <% if (_bands.length && locals.gapBandRange) { %>
+                <%# 🔴 머리말이 없으면 "뚜렷한 편" 이 **뭐가 뚜렷한지** 알 수 없다.
+                    이 표가 재는 게 무엇인지를 먼저 밝히고, 구간마다 뜻을 같이 낸다 %>
+                <p class="vp-bandkey-head">
+                  <strong><%= locals.GAP_AXIS_LABEL %></strong>
+                  <span><%= locals.GAP_AXIS_DESC %></span>
+                </p>
+                <ul class="vp-bandkey">
+                  <% _bands.forEach((b) => { %>
+                    <%# 주의: 이스케이프 출력 태그로 쓰면 class="is-on" 이 문자열로 나가 현재 구간이
+                        표시되지 않는다 (실제로 그렇게 렌더됐다). 속성을 뿌릴 땐 비이스케이프 출력이어야 한다.
+                        ⚠️ 이 주석에 EJS 구분자를 예시로 적지 말 것 — 주석 안이든 문자열 안이든
+                           텍스트로 찾아 거기서 스크립틀릿이 닫힌다 (CLAUDE.md 에 기록된 함정) %>
+                    <li<%- _band && b.key === _band.key ? ' class="is-on"' : '' %>>
+                      <span class="vp-bandkey-name"><%= b.name %></span>
+                      <span class="vp-bandkey-range"><%= locals.gapBandRange(b) %></span>
+                      <span class="vp-bandkey-mean"><%= b.meaning %></span>
+                    </li>
+                  <% }); %>
+                </ul>
+              <% } %>
+            </div>
+
+            <% if (_rank) { %>
+              <p class="vp-line">격차가 큰 순으로 <strong><%= nf(_cohort) %>명 중 <%= nf(_rank) %>위</strong> (상위 <%= _pctile %>%)입니다.</p>
+            <% } %>
+            <% if (_dissent > 0) { %>
+              <p class="vp-line">반대·기권한 <strong><%= nf(_dissent) %>건</strong> 중 <strong><%= nf(_dissentO) %>건</strong>이 타당 발의 법안입니다.</p>
+            <% } %>
+
+            <p class="vp-note">
+              격차가 클수록 소속 정당에 따라 표결이 갈렸다는 뜻입니다. 다만 다수당·소수당은 의사일정 구조가
+              달라 수치만으로 단정하기 어렵습니다. 불참은 제외했고, 대표발의자가 확인되지 않는 위원장 대안 등도 뺐습니다.
+            </p>
+          </section>
+        <% } else { %>
+          <%# ⚠️ 빈 칸으로 두지 말 것 — 왜 없는지 쓴다 (무소속·자당 표결 0건 등) %>
+          <section class="vp-panel is-empty">
+            <h4 class="vp-h">누구 법안에 찬성했나</h4>
+            <p class="vp-note">
+              자당 또는 타당 발의 법안의 표결 기록이 없어 비교할 수 없습니다.
+              무소속이거나 표결 참여가 적은 경우입니다.
+            </p>
+          </section>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</div>

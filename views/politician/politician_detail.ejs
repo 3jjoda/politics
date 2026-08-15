@@ -24,6 +24,30 @@
     return 'pb-badge-pending';
   };
 
+  /* KPI 백분위 한 줄 — 막대 + `상위 N%`.
+     ⚠️ 값이 없으면 **빈 문자열**을 돌려 줄 자체를 안 그린다 (자리만 잡아두면 카드 높이가 들쭉날쭉해진다).
+        단 제외된 경우엔 이유를 써야 하므로 `is-off` 줄을 그린다.
+     ⚠️ 막대 폭은 백분위(pr) 지 값이 아니다 — 발의 336건과 2,204건을 같은 축에 못 올린다. */
+  /* 받침 유무로 조사를 고른다. 안 하면 `임기 종료이라`·`임기 중 합류이라` 가 나간다 (실제로 그렇게 렌더됐다).
+     한글 음절은 0xAC00 부터 28개 종성 주기로 배열돼 있어 나머지가 0이면 받침이 없다. */
+  const hasJong = (str) => {
+    const c = String(str || '').trim().slice(-1).charCodeAt(0);
+    if (Number.isNaN(c) || c < 0xAC00 || c > 0xD7A3) return true;   // 한글이 아니면 안전한 쪽으로
+    return (c - 0xAC00) % 28 !== 0;
+  };
+  const kpiRankBar = (item, n) => {
+    if (!item) return '';
+    if (item.excluded) {
+      const suffix = hasJong(item.excluded) ? '이라' : '라';
+      return `<div class="kpi-rank is-off"><span class="kpi-rank-note">${item.excluded}${suffix} 순위 없음</span></div>`;
+    }
+    const w = Math.max(2, Math.min(100, item.pct));
+    const title = n ? `현직 ${n}명 중 ${item.label}` : item.label;
+    return `<div class="kpi-rank" title="${title}">`
+      + `<span class="kpi-rank-track"><span class="kpi-rank-fill" style="width:${w}%"></span></span>`
+      + `<span class="kpi-rank-lab">${item.label}</span></div>`;
+  };
+
   // KPI 계산
   const proposeCnt = Number(politician.propose_cnt || 0);
   const coProposeCnt = Number(politician.co_propose_cnt || 0);
@@ -46,32 +70,13 @@
   // 월별 발의 (12개)
   const monthlyMax = monthly && monthly.length > 0 ? Math.max(1, ...monthly.map(m => Number(m.cnt))) : 1;
 
-  // 탭 카운트
-  const billsTabCount = (bills || []).length;
+  /* 탭 카운트. 🔴 예전엔 `bills` 전건을 세었는데, 개수 하나 때문에 887행을 들고 올 이유가 없다 —
+     컨트롤러가 COUNT 쿼리(getBillCounts)만 돌린다. 행은 탭을 열 때 API 로 가져온다. */
+  const billCnt = locals.billCounts || { total: 0, rep: 0, co: 0 };
+  const billsTabCount = billCnt.total;
   const votesTabCount = (votes || []).length;
 
-  // 레이더 4축 데이터 — 발의 / 공동발의 / 표결참여 / 가결율
-  // 스케일 기준: 발의·공동발의는 현역 의원 p90 (DB 실시간), 표결참여/가결율은 %값 그대로
-  const maxPropose = Math.max(1, Number((radarScale && radarScale.max_propose) || 100));
-  const maxCoPropose = Math.max(1, Number((radarScale && radarScale.max_co_propose) || 500));
-  const radarPropose   = Math.min(100, (proposeCnt / maxPropose) * 100);
-  const radarCoPropose = Math.min(100, (coProposeCnt / maxCoPropose) * 100);
-  const radarVote      = voteParticipateRate == null ? 0 : voteParticipateRate;
-  const radarPass      = passRate == null ? 0 : passRate;
-
-  // 다이아몬드 축 순서: 위 / 우 / 아래 / 좌
-  const radarAngles = [-90, 0, 90, 180];
-  const radarValues = [radarPropose, radarCoPropose, radarVote, radarPass];
-  const radarLabels = [
-    `법안발의 ${nf(proposeCnt)}건`,
-    `공동발의 ${nf(coProposeCnt)}건`,
-    voteParticipateRate == null ? '표결참여 —' : `표결참여 ${voteParticipateRate.toFixed(0)}%`,
-    passRate == null ? '가결율 —' : `가결율 ${passRate.toFixed(0)}%`
-  ];
-
-  // 정당 공동발의 협력 top 3
-  const partyCoopTop = (partyCoop || []).slice(0, 4);
-  const partyCoopTotal = partyCoopTop.reduce((s, p) => s + Number(p.cnt || 0), 0);
+  // (정당별 공동발의 협력 계산은 _party_coop.ejs 파샬이 자체적으로 한다 — 두 방향을 같은 규칙으로 처리해야 해서)
 %>
 
 <style>
@@ -106,13 +111,98 @@
   }
   .breadcrumb a { color: var(--accent); }
 
+  /* 3열 — 사진 | 정보 | 나와의 성향 일치.
+     ⚠️ 우측 칸이 생기기 전엔 `auto 1fr` 이라 오른쪽 **672px × 241px 이 완전 공백**이었다 (폭의 55%, 실측) */
   .profile-identity {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr) 320px;
     gap: 32px;
     align-items: center;
   }
   .profile-content { min-width: 0; }
+
+  /* ===== 히어로 우측 「나와의 성향 일치」 (partial: _profile_vs.ejs) ===== */
+  .profile-vs {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px 14px;
+    box-shadow: var(--shadow-sm);
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+  }
+  .pv-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  /* 🔴 mono + 넓은 자간을 쓰지 말 것. JetBrains Mono 는 한글 글리프가 없어 폴백되는데
+     letter-spacing 까지 겹치면 "나와의  성향  일치" 로 흩어져 거의 안 읽힌다
+     (/xray/chart 의 .ch-label 에서 이미 겪은 것과 같은 함정). 본문 산세리프로. */
+  .pv-cap {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.01em;
+    color: var(--sub);
+  }
+  /* ⚠️ 11px 이하 링크라 --accent(3.79) 는 대비 미달. --accent2(5.59) 를 쓴다 */
+  .pv-map { font-size: 10.5px; color: var(--accent2); text-decoration: none; white-space: nowrap; }
+  .pv-map:hover { text-decoration: underline; }
+  .pv-score { margin-top: 2px; line-height: 1; color: var(--accent); }
+  .pv-score strong { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; }
+  .pv-score small { font-size: 16px; font-weight: 800; margin-left: 1px; }
+  .pv-diamond { display: block; width: 100%; height: auto; margin: 2px auto 0; overflow: visible; }
+  /* ⚠️ 본문판(11px)을 그대로 쓰면 축소 다이아몬드에서 라벨끼리 붙는다 */
+  .pv-axis-label {
+    font-size: 11px; fill: var(--sub2); font-family: 'Noto Sans KR', sans-serif;
+    text-anchor: middle; dominant-baseline: auto;
+  }
+  .pv-axis-label.bottom { dominant-baseline: hanging; }
+  .pv-legend {
+    display: flex; justify-content: center; gap: 12px;
+    margin-top: 4px; font-size: 10.5px; color: var(--sub2);
+  }
+  .pv-legend-item { display: inline-flex; align-items: center; gap: 4px; }
+  .pv-legend-item i { width: 9px; height: 9px; border-radius: 2px; border: 1px solid; }
+  .pv-legend-item.is-mine i { background: rgba(184,116,12,0.22); border-color: var(--accent); }
+  .pv-legend-item.is-pol  i { background: rgba(122,128,144,0.18); border-color: var(--sub2); border-style: dashed; }
+  .pv-axes { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--border); }
+  .pv-axes > div {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    padding: 3px 0; font-size: 11.5px;
+  }
+  .pv-axes dt { color: var(--sub2); flex-shrink: 0; }
+  .pv-axes dd { margin: 0; color: var(--sub); text-align: right; overflow-wrap: anywhere; }
+  /* 강도는 한 칸 더 진하게 — 방향보다 강도가 결론에 가깝다 */
+  .pv-axes .pv-int { color: var(--text); font-weight: 700; }
+  .pv-axes .is-near .pv-int { color: var(--accent2); }
+
+  .pv-main { min-width: 0; }
+
+  /* 769~1199px — 우측 320px 을 떼면 가운데 칸이 353px 까지 좁아져 이름·위원회 칩이 무너진다.
+     그래서 이 구간은 패널을 히어로 **전체폭 아래**로 내리고 **가로로 눕힌다**
+     (세로 스택 그대로 내리면 히어로가 통째로 340px 길어진다) */
+  @media (min-width: 769px) and (max-width: 1199px) {
+    .profile-identity { grid-template-columns: auto minmax(0, 1fr); }
+    .profile-vs { grid-column: 1 / -1; align-self: auto; flex-direction: row; align-items: center; gap: 24px; }
+    .profile-vs .pv-main { width: 230px; flex-shrink: 0; }
+    .pv-axes {
+      flex: 1; margin: 0; padding: 0 0 0 24px;
+      border-top: 0; border-left: 1px solid var(--border);
+    }
+    .pv-axes > div { font-size: 12.5px; padding: 5px 0; }
+    .profile-vs.is-pending, .profile-vs.is-missing { flex-direction: row; justify-content: center; gap: 14px; align-items: baseline; }
+  }
+
+  /* 미진단·미산출 — 다이아몬드가 없으므로 세로가 짧다.
+     ⚠️ align-self 를 stretch 로 두지 말 것: 내용 3줄짜리가 프로필 높이(241px)까지 늘어나
+        **거대한 빈 점선 상자**가 된다. 가운데 정렬로 제 크기만 갖게 한다 */
+  .profile-vs.is-pending, .profile-vs.is-missing {
+    align-self: center;
+    justify-content: center; gap: 8px; text-decoration: none;
+    background: rgba(255,255,255,0.72);
+    border-style: dashed;
+    box-shadow: none;
+  }
+  .profile-vs.is-pending:hover { border-color: var(--accent); background: #fff; }
+  .pv-pending-title { font-size: 13px; font-weight: 700; color: var(--sub); line-height: 1.6; word-break: keep-all; }
+  .pv-pending-cta { font-size: 12px; font-weight: 700; color: var(--accent2); }
+  .pv-pending-cta.is-plain { color: var(--sub2); font-weight: 500; }
 
   /* 소속 위원회 칩 — 정당색 배제 원칙에 따라 정당이 아니라 **직위**로만 강조한다
      (위원장·간사만 골드, 나머지는 무채색). */
@@ -181,6 +271,10 @@
   @media (max-width: 768px) {
     .profile-cmt { gap: 7px; }
     .profile-cmt-label { flex-basis: 100%; }
+    /* 768 아래는 가로로 눕힐 폭이 없다 — 다시 세로 스택 */
+    .profile-vs { flex-direction: column; max-width: 420px; margin: 0 auto; width: 100%; }
+    .profile-vs .pv-main { width: auto; }
+    .pv-axes { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); border-left: 0; }
   }
 
   .profile-subinfo {
@@ -304,15 +398,39 @@
 
   .profile-kpis-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
     margin-bottom: 16px;
+  }
+  /* 🔴 이 미디어 쿼리는 **베이스 규칙 뒤**에 있어야 한다. 위쪽 768 블록에 넣었다가
+     같은 특이도에서 나중 규칙(repeat(4,1fr))이 이겨 **모바일에서 4칸이 그대로 나가 가로로 삐져나갔다**
+     (375px 실측: 3칸만 보이고 나머지는 화면 밖). 파일 순서가 곧 우선순위다. */
+  @media (max-width: 768px) {
+    /* 4칸을 한 줄로 두면 칸당 84px 이라 `표결 참여율` 라벨이 세 줄로 깨진다 */
+    .profile-kpis-row { grid-template-columns: 1fr 1fr; }
   }
   .profile-kpi {
     padding: 18px 22px;
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 12px;
+  }
+  /* 🔴 비율 카드는 큰 숫자 옆에 분자/분모를 나란히 둔다 — "이 %가 무슨 값에서 나왔나" 가 바로 읽히도록.
+     ⚠️ flex-wrap 필수: 375px 2열에서 카드 내부가 113px 뿐이라 `90% 536/598`(약 120px)이 안 들어간다.
+        접히면 큰 숫자 바로 아랫줄로 떨어져 여전히 붙어 읽힌다 */
+  .profile-kpi-top {
+    display: flex; align-items: baseline; flex-wrap: wrap;
+    column-gap: 8px; row-gap: 0;
+  }
+  /* ⚠️ 12.5px 소형 텍스트라 --sub2(4.0) 는 대비 미달 → --sub(7.9). 36px 골드 숫자와 경쟁하지 않는다 */
+  /* 🔴 숫자만 두지 말 것. `536/598` 만으로는 앞뒤가 뭔지 알 수 없다 (사용자 지적) —
+     `598건 중 536건 참여` 처럼 **의미를 같이** 쓴다. 이 사이트의 데이터는 상식으로 읽히지 않는다.
+     ⚠️ 산문이 됐으니 mono 를 쓰지 않는다 (JetBrains Mono 는 한글 글리프가 없어 폴백된다).
+     ⚠️ white-space: nowrap — 안에서 쪼개지면 `598` 만 남고 나머지가 다음 줄로 간다.
+        대신 `.profile-kpi-top` 의 flex-wrap 이 **덩어리째** 아랫줄로 내린다 */
+  .profile-kpi-frac {
+    font-size: 12px; color: var(--sub);
+    white-space: nowrap; margin-bottom: 6px;
   }
   .profile-kpi-val {
     font-family: 'Bebas Neue', sans-serif;
@@ -342,155 +460,52 @@
     margin-top: 5px;
     font-family: 'JetBrains Mono', monospace;
   }
+  /* 코호트 중앙값 — **본인 수치가 아니다.** 같은 톤으로 두면 자기 숫자로 읽힌다.
+     ⚠️ 본인 수치와 한 줄에 `·` 로 붙이지 말 것 (`중앙값 81% · 536/598` 로 내보냈다가 지적받음) */
+  .profile-kpi-sub.is-med,
+  .profile-kpi-sub .is-med { margin-top: 2px; opacity: 0.78; }
 
-  /* ===== 당신과의 비교 (D 레이어 본체, 펼침 컴포넌트) =====
-     KPI 행 바로 아래에 위치. 헤더(닫힌 상태)가 카드의 일치도 한 줄을 흡수.
-     첫 진입 시 자동 펼침 (사용자가 카드 일치도 보고 진입했으므로 자연 첫 인상). */
-  .bg-vs-collapsible {
-    border: 1px solid var(--accent);
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 12px 0 24px;
-    background: var(--bg2);
+  /* ===== KPI 백분위 한 줄 (2026-08-15) =====
+     카드가 "숫자 하나 + 라벨" 뿐이라 크기에 비해 내용이 없었다. 백분위가 그 자리를 채운다.
+     ⚠️ 정당색 금지 — 상위/하위를 색으로 가르지 않는다. 골드 단색 + 위치로만.
+        (상위=초록/하위=빨강 으로 만들면 그 순간 성적표가 된다) */
+  .kpi-rank {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 9px; min-height: 16px;
   }
-  .bg-vs-collapse-header {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    background: linear-gradient(90deg, #FAF1DA, #F4E4BD);
-    border: 0;
-    border-radius: 0;
-    cursor: pointer;
-    text-align: left;
-    font-family: inherit;
-    color: var(--text);
-    text-decoration: none;
-    transition: background 0.15s;
+  .kpi-rank-track {
+    flex: 1; min-width: 0; height: 5px;
+    background: var(--bg3); border-radius: 3px; overflow: hidden;
   }
-  .bg-vs-collapse-header:hover { background: linear-gradient(90deg, #F4E4BD, #ECD394); }
-  .bg-vs-collapse-text {
-    flex: 1;
-    font-size: 15px;
-    font-weight: 500;
-  }
-  .bg-vs-collapse-text strong {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--accent2);
-    margin: 0 2px;
-  }
-  .bg-vs-collapse-mapping {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--accent2);
-    text-decoration: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.15s;
-  }
-  .bg-vs-collapse-mapping:hover { background: rgba(255,255,255,0.6); }
-  .bg-vs-collapse-icon {
-    color: var(--accent2);
-    font-size: 12px;
-    font-weight: 700;
-    transition: transform 0.3s ease;
-    width: 14px;
-    text-align: center;
-  }
-  .bg-vs-collapsible[data-open="false"] .bg-vs-collapse-icon { transform: rotate(-90deg); }
+  .kpi-rank-fill { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+  /* ⚠️ 11.5px 소형 텍스트라 --sub2(4.0) 는 대비 미달. --sub(7.9) 를 쓴다 */
+  .kpi-rank-lab { font-size: 11.5px; font-weight: 700; color: var(--sub); white-space: nowrap; }
+  /* 제외된 카드 — 막대 없이 이유만. 자리는 유지해야 네 카드의 높이가 맞는다 */
+  .kpi-rank.is-off { color: var(--sub2); }
+  .kpi-rank-note { font-size: 11px; color: var(--sub2); font-style: normal; }
 
-  /* fallback states (미완료/미산출) — 헤더만, 펼침 없음 */
-  .bg-vs-collapse-header.is-pending,
-  .bg-vs-collapse-header.is-missing {
-    background: var(--bg3);
-    color: var(--sub);
-    cursor: pointer;
+  /* 대표발의 비중 전용 줄 — 위 중앙값과 **다른 주어**라 구분선을 둔다 (안 두면 중앙값에 딸린 것으로 읽힌다) */
+  .profile-kpi-lead {
+    margin-top: 8px; padding-top: 8px;
+    border-top: 1px dashed var(--border);
+    font-size: 11.5px; line-height: 1.6; color: var(--sub2);
+    word-break: keep-all;
   }
-  .bg-vs-collapse-header.is-pending .bg-vs-collapse-text,
-  .bg-vs-collapse-header.is-missing .bg-vs-collapse-text {
-    font-style: italic;
-  }
-  .bg-vs-collapse-header.is-pending .bg-vs-collapse-mapping,
-  .bg-vs-collapse-header.is-missing .bg-vs-collapse-mapping {
-    color: var(--accent);
-    font-style: normal;
-  }
-  .bg-vs-collapse-header.is-missing { cursor: default; }
+  .profile-kpi-lead strong { color: var(--accent2); font-weight: 700; }
 
-  /* 펼침 바디 — height 애니메이션 */
-  .bg-vs-collapse-body {
-    overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease, border-top-width 0.3s ease;
-    max-height: 1200px;
-    padding: 22px 20px;
-    border-top: 1px solid var(--border);
+  /* 🔴 KPI 행 아래 주의 문구 — 위 백분위의 전제다. 빼면 "장관은 왜 순위가 없지" 가 고장으로 읽힌다 */
+  .kpi-caveat {
+    margin: -6px 0 16px;
+    font-size: 11.5px; line-height: 1.7; color: var(--sub2);
+    word-break: keep-all;
   }
-  .bg-vs-collapsible[data-open="false"] .bg-vs-collapse-body {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    border-top-width: 0;
-  }
+  .kpi-caveat strong { color: var(--sub); font-weight: 700; }
 
-  /* (legacy bg-vs-header — 다른 곳에서 호환용) */
-  .bg-vs-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-  }
-  .bg-vs-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text);
-    margin: 0;
-  }
-  .bg-vs-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--sub);
-    text-decoration: none;
-    cursor: pointer;
-  }
-  .bg-vs-meta:hover { color: var(--accent); }
-
-  /* fallback (미완료/미산출) */
-  .bg-vs-locked {
-    text-align: center;
-    padding: 36px 20px;
-    background: var(--bg3);
-    border-radius: 10px;
-    color: var(--sub);
-  }
-  .bg-vs-locked-icon { font-size: 28px; margin-bottom: 8px; }
-  .bg-vs-locked-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-  .bg-vs-locked-desc { font-size: 13px; line-height: 1.6; max-width: 440px; margin: 0 auto 14px; word-break: keep-all; }
-  .bg-vs-locked-cta {
-    display: inline-block;
-    padding: 10px 20px;
-    background: var(--accent);
-    color: white;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .bg-vs-locked-cta:hover { background: var(--accent2); }
-
-  /* 본체 — 가운데 정렬 세로 흐름 (다이아몬드 위 → 축별 해석 아래) */
-  .bg-vs-body {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-  }
-  .bg-vs-diamond-wrap { width: 320px; }
-  .bg-vs-diamond { width: 100%; height: 320px; overflow: visible; }
+  /* ===== 4축 다이아몬드 SVG — 히어로 우측 패널(_profile_vs.ejs)이 쓴다.
+     ⚠️ 클래스 이름의 `bg-vs-` 는 밸런스게임(balance game) 계열 식별자다. 본문 전체폭 비교 블록은
+        2026-08-15 에 히어로로 옮기며 삭제했지만, **도형 스타일만은 여기 남겨 재사용**한다 —
+        나=골드 채움 / 의원=무채색 점선이라는 대비 규칙을 두 곳에서 따로 정의하지 않기 위함.
+     ⚠️ 정당색 금지 — 파랑·빨강으로 가르지 말 것 */
   .bg-vs-grid { fill: none; stroke: var(--border); stroke-width: 0.5; }
   .bg-vs-axis-line { stroke: var(--border2); stroke-width: 1; }
   .bg-vs-fill-pol {
@@ -508,92 +523,6 @@
   }
   .bg-vs-dot-pol  { fill: var(--sub2); }
   .bg-vs-dot-mine { fill: var(--accent); }
-  .bg-vs-axis-label {
-    fill: var(--sub);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    text-anchor: middle;
-  }
-  .bg-vs-axis-label.bottom { dominant-baseline: hanging; }
-  .bg-vs-axis-num-pol {
-    fill: var(--sub2);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    text-anchor: middle;
-  }
-  .bg-vs-diamond-help {
-    text-align: center;
-    font-size: 11px;
-    color: var(--sub2);
-    margin-top: 4px;
-  }
-  .bg-vs-legend {
-    display: flex;
-    gap: 18px;
-    justify-content: center;
-    margin-top: 12px;
-    font-size: 12px;
-    color: var(--sub);
-    flex-wrap: wrap;
-  }
-  .bg-vs-legend-item { display: inline-flex; align-items: center; gap: 6px; }
-  .bg-vs-legend-swatch {
-    display: inline-block;
-    width: 18px;
-    height: 10px;
-    border-radius: 2px;
-    border: 1px solid;
-  }
-  .bg-vs-legend-mine .bg-vs-legend-swatch { background: rgba(184,116,12,0.22); border-color: var(--accent); }
-  .bg-vs-legend-pol  .bg-vs-legend-swatch { background: rgba(122,128,144,0.18); border-color: var(--sub2); border-style: dashed; }
-
-  .bg-vs-axes {
-    width: 100%;
-    max-width: 520px;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    padding-top: 4px;
-    border-top: 1px solid var(--border);
-  }
-  .bg-vs-axes > div {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    padding: 8px 0;
-    border-bottom: 1px dashed var(--border);
-    font-family: 'Noto Serif KR', serif;
-    font-weight: 500;
-    font-size: 14px;
-    line-height: 1.4;
-    color: var(--text);
-    word-break: keep-all;
-  }
-  .bg-vs-axes > div:last-child { border-bottom: 0; padding-bottom: 0; }
-  .bg-vs-axes .axis-name {
-    flex-shrink: 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 11px;
-    color: var(--accent);
-    background: #FAF6EB;
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    padding: 2px 8px;
-    margin-top: 2px;
-    min-width: 64px;
-    text-align: center;
-  }
-
-  /* (전체 일치도 박스는 헤더 % 와 중복이라 제거됨 - 12차) */
-
-  @media (max-width: 768px) {
-    .bg-vs-body { gap: 14px; }
-    .bg-vs-diamond-wrap { width: 100%; max-width: 320px; }
-    .bg-vs-diamond { height: 320px; }
-    .bg-vs-axes { font-size: 13px; }
-  }
 
   /* Tabs */
   .tab-bar {
@@ -800,46 +729,311 @@
   .cat-bar-track { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
   .cat-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.8s ease-out; }
 
-  /* ===== 교차 표결 성향 (자당 vs 타당 발의) =====
-     정당색(파랑·빨강) 사용 금지 — 자당/타당은 명도 차이로만 구분한다. */
-  .cpv-block { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .cpv-head { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
-  .cpv-title { font-size: 12px; font-weight: 700; color: var(--sub); letter-spacing: 0.02em; }
-  .cpv-hint {
-    width: 14px; height: 14px; border-radius: 50%; flex: none;
-    border: 1px solid var(--border2); color: var(--sub2);
-    font-size: 9px; line-height: 12px; text-align: center; cursor: help;
-  }
-  .cpv-rows { display: flex; flex-direction: column; gap: 9px; }
-  .cpv-row { display: grid; grid-template-columns: 58px 1fr 48px 44px; align-items: center; gap: 8px; }
-  .cpv-lab { font-size: 11px; color: var(--sub2); }
-  .cpv-track { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
-  .cpv-fill { display: block; height: 100%; border-radius: 3px; transition: width 0.8s ease-out; }
-  .cpv-fill.is-own   { background: var(--accent); }
-  .cpv-fill.is-other { background: var(--sub2); }
-  .cpv-val { font-size: 12px; font-weight: 700; color: var(--text); text-align: right; }
-  .cpv-n { font-size: 10px; color: var(--sub2); text-align: right; }
+  /* ===== 표결 성향 카드 (_vote_profile.ejs) — 2026-08-15 재구성 =====
+     구 `.cpv-*` 블록을 대체한다. 되살리기 전에 파샬 머리 주석을 읽을 것.
+     🔴 자당/타당을 0~100% 막대 두 줄로 그리지 말 것 — 100.0% 와 98.2% 는 막대에서 구분이 안 되고,
+        정작 핵심인 **격차 1.8%p 가 안 보인다.** 두 값은 숫자로 놓고 격차만 눈금으로 그린다.
+     ⚠️ 초록·빨강은 본회의 표결 결과(객관 데이터) 전용이다. 자당/타당은 골드·무채색으로만. */
+  .vp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .vp-panel { min-width: 0; }
+  /* 구분선은 오른쪽 패널이 그린다 — 1열로 접히면 자동으로 가로선이 된다 */
+  .vp-panel + .vp-panel { border-left: 1px solid var(--border); padding-left: 28px; }
+  .vp-h { margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text); }
+  /* 🔴 각 블록 머리의 한 줄 설명 — `자당/타당`·`격차`·`%p` 는 일상어가 아니다 */
+  .vp-lede { margin: 0 0 14px; font-size: 11.5px; line-height: 1.7; color: var(--sub2); word-break: keep-all; }
+  .vp-lede strong { color: var(--sub); font-weight: 700; }
+  .vp-lede-sub { display: block; color: var(--sub2); opacity: 0.85; }
 
-  .cpv-gap { display: flex; align-items: baseline; gap: 10px; margin-top: 14px; }
-  .cpv-gap-num { font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1; }
-  .cpv-gap-num small { font-size: 13px; font-weight: 700; margin-left: 1px; }
-  .cpv-gap-desc { font-size: 11px; color: var(--sub2); line-height: 1.5; }
-  .cpv-gap-desc em { display: block; font-style: normal; color: var(--sub2); opacity: 0.85; }
-
-  .cpv-rank { margin-top: 10px; font-size: 12px; color: var(--sub); }
-  .cpv-rank strong { color: var(--text); }
-  .cpv-rank-note { color: var(--sub2); font-size: 11px; }
-  .cpv-dissent {
-    margin-top: 8px; padding: 9px 11px; background: var(--bg3);
-    border-radius: 6px; font-size: 12px; color: var(--sub); line-height: 1.6;
+  /* 찬반 구성 누적 막대 — 4줄짜리 0~100% 막대를 이걸로 대체했다 */
+  .vp-stack {
+    display: flex; height: 14px; border-radius: 7px; overflow: hidden;
+    background: var(--bg3);
   }
-  .cpv-dissent strong { color: var(--text); }
-  .cpv-caveat { margin: 10px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.65; }
+  /* ⚠️ min-width 필수 — 0.6%(3건) 구간이 폭 0px 으로 사라진다 */
+  .vp-seg { display: block; height: 100%; min-width: 3px; }
+  .vp-legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 12px 0 0; }
+  .vp-legend > div { display: flex; align-items: baseline; gap: 8px; }
+  .vp-legend dt { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); }
+  .vp-legend dt i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+  .vp-legend dd { margin: 0; display: flex; align-items: baseline; gap: 6px; }
+  .vp-legend dd strong { font-size: 13px; font-weight: 700; color: var(--text); }
+  .vp-legend dd span { font-size: 11px; color: var(--sub2); }
 
-  @media (max-width: 480px) {
-    .cpv-row { grid-template-columns: 52px 1fr 44px; }
-    .cpv-n { display: none; }
+  /* 🔴 불참은 분모가 달라(전체 표결) 위 셋과 같은 자리에 두지 않는다 */
+  .vp-absent { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+  .vp-absent-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .vp-absent-lab { font-size: 12px; color: var(--sub); font-weight: 700; }
+  .vp-absent-val { display: flex; align-items: baseline; gap: 6px; }
+  .vp-absent-val strong { font-size: 13px; font-weight: 700; color: var(--text); }
+  .vp-absent-val span { font-size: 11px; color: var(--sub2); }
+
+  .vp-note { margin: 10px 0 0; font-size: 11px; line-height: 1.7; color: var(--sub2); word-break: keep-all; }
+  .vp-note strong { color: var(--sub); font-weight: 700; }
+  .vp-line { margin: 8px 0 0; font-size: 12px; line-height: 1.7; color: var(--sub); word-break: keep-all; }
+  .vp-line strong { color: var(--text); font-weight: 700; }
+
+  /* 자당/타당 — 막대 없이 숫자만 나란히 */
+  .vp-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .vp-cmp-item {
+    padding: 12px 14px; background: var(--bg3);
+    border-radius: 8px; display: flex; flex-direction: column; gap: 3px;
   }
+  .vp-cmp-lab { font-size: 11px; color: var(--sub2); }
+  .vp-cmp-val { font-size: 24px; font-weight: 800; color: var(--sub); line-height: 1.1; }
+  .vp-cmp-val small { font-size: 13px; font-weight: 700; margin-left: 1px; }
+  .vp-cmp-val.is-own { color: var(--accent); }
+  .vp-cmp-n { font-size: 10.5px; color: var(--sub2); }
+
+  .vp-gap { margin-top: 16px; }
+  .vp-gap-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .vp-gap-num { font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .vp-gap-num small { font-size: 13px; font-weight: 700; margin-left: 1px; }
+  .vp-gap-desc { font-size: 12px; color: var(--sub); word-break: keep-all; }
+  .vp-gap-desc strong { color: var(--text); font-weight: 700; }
+  .vp-gap-desc-n { color: var(--sub2); }
+  /* 현재 구간 칩 — 숫자보다 이게 먼저 읽히는 결론이다.
+     ⚠️ 11.5px 이라 --accent(3.79)는 대비 미달 → --accent2(5.59) */
+  .vp-gap-band {
+    font-size: 11.5px; font-weight: 700; line-height: 1;
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid currentColor; color: var(--accent2);
+    white-space: nowrap;
+  }
+
+  /* 격차 눈금 — 숫자 하나만 두면 4.6%p 가 큰 건지 작은 건지 알 수 없다.
+     🔴 라벨은 **가리키는 지점 위/아래**에 절대배치한다. 예전엔 중앙값 라벨을 footer 의 space-between
+        가운데 칸에 뒀는데, 마커가 17% 에 있어도 라벨은 항상 50% 자리에 찍혀 **서로 다른 값을 가리켰다.**
+     🔴 이 의원은 위, 중앙값은 아래 — 층을 갈라야 값이 가까울 때(4.6 vs 3.4 = 눈금 6%p 차) 안 겹친다. */
+  .vp-scale { position: relative; margin-top: 26px; padding: 6px 0 0; }
+  .vp-scale-track { display: block; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+  .vp-scale-fill { display: block; height: 100%; min-width: 3px; border-radius: 4px; background: var(--accent); }
+  /* 채운 구간의 끝점 — "어디까지가 이 의원" 인지를 점으로 못박는다 */
+  .vp-scale-dot {
+    position: absolute; top: 6px; width: 10px; height: 10px; margin: -1px 0 0 -5px;
+    border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg2);
+  }
+  .vp-scale-mark {
+    position: absolute; top: 2px; height: 16px; width: 2px;
+    background: var(--text); border-radius: 1px;
+    transform: translateX(-1px); box-shadow: 0 0 0 2px var(--bg2);
+  }
+  .vp-scale-mark::before {
+    content: ''; position: absolute; left: 50%; top: -4px;
+    width: 0; height: 0; transform: translateX(-50%);
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid var(--text);
+  }
+  /* 위(이 의원) · 아래(중앙값) 라벨. ⚠️ 끝으로 갈수록 정렬을 바꾸지 않으면 눈금 밖으로 삐져나간다 —
+     격차 1%p 미만이 266명 중 77명(29%)이라 왼쪽 끝은 예외가 아니라 다수 케이스다 */
+  .vp-scale-self, .vp-scale-med {
+    position: absolute; white-space: nowrap; font-size: 10.5px; font-weight: 700;
+    transform: translateX(-50%);
+  }
+  .vp-scale-self { top: -16px; color: var(--accent2); }
+  .vp-scale-med  { top: 24px;  color: var(--sub); }
+  .vp-scale-self.is-start, .vp-scale-med.is-start { transform: none; }
+  .vp-scale-self.is-end,   .vp-scale-med.is-end   { transform: translateX(-100%); }
+  .vp-scale-foot {
+    display: flex; justify-content: space-between; gap: 8px;
+    margin-top: 34px; font-size: 10.5px; color: var(--sub2);
+  }
+  .vp-scale-foot em { display: block; font-style: normal; opacity: 0.85; }
+  .vp-scale-foot span:last-child { text-align: right; }
+
+  /* 구간 정의 — 🔴 눈금 위치만으로는 4.6%p 가 어느 구간인지 알 수 없다. 화면에 명시한다.
+     ⚠️ 구간 이름을 눈금 위 각 구간 **가운데**에 배치하지 말 것 — 375px 에서 첫 구간(0~2%p)의
+        폭이 28px 뿐인데 `법안 중심` 라벨이 52px 이라 반드시 겹친다. 아래 목록으로 푼다 */
+  /* 🔴 머리말이 없으면 "뚜렷한 편" 이 **뭐가 뚜렷한지** 알 수 없다 (사용자 지적).
+     이 표가 재는 게 무엇인지를 먼저 밝힌다 */
+  .vp-bandkey-head {
+    margin: 12px 0 8px; padding-top: 12px;
+    border-top: 1px dashed var(--border);
+    font-size: 11px; color: var(--sub2); line-height: 1.6; word-break: keep-all;
+  }
+  .vp-bandkey-head strong { color: var(--sub); font-weight: 700; margin-right: 6px; }
+  /* ⚠️ auto-fit — 데스크톱 4열, 좁아지면 2열·1열로 알아서 접힌다.
+     minmax 하한 118px 은 최장 라벨 `뚜렷하게 더 찬성`(약 96px) + padding 기준 */
+  .vp-bandkey {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 6px; margin: 0; padding: 0; list-style: none;
+  }
+  .vp-bandkey li {
+    display: flex; flex-direction: column; gap: 1px;
+    padding: 7px 9px; border-radius: 7px;
+    font-size: 11px; color: var(--sub2);
+    border: 1px solid transparent; background: var(--bg3);
+  }
+  .vp-bandkey-name { font-weight: 700; }
+  .vp-bandkey-mean { color: var(--sub); }
+  /* ⚠️ 현재 구간은 **색만으로 표시하지 말 것** — 이름이 전부 굵어서 색차가 잘 안 읽힌다.
+     테두리 + 옅은 배경까지 줘야 "내가 여기" 가 한눈에 들어온다 (실측으로 확인) */
+  .vp-bandkey li.is-on {
+    color: var(--accent2); border-color: var(--accent2); background: #FBF5EA;
+  }
+  .vp-bandkey li.is-on .vp-bandkey-mean { color: var(--accent2); }
+
+  /* 구간 경계선 — 눈금에서 어디가 갈림목인지 보이게.
+     ⚠️ 흰색(--bg2)을 쓰면 골드 fill 위에서만 보이고 회색 track(#EFEDE4) 위에서는 사라진다.
+        --border2(#C9C5B6)는 **양쪽 모두**에서 보인다 (골드보다 밝고 track 보다 어둡다) */
+  .vp-scale-div {
+    position: absolute; top: 0; bottom: 0; width: 1px;
+    background: var(--border2);
+  }
+  .vp-panel.is-empty { display: flex; flex-direction: column; justify-content: center; }
+
+  /* 월별 표결 참여 추이 — 왼쪽 패널의 남는 328px 을 **같은 주제**로 채운다.
+     ⚠️ 표결이 없었던 달은 아예 안 그린다 (0으로 채우면 "안 나왔다" 로 읽힌다) → x축은 달력이 아니라
+        표결이 있었던 달의 순서다. 화면에도 그렇게 쓴다. */
+  .vp-trend { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .vp-trend-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .vp-trend-h { margin: 0; font-size: 12px; font-weight: 700; color: var(--sub); }
+  /* 연도 탭 — 🔴 임기 4년이면 표결월이 48개다. 한 줄에 늘어놓으면 막대가 10px 이 되어 못 읽는다 */
+  .vp-trend-years { display: flex; gap: 4px; }
+  .vp-year {
+    padding: 3px 9px; border-radius: 999px; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    color: var(--sub2); background: var(--bg2); border: 1px solid var(--border);
+  }
+  .vp-year:hover { border-color: var(--border2); color: var(--sub); }
+  .vp-year.is-on { color: var(--accent2); border-color: var(--accent2); background: #FBF5EA; }
+  .vp-trend-lede { margin: 4px 0 10px; font-size: 10.5px; color: var(--sub2); line-height: 1.6; word-break: keep-all; }
+  /* ⚠️ flex 가 아니라 block 이라 [hidden] 이 그대로 먹는다 — .sp-mts / .bf-rest 같은 함정 없음 */
+  .vp-trend-year[hidden] { display: none; }
+  .vp-trend-lede strong { color: var(--sub); font-weight: 700; }
+  /* 축 눈금 — 막대 높이가 무슨 값인지 알 수 없다는 지적. 0/50/100% 를 명시한다.
+     ⚠️ 눈금 라벨 자리(왼쪽 30px)를 plot 의 padding-left 로 확보한다 — 막대 위에 겹치면 안 읽힌다 */
+  .vp-trend-plot { position: relative; padding-left: 30px; }
+  .vp-trend-axis { position: absolute; left: 0; top: 0; bottom: 0; width: 28px; }
+  .vp-trend-axis i {
+    position: absolute; right: 0; transform: translateY(50%);
+    font-size: 9px; font-style: normal; color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  /* 50% 지점 가로 점선 — 눈금 숫자만 있으면 어디가 그 높이인지 알 수 없다 */
+  .vp-trend-bars {
+    position: relative;
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 56px; padding: 0 1px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to top, transparent calc(50% - 1px), var(--border) calc(50% - 1px), var(--border) 50%, transparent 50%);
+  }
+  /* 각 달은 100% 높이의 트랙이고 그 안에서 골드가 아래부터 찬다 — 100% 참여면 꽉 찬다 */
+  .vp-trend-col {
+    flex: 1; min-width: 0; height: 100%;
+    display: flex; align-items: flex-end;
+    background: var(--bg3); border-radius: 2px;
+    border: 0; padding: 0; cursor: pointer;
+    outline-offset: 2px;
+  }
+  .vp-trend-col:hover .vp-trend-bar { background: var(--accent2); }
+  .vp-trend-col[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent2); }
+  /* ⚠️ min height 2% — 0% 인 달(장관 취임 후 등)이 아예 안 그려지면 데이터가 빠진 것처럼 보인다 */
+  .vp-trend-bar { display: block; width: 100%; background: var(--accent); border-radius: 2px; transition: background 0.12s; }
+  /* 🔴 표결이 없었던 달 — **빈 칸**이다. 0% 막대(회색 트랙 가득)와 반드시 달라 보여야 한다.
+     0% 는 "나왔어야 하는데 안 나왔다", 빈 칸은 "표결 자체가 없었다" 로 완전히 다른 사실이다 */
+  .vp-trend-col.is-none {
+    background: transparent; border-bottom: 1px dashed var(--border2);
+    cursor: default; pointer-events: none;
+  }
+  /* 달력 축 — 연도로 끊으니 1~12월 슬롯이 고정이라 진짜 월 라벨을 쓸 수 있다 */
+  .vp-trend-mlabels { display: flex; gap: 3px; padding: 0 1px; margin-top: 4px; }
+  .vp-trend-ml {
+    flex: 1; min-width: 0; text-align: center;
+    font-size: 9px; color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .vp-trend-ml.is-none { opacity: 0.35; }
+  /* 반대·기권이 있었던 달 표시.
+     🔴 월별 누적 막대로 쌓지 말 것 — 달의 77.1%가 반대·기권 0건이고 달 평균 0.53건이라
+        99% 찬성인 막대에 실 한 올로 묻힌다. 희소하기 때문에 **시점**이 신호가 된다 */
+  .vp-trend-dots { display: flex; gap: 3px; margin-top: 4px; padding: 0 1px; }
+  .vp-trend-dot {
+    flex: 1; min-width: 0; height: 4px; border-radius: 2px;
+    background: transparent;
+  }
+  .vp-trend-dot.is-on { background: var(--accent); }
+  .vp-trend-foot {
+    display: flex; justify-content: space-between; gap: 8px;
+    margin-top: 6px; font-size: 10px; color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .vp-trend-mid { font-family: 'Noto Sans KR', sans-serif; }
+  .vp-trend-note {
+    margin: 8px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all;
+  }
+  .vp-trend-note strong { color: var(--sub); font-weight: 700; }
+  /* 범례 글리프는 위 점과 같은 모양이어야 한다 (flex:1 을 끄고 고정폭으로) */
+  .vp-trend-note .vp-trend-dot {
+    display: inline-block; flex: none; width: 12px; height: 4px;
+    margin-right: 4px; vertical-align: middle;
+  }
+
+  /* 클릭한 달의 상세 — 🔴 호버 툴팁이 아니다. 안에 법안 링크가 있어 **누를 수 있어야** 한다 */
+  .vp-trend-detail {
+    margin-top: 10px; padding: 12px 14px;
+    background: var(--bg3); border-radius: 8px;
+    font-size: 11.5px; color: var(--sub); line-height: 1.7;
+  }
+  .vp-trend-detail[data-empty] { background: transparent; padding: 8px 0 0; }
+  .vp-trend-hint { font-size: 10.5px; color: var(--sub2); }
+  .vtd-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .vtd-ym { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+  .vtd-sum { font-size: 11.5px; color: var(--sub); }
+  .vtd-sum strong { color: var(--text); font-weight: 700; }
+  .vtd-break { margin-top: 4px; font-size: 11px; color: var(--sub2); }
+  .vtd-bills { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--border2); list-style: none; }
+  .vtd-bills li { margin-bottom: 5px; }
+  .vtd-bills a { color: var(--sub); text-decoration: none; }
+  .vtd-bills a:hover { color: var(--accent2); text-decoration: underline; }
+  .vtd-r {
+    display: inline-block; min-width: 34px; margin-right: 6px;
+    font-size: 10px; font-weight: 700;
+    border: 1px solid currentColor; border-radius: 4px; padding: 1px 5px; text-align: center;
+  }
+  /* ⚠️ 초록·빨강은 **본회의 표결 결과(객관 데이터)** 전용이라 여기선 허용된다 (정당 구분이 아니다).
+     기권·불참은 입장이 아니라 상태라 무채색·골드로 둔다 */
+  .vtd-r.r-찬성 { color: var(--green); }
+  .vtd-r.r-반대 { color: var(--red); }
+  .vtd-r.r-기권 { color: var(--accent2); }
+  .vtd-r.r-불참 { color: var(--sub2); }
+
+  /* 결과별 필터 칩 — 70건 목록에서 반대 2건을 찾으려면 페이지를 다 넘겨야 한다 */
+  .vtd-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .vtd-chip {
+    padding: 4px 9px; border-radius: 999px; cursor: pointer;
+    font-size: 11px; font-weight: 700; color: var(--sub);
+    background: var(--bg2); border: 1px solid var(--border);
+  }
+  .vtd-chip:hover { border-color: var(--border2); }
+  .vtd-chip.is-on { color: var(--accent2); border-color: var(--accent2); background: #FBF5EA; }
+
+  .vtd-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 10px; }
+  .vtd-pg {
+    padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    font-size: 11px; font-weight: 700; color: var(--sub);
+    background: var(--bg2); border: 1px solid var(--border);
+  }
+  .vtd-pg:hover:not(:disabled) { color: var(--accent2); border-color: var(--accent2); }
+  .vtd-pg:disabled { opacity: 0.4; cursor: default; }
+  .vtd-pg-n { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
+  .vtd-none { margin-top: 8px; font-size: 10.5px; color: var(--sub2); }
+  .bills-loading { padding: 28px 16px; text-align: center; font-size: 12px; color: var(--sub2); }
+  .vp-trend-note.is-term { margin-top: 6px; }
+
+  /* ⚠️ 1열 전환은 900px 이다 — 카드가 전체폭(1232px)이라 2열 각 패널이 590px 이고,
+     900 아래로 가면 패널당 400px 미만이 되어 `.vp-cmp` 2칸이 무너진다 */
+  @media (max-width: 900px) {
+    .vp-grid { grid-template-columns: 1fr; gap: 22px; }
+    .vp-panel + .vp-panel {
+      border-left: 0; padding-left: 0;
+      border-top: 1px solid var(--border); padding-top: 22px;
+    }
+  }
+  @media (max-width: 420px) {
+    .vp-cmp { grid-template-columns: 1fr; }
+    .vp-scale-foot { font-size: 10px; }
+  }
+
 
   /* ===== 회의 발언 기록 (politician_speeches) =====
      🔴 순위·평균 대비·백분위를 넣지 않는다. 위원회마다 회의 수가 다르고 위원장·장관은 구조가
@@ -879,25 +1073,74 @@
   .sp-kind-val { font-size: 11.5px; font-weight: 700; color: var(--text); text-align: right; }
 
   /* ===== 상임위 회의 참여율 ===== */
-  .sp-rates { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+  .sp-rates { display: flex; flex-direction: column; gap: 16px; margin-bottom: 18px; }
   .sp-rate.is-special { opacity: 0.82; }   /* 특위는 한시 조직이라 회의 리듬이 다르다 */
   .sp-rate-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .sp-rate-name { font-size: 13px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+  .sp-rate-nums { display: flex; align-items: baseline; gap: 9px; flex-shrink: 0; }
   .sp-rate-val { font-size: 20px; font-weight: 800; color: var(--sub); line-height: 1; white-space: nowrap; }
   .sp-rate-val small { font-size: 12px; font-weight: 700; margin-left: 1px; }
   /* 평균 위쪽만 골드. 아래쪽에 빨강을 쓰지 않는다 — 근사값이라 단정할 수 없고,
      정당색(빨강)은 이 사이트에서 금지다 */
   .sp-rate-val.is-above { color: var(--accent); }
-  .sp-rate-bar { margin-top: 6px; }
-  .sp-rate-track {
-    position: relative; display: block; height: 8px;
-    background: var(--bg3); border-radius: 4px; overflow: hidden;
+  /* 평균 대비를 **글자로** 적는다. 2px 선 하나로는 1,186px 짜리 막대에서 사실상 안 보인다
+     (실측: 폭의 0.17%, 게다가 track 의 overflow:hidden 이 위아래 삐침을 잘라먹고 있었다).
+     ⚠️ 11px 소형 텍스트라 대비비 4.5:1 이 필요하다 — 골드 --accent(#B8740C) 는 흰 배경에서
+        3.79 로 미달이므로 --accent2(#925C09, 5.59) 를 쓴다. --sub2 도 4.0 이라 --sub 를 쓴다. */
+  .sp-rate-delta {
+    font-size: 11px; font-weight: 700; line-height: 1;
+    padding: 4px 8px; border-radius: 999px;
+    border: 1px solid currentColor; color: var(--sub);
+    white-space: nowrap;
   }
-  .sp-rate-fill { display: block; height: 100%; min-width: 3px; border-radius: 4px; background: var(--accent); }
-  /* 평균선 — 숫자만 두면 50%가 높은 건지 낮은 건지 알 수 없다 */
+  .sp-rate-delta.is-above { color: var(--accent2); }
+  .sp-rate-bar { margin-top: 7px; }   /* 삼각 캡이 위 칩에 닿지 않을 만큼 (모바일 실측) */
+  /* 평균 마커가 막대 위아래로 삐져나와야 해서 track(overflow:hidden) 바깥에 둔다.
+     위아래 5px 패딩이 그 삐침 자리다 */
+  .sp-rate-gauge { position: relative; padding: 6px 0; }
+  .sp-rate-track {
+    position: relative; display: block; height: 10px;
+    background: var(--bg3); border-radius: 5px; overflow: hidden;
+  }
+  .sp-rate-fill { display: block; height: 100%; min-width: 3px; border-radius: 5px; background: var(--accent); }
+  /* 평균 마커 — 숫자만 두면 50%가 높은 건지 낮은 건지 알 수 없다.
+     🔴 halo(--bg2 링)가 핵심이다. 마커가 골드 fill 위에 놓일 때도, 회색 track 위에 놓일 때도
+        같은 세기로 보여야 한다. 색만으로 가르면 fill 안쪽에서 묻힌다.
+     ⚠️ 정당색 금지 — 대비는 명도(차콜)와 형태(삼각 캡)로만 만든다 */
   .sp-rate-avg {
-    position: absolute; top: -2px; bottom: -2px; width: 2px;
-    background: var(--text); opacity: 0.55; transform: translateX(-1px);
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--text); border-radius: 1px;
+    transform: translateX(-1px);
+    box-shadow: 0 0 0 2px var(--bg2);
+  }
+  /* 삼각 캡 — 선 하나면 렌더 잔상처럼 보인다. 캡이 있어야 "기준점" 으로 읽힌다 */
+  .sp-rate-avg::before {
+    content: ''; position: absolute; left: 50%; top: -4px;
+    width: 0; height: 0; transform: translateX(-50%);
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--text);
+  }
+  /* 평균 마커의 뜻을 소제목에서 한 번만 밝힌다 (행마다 라벨을 달면 3줄이 시끄럽다) */
+  .sp-avg-legend {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-weight: 500; color: var(--sub);
+  }
+  /* ⚠️ 막대 위 마커와 **같은 모양**이어야 범례로 읽힌다. 2px 선만 두면 그냥 구분자(|)로 보인다 */
+  .sp-avg-glyph {
+    position: relative; display: inline-block;
+    width: 8px; height: 13px; align-self: center;
+  }
+  .sp-avg-glyph::before {
+    content: ''; position: absolute; left: 0; top: 0;
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--text);
+  }
+  .sp-avg-glyph::after {
+    content: ''; position: absolute; left: 3px; top: 4px; bottom: 0;
+    width: 2px; background: var(--text); border-radius: 1px;
   }
   .sp-rate-frac { display: block; margin-top: 5px; font-size: 11px; color: var(--sub2); line-height: 1.6; }
   .sp-rate-frac strong { color: var(--sub); font-weight: 700; }
@@ -948,6 +1191,11 @@
   @media (max-width: 560px) {
     .sp-mt { grid-template-columns: 1fr auto; }
     .sp-mt-date { grid-column: 1 / -1; }
+    /* 칩 + 값이 140px 을 먹어서, 좁은 화면에선 위원회 이름이 두세 줄로 접힌다
+       (`기후에너지환경노동위원회` 만 해도 12자다). 자리가 모자라면 숫자 묶음을 아랫줄로 내린다 */
+    .sp-rate-head { flex-wrap: wrap; row-gap: 6px; }
+    .sp-rate-name { min-width: 150px; }
+    .sp-rate-nums { margin-left: auto; }
   }
 
   .info-list { display: flex; flex-direction: column; gap: 12px; }
@@ -985,13 +1233,19 @@
   .pagination-inline .pg:disabled { opacity: 0.3; cursor: not-allowed; }
 
   /* ===== 개요 분석 ===== */
+  /* ⚠️ align-items: start — 카드가 **내용 높이**만 갖게 한다.
+     기본값(stretch)이면 한 행의 카드가 제일 큰 놈에 맞춰 늘어나, 짧은 카드 아래에 흰 여백이 생긴다
+     (실측: 관심분야 자연 310px 이 581px 로 늘어나 **271px 이 빈 흰 상자**였다). */
   .overview-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 16px;
     margin-bottom: 16px;
+    align-items: start;
   }
   .overview-grid.two { grid-template-columns: 2fr 1fr; }
+  /* 3열 — 월별 발의가 12개월 막대라 제일 넓은 칸을 준다 */
+  .overview-grid.three { grid-template-columns: 1.3fr 1fr 1fr; }
   .card {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -1140,33 +1394,76 @@
   .tl-meta { font-size: 11px; color: var(--sub2); display: flex; gap: 8px; }
   .tl-date { font-family: 'JetBrains Mono', monospace; }
 
-  /* 정당 협력 */
+  /* ===== 정당별 공동발의 협력 (_party_coop.ejs) — 전체폭 2단 =====
+     🔴 정당색 금지 (2026-08-15 제거). 예전엔 이름·막대에 partyColorOf() 를 뿌려 보라·파랑이 나갔다 —
+        중립성 원칙과 정면 충돌. 강조는 **자당(골드) / 타당(무채색)** 로만 가른다.
+        정당을 가르는 게 아니라 **관계**를 가르는 것이라 이 대비는 허용된다.
+     🔴 두 패널은 표결 성향 카드(.vp-grid)와 같은 구조·같은 breakpoint 를 쓴다 —
+        한 페이지에서 "두 질문을 나란히" 는 하나의 패턴이어야 한다. */
+  .pc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .pc-panel { min-width: 0; }
+  .pc-panel + .pc-panel { border-left: 1px solid var(--border); padding-left: 28px; }
+  .pc-h { margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text); }
+  .pc-lede { margin: 0 0 12px; font-size: 11.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all; }
+  .pc-lede strong { color: var(--sub); font-weight: 700; }
+  .pc-split { margin: 0 0 12px; font-size: 12px; color: var(--sub2); }
+  .pc-split strong { color: var(--sub); font-weight: 700; }
+  .pc-note { margin: 10px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all; }
+  .pc-note strong { color: var(--sub); font-weight: 700; }
+  .pc-foot {
+    margin: 16px 0 0; padding-top: 12px; border-top: 1px dashed var(--border);
+    font-size: 10.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all;
+  }
+  .pc-foot strong { color: var(--sub); font-weight: 700; }
+  /* ⚠️ .vp-grid 와 같은 900px — 그 아래로 가면 패널당 400px 미만이 되어 막대 행이 무너진다 */
+  @media (max-width: 900px) {
+    .pc-grid { grid-template-columns: 1fr; gap: 22px; }
+    .pc-panel + .pc-panel {
+      border-left: 0; padding-left: 0;
+      border-top: 1px solid var(--border); padding-top: 22px;
+    }
+  }
+
   .party-coop { display: flex; flex-direction: column; gap: 10px; }
-  .party-coop-item { display: flex; align-items: center; gap: 12px; }
+  .party-coop-item { display: flex; align-items: center; gap: 8px; }
+  .party-coop-item.is-rest { opacity: 0.75; }
   .party-coop-name {
     font-size: 12px;
     color: var(--sub);
     width: 90px;
     flex-shrink: 0;
+    overflow-wrap: anywhere;
   }
+  .party-coop-name.is-own { color: var(--accent2); font-weight: 700; }
   .party-coop-bar-wrap {
     flex: 1;
+    min-width: 0;
     height: 6px;
     background: var(--bg3);
     border-radius: 3px;
     overflow: hidden;
   }
-  .party-coop-bar { height: 100%; border-radius: 3px; }
+  /* ⚠️ min-width 필수 — 0.4%(4건) 같은 구간이 폭 0px 으로 사라진다 */
+  .party-coop-bar { height: 100%; min-width: 2px; border-radius: 3px; background: var(--sub2); }
+  .party-coop-bar.is-own { background: var(--accent); }
   .party-coop-val {
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
+    color: var(--sub);
+    width: 46px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  /* ⚠️ 11px 소형 텍스트라 --sub2(4.0) 는 대비 미달 → --sub */
+  .party-coop-pct {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
     color: var(--sub2);
-    width: 44px;
+    width: 40px;
     text-align: right;
     flex-shrink: 0;
   }
 
-  .radar-big { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
 
   .notice-block {
     padding: 14px 18px;
@@ -1299,8 +1596,12 @@
     .profile-subinfo > div { flex-basis: 100%; }
     .profile-subinfo { text-align: left; }
     .profile-actions { display: none; }
+    /* ⚠️ 히어로가 text-align:center 라 성향 패널만 되돌린다 (숫자·해석 줄은 좌우 정렬이 있어야 읽힌다) */
+    .profile-vs { text-align: left; }
+    .profile-vs.is-pending, .profile-vs.is-missing { text-align: center; }
     .overview-grid { grid-template-columns: 1fr; }
     .overview-grid.two { grid-template-columns: 1fr; }
+    .overview-grid.three { grid-template-columns: 1fr; }
     .eval-layout { grid-template-columns: 1fr; }
     .bill-table-header, .bill-table-row {
       grid-template-columns: 1fr 80px 80px;
@@ -1407,6 +1708,10 @@
           <% } %>
         </dl>
       </div>
+
+      <%# 히어로 우측 「나와의 성향 일치」 — 여기가 672×241 공백이었다.
+          ⚠️ 분석 탭 본문의 전체폭 접힘 띠를 **대체**한 것이다. 둘 다 두지 말 것 (같은 정보 두 번) %>
+      <%- include('_profile_vs') %>
     </div>
   </div>
 </div>
@@ -1429,25 +1734,32 @@
   <div>
 
     <!-- ===== 법안 활동 탭 ===== -->
-    <div class="tab-panel" id="tab-bills">
+    <%#
+      법안 활동 탭 — 🔴 **행을 SSR 로 뿌리지 않는다** (2026-08-15).
+      예전엔 `bills` 전건(실측 887행)을 렌더하고 JS 가 display:none 으로 20개씩 접었다.
+      화면엔 20행만 보이는데 **페이지가 1.1MB** 였다 (법안 13건인 의원은 112KB — 정확히 비례).
+      지금은 탭을 **처음 열 때** `/api/politician/:monaCd/bills` 로 그 페이지만 가져온다.
+      ⚠️ 개수(탭 라벨)는 COUNT 쿼리로 미리 받아 즉시 표시한다 — 숫자까지 지연시키면 탭이 비어 보인다.
+      ⚠️ 필터·페이지가 **서버로 넘어갔다.** 예전처럼 DOM 을 훑어 거르지 말 것 (한 페이지만 있으므로 틀린 답이 나온다).
+    %>
+    <div class="tab-panel" id="tab-bills"
+         data-mona="<%= politician.mona_cd %>" data-total="<%= billCnt.total %>">
       <div class="bill-filter-tabs">
         <button class="bill-filter-tab active" data-bf="all">
           <span class="dot" style="background:var(--accent)"></span>
-          전체 <span style="font-family:'JetBrains Mono';font-size:12px;margin-left:2px"><%= nf(billsTabCount) %></span>
+          전체 <span class="bf-n"><%= nf(billCnt.total) %></span>
         </button>
-        <% const repCnt = (bills || []).filter(b => b.proposer_yn).length;
-           const coCnt  = (bills || []).filter(b => !b.proposer_yn).length; %>
         <button class="bill-filter-tab" data-bf="rep">
           <span class="dot" style="background:var(--accent)"></span>
-          대표발의 <span style="font-family:'JetBrains Mono';font-size:12px;margin-left:2px"><%= nf(repCnt) %></span>
+          대표발의 <span class="bf-n"><%= nf(billCnt.rep) %></span>
         </button>
         <button class="bill-filter-tab" data-bf="co">
           <span class="dot" style="background:var(--sub2)"></span>
-          공동발의 <span style="font-family:'JetBrains Mono';font-size:12px;margin-left:2px"><%= nf(coCnt) %></span>
+          공동발의 <span class="bf-n"><%= nf(billCnt.co) %></span>
         </button>
       </div>
 
-      <% if (bills && bills.length > 0) { %>
+      <% if (billCnt.total > 0) { %>
         <div class="bill-table">
           <div class="bill-table-header">
             <span>법안명</span>
@@ -1456,54 +1768,7 @@
             <span>처리결과</span>
             <span>표결</span>
           </div>
-          <div id="bills-container">
-            <% bills.forEach(b => { %>
-              <a href="/bill/<%= b.bill_id %>"
-                 class="bill-table-row bills-row"
-                 data-kind="<%= b.proposer_yn ? 'rep' : 'co' %>">
-                <div class="bill-row-name">
-                  <%= b.bill_name %>
-                  <% if (b.committee) { %><small><%= b.committee %></small><% } %>
-                </div>
-                <span>
-                  <% if (b.proposer_yn) { %>
-                    <span class="pb-badge pb-badge-category">대표발의</span>
-                  <% } else { %>
-                    <span class="pb-badge pb-badge-alt">공동발의</span>
-                  <% } %>
-                </span>
-                <div style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2)"><%= b.propose_dt || '—' %></div>
-                <span>
-                  <% const statusLabel = b.proc_result_name || '계류';
-                     const termAnchor = !b.proc_result_name ? 'pending' :
-                         b.proc_result_name === '원안가결' ? 'original' :
-                         b.proc_result_name === '수정가결' ? 'modified' :
-                         b.proc_result_name === '대안반영폐기' ? 'alt-dropped' :
-                         b.proc_result_name === '수정안반영폐기' ? 'mod-dropped' :
-                         b.proc_result_name === '철회' ? 'withdrawn' :
-                         b.proc_result_name === '부결' ? 'rejected' :
-                         b.proc_result_name === '폐기' ? 'dropped' : 'pending';
-                  %>
-                  <span class="pb-badge <%= resultClass(b.proc_result_name) %>"><%= statusLabel %></span>
-                  <% if (!b.proc_result_name && b.days_elapsed != null) {
-                       const d = Number(b.days_elapsed);
-                       const color = d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--accent)' : 'var(--sub2)';
-                  %>
-                    <span style="display:block;font-size:12px;color: <%= color %>;font-family:'JetBrains Mono';margin-top:4px">+<%= d %>일</span>
-                  <% } %>
-                </span>
-                <div>
-                  <% if (b.my_vote_result) { %>
-                    <span class="vote-result-chip v-<%= b.my_vote_result === '찬성' ? 'for' : b.my_vote_result === '반대' ? 'against' : b.my_vote_result === '기권' ? 'abstain' : 'absent' %>">
-                      <%= b.my_vote_result %>
-                    </span>
-                  <% } else { %>
-                    <span class="v-none">—</span>
-                  <% } %>
-                </div>
-              </a>
-            <% }); %>
-          </div>
+          <div id="bills-container"></div>
         </div>
         <div class="pagination-inline" id="bills-pagination"></div>
       <% } else { %>
@@ -1548,361 +1813,147 @@
 
     <!-- ===== 분석 탭 ===== -->
     <div class="tab-panel active" id="tab-overview">
+      <%# 🔴 4칸이다 (2026-08-15, 구 3칸). 공동발의를 sub 에서 꺼내 제 칸을 줬다 —
+          삭제한 활동 레이더가 그리던 4축이 정확히 이 넷이라, 레이더가 하던 일을 이 행이 이어받는다.
+          ⚠️ 여기에 지표를 더 붙이지 말 것: 5칸이면 1280px 에서 칸당 232px 이라 `표결 참여율 ?` 라벨이 접힌다 %>
+      <%
+        /* 백분위 헬퍼 — kpiRank 가 없으면(쿼리 실패·미배선) 아무것도 안 그린다.
+           ⚠️ `excluded` 는 **이유 문자열**이다. 불리언으로 뭉치면 "왜 나만 순위가 없지" 가 된다. */
+        const rank = locals.kpiRank || null;
+        const med  = rank ? rank.median : null;
+      %>
       <div class="profile-kpis-row">
         <div class="profile-kpi">
-          <div class="profile-kpi-val kpi-blue"><%= nf(proposeCnt) %></div>
+          <%# 🔴 숫자 옆에 **무엇을 센 건지** 밝힌다. `87` 만 두면 대표발의인지 전체인지 알 수 없다.
+              (카운트 카드는 분모가 없으므로 비율 대신 성격을 쓴다)
+              ⚠️ `건 · 대표로 낸 법안` 처럼 단위를 앞에 붙이지 말 것 — 모바일에선 이 덩어리가 통째로
+                 아랫줄로 내려가 `건` 이 숫자와 떨어진다. 단위는 아래 중앙값 줄(`56건`)이 알려준다 %>
+          <div class="profile-kpi-top">
+            <div class="profile-kpi-val kpi-blue"><%= nf(proposeCnt) %></div>
+            <span class="profile-kpi-frac">대표로 낸 법안</span>
+          </div>
           <div class="profile-kpi-label">법안 발의 <span class="pb-help" data-help-href="/glossary#rep-proposer" title="대표발의 설명">?</span></div>
-          <div class="profile-kpi-sub">공동발의 <%= nf(coProposeCnt) %>건</div>
+          <%- kpiRankBar(rank && rank.propose, rank && rank.cohortCnt) %>
+          <div class="profile-kpi-sub"><% if (med && med.propose != null) { %><span class="is-med">의원 중앙값 <%= nf(Math.round(med.propose)) %>건</span><% } else { %>대표발의한 법안<% } %></div>
+        </div>
+        <%
+          /* 대표발의 비중 = 대표 / (대표+공동). "이름만 올리는 편인가, 직접 주도하는 편인가".
+             🔴 이 숫자 혼자로는 아무 뜻이 없다 — 아래 주의 문구에 **의원 중앙값을 반드시 같이** 낸다
+                (평균선 없는 참여율 막대가 안 읽혔던 것과 같은 문제). */
+          const billTotal = proposeCnt + coProposeCnt;
+          const leadShare = billTotal > 0 ? (proposeCnt / billTotal * 100) : null;
+        %>
+        <div class="profile-kpi">
+          <div class="profile-kpi-top">
+            <div class="profile-kpi-val kpi-blue"><%= nf(coProposeCnt) %></div>
+            <span class="profile-kpi-frac">이름을 올린 법안</span>
+          </div>
+          <div class="profile-kpi-label">공동발의 <span class="pb-help" data-help-href="/glossary#rep-proposer" title="다른 의원의 발의에 이름을 올린 건수">?</span></div>
+          <%- kpiRankBar(rank && rank.copropose, rank && rank.cohortCnt) %>
+          <%# ⚠️ 해석 한계는 KPI 행 아래 주의 문구가 담당한다 —
+              공동발의 수는 "이름을 얼마나 걸었는지" 지 중요도·기여도가 아니다 %>
+          <div class="profile-kpi-sub"><% if (med && med.copropose != null) { %><span class="is-med">의원 중앙값 <%= nf(Math.round(med.copropose)) %>건</span><% } %></div>
+          <%# 🔴 대표발의 비중 — **큰 숫자 옆(.profile-kpi-frac)에 넣지 말 것.**
+              "885건 중 87건" 까지 쓰면 146px 인데 375px 2열의 카드 내부는 111px 뿐이다 (실측).
+              전용 줄로 빼야 `몇 건 중 몇 건 · 비중 얼마` 를 온전히 쓸 수 있다.
+              ⚠️ 분모는 공동발의 798 이 아니라 **대표+공동 전체**다. 그래서 `이 중` 같은 지시어를 쓰지 않는다.
+              🔴 이 숫자 혼자로는 뜻이 없다 — 의원 중앙값은 바로 아래 .kpi-caveat 가 낸다 %>
+          <% if (leadShare != null) { %>
+            <div class="profile-kpi-lead" title="대표 <%= nf(proposeCnt) %>건 + 공동 <%= nf(coProposeCnt) %>건 = <%= nf(billTotal) %>건 중 대표발의가 <%= leadShare.toFixed(1) %>%">
+              발의 <%= nf(billTotal) %>건 중 <%= nf(proposeCnt) %>건이 대표 <strong><%= leadShare.toFixed(1) %>%</strong>
+            </div>
+          <% } %>
         </div>
         <div class="profile-kpi">
-          <% if (voteParticipateRate == null) { %>
-            <div class="profile-kpi-val em-dash" title="추후 제공 예정">—</div>
-          <% } else { %>
-            <div class="profile-kpi-val kpi-amber"><%= voteParticipateRate.toFixed(0) %>%</div>
-          <% } %>
-          <div class="profile-kpi-label">표결 참여율 <span class="pb-help" data-help-href="/glossary#vote-absent" title="(찬성+반대+기권) / 전체 표결">?</span></div>
-          <% if (vsTotal > 0) { %>
-            <div class="profile-kpi-sub"><%= nf(vsAttended) %> / <%= nf(vsTotal) %></div>
-          <% } else { %>
-            <div class="profile-kpi-sub">표결 데이터 수집 전</div>
-          <% } %>
-        </div>
-        <div class="profile-kpi">
-          <% if (passRate == null) { %>
-            <div class="profile-kpi-val em-dash">—</div>
-          <% } else { %>
-            <div class="profile-kpi-val kpi-green"><%= passRate.toFixed(0) %>%</div>
-          <% } %>
-          <div class="profile-kpi-label">가결율 <span class="pb-help" data-help-href="/glossary#original" title="가결 법안 수 / 대표발의 법안 수">?</span></div>
-          <div class="profile-kpi-sub">
-            <% if (proposeCnt === 0) { %>
-              대표발의 없음
+          <%# 🔴 비율 카드는 **분자/분모를 큰 숫자 바로 옆에** 둔다 — 이 %가 무슨 값에서 나왔는지가
+              한눈에 읽혀야 한다. 아래로 내리면 "어떤 수의 결과인지" 를 따로 찾아야 한다.
+              ⚠️ 본인 수치와 코호트 중앙값을 한 줄에 `·` 로 붙이지 말 것 (`중앙값 81% · 536/598` 로
+                 내보냈다가 뒤 숫자가 중앙값에 딸린 것으로 읽혔다). 중앙값은 아래 `.is-med` 줄에 따로 %>
+          <div class="profile-kpi-top">
+            <% if (voteParticipateRate == null) { %>
+              <div class="profile-kpi-val em-dash" title="추후 제공 예정">—</div>
             <% } else { %>
-              <%= nf(passedCnt) %> / <%= nf(proposeCnt) %>
+              <div class="profile-kpi-val kpi-amber"><%= voteParticipateRate.toFixed(0) %>%</div>
+              <% if (vsTotal > 0) { %>
+                <span class="profile-kpi-frac" title="전체 본회의 표결 <%= nf(vsTotal) %>건 중 찬성·반대·기권으로 참여한 것이 <%= nf(vsAttended) %>건"><%= nf(vsTotal) %>건 중 <%= nf(vsAttended) %>건 참여</span>
+              <% } %>
             <% } %>
           </div>
+          <div class="profile-kpi-label">표결 참여율 <span class="pb-help" data-help-href="/glossary#vote-absent" title="(찬성+반대+기권) / 전체 표결">?</span></div>
+          <%- kpiRankBar(rank && rank.vote, rank && rank.cohortVote) %>
+          <% if (vsTotal === 0) { %>
+            <div class="profile-kpi-sub">표결 데이터 수집 전</div>
+          <% } else if (med && med.vote != null) { %>
+            <div class="profile-kpi-sub is-med">의원 중앙값 <%= med.vote.toFixed(0) %>%</div>
+          <% } %>
+        </div>
+        <div class="profile-kpi">
+          <div class="profile-kpi-top">
+            <% if (passRate == null) { %>
+              <div class="profile-kpi-val em-dash">—</div>
+            <% } else { %>
+              <div class="profile-kpi-val kpi-green"><%= passRate.toFixed(0) %>%</div>
+              <span class="profile-kpi-frac" title="대표발의한 <%= nf(proposeCnt) %>건 중 본회의를 통과한 것이 <%= nf(passedCnt) %>건"><%= nf(proposeCnt) %>건 중 <%= nf(passedCnt) %>건 가결</span>
+            <% } %>
+          </div>
+          <div class="profile-kpi-label">가결율 <span class="pb-help" data-help-href="/glossary#original" title="가결 법안 수 / 대표발의 법안 수">?</span></div>
+          <%# 🔴 가결율에는 백분위를 붙이지 않는다 — 되살리지 말 것.
+              실측: 가결 0건이 94명(32%)이라 셋 중 하나가 통째로 최하위로 묶이고,
+              같은 "가결 1건" 인데 백분위가 32~93 으로 흩어진다 (많이 낸 사람이 벌을 받는다).
+              최댓값도 26.1% 뿐이라 계류 76% 인 현실에서 이 지표는 "얼마나 오래전에 냈나" 를 잰다.
+              대신 중앙값만 앵커로 병기한다. 자세한 근거는 getKpiPercentiles.sql 주석 %>
+          <div class="kpi-rank is-off"><span class="kpi-rank-note">계류 76%라 순위 없음</span></div>
+          <% if (proposeCnt === 0) { %>
+            <div class="profile-kpi-sub">대표발의 없음</div>
+          <% } else if (med && med.passRate != null) { %>
+            <div class="profile-kpi-sub is-med">의원 중앙값 <%= med.passRate.toFixed(1) %>%</div>
+          <% } %>
         </div>
       </div>
-
-      <!-- ===== 당신과의 비교 (D 레이어 본체, 펼침 컴포넌트) =====
-           헤더(닫힌 상태) = 카드의 일치도 한 줄을 흡수.
-           바디(펼친 상태) = 4축 다이아몬드 + 축별 해석 + 전체 일치도 박스.
-           첫 진입 시 자동 펼침 (사용자가 카드의 일치도 보고 들어왔으므로 자연 첫 인상). -->
-      <%
-        const _userAxis = locals.userAxis || null;
-        let _detailDist = null;
-        let _detailSim = null;
-        if (_userAxis && politician.axis_economy !== null && politician.axis_economy !== undefined) {
-          const _s =
-            (_userAxis.economy     - parseFloat(politician.axis_economy))     ** 2 +
-            (_userAxis.social      - parseFloat(politician.axis_social))      ** 2 +
-            (_userAxis.security    - parseFloat(politician.axis_security))    ** 2 +
-            (_userAxis.institution - parseFloat(politician.axis_institution)) ** 2;
-          _detailDist = Math.sqrt(_s) / 2;
-          // 일치도 분모 1.5 (politician.ejs 와 동일 — 실측 거리 분포 보정)
-          _detailSim = Math.max(0, Math.round((1 - _detailDist / 1.5) * 100));
-        }
-        const _detailTitle = _detailDist !== null
-          ? `당신 좌표와 4축 거리 ${_detailDist.toFixed(2)}. 매핑 ${politician.axis_version} 기준.`
-          : '';
-      %>
-
-      <% if (locals.balanceGameCompleted === true && _detailSim !== null) {
-        // === 본체 — 사용자·의원 좌표 + 4축 해석 (펼침 가능) ===
-        const ua = _userAxis;
-        const pa = {
-          economy:     parseFloat(politician.axis_economy),
-          social:      parseFloat(politician.axis_social),
-          security:    parseFloat(politician.axis_security),
-          institution: parseFloat(politician.axis_institution),
-        };
-        const cx = 180, cy = 180, R = 130;
-        const pt = (val, dir) => {
-          const r = R * Math.abs(val);
-          if (dir === 'top')    return { x: cx,         y: cy - r };
-          if (dir === 'right')  return { x: cx + r,     y: cy     };
-          if (dir === 'bottom') return { x: cx,         y: cy + r };
-          return                       { x: cx - r,     y: cy     };
-        };
-        const myPts = [pt(ua.security,'top'),    pt(ua.economy,'right'),  pt(ua.institution,'bottom'),  pt(ua.social,'left')];
-        const poPts = [pt(pa.security,'top'),    pt(pa.economy,'right'),  pt(pa.institution,'bottom'),  pt(pa.social,'left')];
-        const polyStr = pts => pts.map(p => `${p.x},${p.y}`).join(' ');
-
-        const SIDE = {
-          economy:     { L: '시장', R: '개입' },
-          social:      { L: '전통', R: '자율' },
-          security:    { L: '동맹', R: '자주' },
-          institution: { L: '안정', R: '개혁' },
-        };
-        const interpret = (axis, uV, pV) => {
-          const diff = Math.abs(uV - pV);
-          let intensity;
-          if      (diff < 0.25) intensity = '거의 같음';
-          else if (diff < 0.75) intensity = '약간 차이';
-          else if (diff < 1.25) intensity = '뚜렷한 차이';
-          else                  intensity = (uV * pV < 0) ? '정반대 입장' : '큰 차이';
-          const uMid = Math.abs(uV) < 0.1, pMid = Math.abs(pV) < 0.1;
-          let direction;
-          if (uMid && pMid)        direction = '둘 다 중도 근처';
-          else if (uMid || pMid)   direction = '한쪽 중도 근처';
-          else if (uV > 0 && pV > 0) direction = `같은 방향 (둘 다 ${SIDE[axis].R} 쪽)`;
-          else if (uV < 0 && pV < 0) direction = `같은 방향 (둘 다 ${SIDE[axis].L} 쪽)`;
-          else                       direction = '반대 방향';
-          return `${direction}, ${intensity}`;
-        };
-        const fmt = (n) => (n >= 0 ? '+' : '') + n.toFixed(2);
-        const POL_AXES = [
-          { name:'안보·외교', val: pa.security },
-          { name:'경제',     val: pa.economy },
-          { name:'정치제도', val: pa.institution },
-          { name:'사회·문화', val: pa.social },
-        ];
-        const ME_AXES = [
-          { val: ua.security }, { val: ua.economy }, { val: ua.institution }, { val: ua.social },
-        ];
-      %>
-        <div class="bg-vs-collapsible" id="bg-vs-collapsible" data-open="true">
-          <button type="button" class="bg-vs-collapse-header" id="bg-vs-collapse-header" aria-expanded="true" title="<%= _detailTitle %>">
-            <span class="bg-vs-collapse-text">나의 성향 진단과 <strong><%= _detailSim %>%</strong> 일치</span>
-            <a href="/balance-game/mapping" class="bg-vs-collapse-mapping" onclick="event.stopPropagation()" title="매핑이 갱신되면 분석 결과가 달라질 수 있어요">매핑 <%= politician.axis_version %> →</a>
-            <span class="bg-vs-collapse-icon" aria-hidden="true">▼</span>
-          </button>
-          <div class="bg-vs-collapse-body" id="bg-vs-collapse-body">
-            <div class="bg-vs-body">
-              <div class="bg-vs-diamond-wrap">
-                <svg class="bg-vs-diamond" viewBox="0 0 360 360" xmlns="http://www.w3.org/2000/svg">
-                  <% [0.25, 0.50, 0.75, 1.00].forEach(scale => {
-                       const r = R * scale;
-                  %>
-                    <polygon class="bg-vs-grid"
-                      points="<%= cx %>,<%= cy - r %> <%= cx + r %>,<%= cy %> <%= cx %>,<%= cy + r %> <%= cx - r %>,<%= cy %>"/>
-                  <% }); %>
-                  <line class="bg-vs-axis-line" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
-                  <line class="bg-vs-axis-line" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
-                  <polygon class="bg-vs-fill-pol" points="<%= polyStr(poPts) %>"/>
-                  <polygon class="bg-vs-fill-mine" points="<%= polyStr(myPts) %>"/>
-                  <% poPts.forEach((p, i) => { %>
-                    <circle class="bg-vs-dot-pol" cx="<%= p.x %>" cy="<%= p.y %>" r="4">
-                      <title>의원 <%= POL_AXES[i].name %> <%= fmt(POL_AXES[i].val) %></title>
-                    </circle>
-                  <% }); %>
-                  <% myPts.forEach((p, i) => { %>
-                    <circle class="bg-vs-dot-mine" cx="<%= p.x %>" cy="<%= p.y %>" r="4">
-                      <title>나 <%= POL_AXES[i].name %> <%= fmt(ME_AXES[i].val) %></title>
-                    </circle>
-                  <% }); %>
-                  <text class="bg-vs-axis-label"        x="<%= cx %>"          y="<%= cy - R - 14 %>">안보·외교</text>
-                  <text class="bg-vs-axis-label"        x="<%= cx + R + 28 %>" y="<%= cy + 4 %>">경제</text>
-                  <text class="bg-vs-axis-label bottom" x="<%= cx %>"          y="<%= cy + R + 14 %>">정치제도</text>
-                  <text class="bg-vs-axis-label"        x="<%= cx - R - 28 %>" y="<%= cy + 4 %>">사회·문화</text>
-                </svg>
-                <div class="bg-vs-diamond-help">중심은 중도, 가장자리는 뚜렷한 입장</div>
-                <div class="bg-vs-legend">
-                  <span class="bg-vs-legend-item bg-vs-legend-mine"><span class="bg-vs-legend-swatch"></span>나의 좌표</span>
-                  <span class="bg-vs-legend-item bg-vs-legend-pol"><span class="bg-vs-legend-swatch"></span><%= politician.name %> 의원</span>
-                </div>
-              </div>
-              <div class="bg-vs-axes">
-                <div><span class="axis-name">경제</span><span class="axis-line"><%= interpret('economy', ua.economy, pa.economy) %></span></div>
-                <div><span class="axis-name">사회·문화</span><span class="axis-line"><%= interpret('social', ua.social, pa.social) %></span></div>
-                <div><span class="axis-name">안보·외교</span><span class="axis-line"><%= interpret('security', ua.security, pa.security) %></span></div>
-                <div><span class="axis-name">정치제도</span><span class="axis-line"><%= interpret('institution', ua.institution, pa.institution) %></span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      <% } else if (locals.balanceGameCompleted === false) { %>
-        <a href="/balance-game?next=<%= encodeURIComponent(locals.currentUrl || '/politician/' + politician.mona_cd) %>" class="bg-vs-collapse-header is-pending">
-          <span class="bg-vs-collapse-text">성향 진단 후 표시됩니다</span>
-          <span class="bg-vs-collapse-mapping">진단하러 가기 →</span>
-        </a>
-      <% } else { %>
-        <%# 게임 완료지만 의원 좌표 미산출 %>
-        <div class="bg-vs-collapse-header is-missing" title="이 의원의 표결 참여 기록이 부족하여 4축 좌표를 산출할 수 없습니다">
-          <span class="bg-vs-collapse-text">⚠️ 분석 데이터 부족</span>
-          <span class="bg-vs-collapse-mapping">표결 참여 부족</span>
-        </div>
+      <% if (rank) { %>
+        <%# 🔴 이 줄은 위 백분위의 전제다. 빼면 "장관은 왜 순위가 없지" 가 고장으로 읽힌다 %>
+        <p class="kpi-caveat">
+          <strong>대표발의</strong>는 자기 이름으로 법안을 낸 것, <strong>공동발의</strong>는 다른 의원이 낸 법안에 이름을 올린 것입니다.
+          <strong>가결율</strong>은 대표발의한 법안이 본회의를 통과한 비율입니다.
+          <br>
+          백분위는 <strong>현직 의원 <%= nf(rank.cohortCnt) %>명</strong> 기준입니다
+          (표결 참여율은 <%= nf(rank.cohortVote) %>명).
+          국무위원 겸직·임기 중 합류·퇴임 의원은 활동 구조가 달라 순위에서 뺍니다.
+          <% if (med && med.leadShare != null) { %>
+            <br>
+            공동발의 카드의 <strong>대표 비중</strong>(대표+공동 전체 중 대표발의가 차지하는 비율)은
+            의원 중앙값이 <strong><%= med.leadShare.toFixed(1) %>%</strong>입니다 — 공동발의가 훨씬 많은 것이 일반적입니다.
+          <% } %>
+          공동발의 수는 <strong>이름을 얼마나 걸었는지</strong>일 뿐 기여도·중요도와 다릅니다.
+        </p>
       <% } %>
 
-      <div class="overview-grid">
-        <!-- 레이더 (4축 다이아몬드) -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">활동 레이더 <span class="card-title-mono">4개 지표</span></span>
-          </div>
-          <div class="card-body radar-big">
-            <%
-              const MINI_R = 90;
-              const miniPt = (val, idx) => {
-                const r = (val / 100) * MINI_R;
-                const rad = radarAngles[idx] * Math.PI / 180;
-                return `${(r * Math.cos(rad)).toFixed(1)},${(r * Math.sin(rad)).toFixed(1)}`;
-              };
-              const miniRadarPts = radarValues.map((v, i) => miniPt(v, i)).join(' ');
-              const miniGridPt = (scale) => radarAngles.map(a => {
-                const rad = a * Math.PI / 180;
-                const r = MINI_R * scale;
-                return `${(r * Math.cos(rad)).toFixed(1)},${(r * Math.sin(rad)).toFixed(1)}`;
-              }).join(' ');
-            %>
-            <svg width="240" height="240" viewBox="-120 -120 240 240" overflow="visible">
-              <polygon points="<%= miniGridPt(1.0) %>"  fill="none" stroke="#E2DFD4" stroke-width="1"/>
-              <polygon points="<%= miniGridPt(0.75) %>" fill="none" stroke="#E2DFD4" stroke-width="1"/>
-              <polygon points="<%= miniGridPt(0.5) %>"  fill="none" stroke="#E2DFD4" stroke-width="1"/>
-              <polygon points="<%= miniGridPt(0.25) %>" fill="none" stroke="#E2DFD4" stroke-width="1"/>
-              <% radarAngles.forEach(a => {
-                   const rad = a * Math.PI / 180;
-                   const ex = (MINI_R * Math.cos(rad)).toFixed(1);
-                   const ey = (MINI_R * Math.sin(rad)).toFixed(1);
-              %>
-                <line x1="0" y1="0" x2="<%= ex %>" y2="<%= ey %>" stroke="#E2DFD4" stroke-width="1"/>
-              <% }); %>
-              <polygon points="<%= miniRadarPts %>" fill="rgba(184,116,12,0.1)" stroke="var(--accent)" stroke-width="1.5"/>
-              <% radarValues.forEach((v, i) => {
-                   const rad = radarAngles[i] * Math.PI / 180;
-                   const r = (v / 100) * MINI_R;
-                   const cx = (r * Math.cos(rad)).toFixed(1);
-                   const cy = (r * Math.sin(rad)).toFixed(1);
-              %>
-                <circle cx="<%= cx %>" cy="<%= cy %>" r="3.5" fill="#B8740C"/>
-              <% }); %>
-              <text x="0"    y="-102" text-anchor="middle" fill="#4B5362" font-size="11" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[0] %></text>
-              <text x="102"  y="4"    text-anchor="start"  fill="#4B5362" font-size="11" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[1] %></text>
-              <text x="0"    y="112"  text-anchor="middle" fill="#4B5362" font-size="11" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[2] %></text>
-              <text x="-102" y="4"    text-anchor="end"    fill="#4B5362" font-size="11" font-family="Noto Sans KR" font-weight="500"><%= radarLabels[3] %></text>
-            </svg>
-          </div>
-        </div>
+      <%# 「나와의 성향 일치」는 히어로 우측 패널(_profile_vs.ejs)로 옮겼다 (2026-08-15).
+          전체폭 접힘 띠였을 땐 가로를 다 먹으면서 세로도 400px 넘게 썼는데,
+          정작 히어로 우측 672px 는 비어 있었다. 여기에 되돌리지 말 것 %>
 
-        <!-- 표결 성향 (요약) -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">표결 성향 <span class="card-title-mono">데이터 기반</span></span>
-          </div>
-          <div class="card-body">
-            <% if (vsTotal > 0) { %>
-              <div class="category-bars">
-                <div>
-                  <div class="cat-bar-label">찬성 비율<span class="cat-bar-val" style="color:var(--green)"><%= pct(vs.for_cnt, vsAttended).toFixed(1) %>% (<%= nf(vs.for_cnt) %>건)</span></div>
-                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.for_cnt, vsAttended) %>%;background:var(--green)"></div></div>
-                </div>
-                <div>
-                  <div class="cat-bar-label">반대 비율<span class="cat-bar-val" style="color:var(--red)"><%= pct(vs.against_cnt, vsAttended).toFixed(1) %>% (<%= nf(vs.against_cnt) %>건)</span></div>
-                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.against_cnt, vsAttended) %>%;background:var(--red)"></div></div>
-                </div>
-                <div>
-                  <div class="cat-bar-label">기권 비율<span class="cat-bar-val" style="color:var(--accent)"><%= pct(vs.abstain_cnt, vsAttended).toFixed(1) %>% (<%= nf(vs.abstain_cnt) %>건)</span></div>
-                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.abstain_cnt, vsAttended) %>%;background:var(--accent)"></div></div>
-                </div>
-                <div>
-                  <div class="cat-bar-label">불참 비율<span class="cat-bar-val"><%= pct(vs.absent_cnt, vsTotal).toFixed(1) %>% (<%= nf(vs.absent_cnt) %>건)</span></div>
-                  <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= pct(vs.absent_cnt, vsTotal) %>%;background:var(--sub2)"></div></div>
-                </div>
-              </div>
-              <%
-                /* 교차 표결 성향 — "당을 보고 투표하나, 법안을 보고 투표하나"
-                   정당색은 쓰지 않는다(중립성). 자당/타당 프레이밍 + 골드 단일 강조. */
-                const cpv = locals.crossPartyVote;
-                const hasCpv = cpv && cpv.own_total > 0 && cpv.other_total > 0;
-                const cpvGap = hasCpv ? Number(cpv.gap) : 0;
-                const cpvMedian = hasCpv && cpv.cohort_median != null ? Number(cpv.cohort_median) : null;
-                const cpvRank = hasCpv && cpv.in_cohort ? Number(cpv.gap_rank) : null;
-                const cpvCohort = hasCpv ? Number(cpv.cohort_size) : 0;
-                const cpvPctile = cpvRank ? Math.round(cpvRank / cpvCohort * 100) : null;
-                const cpvDissent = hasCpv ? Number(cpv.dissent_total) : 0;
-                const cpvDissentOther = hasCpv ? Number(cpv.dissent_other) : 0;
-              %>
-              <% if (hasCpv) { %>
-                <div class="cpv-block">
-                  <div class="cpv-head">
-                    <span class="cpv-title">발의 정당별 찬성률</span>
-                    <span class="cpv-hint" title="본회의 표결 중 불참을 제외하고, 대표발의자의 소속 정당을 기준으로 나눈 값입니다. 대표발의자가 확인되지 않는 위원장 대안 등은 제외했습니다.">?</span>
-                  </div>
+      <%# 활동 레이더(4축 다이아몬드)를 삭제했다 (2026-08-15).
+          🔴 되살리지 말 것 — 4축이 `발의 / 공동발의 / 표결참여 / 가결율` 로 **KPI 행과 같은 숫자**였고,
+             앞 두 축은 현역 p90 대비 백분율인데 뒤 두 축은 원값 % 라 **단위가 다른 값을 한 도형에 그린** 셈이라
+             다각형의 모양·면적 자체에는 읽을 정보가 없었다. 대신 KPI 행을 3칸 → 4칸으로 넓혔다.
+          (스케일용 p90 쿼리 getRadarScale 도 같이 제거 — 상세 진입마다 돌던 쿼리 하나가 사라진다) %>
 
-                  <div class="cpv-rows">
-                    <div class="cpv-row">
-                      <span class="cpv-lab">자당 발의</span>
-                      <span class="cpv-track"><span class="cpv-fill is-own" style="width:<%= cpv.own_rate %>%"></span></span>
-                      <span class="cpv-val"><%= Number(cpv.own_rate).toFixed(1) %>%</span>
-                      <span class="cpv-n"><%= nf(cpv.own_total) %>건</span>
-                    </div>
-                    <div class="cpv-row">
-                      <span class="cpv-lab">타당 발의</span>
-                      <span class="cpv-track"><span class="cpv-fill is-other" style="width:<%= cpv.other_rate %>%"></span></span>
-                      <span class="cpv-val"><%= Number(cpv.other_rate).toFixed(1) %>%</span>
-                      <span class="cpv-n"><%= nf(cpv.other_total) %>건</span>
-                    </div>
-                  </div>
+      <%# 표결 성향 — **전체폭** 2단 (어떻게 투표했나 / 누구 법안에 찬성했나).
+          🔴 2026-08-15 재구성. 되돌리기 전에 _vote_profile.ejs 머리 주석을 읽을 것 —
+             찬반 4줄 막대와 자당/타당 0~100% 막대를 왜 버렸는지가 거기 있다 %>
+      <%# ⚠️ vs·vsTotal·vsAttended·nf 는 이 파일 상단의 **지역 const** 라 include 에 그냥은 안 넘어간다
+          (EJS include 는 res.render 의 locals 만 물려받는다). 명시적으로 전달할 것 —
+          crossPartyVote 는 컨트롤러 locals 라 자동으로 보인다 %>
+      <%- include('_vote_profile', { vs, vsTotal, vsAttended, nf, votes }) %>
 
-                  <div class="cpv-gap">
-                    <span class="cpv-gap-num"><%= (cpvGap > 0 ? '+' : '') + cpvGap.toFixed(1) %><small>%p</small></span>
-                    <span class="cpv-gap-desc">
-                      자당·타당 격차
-                      <% if (cpvMedian !== null) { %>
-                        <em>의원 중앙값 <%= cpvMedian.toFixed(1) %>%p</em>
-                      <% } %>
-                    </span>
-                  </div>
-
-                  <% if (cpvRank) { %>
-                    <div class="cpv-rank">
-                      격차가 큰 순으로 <strong><%= nf(cpvCohort) %>명 중 <%= nf(cpvRank) %>위</strong>
-                      <span class="cpv-rank-note">(상위 <%= cpvPctile %>%)</span>
-                    </div>
-                  <% } %>
-
-                  <% if (cpvDissent > 0) { %>
-                    <div class="cpv-dissent">
-                      반대·기권한 <strong><%= nf(cpvDissent) %>건</strong> 중
-                      <strong><%= nf(cpvDissentOther) %>건</strong>이 타당 발의 법안입니다.
-                    </div>
-                  <% } %>
-
-                  <p class="cpv-caveat">
-                    격차가 클수록 소속 정당에 따라 표결이 갈렸다는 뜻입니다. 다만 다수당·소수당의 의사일정 구조가
-                    달라 수치만으로 단정하기는 어렵습니다.
-                  </p>
-                </div>
-              <% } %>
-
-              <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--sub2);line-height:1.7">
-                총 <strong style="color:var(--text)"><%= nf(vsTotal) %>건</strong>의 본회의 표결 기록 분석.
-              </div>
-            <% } else { %>
-              <div class="notice-block">
-                표결 기록이 아직 수집되지 않았습니다. 데이터 배치 완료 후 표시됩니다.
-              </div>
-            <% } %>
-          </div>
-        </div>
-
-        <!-- 관심분야 -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">대표발의 관심분야 <span class="card-title-mono">TOP 5</span></span>
-          </div>
-          <div class="card-body">
-            <% if (topics5.length > 0) { %>
-              <div class="category-bars">
-                <% topics5.forEach(t => {
-                     const w = maxTopicCnt > 0 ? (Number(t.cnt) / maxTopicCnt * 100) : 0;
-                %>
-                  <div>
-                    <div class="cat-bar-label"><%= t.topic_name %><span class="cat-bar-val"><%= t.cnt %>건</span></div>
-                    <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= w %>%"></div></div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } else { %>
-              <div class="notice-block">아직 대표발의 법안이 없습니다.</div>
-            <% } %>
-          </div>
-        </div>
-      </div>
-
-      <!-- 월별 발의 + 타임라인 -->
-      <div class="overview-grid two">
-        <div class="card">
+      <%# 표결 성향이 전체폭으로 빠지면서 남은 카드끼리 다시 짝을 지었다 —
+          "무슨 법안을 냈나(이력) | 무슨 주제인가(관심분야)". 높이도 449 vs 310 으로 무난하다 %>
+      <%# 3열 — 표결 성향이 전체폭으로 빠지고 남은 세 장.
+          2열에 3장은 안 맞아 한 장이 통째로 전체폭 행을 먹었고 그만큼 페이지가 길어졌다.
+          "언제 냈나 | 무슨 법안을 냈나 | 무슨 주제인가" 로 묶인다 %>
+      <div class="overview-grid three">
+        <%# 월별 발의 — 이 행에서 제일 넓은 칸(1.3fr). 12개월 막대 + 정당별 협력 막대라 가로가 필요하다 %>
+      <div class="card">
           <div class="card-header">
             <span class="card-title">월별 발의 현황 <span class="card-title-mono">최근 12개월</span></span>
           </div>
@@ -1930,24 +1981,6 @@
               </div>
             <% } else { %>
               <div class="notice-block">월별 발의 데이터가 없습니다.</div>
-            <% } %>
-
-            <% if (partyCoopTop.length > 0) { %>
-              <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-                <div class="party-coop">
-                  <div style="font-size:11px;color:var(--sub2);margin-bottom:4px">정당별 공동발의 협력 (대표발의 법안 기준)</div>
-                  <% partyCoopTop.forEach(pc => {
-                       const w = partyCoopTotal > 0 ? (Number(pc.cnt) / partyCoopTotal * 100) : 0;
-                       const color = partyColorOf(pc.party_name);
-                  %>
-                    <div class="party-coop-item">
-                      <span class="party-coop-name" style="color: <%= color %>"><%= pc.party_name %></span>
-                      <div class="party-coop-bar-wrap"><div class="party-coop-bar" style="width:<%= w %>%;background:<%= color %>;opacity:0.7"></div></div>
-                      <span class="party-coop-val"><%= nf(pc.cnt) %>건</span>
-                    </div>
-                  <% }); %>
-                </div>
-              </div>
             <% } %>
           </div>
         </div>
@@ -1987,7 +2020,36 @@
             <% } %>
           </div>
         </div>
+
+        <%# 관심분야 — 위 행이 아니라 여기다. 이유는 위 행 주석 참조 %>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">대표발의 관심분야 <span class="card-title-mono">TOP 5</span></span>
+          </div>
+          <div class="card-body">
+            <% if (topics5.length > 0) { %>
+              <div class="category-bars">
+                <% topics5.forEach(t => {
+                     const w = maxTopicCnt > 0 ? (Number(t.cnt) / maxTopicCnt * 100) : 0;
+                %>
+                  <div>
+                    <div class="cat-bar-label"><%= t.topic_name %><span class="cat-bar-val"><%= t.cnt %>건</span></div>
+                    <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= w %>%"></div></div>
+                  </div>
+                <% }); %>
+              </div>
+            <% } else { %>
+              <div class="notice-block">아직 대표발의 법안이 없습니다.</div>
+            <% } %>
+          </div>
+        </div>
       </div>
+
+      <%# 정당별 공동발의 협력 — **전체폭 2단**. 두 방향(내가 참여한 / 내 법안에 참여한)을 나란히 낸다.
+          🔴 월별 발의 카드 안의 곁다리 블록이었는데, 방향이 둘이 되면서 제 카드를 줬다.
+             왜 두 개인지·단위가 왜 다른지는 _party_coop.ejs 머리 주석에 있다.
+          ⚠️ partyCoop·partyCoopOut·nf 를 명시적으로 넘길 것 (nf 는 이 파일의 지역 const 다) %>
+      <%- include('_party_coop', { partyCoop, partyCoopOut, nf }) %>
 
       <%#
         회의 발언 기록 — 발의·표결이 전부 본회의·법안 기준이라 안 보이던 **상임위**를 메운다
@@ -2037,8 +2099,10 @@
             %>
             <% if (speeches.rates && speeches.rates.items.length > 0) { %>
               <p class="sp-sub-title">상임위 회의 참여
-                <% if (speeches.rates.hasAny && speeches.rates.cohortAvg != null) { %>
-                  <span class="sp-sub-count">의원 평균 <%= speeches.rates.cohortAvg %>%</span>
+                <% if (speeches.rates.hasComparable && speeches.rates.cohortAvg != null) { %>
+                  <%# 마커 범례 — 막대 위 차콜 선이 무엇인지 여기서 한 번만 밝힌다.
+                      ⚠️ 마커가 실제로 그려지는 행이 있을 때만. 전부 겸직·퇴임이면 가리킬 대상이 없다 %>
+                  <span class="sp-avg-legend"><i class="sp-avg-glyph" aria-hidden="true"></i>의원 평균 <%= speeches.rates.cohortAvg %>%</span>
                 <% } %>
               </p>
               <div class="sp-rates">
@@ -2047,20 +2111,31 @@
                     <div class="sp-rate-head">
                       <span class="sp-rate-name"><%= r.deptNm %></span>
                       <% if (r.showRate) { %>
-                        <span class="sp-rate-val is-<%= r.vsAvg %>"><%= r.rate %><small>%</small></span>
+                        <span class="sp-rate-nums">
+                          <%# 🔴 평균 대비를 글자로 적는다. 마커만으로는 "그래서 평균보다 위인가"
+                              를 눈으로 재야 한다 — 이 한 줄이 그 계산을 대신한다.
+                              겸직·퇴임 행에는 붙이지 않는다 (겨룰 대상이 아니다) %>
+                          <% if (r.delta != null) { %>
+                            <span class="sp-rate-delta is-<%= r.vsAvg %>"><%= r.deltaLabel %></span>
+                          <% } %>
+                          <span class="sp-rate-val is-<%= r.vsAvg %>"><%= r.rate %><small>%</small></span>
+                        </span>
                       <% } %>
                     </div>
                     <div class="sp-rate-bar">
                       <% if (r.showRate) { %>
-                        <span class="sp-rate-track">
-                          <span class="sp-rate-fill" style="width:<%= Math.min(100, r.rate) %>%"></span>
-                          <%# 평균선 — 숫자 하나만 두면 50%가 높은 건지 낮은 건지 알 수 없다.
+                        <div class="sp-rate-gauge">
+                          <span class="sp-rate-track">
+                            <span class="sp-rate-fill" style="width:<%= Math.min(100, r.rate) %>%"></span>
+                          </span>
+                          <%# 평균 마커 — track 바깥에 둔다. 안에 두면 overflow:hidden 이
+                              위아래 삐침을 잘라 막대와 같은 높이가 되어 묻힌다 (예전 버그).
                               단 겸직·퇴임 행에는 긋지 않는다 (겨룰 대상이 아니다) %>
                           <% if (!r.offDuty && speeches.rates.cohortAvg != null) { %>
                             <span class="sp-rate-avg" style="left:<%= speeches.rates.cohortAvg %>%"
                                   title="의원 평균 <%= speeches.rates.cohortAvg %>%"></span>
                           <% } %>
-                        </span>
+                        </div>
                       <% } %>
                       <span class="sp-rate-frac">
                         소속 후 회의 <strong><%= nf(r.denom) %>번</strong> 중 <strong><%= nf(r.spoke) %>번</strong> 발언
@@ -2202,84 +2277,207 @@
     if (btn) btn.click();
   }
 
-  // "당신과의 비교" 펼침 토글 — 첫 진입은 자동 펼침 (data-open="true" 서버렌더)
-  // 헤더 클릭 시 토글, 매핑 링크 클릭은 stopPropagation 으로 토글 안 됨
-  const vsWrap   = document.getElementById('bg-vs-collapsible');
-  const vsHeader = document.getElementById('bg-vs-collapse-header');
-  if (vsWrap && vsHeader) {
-    vsHeader.addEventListener('click', () => {
-      const open = vsWrap.dataset.open !== 'false';
-      const next = open ? 'false' : 'true';
-      vsWrap.dataset.open = next;
-      vsHeader.setAttribute('aria-expanded', next);
-    });
-  }
+  // ("당신과의 비교" 펼침 토글은 2026-08-15 제거 — 히어로 우측 패널이라 접을 이유가 없다)
 
-  // Bill filter tabs — 필터 상태는 dataset.filtered 로만 추적 (display 와 분리)
-  document.querySelectorAll('.bill-filter-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.bill-filter-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const kind = btn.dataset.bf;
-      document.querySelectorAll('.bills-row').forEach(row => {
-        const matches = (kind === 'all') || (row.dataset.kind === kind);
-        row.dataset.filtered = matches ? '' : 'true';
-      });
-      resetBillsPaging();
-    });
-  });
+  /* 월별 표결 참여 — 막대 클릭 시 그 달의 상세.
+     🔴 호버(title)에 기대지 않는다. 기본 툴팁은 뜨는 데 1초 가까이 걸리고 안 뜨는 경우도 잦으며,
+        무엇보다 **패널 안의 법안 링크를 누를 수 없다** (마우스를 옮기면 사라진다).
+     🔴 법안 목록은 **클릭할 때 API 로** 가져온다 — 598건 전건을 심었을 땐 75KB 였는데
+        실제로 보는 건 클릭한 달 하나뿐이다. 요약 숫자(막대·칩용)만 미리 심는다.
+     🔴 네 결과(찬성·반대·기권·불참)를 다 보여주고, 많으면 **페이징**으로 접는다.
+        한 달 최대 70건이라 잘라내면 "무슨 법안이 있었나" 에 답을 못 한다. */
+  (function () {
+    const box = document.getElementById('vp-trend-detail');
+    const data = window.__VOTE_MONTHS__;
+    const mona = window.__MONA_CD__;
+    if (!box || !data || !mona) return;
+    const cols = document.querySelectorAll('.vp-trend-col');
+    const PER = 10;
+    const esc = (t) => String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const RES = ['찬성', '반대', '기권', '불참'];
+    const cache = {};                     // ym → rows (같은 달을 다시 눌러도 요청 1회)
+    let cur = null, filter = '', page = 1;
 
-  // 클라이언트 페이지네이션 (법안 탭)
-  const PER = 20;
-  let currentPage = 1;
-  const billsContainer = document.getElementById('bills-container');
-  const pagerEl = document.getElementById('bills-pagination');
+    const head = (d, ym) => '<div class="vtd-head">'
+      + '<span class="vtd-ym">' + esc(ym.replace('-', '.')) + '</span>'
+      + '<span class="vtd-sum">표결 <strong>' + d.tot + '건</strong> 중 <strong>' + d.att + '건</strong> 참여 ('
+      + d.rate + '%)</span></div>';
 
-  function resetBillsPaging() {
-    if (!billsContainer || !pagerEl) return;
-    currentPage = 1;
-    renderPage();
-  }
+    const render = () => {
+      const d = data[cur];
+      const all = cache[cur] || [];
+      const rows = filter ? all.filter((b) => b.vote_result === filter) : all;
+      const pages = Math.max(1, Math.ceil(rows.length / PER));
+      if (page > pages) page = pages;
+      const slice = rows.slice((page - 1) * PER, page * PER);
+      const cnt = { 찬성: d.yes, 반대: d.no, 기권: d.abs, 불참: d.absent };
 
-  function renderPage() {
-    const allRows = Array.from(document.querySelectorAll('.bills-row'));
-    // 필터 통과 행만 후보 (dataset.filtered === 'true' 는 필터 제외)
-    const filtered = allRows.filter(r => r.dataset.filtered !== 'true');
-    const total = filtered.length;
-    const pages = Math.max(1, Math.ceil(total / PER));
-    if (currentPage > pages) currentPage = pages;
-
-    // 필터에서 빠진 행 + 현재 페이지 밖 행 → 숨김
-    const start = (currentPage - 1) * PER;
-    const pageSet = new Set(filtered.slice(start, start + PER));
-    allRows.forEach(r => {
-      r.style.display = pageSet.has(r) ? '' : 'none';
-    });
-
-    // pager
-    pagerEl.innerHTML = '';
-    if (pages <= 1) return;
-    const mk = (label, page, opts = {}) => {
-      const b = document.createElement('button');
-      b.className = 'pg' + (opts.active ? ' active' : '');
-      b.textContent = label;
-      b.disabled = !!opts.disabled;
-      b.onclick = () => { currentPage = page; renderPage(); };
-      pagerEl.appendChild(b);
+      let h = head(d, cur);
+      /* 결과별 칩 — 70건 목록에서 반대 2건을 찾으려면 필터가 없으면 페이지를 다 넘겨야 한다.
+         ⚠️ 0건인 결과는 칩을 그리지 않는다 (누를 수 없는 칩은 노이즈다) */
+      h += '<div class="vtd-chips"><button type="button" class="vtd-chip' + (filter ? '' : ' is-on')
+         + '" data-r="">전체 ' + d.tot + '</button>';
+      RES.forEach((r) => { if (cnt[r] > 0) {
+        h += '<button type="button" class="vtd-chip' + (filter === r ? ' is-on' : '')
+           + '" data-r="' + r + '">' + r + ' ' + cnt[r] + '</button>';
+      } });
+      h += '</div>';
+      h += '<ul class="vtd-bills">' + slice.map((b) =>
+        '<li><span class="vtd-r r-' + esc(b.vote_result) + '">' + esc(b.vote_result) + '</span>'
+        + '<a href="/bill/' + encodeURIComponent(b.bill_id) + '">' + esc(b.bill_name) + '</a></li>').join('') + '</ul>';
+      if (pages > 1) {
+        h += '<div class="vtd-pager">'
+           + '<button type="button" class="vtd-pg" data-d="-1"' + (page === 1 ? ' disabled' : '') + '>← 이전</button>'
+           + '<span class="vtd-pg-n">' + page + ' / ' + pages + '</span>'
+           + '<button type="button" class="vtd-pg" data-d="1"' + (page === pages ? ' disabled' : '') + '>다음 →</button>'
+           + '</div>';
+      }
+      box.innerHTML = h;
+      box.removeAttribute('data-empty');
     };
-    mk('←', Math.max(1, currentPage - 1), { disabled: currentPage === 1 });
-    const maxBtns = 7;
-    const startPage = Math.max(1, currentPage - 3);
-    const endPage = Math.min(pages, startPage + maxBtns - 1);
-    for (let p = startPage; p <= endPage; p++) mk(String(p), p, { active: p === currentPage });
-    mk('→', Math.min(pages, currentPage + 1), { disabled: currentPage === pages });
-  }
 
-  // Hook: when filter changes we re-render. We already reset in filter handler.
-  // On first load: ensure filter didn't hide anything, then render page.
-  if (billsContainer && pagerEl) {
-    renderPage();
-  }
+    const open = (ym) => {
+      cur = ym; filter = ''; page = 1;
+      if (cache[ym]) { render(); return; }
+      box.innerHTML = head(data[ym], ym)
+        + '<div class="vtd-none">' + (window.PB && PB.spinner ? PB.spinner({ size: 18 }) : '불러오는 중…') + '</div>';
+      box.removeAttribute('data-empty');
+      const url = '/api/politician/' + encodeURIComponent(mona) + '/votes?ym=' + encodeURIComponent(ym);
+      const req = (window.PB && PB.fetch) ? PB.fetch(url) : fetch(url).then((r) => r.json());
+      req.then((d) => { cache[ym] = d.rows || []; if (cur === ym) render(); })
+         .catch(() => {
+           /* ⚠️ 실패를 조용히 넘기지 말 것 — 빈 목록과 구분이 안 된다 */
+           if (cur === ym) box.innerHTML = head(data[ym], ym)
+             + '<div class="vtd-none">법안 목록을 불러오지 못했습니다.</div>';
+         });
+    };
+
+    box.addEventListener('click', (e) => {
+      const chip = e.target.closest('.vtd-chip');
+      if (chip) { filter = chip.dataset.r; page = 1; render(); return; }
+      const pg = e.target.closest('.vtd-pg');
+      if (pg && !pg.disabled) { page += Number(pg.dataset.d); render(); }
+    });
+
+    cols.forEach((c) => {
+      c.setAttribute('aria-pressed', 'false');
+      c.addEventListener('click', () => {
+        cols.forEach((o) => o.setAttribute('aria-pressed', 'false'));
+        c.setAttribute('aria-pressed', 'true');
+        open(c.dataset.ym);
+      });
+    });
+
+    /* 연도 탭 — 선택한 연도만 그린다.
+       ⚠️ 연도를 바꾸면 열려 있던 달 패널을 닫는다. 다른 해의 상세가 남아 있으면
+          "이 막대를 눌렀나?" 가 되어 헷갈린다 */
+    document.querySelectorAll('.vp-year').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.vp-year').forEach((b) => b.classList.toggle('is-on', b === btn));
+        document.querySelectorAll('.vp-trend-year').forEach((y) => {
+          y.hidden = y.dataset.y !== btn.dataset.y;
+        });
+        cols.forEach((o) => o.setAttribute('aria-pressed', 'false'));
+        cur = null;
+        box.innerHTML = '<span class="vp-trend-hint">막대를 클릭하면 그 달의 표결 내역이 나옵니다.</span>';
+        box.setAttribute('data-empty', '1');
+      });
+    });
+  })();
+
+  /* ===== 법안 활동 탭 — API 지연 로딩 =====
+     🔴 예전엔 887행이 전부 DOM 에 있고 display:none 으로 접혀 있었다 (페이지 1.1MB).
+        지금은 필터·페이지가 **서버로 넘어갔다** — DOM 을 훑어 거르지 말 것.
+     ⚠️ 탭을 **처음 열 때** 로드한다. 페이지 진입만 하고 안 여는 사람에겐 요청이 0회다. */
+  (function () {
+    const panel = document.getElementById('tab-bills');
+    const wrap  = document.getElementById('bills-container');
+    const pager = document.getElementById('bills-pagination');
+    if (!panel || !wrap || !pager) return;
+    const mona = panel.dataset.mona;
+    let kind = 'all', page = 1, loaded = false, busy = false;
+
+    const esc = (t) => String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const RESULT_CLASS = (r) => !r ? 'pb-badge-pending'
+      : r.indexOf('가결') > -1 ? 'pb-badge-passed'
+      : (r === '부결' || r === '폐기') ? 'pb-badge-rejected'
+      : r === '철회' ? 'pb-badge-withdrawn'
+      : r.indexOf('대안') > -1 ? 'pb-badge-alt' : 'pb-badge-pending';
+    const VOTE_CLASS = { '찬성': 'for', '반대': 'against', '기권': 'abstain', '불참': 'absent' };
+
+    const row = (b) => {
+      /* ⚠️ 계류 일수 색은 서버 렌더와 **같은 임계값**이어야 한다 (200/100일) — 다르면 탭마다 색이 달라진다 */
+      const d = b.days_elapsed == null ? null : Number(b.days_elapsed);
+      const dColor = d == null ? '' : (d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--accent)' : 'var(--sub2)');
+      return '<a href="/bill/' + encodeURIComponent(b.bill_id) + '" class="bill-table-row bills-row">'
+        + '<div class="bill-row-name">' + esc(b.bill_name)
+        + (b.committee ? '<small>' + esc(b.committee) + '</small>' : '') + '</div>'
+        + '<span><span class="pb-badge ' + (b.proposer_yn ? 'pb-badge-category">대표발의' : 'pb-badge-alt">공동발의') + '</span></span>'
+        + '<div style="font-family:\'JetBrains Mono\';font-size:12px;color:var(--sub2)">' + esc(b.propose_dt || '—') + '</div>'
+        + '<span><span class="pb-badge ' + RESULT_CLASS(b.proc_result_name) + '">' + esc(b.proc_result_name || '계류') + '</span>'
+        + (!b.proc_result_name && d != null
+            ? '<span style="display:block;font-size:12px;color:' + dColor + ';font-family:\'JetBrains Mono\';margin-top:4px">+' + d + '일</span>'
+            : '')
+        + '</span>'
+        + '<div>' + (b.my_vote_result
+            ? '<span class="vote-result-chip v-' + VOTE_CLASS[b.my_vote_result] + '">' + esc(b.my_vote_result) + '</span>'
+            : '<span class="v-none">—</span>') + '</div>'
+        + '</a>';
+    };
+
+    const drawPager = (cur, pages) => {
+      pager.innerHTML = '';
+      if (pages <= 1) return;
+      const mk = (label, p, opts) => {
+        const b = document.createElement('button');
+        b.className = 'pg' + (opts && opts.active ? ' active' : '');
+        b.textContent = label;
+        b.disabled = !!(opts && opts.disabled);
+        b.onclick = () => { page = p; load(); };
+        pager.appendChild(b);
+      };
+      mk('←', Math.max(1, cur - 1), { disabled: cur === 1 });
+      const start = Math.max(1, cur - 3);
+      const end = Math.min(pages, start + 6);
+      for (let p = start; p <= end; p++) mk(String(p), p, { active: p === cur });
+      mk('→', Math.min(pages, cur + 1), { disabled: cur === pages });
+    };
+
+    const load = () => {
+      if (busy) return;
+      busy = true;
+      /* 로딩 표시 — 목록을 비우고 스피너. 안 두면 느린 회선에서 "안 눌렸나" 로 읽힌다 */
+      wrap.innerHTML = '<div class="bills-loading">' + (window.PB && PB.spinner ? PB.spinner({ size: 20 }) : '불러오는 중…') + '</div>';
+      const url = '/api/politician/' + encodeURIComponent(mona) + '/bills?kind=' + kind + '&page=' + page;
+      const req = (window.PB && PB.fetch) ? PB.fetch(url) : fetch(url).then((r) => r.json());
+      req.then((d) => {
+        wrap.innerHTML = d.rows.length ? d.rows.map(row).join('')
+          : '<div class="bills-loading">해당 조건의 법안이 없습니다.</div>';
+        drawPager(d.page, d.pages);
+        loaded = true;
+      }).catch(() => {
+        /* ⚠️ 실패를 조용히 넘기지 말 것 — 빈 목록과 구분이 안 된다 */
+        wrap.innerHTML = '<div class="bills-loading">목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
+        pager.innerHTML = '';
+      }).finally(() => { busy = false; });
+    };
+
+    document.querySelectorAll('.bill-filter-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.bill-filter-tab').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        kind = btn.dataset.bf; page = 1;
+        load();
+      });
+    });
+
+    /* 탭을 처음 열 때만 로드. 이미 열려 있으면(딥링크 등) 바로 */
+    const ensure = () => { if (!loaded && !busy) load(); };
+    document.querySelector('[data-tab="bills"]')?.addEventListener('click', ensure);
+    if (panel.classList.contains('active')) ensure();
+  })();
 
   /* ── 발언한 회의 "더 보기" ──
      서버가 전체를 이미 내려보냈으므로 hidden 만 토글한다 (왕복 없음).
