@@ -157,6 +157,29 @@ $$ LANGUAGE plpgsql;
   `stats`(SQL 집계) · `threads`(주제 묶음, v2) · `keywords` · `bill_ids` JSONB. 상세는 아래 "`/briefing` AI 카드 피드"
   - ⚠️ `id` 가 **연속하지 않는다** — `GENERATED ALWAYS AS IDENTITY` 가 ON CONFLICT 판정 전에 값을 뽑아 `--force` 재실행이 시퀀스를 태운다
   - ⚠️ `stats`·`threads[].bill_count` 는 **AI 출력이 아니라 SQL/코드 산출값**이다 (숫자를 생성물에서 받지 않는다는 원칙)
+- `politician_speeches` — **의원 발언 기록** (2026-08-12 적재 · 2026-08-15 배치 재작성, `batch/syncSpeeches.js`). 실측 **66,882행 / 의원 309명 / 2024-06-05~2026-08-14**
+  - 존재 이유: 기존 축(발의·표결·가결률)이 전부 본회의·법안 기준이라 **상임위가 안 보였다.** 이 데이터는 회의의 73%가 위원회·국감이다
+  - **`role_kind` 5종** (2026-08-15 구 `gov` 3분할, `ddl/migrations/2026-08-15-speeches-role-kind-split.sql`):
+
+    | 값 | 실측 | 뜻 | 화면 |
+    |---|---|---|---|
+    | `member` | 40,386 | 질의석 — 위원·간사·의원 | ✅ |
+    | `chair` | 21,591 | 위원장석(사회) — 안건 호명 | ✅ (분리 표시) |
+    | `government` | 4,354 | 정부측 (장관·차관·청장…) | ❌ |
+    | `other` | 548 | 도지사·교수·회장·사장 등 | ❌ |
+    | `witness` | 3 | 참고인·증인·진술인 | ❌ |
+
+  - 🔴 **집계는 `member`·`chair` 만 한다.** 소스가 MONA_CD 를 주지 않아 **이름으로만 매칭**하는데,
+    `위원장`·`위원`·`간사` 는 국회의원만 가질 수 있어 이름 충돌이 구조적으로 없는 반면
+    그 밖의 직위는 외부인이 가질 수 있어 **동명이인 오귀속**이 섞인다
+    (실측: 도지사 김영환 87건 · 회장 김병주 21건 · 변호사 김종민 15건 · 교수 박은정 7건 — 전부 다른 사람)
+    - ⚠️ `government` 안에도 오귀속이 있다 (김문수 고용노동부장관 88건 — 동명의 현역 의원이 따로 있다).
+      **세분했으니 쓸 수 있게 된 게 아니라, 왜 못 쓰는지를 기록으로 남긴 것**이다
+    - ⚠️ 3분할 이전엔 화면에 `국무위원석 답변` 이라고 라벨을 붙여 **참고인 1건짜리 의원이 장관처럼 표시됐다.** 되돌리지 말 것
+  - 🔴 **`member` 와 `chair` 를 합치지 말 것** — 위원장은 안건을 호명하느라 발언이 구조적으로 많다
+    (실측 서영교 위원장석 680건 vs 질의석 365건). 합치면 "위원장을 맡았다" 가 "말을 많이 했다" 로 둔갑한다
+  - ⚠️ `rec_sec` 은 개인 발언시간이 아니다 (한 클립에 질의+답변이 함께 녹화). 비교엔 건수를 쓸 것
+  - ⚠️ 비교 시 `politician_committees` 소속으로 정규화할 것 — 위원회마다 회의 빈도가 다르다
 - `politician_titles` — **의원 특수 직위** (2026-08-12 신규). 의장단·국무위원·교섭단체·당직 4종. **전부 수동 입력** (`ddl/seeds/politician_titles.sql`) — 자동 수집 경로가 없다. 상세는 아래 "특수 직위 배지" 참조. ⚠️ 상임위 직위는 여기가 아니라 `politician_committees`
 - `politician_committees` — **위원회 위원 명단** (2026-08-12 신규, `syncCommittees.js`). 실측 477행 / 23개 위원회 / 의원 298명(1~6개 중복 소속) / 미소속 11명
   - 소스 `nktulghcadyhmiqxi` 가 **`MONA_CD` 를 직접 준다** — 이름 매칭이 필요 없다 (발언영상 API 는 이름 문자열만 줘서 파싱이 필요한 것과 대조)
@@ -383,6 +406,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
     - 효과: 계열 COUNT 6ms(Seq Scan) → **1.5ms(Index Only Scan, Heap Fetches 0)**. 목록 쿼리에서 서브쿼리 50회 비용 170ms → **6ms**. `?bill_name=` 필터 349ms → 100ms
   - `ddl/migrations/2026-08-11-bill-summary.sql` — **법안 제안이유·주요내용**. `bills.summary` + `bills.summary_synced_at` + 부분 인덱스(`WHERE summary_synced_at IS NULL`). 미분석 법안이 목록·상세에서 내용이 아예 없던 문제 해소 (전체의 87%가 동명 법안이라 카드 구분 불가였음)
   - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
+  - `ddl/migrations/2026-08-12-politician-speeches.sql` — **의원 발언 기록 테이블**. 2026-08-15 에 **라이브 스키마에서 복원**한 것 (원본 유실). `(clip_id, mona_cd)` UNIQUE + mona/date/mona_kind 인덱스 3종
+  - `ddl/migrations/2026-08-15-speeches-role-kind-split.sql` — **`role_kind` 구 `gov` 를 `government`/`witness`/`other` 로 3분할** + CHECK 제약. ⚠️ **`syncSpeeches.js --full` 을 먼저 돌린 뒤** 실행할 것 (값을 바꾸는 건 배치고 이 파일은 제약·주석만 건다)
   - `ddl/migrations/2026-08-12-supabase-data-api-off.sql` — **Supabase Data API 노출 차단**. 실행할 SQL 이 아니라 **대시보드 설정의 기록** + 검증 쿼리 + 폴백 RLS 스크립트. ⚠️ DB 재생성 시 반드시 재설정 (빠뜨려도 에러 없이 전 테이블이 인터넷에 열림). 위 "Supabase Data API 는 꺼져 있다" 참조
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). 비공개 매핑이라 UI 노출 X. `batch/calcPoliticianAxis.js` 입력 데이터. `BILL_AXIS_MAPPING_GUIDE.md` / `BILL_AXIS_MAPPING_v1_REVIEW.md` 같이 참조
@@ -1119,6 +1144,24 @@ controllers/BriefingController.js
 - 🔴 **`overflow-wrap: anywhere` 필수.** 특위 중에 **공백이 하나도 없는 50자 이름**이 있다 (`제9회전국동시지방선거투표용지부족사태등…국정조사특별위원회`). `word-break: keep-all` 만 두면 375px 에서 `scrollWidth 581 / clientWidth 325` 로 **잘려서 안 보인다.** 문서 가로 스크롤은 안 생겨서 눈치채기 어렵다 — `bill_detail` 의 `.tl-label` 과 완전히 같은 함정
 - 미소속 11명은 블록 자체가 렌더되지 않음
 
+#### 회의 발언 기록 (`#speech-record` / `.sp-*`, 2026-08-15)
+분석 탭 **맨 아래** 전체폭 카드. 소스는 `politician_speeches`.
+발의·표결 지표가 전부 본회의·법안 기준이라 안 보이던 **상임위**를 메우는 자리다.
+
+- 배선: `getSpeechSummaryByMonaCd.sql`(요약 + 회의종류 분포를 한 쿼리로) + `getRecentSpeechesByMonaCd.sql`(최근 8건)
+  → `PoliticianService.getSpeechesByMonaCd()` 가 합쳐서 모양을 잡는다. 발언 0건이면 **`null` 을 돌려 뷰가 섹션을 안 그린다**
+- 🔴 **순위를 매기지 않는다** — 평균 대비·백분위·"N명 중 M위" 를 넣지 않는다.
+  위원회마다 회의 빈도가 다르고 위원장·장관은 구조가 달라, 숫자를 나란히 세우는 순간 오해가 된다.
+  비율은 **그 의원 안에서의 구성비**(회의 종류 분포)까지만 낸다
+- 표시하는 것은 사실 4종뿐: **질의석 건수 / 위원장석 건수 / 발언한 날 / 회의 종류 분포** + 최근 발언 영상 링크
+- 🔴 **해석 주의 4줄은 숫자와 세트다** (위원회별 회의 수 차이 · 위원장석은 사회 · 재생시간은 개인 발언시간 아님 · 정부측/외부인 제외). 하나라도 빼면 위 숫자가 곧바로 오해가 된다
+- 위원장석 타일은 `chairCnt > 0` 일 때만 — 모두가 채워야 할 칸처럼 보이면 그 자체가 점수판이 된다.
+  값 색도 골드가 아니라 `--sub` 로 낮춘다 (같은 골드면 질의와 같은 축으로 읽힌다)
+- 정당색 금지 — 막대·강조는 골드 단일색
+- ⚠️ `.sp-kind-fill` 에 `min-width: 3px` 필수 — 1% 미만 구간(실측 소위원회 4건 = 0.38%)이 폭 0px 으로 렌더돼 막대가 아예 안 그려진다
+- ⚠️ 최근 영상 목록은 **시간순 그대로** 둔다. "질의석 우선" 같은 선별을 넣으면 사실 나열이 아니라 편집이 된다
+  (위원장은 한 회의에서 클립이 수십 개 나와 목록이 한 회의로 채워지는데, 그게 실제 모습이다)
+
 #### 표결 성향 카드 — 교차 표결 성향 (`.cpv-*`, 2026-08-05 추가)
 찬반 비율 4줄 아래에 붙는 블록. **"당을 보고 투표하나, 법안을 보고 투표하나"** 를 보여준다.
 - 쿼리: `daos/queries/politician/getCrossPartyVoteByMonaCd.sql`
@@ -1327,6 +1370,7 @@ PC/모바일 동일 패턴으로 통일.
 | `syncVotes.js` | 열린국회 API (`nojepdqqaweusdfbi`) | 본회의 표결 (수집 완료 177,260건). **증분 스캔** — `--full` 로 전건 재스캔 |
 | `syncMissingBillDetails.js` | ALLBILL API | 상세 누락분 보강 |
 | `syncCommittees.js` | 열린국회정보 (`nktulghcadyhmiqxi`) | 위원회 위원 명단 → `politician_committees`. **전체 교체**(스냅샷) · `--dry-run`. 실측 477행 0.65초 |
+| `syncSpeeches.js` | 열린국회정보 (`npeslxqbanwkimebr`) | 발언영상 → `politician_speeches`. **연도 단위 UPSERT**(증분 인자가 없다) · 기본 올해분 · `--full` `--year N` `--dry-run`. 실측 올해분 6초 / 전건 54초 |
 | `syncPhotos.js` | 크롤링 | 의원 프로필 사진 |
 | `updateCommittee.js` | 열린국회 API | `syncBills.js` 이전 레코드 committee 컬럼 보강 (pSize=1000, bulk VALUES UPDATE) |
 | `syncBillAiAnalysis.js` | pal.assembly.go.kr 크롤 + Claude Haiku 4.5 | AI 법안 분석 (v4.1, 16종 카테고리) |
@@ -1346,6 +1390,9 @@ PC/모바일 동일 패턴으로 통일.
 ```
 1. syncPoliticians.js    # 의원 마스터
 1-1. syncCommittees.js   # 위원회 위원 명단 — politicians 다음 (mona_cd 조인 대상)
+1-2. syncSpeeches.js     # 발언 기록 — politicians·committees **다음**.
+                         #   소스가 이름 문자열만 줘서 politicians 로 이름 매칭을 하고,
+                         #   동명이인(박지원)은 politician_committees 로 가른다. 둘 다 최신이어야 귀속이 맞는다
 2. syncBills.js          # 법안 + 발의자 — 의원과 JOIN. updated_at 이 nav "N시간 전 갱신" 배지 소스
 3. syncBillSummary.js    # 제안이유·주요내용 — bills 참조 (신규 법안만 조회, 평시 수 초)
 4. syncVotes.js          # 본회의 표결 — bills 참조
@@ -1364,7 +1411,7 @@ PC/모바일 동일 패턴으로 통일.
 
 ### 크론 배포 (Railway, 2026-08-04)
 npm 스크립트로 체인을 고정 — Railway Start Command 는 이걸 부르기만 한다.
-- `npm run batch:daily` — `syncPoliticians && syncCommittees && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg && genBriefing`
+- `npm run batch:daily` — `syncPoliticians && syncCommittees && syncSpeeches && syncBills && syncBillSummary && syncVotes && refreshCrossPartyVote && refreshDissent && calcPoliticianAxis && calcGroupAxisAvg && genBriefing`
   - ⚠️ `genBriefing` 은 **체인 맨 뒤**여야 한다 (그날 법안·요약이 다 들어온 뒤에 읽는다).
     2026-08-11 누락이 발견됐다 — 체인에 없으면 피드가 마지막 수동 실행 시점에서 **영구히 멈춘다**
   - ⚠️ 크론 서비스에 **`ANTHROPIC_API_KEY` 가 있어야 한다.** 없으면 매일 폴백 카드("데이터 요약")만 쌓인다
@@ -1564,6 +1611,50 @@ ADSENSE_CLIENT_ID=ca-pub-0000000000000000
 ### 진행 상태 (2026-08-10)
 소유권 확인 ✅ · 검토 요청 ✅ · CMP 설정 ✅ → **심사 대기 중** (며칠~2주, 결과 메일).
 승인 후 액션은 위 "정치 중립성 리스크" 항목.
+
+---
+
+## 크롤러 제어 — `robots.txt` · `sitemap.xml` (2026-08-15)
+
+🔴 **이 사이트는 크롤러에게 URL 이 사실상 무한하다.** 이걸 막지 않으면 origin 이 통째로 노출된다.
+
+| 경로 | 무한한 이유 |
+|---|---|
+| `/xray/chart` | **차트 스펙이 통째로 쿼리스트링**이다 (`source`·`axis`·`metric`·`filter`·`sort`) |
+| `/bill` | `committee`·`party`·`ai_category_main`·`has_analysis`·`request_status`·`sort`·`search`·`bill_name`·`page` 조합 |
+| `/politician` | `party`·`committee`·`elect`·`sex`·`age`·`q`·`sort`·`match`·`gap` 조합 |
+
+전형적인 **faceted navigation crawl trap** 인데 2026-08-15 까지 `robots.txt` 자체가 없었다.
+실제로 08-14 밤부터 16시간 동안 미국발 크롤러 한 곳이 **116,880 요청을 origin 에 직격**했다
+(Cloudflare 캐시 히트 67건, 전체 트래픽의 99.5%가 미국 단일 출처, 한국은 283건). 상세는 CHANGELOG 2026-08-15 (3).
+
+### `GET /robots.txt` — `app.js`
+`ads.txt` 와 같은 **라우트 방식**. 파일로 두지 않는 이유는 `Sitemap` 지시자가 `BASE_URL` 기준 절대 URL 이어야 해서.
+- ⚠️ `express.static` 이 위에 등록돼 있으므로 **`public/robots.txt` 를 만들면 그쪽이 이긴다.** 둘 다 두지 말 것 (`ads.txt` 와 같은 함정)
+- **정책: 학습봇 차단 / 검색봇 허용** (2026-08-15 사용자 결정)
+  - 차단 `Disallow: /` — `GPTBot`·`ClaudeBot`·`anthropic-ai`·`CCBot`·`Bytespider`·`Google-Extended`·`Applebot-Extended`·`meta-externalagent`·`FacebookBot`·`Diffbot`·`Omgilibot`·`ImagesiftBot`
+  - 허용 — `OAI-SearchBot`·`Claude-SearchBot`·`PerplexityBot` 은 **의도적으로 목록에 없다.** `*` 그룹을 따라 크롤 트랩만 피해 돌게 한다. AI 답변에 출처로 인용될 길은 열어두고 통째 수집만 막는 절충
+  - ⚠️ `Google-Extended`·`Applebot-Extended` 는 **크롤러가 아니라 학습 opt-out 토큰**이다. 막아도 Googlebot·Applebot 의 검색 색인에는 영향이 없다 — "검색이 막힌다" 고 오해해서 되돌리지 말 것
+- ⚠️ **`Disallow: /bill?` 는 물음표로 시작하는 것만 막는다.** `/bill` 과 `/bill/PRC_…` 는 그대로 크롤된다. Google 은 **경로+쿼리스트링**에 접두 매칭하고 충돌 시 **더 긴 규칙이 이기므로** `Allow: /` 와 공존한다
+- ⚠️ 세션 의존 페이지(`/my`·`/auth`·`/admin`·`/balance-game/{respond,reveal,compare,connect}`)도 차단한다 — 크롤러에겐 어차피 빈 화면이다
+- ⚠️ `/briefing/*/card`·`/briefing/*/threads` 차단 — 같은 브리핑을 SNS 배포용으로 다시 그린 것이라 색인되면 **중복 콘텐츠**가 된다
+
+### `GET /sitemap.xml` — `utils/sitemap.js`
+쿼리스트링을 막으면 **목록 2페이지 이후로 가는 길이 끊긴다.** 사이트맵이 그 보완이다 —
+크롤러를 무한 조합이 아니라 유한한 실제 콘텐츠로 유도하는 것이 목적. 둘은 세트다.
+
+- 실측 **19,089 URL / 3.26MB** (법안 18,741 · 의원 309 · 브리핑 28 · 정적 11). 콜드 0.59초 → 캐시 0.006초
+- 🔴 **6시간 메모리 캐시 + inflight 공유는 필수다.** 18,000행 쿼리라 크롤러가 반복 호출하면 **막으려던 그 부하가 여기서 다시 생긴다.** `XrayService` 섹션 캐시와 같은 수법
+- `Promise.allSettled` — 한 소스가 죽어도 나머지는 낸다. 실패는 `logger.error` 로 남긴다 (조용히 빠지면 색인이 줄어든 이유를 알 수 없다). 생성 실패 시 낡은 캐시라도 응답 — 빈 사이트맵보다 낫다
+- ⚠️ **`lastmod` 는 `TO_CHAR(…, 'YYYY-MM-DD')` 문자열로 받는다.** DATE 를 JS Date 로 받으면 타임존 해석이 끼어 하루 밀린다 (프로젝트 공통 규칙). 형식이 어긋나면 **아예 넣지 않는다** — 잘못된 `lastmod` 는 크롤러가 사이트맵 전체를 무시하는 사유다
+- ⚠️ **URL 50,000개가 규격 상한**이다. 넘으면 사이트맵 인덱스로 쪼개야 한다. 조용히 자르지 않고 `logger.error` 를 남긴다
+- ⚠️ 세션에 따라 내용이 달라지는 페이지는 `STATIC_PATHS` 에 넣지 말 것 — `robots.txt` 가 막고 있어서 **서로 모순된 신호**가 된다
+- 페이지·소스를 추가할 때 손댈 곳은 `STATIC_PATHS` / `SOURCES` 두 배열뿐이다
+
+### 아직 안 한 것 — Cloudflare 캐시
+**캐시 히트율 0.09%** 는 그대로다 (HTML 이 전부 origin 직행).
+- 🔴 **캐시 룰을 걸 땐 세션 쿠키(`connect.sid`) 유무로 반드시 분기할 것.** 로그인 사용자의 nav 가 들어간 HTML 이 엣지에 캐시되면 **세션·닉네임이 다른 사람에게 노출된다**
+- Cloudflare 무료 플랜으로 충분하다 (`Upgrade to Pro` 불필요). 봇 대응도 Bot Fight Mode + Rate limiting 규칙으로 무료 범위에서 된다
 
 ---
 

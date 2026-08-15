@@ -136,6 +136,19 @@ export default (db) => {
             return rows;
         },
 
+        /* 의원 발언 요약 (질의석·위원장석 건수 · 발언한 날 · 회의 종류 분포)
+           ⚠️ member·chair 만 센다 — 나머지는 이름 매칭 오귀속이 섞인다 (쿼리 주석 참조) */
+        getSpeechSummaryByMonaCd: async (monaCd) => {
+            const { rows } = await db.query(queries.getSpeechSummaryByMonaCd, [monaCd]);
+            return rows[0] || null;
+        },
+
+        /* 의원 최근 발언 영상 */
+        getRecentSpeechesByMonaCd: async (monaCd, limit = 8) => {
+            const { rows } = await db.query(queries.getRecentSpeechesByMonaCd, [monaCd, limit]);
+            return rows;
+        },
+
         /* 레이더 스케일 기준값 (현역 의원 중 최대치) */
         getRadarScale: async () => {
             const { rows } = await db.query(queries.getRadarScale);

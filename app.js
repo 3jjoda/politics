@@ -16,6 +16,7 @@ import expressLayouts from 'express-ejs-layouts';
 import { avatarHtml } from './utils/avatar.js';
 import { fmtDate, fmtDateTime, timeAgo } from './utils/datetime.js';
 import { summaryPreview, stripSummaryHeading } from './utils/billSummary.js';
+import { sitemapHandler } from './utils/sitemap.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -77,6 +78,80 @@ app.get('/ads.txt', (req, res) => {
     res.type('text/plain; charset=utf-8')
        .send(`google.com, ${pub}, DIRECT, f08c47fec0942fa0\n`);
 });
+
+/* ===== 크롤러 제어 (robots.txt · sitemap.xml) =====
+   🔴 이 사이트는 크롤러에게 URL 이 사실상 무한하다:
+      - /xray/chart 는 차트 스펙이 통째로 쿼리스트링이다 (source·axis·metric·filter·sort 조합)
+      - /bill · /politician 은 필터가 조합형이라 링크를 따라가면 조합이 폭발한다
+      전형적인 faceted navigation crawl trap 인데 2026-08-14 까지 robots.txt 자체가 없었다.
+      그날 미국발 크롤러 한 곳이 16시간 동안 116,880 요청을 origin 에 쏟아부었다
+      (Cloudflare 캐시 히트 67건 = 전량 origin 직격, 전체 트래픽의 99.5%가 미국 단일 출처).
+      → 파라미터 URL 을 막고 sitemap 으로 유도한다.
+
+   ⚠️ 파일(public/robots.txt)로 두지 않는 이유: Sitemap 지시자가 BASE_URL 기준 절대 URL 이어야 한다.
+      그리고 express.static 이 위에 등록돼 있으므로 public/robots.txt 를 만들면 그쪽이 이긴다
+      — 둘 다 두지 말 것 (ads.txt 와 같은 함정). */
+const ROBOTS_TXT = [
+    '# 학습 데이터 수집 봇 — 차단.',
+    '# 콘텐츠를 통째로 긁어가면서 origin 부하만 남긴다. 검색 노출과는 무관하다',
+    '# (Googlebot·Bingbot 은 아래 * 그룹을 따르고, Google-Extended 는 크롤러가 아니라',
+    '#  Gemini 학습 opt-out 토큰이라 막아도 검색 색인에 영향이 없다).',
+    'User-agent: GPTBot',
+    'User-agent: ClaudeBot',
+    'User-agent: anthropic-ai',
+    'User-agent: CCBot',
+    'User-agent: Bytespider',
+    'User-agent: Google-Extended',
+    'User-agent: Applebot-Extended',
+    'User-agent: meta-externalagent',
+    'User-agent: FacebookBot',
+    'User-agent: Diffbot',
+    'User-agent: Omgilibot',
+    'User-agent: ImagesiftBot',
+    'Disallow: /',
+    '',
+    '# 실시간 검색·인용 봇(OAI-SearchBot·Claude-SearchBot·PerplexityBot)은 의도적으로',
+    '# 여기 없다 — 아래 * 그룹을 따라 크롤 트랩만 피해서 돌게 한다.',
+    '',
+    'User-agent: *',
+    'Allow: /',
+    '',
+    '# 크롤 트랩 — 쿼리스트링 조합이 사실상 무한하다.',
+    '# "/bill?" 는 물음표로 시작하는 것만 막으므로 /bill 과 /bill/PRC_… 는 그대로 크롤된다.',
+    'Disallow: /xray/chart',
+    'Disallow: /xray/s/',
+    'Disallow: /bill?',
+    'Disallow: /politician?',
+    'Disallow: /briefing?',
+    'Disallow: /community?',
+    'Disallow: /api/',
+    '',
+    '# 로그인·세션에 따라 내용이 달라지는 페이지 (색인돼도 크롤러에겐 빈 화면이다)',
+    'Disallow: /my',
+    'Disallow: /auth',
+    'Disallow: /admin',
+    'Disallow: /balance-game/respond',
+    'Disallow: /balance-game/reveal',
+    'Disallow: /balance-game/compare',
+    'Disallow: /balance-game/connect',
+    '',
+    '# 같은 브리핑을 SNS 배포용으로 다시 그린 것 — 색인되면 중복 콘텐츠가 된다',
+    'Disallow: /briefing/*/card',
+    'Disallow: /briefing/*/threads',
+    '',
+    '# Google 은 무시하지만 Bingbot·Yandex 는 따른다',
+    'Crawl-delay: 2',
+    '',
+].join('\n');
+
+app.get('/robots.txt', (req, res) => {
+    const base = (process.env.BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+    res.type('text/plain; charset=utf-8')
+       .set('Cache-Control', 'public, max-age=3600')
+       .send(`${ROBOTS_TXT}Sitemap: ${base}/sitemap.xml\n`);
+});
+
+app.get('/sitemap.xml', sitemapHandler(db));
 
 /* EJS 전역 헬퍼 */
 app.locals.avatarHtml = avatarHtml;

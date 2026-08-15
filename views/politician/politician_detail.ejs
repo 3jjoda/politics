@@ -841,6 +841,70 @@
     .cpv-n { display: none; }
   }
 
+  /* ===== 회의 발언 기록 (politician_speeches) =====
+     🔴 순위·평균 대비·백분위를 넣지 않는다. 위원회마다 회의 수가 다르고 위원장·장관은 구조가
+        달라, 숫자를 나란히 세우는 순간 오해가 된다 (ROADMAP 12번 UI 방침).
+        비율은 **이 의원 안에서의 구성비**(회의 종류)까지만.
+     🔴 정당색 금지 — 강조는 골드 단일색. */
+  .sp-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .sp-fact {
+    padding: 14px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .sp-fact-val { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+  .sp-fact-val small { font-size: 13px; font-weight: 700; margin-left: 2px; }
+  /* 위원장석은 사회(안건 호명)라 질의와 성격이 다르다 — 같은 골드로 두면 같은 축으로 읽힌다 */
+  .sp-fact.is-chair .sp-fact-val { color: var(--sub); }
+  .sp-fact-label { margin-top: 6px; font-size: 11.5px; font-weight: 700; color: var(--sub); }
+  .sp-fact-sub { margin-top: 3px; font-size: 10.5px; color: var(--sub2); line-height: 1.5; }
+
+  .sp-sub-title {
+    font-size: 12px; font-weight: 700; color: var(--sub);
+    margin: 0 0 10px; letter-spacing: 0.02em;
+  }
+  .sp-kinds { display: flex; flex-direction: column; gap: 8px; }
+  .sp-kind-row { display: grid; grid-template-columns: 76px 1fr 52px; align-items: center; gap: 8px; }
+  .sp-kind-lab { font-size: 11.5px; color: var(--sub2); overflow-wrap: anywhere; }
+  .sp-kind-track { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  /* ⚠️ min-width 필수 — 1% 미만 구간(실측 소위원회 4건 = 0.38% → 0%)이 폭 0px 으로 렌더돼
+     막대가 아예 안 그려진다. 건수가 0인 행은 GROUP BY 결과에 없으므로 항상 안전하다. */
+  .sp-kind-fill { display: block; height: 100%; min-width: 3px; border-radius: 3px; background: var(--accent); }
+  .sp-kind-val { font-size: 11.5px; font-weight: 700; color: var(--text); text-align: right; }
+
+  .sp-recent { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .sp-clips { display: flex; flex-direction: column; gap: 2px; }
+  .sp-clip {
+    display: grid;
+    grid-template-columns: 78px 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+    padding: 9px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s;
+  }
+  .sp-clip:hover { background: var(--bg3); }
+  .sp-clip-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
+  .sp-clip-title { font-size: 12.5px; color: var(--text); line-height: 1.5; overflow-wrap: anywhere; }
+  .sp-clip-meta { display: block; margin-top: 2px; font-size: 10.5px; color: var(--sub2); }
+  .sp-clip-role { font-weight: 700; }
+  .sp-clip-len { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); white-space: nowrap; }
+  .sp-caveat { margin: 14px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.7; }
+  .sp-caveat li { margin-left: 14px; }
+
+  @media (max-width: 560px) {
+    .sp-clip { grid-template-columns: 1fr auto; }
+    .sp-clip-date { grid-column: 1 / -1; }
+  }
+
   .info-list { display: flex; flex-direction: column; gap: 12px; }
   .info-item {
     display: flex;
@@ -1879,6 +1943,89 @@
           </div>
         </div>
       </div>
+
+      <%#
+        회의 발언 기록 — 발의·표결이 전부 본회의·법안 기준이라 안 보이던 **상임위**를 메운다
+        (이 데이터의 73%가 위원회·국감이다).
+
+        🔴 순위·평균 대비·백분위를 만들지 않는다 (ROADMAP 12번 UI 방침). 사실만 나열한다.
+        🔴 government·witness·other 는 화면에 쓰지 않는다 — 소스가 MONA_CD 를 주지 않아
+           이름으로만 매칭하는데 그 직위들은 외부인이 가질 수 있어 동명이인 오귀속이 섞인다.
+           서비스가 이미 걸러서 내려주므로 여기서 role_kind 를 다시 분기하지 않는다.
+      %>
+      <% if (typeof speeches !== 'undefined' && speeches) { %>
+        <div class="card" id="speech-record">
+          <div class="card-header">
+            <span class="card-title">회의 발언 기록
+              <span class="card-title-mono"><%= speeches.firstDate %> ~ <%= speeches.lastDate %></span>
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="sp-facts">
+              <div class="sp-fact">
+                <div class="sp-fact-val"><%= nf(speeches.memberCnt) %><small>건</small></div>
+                <div class="sp-fact-label">질의석 발언</div>
+                <div class="sp-fact-sub">위원·간사로서 한 발언</div>
+              </div>
+              <% if (speeches.chairCnt > 0) { %>
+                <%# 위원장석은 안건 호명이라 질의와 성격이 다르다. 합치면 "위원장을 맡았다" 가
+                    "말을 많이 했다" 로 둔갑한다 (실측 서영교 위원장석 680 vs 질의석 365). %>
+                <div class="sp-fact is-chair">
+                  <div class="sp-fact-val"><%= nf(speeches.chairCnt) %><small>건</small></div>
+                  <div class="sp-fact-label">위원장석 발언</div>
+                  <div class="sp-fact-sub">회의 진행·안건 호명</div>
+                </div>
+              <% } %>
+              <div class="sp-fact">
+                <div class="sp-fact-val"><%= nf(speeches.speechDays) %><small>일</small></div>
+                <div class="sp-fact-label">발언한 날</div>
+                <div class="sp-fact-sub">발언이 기록된 회의일 수</div>
+              </div>
+            </div>
+
+            <% if (speeches.meetings.length > 0) { %>
+              <p class="sp-sub-title">회의 종류</p>
+              <div class="sp-kinds">
+                <% speeches.meetings.forEach(m => { %>
+                  <div class="sp-kind-row">
+                    <span class="sp-kind-lab"><%= m.meeting_kind %></span>
+                    <span class="sp-kind-track"><span class="sp-kind-fill" style="width:<%= m.pct %>%"></span></span>
+                    <span class="sp-kind-val"><%= nf(m.cnt) %>건</span>
+                  </div>
+                <% }); %>
+              </div>
+            <% } %>
+
+            <% if (speeches.recent.length > 0) { %>
+              <div class="sp-recent">
+                <p class="sp-sub-title">최근 발언 영상</p>
+                <div class="sp-clips">
+                  <% speeches.recent.forEach(c => { %>
+                    <a class="sp-clip" href="<%= c.link_url %>" target="_blank" rel="noopener noreferrer">
+                      <span class="sp-clip-date"><%= c.taking_date %></span>
+                      <span class="sp-clip-title">
+                        <%= c.conf_title %>
+                        <span class="sp-clip-meta">
+                          <span class="sp-clip-role"><%= c.role_kind === 'chair' ? '위원장석' : '질의석' %></span><% if (c.act) { %> · <%= c.act %><% } %>
+                        </span>
+                      </span>
+                      <% if (c.clipLen) { %><span class="sp-clip-len"><%= c.clipLen %></span><% } %>
+                    </a>
+                  <% }); %>
+                </div>
+              </div>
+            <% } %>
+
+            <%# 🔴 이 세 줄은 반드시 함께 간다. 하나라도 빠지면 위 숫자가 곧바로 오해가 된다. %>
+            <ul class="sp-caveat">
+              <li>위원회마다 회의 빈도가 달라 <strong>의원 간 건수 비교로는 쓸 수 없습니다.</strong></li>
+              <li>위원장석 발언은 회의 진행·안건 호명이라 질의와 성격이 다릅니다.</li>
+              <li>영상 재생시간은 <strong>개인 발언시간이 아닙니다</strong> — 한 클립에 질의와 답변이 함께 녹화됩니다.</li>
+              <li>국회 영상회의록에 발언자로 기록된 건만 집계합니다 (정부측 답변·외부 참고인 발언은 제외).</li>
+            </ul>
+          </div>
+        </div>
+      <% } %>
 
     </div>
 

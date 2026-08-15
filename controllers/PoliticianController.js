@@ -75,7 +75,7 @@ export default (db) => {
             }
             const politician = politicianData[0];
 
-            const [bills, votes, topics, monthly, timeline, voteSummary, crossPartyVote, partyCoop, radarScale, committees, titles] = await Promise.all([
+            const [bills, votes, topics, monthly, timeline, voteSummary, crossPartyVote, partyCoop, radarScale, committees, titles, speeches] = await Promise.all([
                 politicianService.getBillsByMonaCd(monaCd),
                 politicianService.getVotesByMonaCd(monaCd),
                 politicianService.getTopicsByMonaCd(monaCd),
@@ -86,7 +86,8 @@ export default (db) => {
                 politicianService.getPartyCoopByMonaCd(monaCd),
                 politicianService.getRadarScale(),
                 politicianService.getCommittees(monaCd),
-                politicianService.getTitles(monaCd)
+                politicianService.getTitles(monaCd),
+                politicianService.getSpeechesByMonaCd(monaCd)
             ]);
 
             res.render('politician/politician_detail', {
@@ -104,7 +105,8 @@ export default (db) => {
                 partyCoop,
                 radarScale,
                 committees,
-                titles
+                titles,
+                speeches
             });
 
         } catch (error) {
