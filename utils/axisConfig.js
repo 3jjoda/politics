@@ -63,5 +63,8 @@ export function typeOf(axis) {
     const key = `${e >= 0 ? 'R' : 'L'},${s >= 0 ? 'R' : 'L'}`;
     const t = TYPE_NAMES[key];
     const mild = eMid || sMid;
-    return { key, mild, name: (mild ? TYPE_MILD_PREFIX : '') + t.name, base: t.name, desc: t.desc };
+    // 온건한 ○○ 는 기본 설명 뒤에 "왜 온건인지" 한 문장 — 어느 축이 가운데인지까지 말한다 (경제 / 사회·문화)
+    const midAxis = eMid && sMid ? '' : eMid ? '경제' : '사회·문화';
+    const desc = mild ? `${t.desc} 다만 ${midAxis} 축은 가운데에 가까워 기울기가 강하지 않다.` : t.desc;
+    return { key, mild, name: (mild ? TYPE_MILD_PREFIX : '') + t.name, base: t.name, desc, midAxis };
 }

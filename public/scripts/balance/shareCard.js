@@ -264,38 +264,48 @@
       const R_B = 14, placedB = [];
       const OFFS = [[0, 0], [-34, -26], [34, -26], [-34, 26], [34, 26], [-52, 0], [52, 0], [0, -44], [0, 44], [-60, -40], [60, -40], [-60, 40], [60, 40]];
       const inMap = (x, yy) => x > mx + R_B + 4 && x < mx + mw - R_B - 4 && yy > my + R_B + 4 && yy < my + mh - R_B - 4;
-      const badgeAt = (px, py, label, on) => {
-        let bx = px, by = py, moved = false;
-        for (const [dx, dy] of OFFS) {
-          const cx_ = px + dx, cy_ = py + dy;
-          if (!inMap(cx_, cy_)) continue;
-          if (!placedB.some(q => Math.hypot(q.x - cx_, q.y - cy_) < R_B * 2 + 6)) { bx = cx_; by = cy_; moved = dx !== 0 || dy !== 0; break; }
-        }
-        placedB.push({ x: bx, y: by });
+      const badgeDraw = ({ px, py, bx, by, label, on, moved }) => {
         if (moved) {   // 점 표시 + 리더선
           ctx.strokeStyle = on ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.lineWidth = 2;
           ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(bx, by); ctx.stroke();
           ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.fill();
         }
         ctx.beginPath(); ctx.arc(bx, by, R_B + 3, 0, Math.PI * 2); ctx.fillStyle = T.halo; ctx.fill();
-        ctx.beginPath(); ctx.arc(bx, by, R_B, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.fill();   // 어두운 판 회색은 한 단계 밝게 — #4A505B 는 배경에 묻혔다 (피드백)
-        ctx.font = font(800, 16, SANS); ctx.fillStyle = on ? (theme === 'dark' ? '#15171C' : '#FFFFFF') : (theme === 'dark' ? '#15171C' : '#FFFFFF');
+        ctx.beginPath(); ctx.arc(bx, by, R_B, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.fill();
+        ctx.font = font(800, 16, SANS); ctx.fillStyle = theme === 'dark' ? '#15171C' : '#FFFFFF';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx, by + 1);
         ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       };
       const farPts  = (Array.isArray(D.far) ? D.far.slice(0, 3) : []).filter(m => Number.isFinite(m.e) && Number.isFinite(m.s));
       const nearPts = (Array.isArray(D.matches) ? D.matches.slice(0, 3) : []).filter(m => Number.isFinite(m.e) && Number.isFinite(m.s));
-      // 나 → ①②③ 옅은 골드 점선 — "가장 가까운 의원조차 이만큼 멀다" 가 정보가 된다 (피드백). 배지보다 먼저 그려 밑에 깔린다
+      // 배지 위치를 먼저 정하고(그리진 않음) → 나→①②③ 점선을 배지 자리를 오려낸 채 긋고 → 배지를 얹는다.
+      // 점선이 다른 배지(①)를 관통하지 않게 (2차 피드백)
       const ue0b = Number(D.axis.economy), us0b = Number(D.axis.social);
-      if (Number.isFinite(ue0b) && Number.isFinite(us0b)) {
-        ctx.save(); ctx.strokeStyle = T.gold; ctx.globalAlpha = 0.55; ctx.lineWidth = 2; ctx.setLineDash([5, 7]);
+      const hasMe = Number.isFinite(ue0b) && Number.isFinite(us0b);
+      if (hasMe) placedB.push({ x: X(ue0b), y: Y(us0b) }, { x: X(ue0b), y: Y(us0b) });   // 나 자리 예약
+      const plan = [];
+      const planAt = (px, py, label, on) => {
+        let bx = px, by = py, moved = false;
+        for (const [dx, dy] of OFFS) {
+          const cx_ = px + dx, cy_ = py + dy;
+          if (!inMap(cx_, cy_)) continue;
+          if (!placedB.some(q => Math.hypot(q.x - cx_, q.y - cy_) < R_B * 2 + 6)) { bx = cx_; by = cy_; moved = dx !== 0 || dy !== 0; break; }
+        }
+        placedB.push({ x: bx, y: by }); plan.push({ px, py, bx, by, label, on, moved });
+      };
+      farPts.forEach((m, i) => planAt(X(m.e), Y(m.s), 'ABC'[i], false));
+      nearPts.forEach((m, i) => planAt(X(m.e), Y(m.s), String(i + 1), true));
+      if (hasMe && nearPts.length) {
+        ctx.save();
+        // evenodd 클립: 판 전체에서 배지 원들을 뺀 영역에만 점선이 그려진다
+        ctx.beginPath(); ctx.rect(mx, my, mw, mh);
+        plan.forEach(b => { ctx.moveTo(b.bx + R_B + 6, b.by); ctx.arc(b.bx, b.by, R_B + 6, 0, Math.PI * 2); });
+        ctx.clip('evenodd');
+        ctx.strokeStyle = T.gold; ctx.globalAlpha = 0.55; ctx.lineWidth = 2; ctx.setLineDash([5, 7]);
         nearPts.forEach(m => { ctx.beginPath(); ctx.moveTo(X(ue0b), Y(us0b)); ctx.lineTo(X(m.e), Y(m.s)); ctx.stroke(); });
         ctx.restore();
       }
-      // 나 자리를 먼저 예약해 배지가 나 위에 올라오지 않게
-      if (Number.isFinite(ue0b) && Number.isFinite(us0b)) placedB.push({ x: X(ue0b), y: Y(us0b) }, { x: X(ue0b), y: Y(us0b) });
-      farPts.forEach((m, i) => badgeAt(X(m.e), Y(m.s), 'ABC'[i], false));
-      nearPts.forEach((m, i) => badgeAt(X(m.e), Y(m.s), String(i + 1), true));
+      plan.forEach(b => badgeDraw(b));
       // 나
       const ue = Number(D.axis.economy), us = Number(D.axis.social);
       if (Number.isFinite(ue) && Number.isFinite(us)) {
@@ -489,14 +499,32 @@
     const OFFS = [[0, 0], [-24, -18], [24, -18], [-24, 18], [24, 18], [-36, 0], [36, 0], [0, -32], [0, 32], [-44, -30], [44, -30], [-44, 30], [44, 30]];
     const inMap = (x, yy) => x > mx + R_B + 3 && x < mx + mw - R_B - 3 && yy > my + R_B + 3 && yy < my + mh - R_B - 3;
     const grey = theme === 'dark' ? '#8B93A1' : '#8A909B', greyL = theme === 'dark' ? '#8B93A1' : '#8A909B';
-    const badge = (px, py, label, on) => {
+    const nearL = (D.matches || []).slice(0, 3).filter(m => Number.isFinite(m.e) && Number.isFinite(m.s));
+    const farL  = (D.far || []).slice(0, 3).filter(m => Number.isFinite(m.e) && Number.isFinite(m.s));
+    const hasMe = Number.isFinite(ue) && Number.isFinite(us);
+    if (hasMe) placedB.push({ x: X(ue), y: Y(us) });
+    const plan = [];
+    const planAt = (px, py, label, on) => {
       let bx = px, by = py, moved = false;
       for (const [dx, dy] of OFFS) {
         const cx_ = px + dx, cy_ = py + dy;
         if (!inMap(cx_, cy_)) continue;
         if (!placedB.some(q => Math.hypot(q.x - cx_, q.y - cy_) < R_B * 2 + 4)) { bx = cx_; by = cy_; moved = dx !== 0 || dy !== 0; break; }
       }
-      placedB.push({ x: bx, y: by });
+      placedB.push({ x: bx, y: by }); plan.push({ px, py, bx, by, label, on, moved });
+    };
+    farL.forEach((m, i) => planAt(X(m.e), Y(m.s), 'ABC'[i], false));
+    nearL.forEach((m, i) => planAt(X(m.e), Y(m.s), String(i + 1), true));
+    if (hasMe && nearL.length) {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(mx, my, mw, mh);
+      plan.forEach(q => { ctx.moveTo(q.bx + R_B + 4, q.by); ctx.arc(q.bx, q.by, R_B + 4, 0, Math.PI * 2); });
+      ctx.clip('evenodd');
+      ctx.strokeStyle = T.gold; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]);
+      nearL.forEach(m => { ctx.beginPath(); ctx.moveTo(X(ue), Y(us)); ctx.lineTo(X(m.e), Y(m.s)); ctx.stroke(); });
+      ctx.restore();
+    }
+    plan.forEach(({ px, py, bx, by, label, on, moved }) => {
       if (moved) {
         ctx.strokeStyle = on ? T.gold : greyL; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(bx, by); ctx.stroke();
@@ -506,17 +534,7 @@
       ctx.beginPath(); ctx.arc(bx, by, R_B, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : grey; ctx.fill();
       ctx.font = font(800, 12, SANS); ctx.fillStyle = theme === 'dark' ? '#15171C' : '#FFFFFF';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx, by + 1); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    };
-    const nearL = (D.matches || []).slice(0, 3).filter(m => Number.isFinite(m.e) && Number.isFinite(m.s));
-    const farL  = (D.far || []).slice(0, 3).filter(m => Number.isFinite(m.e) && Number.isFinite(m.s));
-    if (Number.isFinite(ue) && Number.isFinite(us)) {
-      ctx.save(); ctx.strokeStyle = T.gold; ctx.globalAlpha = 0.55; ctx.lineWidth = 1.5; ctx.setLineDash([4, 6]);
-      nearL.forEach(m => { ctx.beginPath(); ctx.moveTo(X(ue), Y(us)); ctx.lineTo(X(m.e), Y(m.s)); ctx.stroke(); });
-      ctx.restore();
-      placedB.push({ x: X(ue), y: Y(us) });
-    }
-    farL.forEach((m, i) => badge(X(m.e), Y(m.s), 'ABC'[i], false));
-    nearL.forEach((m, i) => badge(X(m.e), Y(m.s), String(i + 1), true));
+    });
     if (Number.isFinite(ue) && Number.isFinite(us)) {
       const px = X(ue), py = Y(us);
       ctx.beginPath(); ctx.arc(px, py, 26, 0, Math.PI * 2); ctx.fillStyle = theme === 'dark' ? 'rgba(217,160,64,0.22)' : 'rgba(184,116,12,0.18)'; ctx.fill();
