@@ -680,17 +680,19 @@
   }
   async function share() {
     if (busy) return; busy = true;
-    // 삼성 인터넷: 폴드 펼침·태블릿(넓은 화면)에선 공유 시트가 떠 있는 창으로 뜨면서 재생성을 반복한다 (실기기 확인) → 처음부터 저장으로.
-    // 접은 화면(좁은 폭)은 시트가 정상이라 그대로 두고, 실패한 적이 있으면 그때부터 저장으로
-    if (isSamsung && (window.innerWidth >= 600 || shareFailedOnce)) {
-      busy = false; await save(); setStatus('이 화면에선 공유 시트가 불안정해 저장으로 대신합니다. 갤러리에서 카톡·인스타에 올리세요.'); return;
+    // 삼성 인터넷에서 한 번 실패·취소한 뒤엔 저장으로 (폴드 펼침 실기기 실험: 파일만 넘기면 시트가 재생성을 반복했고,
+    // **파일 + text 를 같이 넘기면 정상**이었다 → 아래 payload 가 그 형태다. 그래도 실패하면 저장)
+    if (isSamsung && shareFailedOnce) {
+      busy = false; await save(); setStatus('공유 시트가 불안정해 저장으로 대신합니다. 갤러리에서 카톡·인스타에 올리세요.'); return;
     }
     try {
       // 미리 만들어 둔 PNG 가 있으면 await 없이 바로 시트를 연다 (사용자 제스처 안에서)
       const blob = readyBlob || await toBlob();
       const file = new File([blob], fileName(), { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: '나의 정치 성향 · 당말사' });
+        // 🔴 files + text 를 함께 넘긴다 — 삼성 인터넷 펼친 화면에서 files 만 넘기면 시트가 깜빡이며 재생성됐고 text 를 붙이니 정상 (2026-08-16 실기기 실험 C).
+        //    카톡·인스타는 파일이 있으면 text 를 버리므로 화면상 차이는 없다 (주소는 이미지 안에 있다)
+        await navigator.share({ files: [file], text: `나의 정치 성향 · ${D.siteHost}/balance-game` });
         setStatus('');
         return;
       }
