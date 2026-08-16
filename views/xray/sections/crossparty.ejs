@@ -7,7 +7,7 @@
   </div>
   <% const cpr = cp.rank || []; %>
   <% if (cpr.length > 0) { %>
-    <div class="xr-col-h">타당 법안 서명 비율 TOP 10 (공동발의 30건 이상)</div>
+    <div class="xr-col-h">타당 법안 서명 비율 상위 10명 (공동발의 30건 이상)</div>
     <% const cprMax = Math.max(0.001, ...cpr.map(r => r.cross_cnt / r.co_cnt)); %>
     <div class="xr-rank">
       <% cpr.forEach((r, i) => { %>

@@ -47,7 +47,10 @@ SELECT p.politician_id
      , pa.institution::float8 AS axis_institution
      , pa.mapping_version     AS axis_version
      , pa.vote_count_used     AS axis_vote_count
+     , pa.economy_n           AS axis_economy_n
+     , pa.social_n            AS axis_social_n
+     , pa.institution_n       AS axis_institution_n
   FROM politicians p
   LEFT JOIN politician_axis_score pa
-    ON pa.mona_cd = p.mona_cd AND pa.mapping_version = 'v1'
+    ON pa.mona_cd = p.mona_cd AND pa.mapping_version = 'v2'   -- 🔴 utils/axisConfig.js POL_MAPPING_VERSION 과 같아야 한다
  WHERE p.mona_cd = $1

@@ -237,9 +237,49 @@ export default (db) => {
             return politicianDao.getVotesByMonthByMonaCd(monaCd, ym);
         },
         getVotesByMonaCd: async (monaCd) => politicianDao.getVotesByMonaCd(monaCd),
+
+        /* 표결 내역 탭 한 페이지 (+ 결과별 필터).
+           🔴 `result` 는 화이트리스트로만. 모르는 값은 에러가 아니라 'all' 로 조용히 접는다 —
+              URL 을 손으로 고쳐도 안전하고, 링크가 깨져도 빈 화면보다 낫다 (/xray/chart 와 같은 판단) */
+        getVotesPage: async (monaCd, { result, page, per } = {}) => {
+            const RESULTS = ['찬성', '반대', '기권', '불참'];
+            const r = RESULTS.includes(result) ? result : 'all';
+            const p = Math.max(1, parseInt(page, 10) || 1);
+            const n = Math.min(50, Math.max(1, parseInt(per, 10) || 20));
+            const rows = await politicianDao.getVotesPageByMonaCd(monaCd, r, n, (p - 1) * n);
+            const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
+            return { rows, result: r, page: p, per: n, total };
+        },
+        /* 「나와의 성향 일치」 순위·변별력.
+           ⚠️ 실패해도 **null 을 돌려 상세는 살린다** — 부가 정보다 */
+        getMatchContext: async (axis, monaCd) => {
+            try {
+                if (!axis || !monaCd) return null;
+                return await politicianDao.getMatchContext(axis, monaCd);
+            } catch (err) {
+                logger.error(`일치 순위 조회 실패: ${err.message}`);
+                return null;
+            }
+        },
+
+        /* 홈 D 레이어 — 성향 진단 완료 유저에게 가장 가까운 의원.
+           ⚠️ 실패해도 **null 을 돌려 홈은 살린다** (부가 정보라 첫 화면을 죽이면 안 된다) */
+        getTopMatches: async (axis, limit = 3) => {
+            try {
+                if (!axis) return null;
+                return await politicianDao.getTopMatches(axis, limit);
+            } catch (err) {
+                logger.error(`홈 일치 의원 조회 실패: ${err.message}`);
+                return null;
+            }
+        },
+        /* 홈 히어로 — 무작위 의원 3명의 축 좌표. 실패해도 [] 를 돌려 홈은 살린다 */
+        getAxisSpotlight: async (limit = 3) => {
+            try { return await politicianDao.getAxisSpotlight(limit); }
+            catch (err) { logger.error(`홈 축 스포트라이트 조회 실패: ${err.message}`); return []; }
+        },
         getTopicsByMonaCd: async (monaCd) => politicianDao.getTopicsByMonaCd(monaCd),
         getMonthlyBillsByMonaCd: async (monaCd) => politicianDao.getMonthlyBillsByMonaCd(monaCd),
-        getTimelineByMonaCd: async (monaCd) => politicianDao.getTimelineByMonaCd(monaCd),
         getVoteSummaryByMonaCd: async (monaCd) => politicianDao.getVoteSummaryByMonaCd(monaCd),
         getCrossPartyVoteByMonaCd: async (monaCd) => politicianDao.getCrossPartyVoteByMonaCd(monaCd),
         getPartyCoopByMonaCd: async (monaCd) => politicianDao.getPartyCoopByMonaCd(monaCd),

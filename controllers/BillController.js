@@ -83,7 +83,7 @@ export default (db) => {
 
             const [bills, statusCounts, topicCounts, partyCounts, aiCategories, baseStats, requestStats] = await Promise.all([
                 billService.getList({ search, status, committee, party, hasAnalysis, aiCategoryMain, sort, requestStatus, priorityThreshold, billName, limit: pageSize, offset }),
-                billService.getStatusCounts(committee, party, billName),
+                billService.getStatusCounts(committee, party, billName, search),
                 billService.getTopicCounts(),
                 billService.getPartyCounts(),
                 billService.getAiCategories(),

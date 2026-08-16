@@ -763,7 +763,10 @@
         </div>
       `;
     };
-    const proposerStackHtml = buildProposerStack();
+    /* 🔴 EJS 파샬(_proposer_stack.ejs)이 SSR 한 HTML 을 그대로 쓴다 — 마크업 단일 소스.
+       아래 buildProposerStack 은 그게 없을 때의 폴백일 뿐이다.
+       ⚠️ 스택을 고칠 일이 생기면 **파샬을 고칠 것.** 여기만 고치면 미분석 분기와 갈린다 */
+    const proposerStackHtml = opts.proposerStackHtml || buildProposerStack();
 
     /* 카테고리/읽기/결과 텍스트 메타 (배지 → 텍스트로) */
     const taglineParts = [];
@@ -867,22 +870,25 @@
       });
     }
 
-    // Zone 1 발의자 스택 — 전체 보기 토글 (data-expanded 한 곳에서만 제어)
-    const ppToggle = root.querySelector('[data-action="toggle-proposers"]');
-    if (ppToggle) {
-      ppToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        const wrap = ppToggle.closest('.ba-proposers');
-        if (!wrap) return;
-        const wasExpanded = wrap.dataset.expanded === 'true';
-        wrap.dataset.expanded = (!wasExpanded).toString();
-        const arrow = wrap.querySelector('.ba-pp-toggle-arrow');
-        const txt   = wrap.querySelector('.ba-pp-toggle-text');
-        if (arrow) arrow.textContent = wasExpanded ? '▾' : '▴';
-        if (txt)   txt.textContent   = wasExpanded ? '전체 보기' : '접기';
-      });
-    }
   };
+
+  /* 발의자 스택 "전체 보기" 토글 — document 위임.
+     🔴 root 안에서 바인딩하지 말 것. 스택은 두 곳에 뜬다 —
+        분석 있는 법안은 mountBillAnalysis 가 그린 Zone 1, 없는 법안은 EJS 가 SSR 한 헤더.
+        위임이라 누가 언제 그렸든(SSR·JS·나중 삽입) 한 곳에서 처리된다 */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-action="toggle-proposers"]');
+    if (!btn) return;
+    e.preventDefault();
+    const wrap = btn.closest('.ba-proposers');
+    if (!wrap) return;
+    const wasExpanded = wrap.dataset.expanded === 'true';
+    wrap.dataset.expanded = (!wasExpanded).toString();
+    const arrow = wrap.querySelector('.ba-pp-toggle-arrow');
+    const txt   = wrap.querySelector('.ba-pp-toggle-text');
+    if (arrow) arrow.textContent = wasExpanded ? '▾' : '▴';
+    if (txt)   txt.textContent   = wasExpanded ? '전체 보기' : '접기';
+  });
 
   /* ===================================================================
      PB.mountAnalysisRequest — 법안 AI 분석 요청 위젯

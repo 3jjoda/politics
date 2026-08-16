@@ -45,7 +45,9 @@
 %>
 
 <% if (_out || _in) { %>
-  <div class="card pc-card">
+  <%# data-toc — 분석 탭 목차(politician_detail.ejs `.ov-toc`)가 DOM 에서 읽어간다.
+      ⚠️ 이 카드는 `_out || _in` 일 때만 렌더된다 — 그래서 목차를 손으로 적으면 안 된다 %>
+  <div class="card pc-card" id="ov-coop" data-toc="정당별 협력">
     <div class="card-header">
       <span class="card-title">정당별 공동발의 협력 <span class="card-title-mono">대표발의자 정당 기준</span></span>
     </div>

@@ -21,8 +21,9 @@ export default (db) => {
         /* ① 표결 합의 분포 (찬성률 히스토그램) */
         getConsensusHistogram: () => run('getConsensusHistogram'),
 
-        /* ② 소신 표결 (당론 이탈) TOP */
+        /* ② 소신 표결 (당론 이탈) TOP + 요약 (순위표만 두면 1위 수치가 높은지 낮은지 알 수 없다) */
         getDissentRank: () => run('getDissentRank'),
+        getDissentStats: () => run('getDissentStats').then(rows => rows[0]),
 
         /* ③ 발의왕 vs 입법왕 */
         getProposePass: () => run('getProposePass'),
@@ -40,6 +41,7 @@ export default (db) => {
 
         /* ⑦ 표결 불참률 TOP */
         getAbsentRank: () => run('getAbsentRank'),
+        getAbsentStats: () => run('getAbsentStats').then(rows => rows[0]),
 
         /* ⑧ 국민 vs 국회 괴리 */
         getCitizenGap: () => run('getCitizenGap'),
@@ -55,6 +57,10 @@ export default (db) => {
 
         /* ⑪ 당 성향 격차 분포 (politician_cross_party_vote MV 기반) */
         getCrossPartyGapDist: () => run('getCrossPartyGapDist'),
-        getCrossPartyGapStats: () => run('getCrossPartyGapStats').then(rows => rows[0])
+        getCrossPartyGapStats: () => run('getCrossPartyGapStats').then(rows => rows[0]),
+
+        /* ⑬ 자당/타당 찬성률 분포 — 격차(차이)가 아니라 수준. 같은 MV, 같은 모집단 */
+        getCrossPartyRateDist: () => run('getCrossPartyRateDist'),
+        getCrossPartyRateStats: () => run('getCrossPartyRateStats').then(rows => rows[0])
     };
 };

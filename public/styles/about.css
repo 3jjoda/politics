@@ -62,21 +62,18 @@
   background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 28px 22px;
-  text-align: center;
+  padding: 26px 22px;
+  /* ⚠️ 가운데 정렬을 되돌리지 말 것 — 카드 본문이 3~4줄이라 가운데 정렬이면 줄머리가 들쭉날쭉해 읽기 어렵다 */
+  text-align: left;
   transition: all 0.2s;
 }
 .direction-item:hover {
   transform: translateY(-4px);
   border-color: var(--border2);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
 }
 
-.direction-item i {
-  font-size: 32px;
-  color: var(--accent);
-  margin-bottom: 16px;
-}
+/* (`.direction-item i` 는 2026-08-16 아이콘 제거와 함께 삭제 — Font Awesome 의존도 같이 없앴다) */
 
 .direction-item h3 {
   font-size: 16px;
@@ -119,9 +116,8 @@
   border-color: var(--border);
 }
 .now-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
+  display: inline-block;
+  margin-bottom: 10px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.06em;
@@ -134,4 +130,54 @@
 @media (max-width: 768px) {
   .section-title { font-size: 20px; }
   .highlight-section { padding: 30px 18px; }
+}
+
+/* ===== 2026-08-16 재작성분 ===== */
+/* 🔴 `데이터 출처와 한계` · `중립성을 지키는 방법` 목록.
+   이 사이트의 차별점이 "무엇을 모르는지 밝힌다" 라서, 이 목록이 본문만큼 읽혀야 한다.
+   ⚠️ 12px 이하로 줄이지 말 것 — 문장형 설명은 12px 하한 (CLAUDE.md 디자인 토큰 항목) */
+.about-sub {
+  margin: 28px 0 12px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  padding-left: 10px;
+  border-left: 3px solid var(--accent);
+  line-height: 1.35;
+}
+.about-list {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.about-list li {
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--sub);
+  word-break: keep-all;
+}
+.about-list strong { color: var(--text); font-weight: 700; }
+.about-list em { font-style: normal; color: var(--accent2); font-weight: 600; }
+
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 24px !important;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.about-links a {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent2);
+  text-decoration: none;
+}
+.about-links a:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .about-list li { font-size: 14px; }
+  .about-sub { font-size: 15px; }
 }

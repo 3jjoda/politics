@@ -57,18 +57,65 @@ export default (db) => {
         };
     }
 
+    /* ⑬ 자당/타당 찬성률 — 점 그래프용. 의원 한 명이 점 하나다.
+       🔴 높이(빈도)를 쓰지 않는다. 자당이 한 칸에 92% 몰려 있어 히스토그램으로는
+          타당 분포가 바닥에 눌려 사라졌다 (쿼리 주석 참조). 가로 퍼짐만 비교한다.
+       지터는 **결정적**이어야 한다 — 매 요청 난수를 쓰면 새로고침마다 점이 튄다.
+       인덱스 해시로 -1~1 을 만들어 화면에서 밴드 높이에 곱한다 */
+    function buildRateDist(rows, stats) {
+        const jitter = (i) => {
+            // 황금비 기반 저불일치 수열 — 이웃한 인덱스끼리 값이 멀어 뭉침이 잘 흩어진다
+            const f = (i * 0.6180339887498949) % 1;
+            return Math.round((f * 2 - 1) * 1000) / 1000;   // -1 ~ 1
+        };
+        const dots = rows.map((r, i) => ({
+            own: Number(r.own_rate),
+            other: Number(r.other_rate),
+            j: jitter(i)
+        }));
+        const n = (v) => (v == null ? 0 : Number(v));
+        const total = stats ? n(stats.total) : 0;
+        const pct = (v) => (total > 0 ? Math.round(n(v) / total * 1000) / 10 : 0);
+        return {
+            dots, total,
+            own: {
+                min: n(stats && stats.own_min), max: n(stats && stats.own_max),
+                avg: n(stats && stats.own_avg), sd: n(stats && stats.own_sd),
+                median: n(stats && stats.own_median),
+                over99: n(stats && stats.own_over99), over99Pct: pct(stats && stats.own_over99)
+            },
+            other: {
+                min: n(stats && stats.other_min), max: n(stats && stats.other_max),
+                avg: n(stats && stats.other_avg), sd: n(stats && stats.other_sd),
+                median: n(stats && stats.other_median),
+                over99: n(stats && stats.other_over99), over99Pct: pct(stats && stats.other_over99)
+            },
+            // 히스토그램 범위(60~100%) 밖 인원. 0 이 아니면 뷰가 각주로 알린다
+            underMin: n(stats && stats.under_min),
+            // 폭 대비 — 이 섹션의 결론
+            ownSpread: Math.round((n(stats && stats.own_max) - n(stats && stats.own_min)) * 10) / 10,
+            otherSpread: Math.round((n(stats && stats.other_max) - n(stats && stats.other_min)) * 10) / 10,
+            // 해석 각주용 (하드코딩 금지 — 표결이 쌓이면 움직인다)
+            floorBills: n(stats && stats.floor_bills),
+            floorAvgFor: n(stats && stats.floor_avg_for),
+            opposePct: n(stats && stats.oppose_pct)
+        };
+    }
+
     /* ⑨ 정당별 4축 분포 그룹핑 (10인 미만 정당은 '그 외') */
     function buildSpectrum(rows) {
         const byParty = new Map();
         rows.forEach(r => {
             const key = r.party_name || '무소속';
             if (!byParty.has(key)) byParty.set(key, []);
+            // v2 부터 못 잰 축은 NULL (안보 전원 · 서명 5건 미만 축). Number(null)=0 은 "중도" 로 그려지므로 null 을 지킨다
+            const nn = (v) => (v === null || v === undefined) ? null : Number(v);
             byParty.get(key).push({
                 name: r.name,
-                economy: Number(r.economy),
-                social: Number(r.social),
-                security: Number(r.security),
-                institution: Number(r.institution)
+                economy: nn(r.economy),
+                social: nn(r.social),
+                security: nn(r.security),
+                institution: nn(r.institution)
             });
         });
         const parties = [...byParty.entries()]
@@ -152,7 +199,12 @@ export default (db) => {
     const SECTION_LOADERS = {
         consensus: async () => ({ consensus: buildConsensus(await dao.getConsensusHistogram()) }),
 
-        dissent: async () => ({ dissentRank: await dao.getDissentRank() }),
+        dissent: async () => {
+            const [dissentRank, dissentStats] = await Promise.all([
+                dao.getDissentRank(), dao.getDissentStats()
+            ]);
+            return { dissentRank, dissentStats };
+        },
 
         gapdist: async () => {
             const [rows, stats] = await Promise.all([
@@ -161,7 +213,31 @@ export default (db) => {
             return { gapDist: buildGapDist(rows, stats) };
         },
 
-        propose: async () => ({ proposePass: await dao.getProposePass() }),
+        ratedist: async () => {
+            const [rows, stats] = await Promise.all([
+                dao.getCrossPartyRateDist(), dao.getCrossPartyRateStats()
+            ]);
+            return { rateDist: buildRateDist(rows, stats) };
+        },
+
+        /* 산점도만 두면 "뭘 봐야 하나" 로 끝난다. 결론을 숫자로 뽑아 목록 위에 얹는다.
+           ⚠️ 추가 쿼리 없음 — 이미 받은 배열에서 센다 */
+        propose: async () => {
+            const rows = await dao.getProposePass();
+            const rate = (r) => (r.proposed > 0 ? r.passed / r.proposed : 0);
+            const N = 10;
+            const topProposed = new Set([...rows].sort((a, b) => b.proposed - a.proposed).slice(0, N).map(r => r.mona_cd));
+            const topRate = [...rows].sort((a, b) => rate(b) - rate(a)).slice(0, N).map(r => r.mona_cd);
+            return {
+                proposePass: rows,
+                proposeStats: {
+                    total: rows.length,
+                    topN: N,
+                    // 🔴 이 섹션의 결론 — 많이 내는 것과 통과시키는 것은 다른 일이다
+                    overlap: topRate.filter(id => topProposed.has(id)).length
+                }
+            };
+        },
 
         funnel: async () => {
             const [funnel, committeeRate] = await Promise.all([
@@ -185,9 +261,34 @@ export default (db) => {
             };
         },
 
-        leader: async () => ({ leaderSigner: await dao.getLeaderSigner() }),
+        leader: async () => {
+            const rows = await dao.getLeaderSigner();
+            /* 대표 비중 = 대표발의 ÷ (대표+공동). 낮을수록 "이름만 올린" 쪽 */
+            const share = rows
+                .map(r => { const t = Number(r.rep_cnt) + Number(r.co_cnt); return t > 0 ? Number(r.rep_cnt) / t * 100 : null; })
+                .filter(v => v != null)
+                .sort((a, b) => a - b);
+            const mid = share.length
+                ? (share.length % 2 ? share[(share.length - 1) / 2]
+                                    : (share[share.length / 2 - 1] + share[share.length / 2]) / 2)
+                : 0;
+            return {
+                leaderSigner: rows,
+                leaderStats: {
+                    total: rows.length,
+                    medianSharePct: Math.round(mid * 10) / 10,
+                    // 대표 비중이 5% 미만 = 사실상 서명 위주
+                    signerCnt: share.filter(v => v < 5).length
+                }
+            };
+        },
 
-        absent: async () => ({ absentRank: await dao.getAbsentRank() }),
+        absent: async () => {
+            const [absentRank, absentStats] = await Promise.all([
+                dao.getAbsentRank(), dao.getAbsentStats()
+            ]);
+            return { absentRank, absentStats };
+        },
 
         gap: async () => ({ citizenGap: await dao.getCitizenGap() }),
 

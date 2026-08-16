@@ -1,0 +1,71 @@
+<%
+/* 발의자 컴팩트 스택 — Zone 1 메타라인 직하.
+   🔴 **두 분기(AI 분석 있음/없음)의 단일 소스다.**
+      예전엔 이 마크업이 interactions.js 의 mountBillAnalysis 안에만 있어서
+      미분석 법안에는 발의자가 텍스트 한 줄("공동발의 N인")로만 남고
+      **누가 이름을 올렸는지 볼 방법이 아예 없었다** (Zone 10 발의자 그리드는 폐기됨).
+      이제 EJS 가 SSR 하고, 분석 분기는 이 HTML 을 그대로 받아 Zone 1 에 끼운다.
+      ⚠️ 마크업을 JS 쪽에 다시 만들지 말 것 — 갈리면 두 분기가 서로 달라 보인다.
+
+   입력: proposers = [{ mona_cd, name, party_name, photo, is_rep }]
+   ⚠️ 토글은 document 위임 리스너가 처리한다 (interactions.js). 여기선 data-action 만 단다
+
+   🔴 **퇴임 의원(name 이 null)은 링크를 걸지 않는다.** `bill_co_proposers` 엔 mona_cd 가 남아 있지만
+      `politicians` 는 현직만 담아서 조인이 비고, 그 mona_cd 로 가면 **상세가 404 다** (실측 TRE2429O).
+      mona_cd 유무만 보고 링크를 걸면 안 된다 — CSS 가 cursor:default 로 클릭 불가처럼 보이게 해도
+      앵커는 그대로 눌린다. */
+const _pp = Array.isArray(proposers) ? proposers : [];
+if (_pp.length) {
+  const total = _pp.length;
+  const reps   = _pp.filter(p => p.is_rep);
+  const others = _pp.filter(p => !p.is_rep);
+  const repPrimary = reps[0] || others[0];
+
+  /* 정당 분포 — 카운트 desc (동수면 먼저 나온 순). 1개면 "모두 X" */
+  const partyCount = new Map();
+  _pp.forEach(p => {
+    const k = p.party_name || '무소속';
+    partyCount.set(k, (partyCount.get(k) || 0) + 1);
+  });
+  const partyArr = [...partyCount.entries()].sort((a, b) => b[1] - a[1]);
+  const partyText = partyArr.length === 1
+    ? `모두 ${partyArr[0][0]}`
+    : partyArr.map(([n, c]) => `${n} ${c}`).join(', ');
+
+  /* 컴팩트 스택 — 대표 1 + 나머지, 최대 10.
+     ⚠️ 대표가 없는 법안(위원장 대안 등)이면 repPrimary 가 others[0] 이라
+        그대로 이어붙이면 같은 사람이 두 번 그려진다 → 중복 제거 */
+  const stackList = [];
+  if (repPrimary) stackList.push(repPrimary);
+  others.forEach(o => { if (o !== repPrimary && stackList.length < 10) stackList.push(o); });
+
+  const othersCount = total - 1;
+%>
+<div class="ba-proposers" data-expanded="false">
+  <div class="ba-proposers-bar">
+    <div class="ba-proposers-stack"><% stackList.forEach((p, i) => {
+      const isRep = i === 0;
+      const cls = ['ba-pp-stack-item'];
+      if (isRep) cls.push('is-rep');
+      if (!p.name) cls.push('is-retired');
+      const title = (p.name || '(퇴임)') + (p.party_name ? ` (${p.party_name})` : '');
+      const linkable = Boolean(p.mona_cd && p.name);   /* 퇴임(name 없음)은 링크 금지 — 상세가 404 */
+    %><% if (linkable) { %><a class="<%= cls.join(' ') %>" title="<%= title %>" href="/politician/<%= encodeURIComponent(p.mona_cd) %>"><% } else { %><span class="<%= cls.join(' ') %>" title="<%= title %>"><% } %><% if (p.photo) { %><img src="<%= p.photo %>" alt=""><% } else { %><span class="ba-pp-stack-initial"><%= (p.name || '?').slice(0, 1) %></span><% } %><% if (linkable) { %></a><% } else { %></span><% } %><% }); %></div>
+    <div class="ba-proposers-label">
+      <% if (repPrimary && repPrimary.mona_cd && repPrimary.name) { %><a class="ba-pp-rep-name" href="/politician/<%= encodeURIComponent(repPrimary.mona_cd) %>"><%= repPrimary.name %></a><% } else { %><strong class="ba-pp-rep-name"><%= (repPrimary && repPrimary.name) ? repPrimary.name : '(퇴임)' %></strong><% } %><% if (othersCount > 0) { %><span class="ba-pp-others"> 외 <%= othersCount %>인</span><% } %>
+      <span class="ba-pp-sep"> · </span>
+      <span class="ba-pp-parties"><%= partyText %></span>
+    </div>
+    <button type="button" class="ba-pp-toggle" data-action="toggle-proposers">
+      <span class="ba-pp-toggle-text">전체 보기</span>
+      <span class="ba-pp-toggle-arrow">▾</span>
+    </button>
+  </div>
+  <div class="ba-proposers-grid"><% _pp.forEach(p => {
+    const cls = ['ba-pp-card'];
+    if (p.is_rep) cls.push('is-rep');
+    if (!p.name) cls.push('is-retired');
+    const linkable = Boolean(p.mona_cd && p.name);   /* 퇴임(name 없음)은 링크 금지 — 상세가 404 */
+  %><% if (linkable) { %><a class="<%= cls.join(' ') %>" href="/politician/<%= encodeURIComponent(p.mona_cd) %>"><% } else { %><div class="<%= cls.join(' ') %>"><% } %><span class="ba-pp-card-avatar"><% if (p.photo) { %><img src="<%= p.photo %>" alt=""><% } else { %><span class="ba-pp-stack-initial"><%= (p.name || '?').slice(0, 1) %></span><% } %></span><div class="ba-pp-card-meta"><div class="ba-pp-card-name"><%= p.name || '(퇴임)' %><% if (p.is_rep) { %><span class="ba-pp-card-rep-tag">대표</span><% } %></div><div class="ba-pp-card-party"><%= p.party_name || '—' %></div></div><% if (linkable) { %></a><% } else { %></div><% } %><% }); %></div>
+</div>
+<% } %>

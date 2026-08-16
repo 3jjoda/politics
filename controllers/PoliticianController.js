@@ -75,12 +75,11 @@ export default (db) => {
             }
             const politician = politicianData[0];
 
-            const [billCounts, votes, topics, monthly, timeline, voteSummary, crossPartyVote, partyCoop, partyCoopOut, committees, titles, speeches, kpiRank] = await Promise.all([
+            const [billCounts, votes, topics, monthly, voteSummary, crossPartyVote, partyCoop, partyCoopOut, committees, titles, speeches, kpiRank, matchCtx] = await Promise.all([
                 politicianService.getBillCounts(monaCd),
                 politicianService.getVotesByMonaCd(monaCd),
                 politicianService.getTopicsByMonaCd(monaCd),
                 politicianService.getMonthlyBillsByMonaCd(monaCd),
-                politicianService.getTimelineByMonaCd(monaCd),
                 politicianService.getVoteSummaryByMonaCd(monaCd),
                 politicianService.getCrossPartyVoteByMonaCd(monaCd),
                 politicianService.getPartyCoopByMonaCd(monaCd),
@@ -88,7 +87,10 @@ export default (db) => {
                 politicianService.getCommittees(monaCd),
                 politicianService.getTitles(monaCd),
                 politicianService.getSpeechesByMonaCd(monaCd),
-                politicianService.getKpiPercentiles(monaCd)
+                politicianService.getKpiPercentiles(monaCd),
+                /* 🔴 일치도는 **순위**로 낸다 — 절대 %는 임의 보정값(1.5)에 의존해 못 믿는다.
+                   근거 실측은 getMatchContext.sql 머리 주석에 (매핑 48건 · 안보축 84% 동일값 등) */
+                politicianService.getMatchContext(res.locals.userAxis, monaCd)
             ]);
 
             res.render('politician/politician_detail', {
@@ -100,7 +102,6 @@ export default (db) => {
                 votes,
                 topics,
                 monthly,
-                timeline,
                 voteSummary: voteSummary || { for_cnt: 0, against_cnt: 0, abstain_cnt: 0, absent_cnt: 0, total_cnt: 0 },
                 crossPartyVote,
                 partyCoop,
@@ -108,6 +109,7 @@ export default (db) => {
                 committees,
                 titles,
                 speeches,
+                matchCtx,
                 kpiRank
             });
 
@@ -139,6 +141,16 @@ export default (db) => {
        🔴 예전엔 598건 전건을 JSON 으로 심어 75KB 였다. 실제로 보는 건 클릭한 달 하나뿐이다. */
     controller.getVotesByMonthApi = wrapWithContext(async function getVotesByMonthApi(req, res, next) {
         try {
+            /* 같은 경로가 두 가지를 낸다 — `?ym=` 이면 그 달치(월별 차트 클릭 패널),
+               없으면 표결 내역 탭의 한 페이지. 둘 다 "이 의원의 표결" 이라 경로를 나누지 않았다.
+               ⚠️ `ym` 분기를 **먼저** 둘 것. 뒤로 가면 월별 패널이 페이지 응답을 받는다 */
+            if (req.query.ym === undefined) {
+                const out = await politicianService.getVotesPage(req.params.monaCd, req.query);
+                return res.status(200).json({
+                    ...out,
+                    pages: Math.max(1, Math.ceil(out.total / out.per))
+                });
+            }
             const rows = await politicianService.getVotesByMonth(req.params.monaCd, req.query.ym);
             // ⚠️ 형식이 틀리면 빈 배열이 아니라 400 — 조용히 빈 화면이 되면 원인을 못 찾는다
             if (rows === null) return res.status(400).json({ error: 'ym 형식은 YYYY-MM 이어야 합니다' });

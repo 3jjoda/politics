@@ -146,6 +146,16 @@
   }
   .setup-submit:hover:not(:disabled) { background: var(--accent2); }
   .setup-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* 필수 동의 — 제출 버튼 바로 위. 체크 전에는 버튼이 안 열린다 */
+  .setup-agree {
+    display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+    margin: 4px 0 16px; font-size: 13px; line-height: 1.6; color: var(--sub);
+    word-break: keep-all;
+  }
+  .setup-agree input { margin-top: 3px; width: 16px; height: 16px; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+  .setup-agree strong { color: var(--accent2); font-weight: 700; }
+  .setup-agree a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
+  .setup-agree a:hover { color: var(--accent2); }
 
   .setup-cancel {
     display: block;
@@ -279,7 +289,9 @@
       <div class="setup-section">
         <div class="setup-section-label">연령대</div>
         <div class="choice-group age" data-choice="ageGroup">
-          <button type="button" class="choice-btn" data-value="10s">10대</button>
+          <%# 🔴 만 14세 미만은 법정대리인 동의가 필요해 **가입 자격을 만 14세 이상으로 제한**한다
+              (이용약관 4항과 세트 — 한쪽만 고치지 말 것). 그래서 라벨이 "10대" 가 아니라 "14~19세" 다 %>
+          <button type="button" class="choice-btn" data-value="10s">14~19세</button>
           <button type="button" class="choice-btn" data-value="20s">20대</button>
           <button type="button" class="choice-btn" data-value="30s">30대</button>
           <button type="button" class="choice-btn" data-value="40s">40대</button>
@@ -292,6 +304,20 @@
       <div class="privacy-note">
         성별과 연령대는 통계 목적으로만 사용되며 개인 식별에 활용되지 않습니다.
       </div>
+
+      <%# 🔴 **필수 동의**. 이게 없으면 두 가지가 비어 있게 된다 —
+          ① 개인정보 수집·이용 **동의 절차** (처리방침을 게시해두는 것과 동의를 받는 것은 다르다)
+          ② 만 14세 이상이라는 **이용자의 진술** (안내 문구만으로는 진술이 아니라 알림일 뿐이다).
+          연령을 검증할 수단은 없지만, 진술로 받아두면 사후 조치(약관 4항)의 근거가 된다.
+          ⚠️ 서버(AuthController)에서도 반드시 검증할 것 — 체크박스는 JS 로 우회된다 %>
+      <label class="setup-agree">
+        <input type="checkbox" name="agree" id="setup-agree" value="1">
+        <span>
+          <strong>(필수)</strong> 만 14세 이상이며,
+          <a href="/terms" target="_blank" rel="noopener">이용약관</a>과
+          <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>에 동의합니다.
+        </span>
+      </label>
 
       <button type="submit" class="setup-submit" id="setup-submit" disabled>
         시작하기
@@ -314,11 +340,14 @@
   let lastCheckedValue = null;
   let lastResultAvailable = false;
 
-  // 3개 섹션 완료 여부를 모아서 제출 버튼 활성화
+  // 3개 섹션 + 필수 동의를 모아서 제출 버튼 활성화
+  const agreeBox = document.getElementById('setup-agree');
   const completion = { nickname: false, gender: false, ageGroup: false };
   const refreshSubmit = () => {
-    submitBtn.disabled = !(completion.nickname && completion.gender && completion.ageGroup);
+    submitBtn.disabled = !(completion.nickname && completion.gender && completion.ageGroup
+      && (agreeBox ? agreeBox.checked : true));
   };
+  agreeBox?.addEventListener('change', refreshSubmit);
 
   const setState = (state, message) => {
     input.classList.remove('ok', 'error');

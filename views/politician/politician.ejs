@@ -24,24 +24,11 @@
   // D 레이어 일치도 배지 (게임 완료 + 의원 좌표 있음)
   // 텍스트는 거리 → 일치도(%) 변환만 노출. 시각 차등·이모지·라벨·v1·거리값 모두 제거 (상세 정보는 툴팁으로)
   const userAxis = locals.userAxis || null;
-  const distanceTo = (p) => {
-    if (!userAxis || p.axis_economy === null || p.axis_economy === undefined) return null;
-    const sum =
-      (userAxis.economy     - parseFloat(p.axis_economy))     ** 2 +
-      (userAxis.social      - parseFloat(p.axis_social))      ** 2 +
-      (userAxis.security    - parseFloat(p.axis_security))    ** 2 +
-      (userAxis.institution - parseFloat(p.axis_institution)) ** 2;
-    return Math.sqrt(sum) / 2;
-  };
-  // 일치도(%) — 분모 1.5: 실제 의원 거리 분포가 이론적 최대 2.0 에 절대 도달 못 함
-  // 사용자 직관 ("다이아몬드 거의 안 겹치는 의원" → 5~10%)과 정합되도록 보정
-  // similarity = max(0, (1 - d/1.5) × 100)
-  //   d=0.0  → 100% / d=0.61 (가장 가까움) → 59% / d=1.40 → 7% / d≥1.5 → 0%
-  const similarityOf = (d) => {
-    if (d === null || d === undefined) return null;
-    return Math.max(0, Math.round((1 - d / 1.5) * 100));
-  };
-  const matchTitle = (d) => `당신 좌표와 4축 거리 ${d.toFixed(2)}. 매핑 v1 기준.`;
+  // 🔴 거리·일치도 식은 utils/balanceDistance.js 단일 소스 (app.locals). 여기서 축을 나열하지 말 것 —
+  //    2026-08-16 v2 부터 3축(안보 제외)이라 4축 식이 남아 있으면 상세·홈과 다른 수가 나온다
+  const distanceTo = (p) => userAxis ? axisDistance(userAxis, politicianAxisOf(p)) : null;
+  const similarityOf = (d) => similarityPct(d);
+  const matchTitle = (d) => `당신 좌표와 ${AXIS.MATCH_AXES.length}축 거리 ${d.toFixed(2)}. 매핑 ${AXIS.POL_MAPPING_VERSION} 기준 (안보축 제외).`;
 %>
 
 <style>
@@ -116,9 +103,20 @@
   }
 
   /* Filter */
-  .filter-bar {
+  /* 데스크톱(≥769px) 실측 높이. 사이드바를 검색바+정당탭 아래에 붙이는 데만 쓴다 —
+     모바일에선 사이드바가 바텀시트(position:fixed)라 이 값이 관여하지 않는다.
+     ⚠️ 모바일 필터바는 내용이 여러 줄로 접혀 높이가 유동적이다. 이 값으로 무언가를
+     sticky 시키려 하지 말 것 — 그래서 검색바+정당탭을 한 컨테이너로 묶었다 */
+  /* ⚠️ 정당 탭 51px 은 법안 목록의 상태 탭(56.25px)과 다르다 —
+     여기는 `<button>`, 저기는 `<a>` 라 패딩이 달라서다. 값을 복사해 쓰지 말 것 */
+  :root { --filter-bar-h: 75px; --party-tabs-h: 51px; }
+
+  /* 검색바 + 정당 탭을 통째로 고정. 둘을 따로 sticky 시키지 말 것 (마크업 주석 참조)
+     ⚠️ `--nav-h` 는 데스크톱 100px · 모바일 60px 이다. 60px 을 하드코딩하면
+     데스크톱에서 상단 40px 이 고정 nav 뒤로 들어가 필터바가 잘려 보인다. */
+  .sticky-head {
     position: sticky;
-    top: 60px;
+    top: var(--nav-h);
     z-index: 50;
   }
   .filter-bar-inner {
@@ -277,12 +275,13 @@
 
   .sidebar {
     position: sticky;
-    top: 130px;
+    /* nav + 검색바 + 정당탭 바로 아래. 130px 하드코딩이던 시절엔 데스크톱에서 필터바와 5px 겹쳤다 */
+    top: calc(var(--nav-h) + var(--filter-bar-h) + var(--party-tabs-h));
     display: flex;
     flex-direction: column;
     gap: 16px;
     /* 전체 사이드바 높이가 뷰포트를 넘어가면 내부에서 스크롤 */
-    max-height: calc(100vh - 130px - 24px);
+    max-height: calc(100vh - var(--nav-h) - var(--filter-bar-h) - var(--party-tabs-h) - 24px);
     overflow-y: auto;
     scrollbar-width: thin;              /* Firefox */
     scrollbar-color: var(--border2) transparent;
@@ -727,6 +726,19 @@
   .filter-sheet-btn { display: none; }
   .filter-sheet-backdrop { display: none; }
 
+  /* 모바일에서 옮겨온 select 3종의 자리. 데스크톱에선 비어 있으므로 렌더하지 않는다 —
+     ⚠️ `:empty` 는 공백 텍스트도 자식으로 치므로 마크업을 한 줄로 붙여 쓸 것 */
+  .sheet-selects:empty { display: none; }
+  .sheet-selects {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 14px;
+  }
+  .sheet-selects .filter-select { width: 100%; }
+  .sheet-select-row { display: flex; flex-direction: column; gap: 6px; }
+  .sheet-select-label { font-size: 12px; font-weight: 700; color: var(--sub); }
+
   /* 사이드바 내부 헤더 — 데스크톱/모바일 공통 */
   .filter-sheet-header {
     display: flex;
@@ -906,7 +918,7 @@
 <div class="party-histogram">
   <div class="ph-title">
     <div>
-      <div class="ph-title-label">SEAT DISTRIBUTION · <strong>정당별 의석 분포</strong></div>
+      <div class="ph-title-label"><strong>정당별 의석 분포</strong></div>
     </div>
     <div class="ph-total">총 <strong><%= nf(histoTotal) %>석</strong></div>
   </div>
@@ -935,6 +947,11 @@
   </div>
 </div>
 
+<!-- ⚠️ 검색바와 정당 탭을 한 컨테이너로 묶어 통째로 sticky 시킨다.
+     따로 sticky 시키면 정당 탭의 top 을 `nav + 검색바높이` 로 계산해야 하는데,
+     검색바는 모바일에서 내용이 여러 줄로 접혀 높이가 유동적이다. 묶으면 그 계산이 사라진다.
+     `/bill` 의 검색바+상태탭과 같은 구조 — 한쪽을 고치면 다른 쪽도 볼 것. -->
+<div class="sticky-head">
 <div class="filter-bar">
   <div class="filter-bar-inner">
     <!-- LEFT: 뷰 형태 토글 -->
@@ -1007,6 +1024,7 @@
     <% }); %>
   </div>
 </div>
+</div><!-- /.sticky-head -->
 
 <%
   // 성별 분포
@@ -1041,6 +1059,9 @@
       </div>
       <button type="button" class="filter-sheet-close" id="filter-sheet-close" aria-label="닫기">×</button>
     </div>
+    <!-- 모바일에서 상단 검색바의 select 3종(일치도·당성향·정렬)이 여기로 옮겨온다.
+         데스크톱에선 비어 있어 렌더되지 않는다 (:empty). 상세는 JS 의 relocateSelects 참조 -->
+    <div class="sidebar-card sheet-selects" id="sheet-selects"></div>
     <!-- 성별 분포 (클릭 필터) -->
     <div class="sidebar-card">
       <div class="sidebar-title">성별 분포</div>
@@ -1327,7 +1348,13 @@
       const hit = (t) => (window.PB
         ? PB.matchesQuery(t, q)
         : String(t).toLowerCase().includes(q.toLowerCase()));
-      const textHit = !q || hit(name) || hit(district);
+      // 🔴 초성 쿼리는 **이름에만** 건다. 지역구까지 걸면 결과의 절반 이상이 노이즈가 된다
+      //    (실측: ㄱㅅ 41명 중 22명, ㅂㅅ 52명 중 38명이 이름이 아니라 지역구로 걸렸다).
+      //    통합 지역구명이 길어서(`남원시장수군임실군순창군`) 그 초성 문자열에 웬만한
+      //    2~3자 조합이 전부 부분일치하는 게 원인이다. `ㅂㅅ` 는 '부산' 하나로 38명이 딸려온다.
+      //    지역구는 한글로 직접 치면(`강동`) 그대로 검색된다 — 기능이 사라지는 게 아니다.
+      const choseongQ = !!window.PB && PB.isChoseongOnly(q);
+      const textHit = !q || (choseongQ ? hit(name) : (hit(name) || hit(district)));
       const matches = textHit &&
         (!state.party || party === state.party) &&
         (state.cmit.length === 0       || state.cmit.includes(cmit)) &&
@@ -1389,7 +1416,12 @@
     document.getElementById('list-empty').style.display = visibleCount === 0 ? '' : 'none';
 
     // 필터 시트 배지 — 선택된 항목 총 개수 (party 는 별도 UI 라 제외)
-    const active = state.sex.length + state.ageBucket.length + state.cmit.length + state.elect.length;
+    // ⚠️ 일치도·당성향은 모바일에선 시트 안에 있어 **닫혀 있으면 배지가 유일한 신호**다.
+    //    빼면 필터가 걸린 채로 배지가 0 이 되어 왜 결과가 적은지 알 수 없다.
+    //    정렬(sort)은 거르는 게 아니라 순서라 세지 않는다. 데스크톱은 배지가 숨겨져 영향 없음
+    const selActive = (state.match ? 1 : 0) + (state.gap ? 1 : 0);
+    const active = state.sex.length + state.ageBucket.length + state.cmit.length + state.elect.length
+                 + (selectsInSheet() ? selActive : 0);
     const badge = document.getElementById('filter-sheet-badge');
     if (badge) {
       if (active > 0) { badge.textContent = String(active); badge.hidden = false; }
@@ -1472,12 +1504,83 @@
       el.classList.toggle('active', state.ageBucket.includes(el.dataset.distValue || ''));
     });
   };
+  /* ===== 모바일: select 3종을 필터 시트로 이동 =====
+     모바일 검색바가 233px(3줄)까지 부푸는 원인이 이 select 들이다. 시트로 옮기면 128px.
+     🔴 복제하지 말고 **같은 노드를 옮긴다** — id 가 둘이 되면 안 되고,
+        노드를 옮기면 걸어둔 이벤트 리스너와 현재 선택값이 그대로 따라온다.
+     ⚠️ 시트 안에서는 상단 바와 달리 **즉시 적용하지 않는다** (사이드바 항목과 같은 규칙 —
+        '적용' 에서만 커밋). 어느 쪽에 있느냐가 커밋 시점을 정한다. */
+  const SHEET_SELECTS = [
+    { id: 'pol-match-filter', label: '나와의 성향 일치도' },
+    { id: 'pol-gap-filter',   label: '당 성향' },
+    { id: 'pol-sort',         label: '정렬' }
+  ];
+  const selectsBox  = document.getElementById('sheet-selects');
+  const filterRight = document.querySelector('.filter-right');
+  const searchWrap  = filterRight ? filterRight.querySelector('.search-wrap') : null;
+  const selectsInSheet = () => !!selectsBox && selectsBox.children.length > 0;
+
+  const syncSelectsFromState = () => {
+    const s = document.getElementById('pol-sort');
+    if (s) s.value = state.sort;
+    const m = document.getElementById('pol-match-filter');
+    if (m) m.value = state.match;
+    const g = document.getElementById('pol-gap-filter');
+    if (g) g.value = state.gap;
+  };
+
+  const mobileMq = window.matchMedia('(max-width: 768px)');
+  const relocateSelects = () => {
+    if (!selectsBox || !filterRight) return;
+    if (mobileMq.matches) {
+      SHEET_SELECTS.forEach(({ id, label }) => {
+        const el = document.getElementById(id);
+        if (!el || selectsBox.contains(el)) return;
+        // 시트에선 3개가 세로로 쌓여 "70% 이상" 만 보이면 무엇의 값인지 알 수 없다 → 라벨을 붙인다
+        const row = document.createElement('div');
+        row.className = 'sheet-select-row';
+        const lb = document.createElement('span');
+        lb.className = 'sheet-select-label';
+        lb.textContent = label;
+        row.appendChild(lb);
+        row.appendChild(el);
+        selectsBox.appendChild(row);
+      });
+    } else {
+      SHEET_SELECTS.forEach(({ id }) => {
+        const el = document.getElementById(id);
+        if (!el || !selectsBox.contains(el)) return;
+        const row = el.parentElement;
+        // 원래 자리(검색창 앞)로. searchWrap 이 없으면 끝에 붙는다
+        filterRight.insertBefore(el, searchWrap);
+        if (row && row.classList.contains('sheet-select-row')) row.remove();
+      });
+    }
+  };
+  relocateSelects();
+  /* ⚠️ `matchMedia` 의 change 만 믿으면 안 된다 — 발화하지 않는 환경이 실재한다 (실측).
+     그러면 데스크톱으로 넓혀도 select 가 시트에 남아 상단 바가 비고,
+     `selectsInSheet()` 가 true 라 즉시 적용도 안 먹는다.
+     relocateSelects 는 멱등(이미 제자리면 아무것도 안 함)이라 resize 로 한 번 더 받아도 싸다 */
+  // ⚠️ requestAnimationFrame 으로 묶지 말 것 — 탭이 렌더링하지 않으면 콜백이 아예 돌지 않아
+  //    그 사이 폭이 바뀌면 select 가 엉뚱한 자리에 남는다 (실측). 교차할 때만 도는 동기 가드로 충분하다
+  let wasMobile = mobileMq.matches;
+  const onViewportChange = () => {
+    if (mobileMq.matches === wasMobile) return;   // 브레이크포인트를 넘을 때만 일한다
+    wasMobile = mobileMq.matches;
+    relocateSelects();
+  };
+  mobileMq.addEventListener('change', onViewportChange);
+  window.addEventListener('resize', onViewportChange);
+
   const openSheet = () => {
     sheetSnapshot = {
       sex: [...state.sex],
       ageBucket: [...state.ageBucket],
       cmit: [...state.cmit],
-      elect: [...state.elect]
+      elect: [...state.elect],
+      // 모바일에선 select 3종도 시트 안에 있다 — 스냅샷에 없으면 취소해도 안 되돌아온다
+      sort: state.sort, match: state.match, gap: state.gap
     };
     document.body.classList.add('filter-sheet-open');
   };
@@ -1487,7 +1590,11 @@
       state.ageBucket = [...sheetSnapshot.ageBucket];
       state.cmit = [...sheetSnapshot.cmit];
       state.elect = [...sheetSnapshot.elect];
+      state.sort = sheetSnapshot.sort;
+      state.match = sheetSnapshot.match;
+      state.gap = sheetSnapshot.gap;
       syncVisualsFromState();
+      syncSelectsFromState();
     }
     document.body.classList.remove('filter-sheet-open');
   };
@@ -1500,6 +1607,14 @@
     state.ageBucket = [];
     state.cmit = [];
     state.elect = [];
+    // select 가 시트 안에 있을 때만 초기화한다 — 데스크톱에선 시트 밖(상단 바)이라
+    // "초기화" 가 화면에 보이지도 않는 값을 건드리면 안 된다
+    if (selectsInSheet()) {
+      state.sort = 'propose';
+      state.match = '';
+      state.gap = '';
+      syncSelectsFromState();
+    }
     syncVisualsFromState();
   };
   sheetBtn?.addEventListener('click', openSheet);
@@ -1516,17 +1631,20 @@
     state.q = e.target.value;
     applyFilter();
   });
-  // Sort
+  // Sort / Match / Gap
+  // ⚠️ 시트 안(모바일)에 있을 땐 커밋하지 않는다 — 사이드바 항목과 같이 '적용' 에서만.
+  //    상단 바(데스크톱)에 있을 땐 종전대로 즉시 적용
+  const commitSelect = () => { if (!selectsInSheet()) applyFilter(); };
   document.getElementById('pol-sort').addEventListener('change', (e) => {
     state.sort = e.target.value;
-    applyFilter();
+    commitSelect();
   });
   // Match filter
   const matchFilterEl = document.getElementById('pol-match-filter');
   if (matchFilterEl) {
     matchFilterEl.addEventListener('change', (e) => {
       state.match = e.target.value;
-      applyFilter();
+      commitSelect();
     });
   }
   // 당 성향 격차 filter
@@ -1534,7 +1652,7 @@
   if (gapFilterEl) {
     gapFilterEl.addEventListener('change', (e) => {
       state.gap = e.target.value;
-      applyFilter();
+      commitSelect();
     });
   }
   // Party tabs
@@ -1610,5 +1728,13 @@
   // 초기 — URL → state → UI 동기화 → 필터 적용
   loadFromUrl();
   applyFilter();
+  // 🔴 interactions.js(window.PB) 는 이 스크립트보다 **뒤에** 로드된다 (layout 에서 body 다음).
+  //    그래서 위 applyFilter() 는 PB 없이 돌고, 초성 검색이 폴백(일반 부분일치)으로 떨어진다.
+  //    완성형 쿼리는 폴백으로도 맞지만 **초성 쿼리는 아무것도 못 찾아 0명**이 된다 —
+  //    `/politician?q=ㄱㄷㄱ` 같은 공유 링크가 빈 화면으로 열렸다 (타이핑하면 그제야 정상).
+  //    → 파싱이 끝나 PB 가 준비된 뒤 한 번 더 건다. 309장이라 비용은 무시할 수준이고 멱등하다.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => applyFilter(), { once: true });
+  }
 })();
 </script>

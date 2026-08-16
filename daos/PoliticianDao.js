@@ -118,7 +118,34 @@ export default (db) => {
             return rows;
         },
 
-        /* 의원별 관심분야 TOP5 */
+        /* 표결 내역 탭 한 페이지 (+ 결과별 필터). result 는 서비스가 화이트리스트로 접는다 */
+        getVotesPageByMonaCd: async (monaCd, result, limit, offset) => {
+            const { rows } = await db.query(queries.getVotesPageByMonaCd, [monaCd, result, limit, offset]);
+            return rows;
+        },
+
+        /* 「나와의 성향 일치」 — 순위 + 축별 변별력. 왜 %가 아니라 순위인지는 쿼리 주석에 */
+        getMatchContext: async (axis, monaCd) => {
+            const { rows } = await db.query(queries.getMatchContext,
+                [axis.economy, axis.social, axis.institution, monaCd]);   // 3축 — 안보 제외 (utils/axisConfig.js)
+            return rows[0] || null;
+        },
+
+        /* 홈 — 내 좌표(3축)와 가장 가까운 의원 TOP N.
+           ⚠️ 일치도 식은 의원 상세·목록과 **글자 그대로 같아야** 한다 (쿼리 주석 참조) */
+        getTopMatches: async (axis, limit = 3) => {
+            const { rows } = await db.query(queries.getTopMatches,
+                [axis.economy, axis.social, axis.institution, limit]);   // 3축 — 안보 제외 (utils/axisConfig.js)
+            return rows;
+        },
+
+        /* 홈 히어로 — 무작위 N명 + 축 좌표 + 소속 정당 평균 (쿼리 주석 참조) */
+        getAxisSpotlight: async (limit = 3) => {
+            const { rows } = await db.query(queries.getAxisSpotlight, [limit]);
+            return rows;
+        },
+
+        /* 의원별 대표발의 특화 위원회 TOP5 (건수 + 본인비중 + 의원평균비중 + 배수) */
         getTopicsByMonaCd: async (monaCd) => {
             const { rows } = await db.query(queries.getTopicsByMonaCd, [monaCd]);
             return rows;
@@ -127,12 +154,6 @@ export default (db) => {
         /* 의원별 월별 발의 */
         getMonthlyBillsByMonaCd: async (monaCd) => {
             const { rows } = await db.query(queries.getMonthlyBillsByMonaCd, [monaCd]);
-            return rows;
-        },
-
-        /* 의원별 주요 법안 타임라인 */
-        getTimelineByMonaCd: async (monaCd) => {
-            const { rows } = await db.query(queries.getTimelineByMonaCd, [monaCd]);
             return rows;
         },
 

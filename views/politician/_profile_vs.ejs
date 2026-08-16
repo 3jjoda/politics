@@ -13,54 +13,30 @@
 
   ⚠️ 정당색 금지 — 나=골드 채움, 의원=무채색 점선. 명도와 선 종류로만 가른다.
 
-  locals: politician, userAxis, balanceGameCompleted, currentUrl
+  🔴 **일치도 %를 주인공으로 되돌리지 말 것** (2026-08-16 로직 점검).
+     % 는 분모 1.5 라는 **임의 보정값**에 의존한다. → **순위**를 주인공으로 쓴다.
+     순위는 거리의 단조 변환이라 그 임의 보정과 무관하다.
+
+  🔴 **v2 (2026-08-16): 좌표는 공동발의 × 방향 매핑 4,854건 · 3축(경제·사회·제도)** 이다.
+     · v1(표결 48건)은 좌표가 뭉치고(안보축 84%가 같은 값) 출석률을 재고 있었다 → 소스를 공동발의로 바꿨다.
+     · **안보축은 만들지 않는다.** 전 코퍼스 분류에서 `자주` 방향 법안이 59건뿐 — 안보 쟁점은 법률이 아니라
+       정부 권한이라 입법 기록에 없다. 거리에서 빼고 **화면은 이유를 쓴다** (AXIS.UNMEASURED_REASON).
+     · 거리·일치도 식은 **utils/balanceDistance.js 단일 소스** (app.locals axisDistance/similarityPct).
+       여기서 축을 다시 나열하지 말 것 — 목록·홈과 다른 수가 나온다.
+     · 다이아몬드(4꼭짓점)는 3꼭짓점 레이더가 됐다. 안보 꼭짓점을 "0" 으로 두면 둘 다 중도로 읽혀 거짓이 된다.
+
+  locals: politician, userAxis, balanceGameCompleted, currentUrl, matchCtx
 %>
 <%
+  const nfv = (n) => Number(n || 0).toLocaleString('ko-KR');
   const _ua = locals.userAxis || null;
-  const _hasPolAxis = politician.axis_economy !== null && politician.axis_economy !== undefined;
-  let _sim = null, _dist = null;
-  if (_ua && _hasPolAxis) {
-    const _s =
-      (_ua.economy     - parseFloat(politician.axis_economy))     ** 2 +
-      (_ua.social      - parseFloat(politician.axis_social))      ** 2 +
-      (_ua.security    - parseFloat(politician.axis_security))    ** 2 +
-      (_ua.institution - parseFloat(politician.axis_institution)) ** 2;
-    _dist = Math.sqrt(_s) / 2;
-    // 일치도 분모 1.5 — politician.ejs 와 **같은 식이어야 한다** (실측 거리 분포 보정)
-    _sim = Math.max(0, Math.round((1 - _dist / 1.5) * 100));
-  }
+  const pa = politicianAxisOf(politician);          // 매칭 3축이 전부 있어야 객체, 아니면 null
+  const _dist = _ua ? axisDistance(_ua, pa) : null;
+  const _sim  = similarityPct(_dist);
 %>
 
 <% if (locals.balanceGameCompleted === true && _sim !== null) {
-     const pa = {
-       economy:     parseFloat(politician.axis_economy),
-       social:      parseFloat(politician.axis_social),
-       security:    parseFloat(politician.axis_security),
-       institution: parseFloat(politician.axis_institution),
-     };
-     /* 다이아몬드 — 본문판(R=130)의 축소본. viewBox 만 줄이면 라벨이 같이 줄어 안 읽히므로
-        R 을 줄이고 라벨 크기는 CSS 가 따로 잡는다.
-        🔴 viewBox 가 **가로로 넓다** (300 × 210, 도형은 가운데). 정사각으로 두면 좌우 축 라벨이
-           도형 밖으로 나가 잘린다 — `사회·문화` 5글자가 앵커에서 왼쪽으로 ~47 뻗는데
-           cx-R-8 = 23 이라 음수 좌표로 넘어갔다 (실측으로 잡음). 가로 여유 45씩을 viewBox 에 준다. */
-     const cx = 150, cy = 105, R = 74;
-     const pt = (val, dir) => {
-       const r = R * Math.abs(val);
-       if (dir === 'top')    return { x: cx,     y: cy - r };
-       if (dir === 'right')  return { x: cx + r, y: cy     };
-       if (dir === 'bottom') return { x: cx,     y: cy + r };
-       return                       { x: cx - r, y: cy     };
-     };
-     const myPts = [pt(_ua.security,'top'), pt(_ua.economy,'right'), pt(_ua.institution,'bottom'), pt(_ua.social,'left')];
-     const poPts = [pt(pa.security,'top'),  pt(pa.economy,'right'),  pt(pa.institution,'bottom'),  pt(pa.social,'left')];
-     const polyStr = (pts) => pts.map(p => `${p.x},${p.y}`).join(' ');
-
-     const SIDE = {
-       economy:     { L: '시장', R: '개입' },
-       social:      { L: '전통', R: '자율' },
-       security:    { L: '동맹', R: '자주' },
-       institution: { L: '안정', R: '개혁' },
-     };
+     const SIDE = AXIS.AXIS_META;
      /* ⚠️ 강도·방향을 둘 다 말해야 한다. "뚜렷한 차이" 만으로는 어느 쪽으로 다른지 모르고,
         "반대 방향" 만으로는 얼마나 다른지 모른다 */
      const interpret = (axis, uV, pV) => {
@@ -80,61 +56,105 @@
        return { direction, intensity, near: diff < 0.25 };
      };
      const fmt = (n) => (n >= 0 ? '+' : '') + n.toFixed(2);
+     const pct = (v) => ((v + 1) / 2 * 100);          // -1..+1 → 0..100% (막대 위 위치)
      const AXES = [
-       { key:'security',    name:'안보·외교' },
-       { key:'economy',     name:'경제' },
-       { key:'institution', name:'정치제도' },
-       { key:'social',      name:'사회·문화' },
+       { key:'economy',     name: SIDE.economy.name },
+       { key:'social',      name: SIDE.social.name },
+       { key:'institution', name: SIDE.institution.name },
+       { key:'security',    name: SIDE.security.name, unmeasured: true },
      ];
+     const SIGN_N = (k) => politician['axis_' + k + '_n'];
+     const _mc = locals.matchCtx || null;
+     const MAPPED = (k) => _mc && _mc['mapped_' + k] != null ? Number(_mc['mapped_' + k]) : null;
+     const US = AXIS.UNMEASURED_STATS.security;
+     const _WEAK = 0.5;
+     const _spread = (key) => _mc && _mc['spread_' + key] != null ? Number(_mc['spread_' + key]) : 0;
 %>
-  <%# ⚠️ .pv-main 래퍼가 있어야 중간 폭(769~1199px)에서 패널을 **가로로 눕힐** 수 있다.
-      그 구간에선 패널이 히어로 전체폭으로 떨어지는데, 세로 스택 그대로면 히어로가 통째로 길어진다 %>
-  <aside class="profile-vs" aria-label="나와의 성향 일치">
-   <div class="pv-main">
+  <%# ── 우측 패널: 순위만. 축별 비교는 아래 전체폭 띠(.pv-band)로 뺐다 (2026-08-16).
+      왜: 320px 세로 패널에 다이아몬드+축 목록+각주를 다 넣으니 패널이 650px 이 되어
+          왼쪽(사진·정보 240px) 아래가 통째로 죽은 공간이었다. 가로로 펼치면 히어로가 짧아지고
+          축 비교도 한 줄에 읽힌다 %>
+  <aside class="profile-vs is-compact" aria-label="나와의 성향 일치">
     <div class="pv-head">
       <span class="pv-cap">나와의 성향 일치</span>
       <a href="/balance-game/mapping" class="pv-map" title="매핑이 갱신되면 분석 결과가 달라질 수 있어요">매핑 <%= politician.axis_version %> →</a>
     </div>
-    <div class="pv-score" title="당신 좌표와 4축 거리 <%= _dist.toFixed(2) %>. 매핑 <%= politician.axis_version %> 기준.">
-      <strong><%= _sim %></strong><small>%</small>
-    </div>
-
-    <svg class="pv-diamond" viewBox="0 0 300 210" xmlns="http://www.w3.org/2000/svg" role="img"
-         aria-label="4축 좌표 비교 — 나와 <%= politician.name %> 의원">
-      <% [0.25, 0.50, 0.75, 1.00].forEach((scale) => { const r = R * scale; %>
-        <polygon class="bg-vs-grid" points="<%= cx %>,<%= cy - r %> <%= cx + r %>,<%= cy %> <%= cx %>,<%= cy + r %> <%= cx - r %>,<%= cy %>"/>
-      <% }); %>
-      <line class="bg-vs-axis-line" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
-      <line class="bg-vs-axis-line" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
-      <polygon class="bg-vs-fill-pol" points="<%= polyStr(poPts) %>"/>
-      <polygon class="bg-vs-fill-mine" points="<%= polyStr(myPts) %>"/>
-      <% poPts.forEach((p, i) => { %>
-        <circle class="bg-vs-dot-pol" cx="<%= p.x %>" cy="<%= p.y %>" r="3"><title>의원 <%= AXES[i].name %> <%= fmt(pa[AXES[i].key]) %></title></circle>
-      <% }); %>
-      <% myPts.forEach((p, i) => { %>
-        <circle class="bg-vs-dot-mine" cx="<%= p.x %>" cy="<%= p.y %>" r="3"><title>나 <%= AXES[i].name %> <%= fmt(_ua[AXES[i].key]) %></title></circle>
-      <% }); %>
-      <text class="pv-axis-label"        x="<%= cx %>"          y="<%= cy - R - 9 %>">안보·외교</text>
-      <text class="pv-axis-label"        x="<%= cx + R + 14 %>" y="<%= cy + 4 %>" text-anchor="start">경제</text>
-      <text class="pv-axis-label bottom" x="<%= cx %>"          y="<%= cy + R + 9 %>">정치제도</text>
-      <text class="pv-axis-label"        x="<%= cx - R - 14 %>" y="<%= cy + 4 %>" text-anchor="end">사회·문화</text>
-    </svg>
-
-    <div class="pv-legend">
-      <span class="pv-legend-item is-mine"><i></i>나</span>
-      <span class="pv-legend-item is-pol"><i></i><%= politician.name %></span>
-    </div>
-   </div>
-
-    <dl class="pv-axes">
-      <% AXES.forEach((a) => { const r = interpret(a.key, _ua[a.key], pa[a.key]); %>
-        <div<%= r.near ? ' class="is-near"' : '' %>>
-          <dt><%= a.name %></dt>
-          <dd><%= r.direction %> · <span class="pv-int"><%= r.intensity %></span></dd>
-        </div>
-      <% }); %>
-    </dl>
+    <%# 🔴 주인공은 **순위**다. % 는 보조로 내리고 "무엇을 잰 건지" 를 바로 옆에 쓴다.
+        ⚠️ matchCtx 가 없으면(쿼리 실패) % 만 조용히 남는다 — 패널이 통째로 사라지진 않는다 %>
+    <% if (_mc) { %>
+      <div class="pv-rank">
+        <span class="pv-rank-num"><%= nfv(_mc.rank) %></span><span class="pv-rank-of">위</span>
+        <span class="pv-rank-tot">/ 좌표가 있는 의원 <%= nfv(_mc.cohort) %>명</span>
+      </div>
+      <p class="pv-rank-desc">내 좌표에서 <strong><%= _mc.rank %>번째로 가까운</strong> 의원입니다.
+        (<%= AXIS.MATCH_AXES.length %>축 거리 <%= _mc.distance.toFixed(2) %> · 근사 일치도 <%= _sim %>%)</p>
+    <% } else { %>
+      <div class="pv-score"><strong><%= _sim %></strong><small>%</small></div>
+    <% } %>
+    <p class="pv-hint">↓ 축별 위치는 아래 막대에서</p>
   </aside>
+
+  <%# ── 전체폭 띠: 축마다 양극 막대 하나 (왼쪽 끝 = L, 오른쪽 끝 = R). 두 점 사이 띠가 곧 거리다.
+      🔴 삼각형/다이아몬드로 되돌리지 말 것 — 그 도형은 |값| 만 그려서 시장 −0.5 와 개입 +0.5 가 같은 모양이었다
+         ("도형 크기가 뭘 뜻하나" 라는 지적이 그래서 나왔다). 막대는 방향·세기·거리를 한 줄에서 보여준다.
+      🔴 안보 행은 지우지 않는다 — 왜 없는지를 **숫자로** 쓴다 (분류 N건 중 자주 방향 59건). 빈 자리는 고장으로 읽힌다 %>
+  <section class="pv-band" aria-label="축별 비교">
+    <%# 범례를 띠 머리에 — 마커가 뭔지 행마다 추측하게 하지 않는다. 미니 트랙으로 "점 사이 띠 = 거리" 까지 보여준다 %>
+    <div class="pv-band-head">
+      <span class="pv-band-title">축별 위치 비교</span>
+      <span class="pv-legend">
+        <span class="pv-legend-item"><i class="pv-mk is-mine"></i>나</span>
+        <span class="pv-legend-item"><i class="pv-mk is-pol"></i><%= politician.name %> 의원</span>
+        <span class="pv-legend-item"><i class="pv-legend-gap"></i>두 점 사이 = 그 축의 거리</span>
+      </span>
+    </div>
+    <% AXES.forEach((a) => {
+         if (a.unmeasured) { %>
+      <div class="pv-row is-unmeasured">
+        <div class="pv-row-name"><b><%= a.name %></b><small>매핑 후보 <%= nfv(US.mapped) %>건</small></div>
+        <span class="pv-end"><%= SIDE.security.L %></span>
+        <div class="pv-track is-off"><span class="pv-off-label">좌표 없음</span></div>
+        <span class="pv-end"><%= SIDE.security.R %></span>
+        <div class="pv-row-read">국회에 안보 법안 자체가 드뭅니다 — 법안 <%= nfv(US.classified) %>건을 분류해도
+          <b><%= US.scarceDir %></b> 방향은 <b><%= US.scarceN %>건</b>뿐(<%= US.otherDir %> <%= US.otherN %>건)이라 좌표를 만들지 않고 일치도에서 뺍니다.</div>
+      </div>
+      <% return; }
+         const uV = _ua[a.key], pV = pa[a.key];
+         const r = interpret(a.key, uV, pV);
+         const weak = _spread(a.key) >= _WEAK;
+         const lo = Math.min(pct(uV), pct(pV)), hi = Math.max(pct(uV), pct(pV));
+    %>
+      <div class="pv-row<%- weak ? ' is-weak' : (r.near ? ' is-near' : '') %>">
+        <div class="pv-row-name"><b><%= a.name %></b><small>법안 <%= MAPPED(a.key) != null ? nfv(MAPPED(a.key)) + '건 매핑' : '' %></small></div>
+        <span class="pv-end"><%= SIDE[a.key].L %></span>
+        <div class="pv-track" title="왼쪽 끝 −1(<%= SIDE[a.key].L %>) ~ 오른쪽 끝 +1(<%= SIDE[a.key].R %>)">
+          <i class="pv-mid"></i>
+          <span class="pv-gap" style="left:<%= lo.toFixed(1) %>%;width:<%= (hi - lo).toFixed(1) %>%"></span>
+          <span class="pv-mk is-pol" style="left:<%= pct(pV).toFixed(1) %>%" title="<%= politician.name %> <%= fmt(pV) %>"></span>
+          <span class="pv-mk is-mine" style="left:<%= pct(uV).toFixed(1) %>%" title="나 <%= fmt(uV) %>"></span>
+        </div>
+        <span class="pv-end"><%= SIDE[a.key].R %></span>
+        <div class="pv-row-read">
+          <% if (weak) { %>
+            <span class="pv-weak">의원 <%= Math.round(_spread(a.key) * 100) %>%가 같은 값이라 이 축은 사람을 가르지 못합니다</span>
+          <% } else { %>
+            <%= r.direction %> · <b class="pv-int"><%= r.intensity %></b>
+            <small class="pv-n">나 <%= fmt(uV) %> · 의원 <%= fmt(pV) %><% if (SIGN_N(a.key)) { %> · 서명 <%= nfv(SIGN_N(a.key)) %>건<% } %></small>
+          <% } %>
+        </div>
+      </div>
+    <% }); %>
+
+    <%# 🔴 이 각주를 빼면 순위가 "정밀한 값" 으로 읽힌다. 무엇으로 만든 수인지 밝히는 게 이 패널의 전제다.
+        v2 좌표는 **이름을 올린 법안**으로만 만든다 — 서명 안 한 것은 반대가 아니라 "안 한 것" 이라
+        반대 입장은 이 좌표에 없다. 그리고 방향 라벨은 AI 1차 매핑(표본 검토)이라 개별 법안 단위 오류가 있을 수 있다 %>
+    <% if (_mc) { %>
+      <p class="pv-basis">법안 <strong><%= nfv(_mc.mapped_bills) %>건</strong>의 방향을 매긴 뒤, 이 의원이
+        <strong>공동발의로 이름을 올린 법안</strong>만으로 만든 좌표입니다 (경제·사회·정치제도 세 축).
+        이름을 올리지 않은 법안은 반대가 아니라 <strong>세지 않은 것</strong>이라 반대 입장은 담기지 않고,
+        방향은 AI 1차 매핑이라 개별 법안 단위 오류가 있을 수 있어 <strong>순위는 참고용</strong>입니다.</p>
+    <% } %>
+  </section>
 
 <% } else if (locals.balanceGameCompleted === false) { %>
   <%# 미진단 — 다이아몬드 없이 **짧게**. 여기서 세로를 쓰면 아무 정보도 없는 칸이 히어로를 늘린다 %>
@@ -148,11 +168,11 @@
   </a>
 
 <% } else { %>
-  <%# 진단은 했지만 의원 좌표가 없다 (표결 참여 부족 — 실측 1명).
+  <%# 진단은 했지만 의원 좌표가 없다 (세 축 중 서명 5건 미만인 축이 있음 — v2 실측 약 15명).
       ⚠️ 이유를 반드시 쓴다. 빈 칸으로 두면 고장으로 읽힌다 %>
   <div class="profile-vs is-missing">
     <span class="pv-cap">나와의 성향 일치</span>
-    <span class="pv-pending-title">표결 기록이 부족해 좌표를 낼 수 없습니다</span>
-    <span class="pv-pending-cta is-plain">4축 산출 불가</span>
+    <span class="pv-pending-title">방향이 매겨진 법안에 이름을 올린 기록이 적어 좌표를 낼 수 없습니다</span>
+    <span class="pv-pending-cta is-plain">축당 서명 5건 미만</span>
   </div>
 <% } %>

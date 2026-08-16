@@ -18,6 +18,8 @@ import { fmtDate, fmtDateTime, timeAgo } from './utils/datetime.js';
 import { summaryPreview, stripSummaryHeading } from './utils/billSummary.js';
 import { GAP_BANDS, gapBandOf, gapBandRange, GAP_AXIS_LABEL, GAP_AXIS_DESC } from './utils/gapBands.js';
 import { sitemapHandler } from './utils/sitemap.js';
+import { axisDistance, similarityPct, politicianAxisOf } from './utils/balanceDistance.js';
+import { MATCH_AXES, UNMEASURED_AXES, UNMEASURED_REASON, UNMEASURED_STATS, AXIS_META, POL_MAPPING_VERSION } from './utils/axisConfig.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -172,6 +174,12 @@ app.locals.gapBandOf = gapBandOf;
 app.locals.gapBandRange = gapBandRange;
 app.locals.GAP_AXIS_LABEL = GAP_AXIS_LABEL;
 app.locals.GAP_AXIS_DESC = GAP_AXIS_DESC;
+
+// 4축 좌표 — 🔴 거리·일치도·측정 축은 utils/axisConfig.js 단일 소스. 뷰에서 식을 다시 쓰지 말 것 (2026-08-16)
+app.locals.axisDistance = axisDistance;
+app.locals.similarityPct = similarityPct;
+app.locals.politicianAxisOf = politicianAxisOf;
+app.locals.AXIS = { MATCH_AXES, UNMEASURED_AXES, UNMEASURED_REASON, UNMEASURED_STATS, AXIS_META, POL_MAPPING_VERSION };
 
 /* ===== 세션 (PostgreSQL 저장) ===== */
 const PgSession = connectPgSimple(session);

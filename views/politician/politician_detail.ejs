@@ -64,11 +64,8 @@
   const voteParticipateRate = vsTotal > 0 ? (vsAttended / vsTotal * 100) : null;
 
   // 관심분야 TOP5 - 5개 미만이어도 그대로 출력
-  const topics5 = (topics || []).slice(0, 5);
-  const maxTopicCnt = topics5.length > 0 ? Math.max(...topics5.map(t => Number(t.cnt))) : 0;
 
   // 월별 발의 (12개)
-  const monthlyMax = monthly && monthly.length > 0 ? Math.max(1, ...monthly.map(m => Number(m.cnt))) : 1;
 
   /* 탭 카운트. 🔴 예전엔 `bills` 전건을 세었는데, 개수 하나 때문에 887행을 들고 올 이유가 없다 —
      컨트롤러가 COUNT 쿼리(getBillCounts)만 돌린다. 행은 탭을 열 때 API 로 가져온다. */
@@ -143,50 +140,109 @@
   /* ⚠️ 11px 이하 링크라 --accent(3.79) 는 대비 미달. --accent2(5.59) 를 쓴다 */
   .pv-map { font-size: 10.5px; color: var(--accent2); text-decoration: none; white-space: nowrap; }
   .pv-map:hover { text-decoration: underline; }
+  /* 🔴 주인공은 **순위**다 (2026-08-16). % 를 큰 숫자로 되돌리지 말 것 —
+     그 % 는 분모 1.5 라는 임의 보정에 의존해 실측 23~90% 가 나오는데 그 값이 무엇인지 설명할 수 없다.
+     순위는 거리의 단조 변환이라 보정과 무관하다. 근거는 `_profile_vs.ejs` 머리 주석에 */
+  .pv-rank { margin-top: 2px; line-height: 1; display: flex; align-items: baseline; gap: 3px; flex-wrap: wrap; }
+  .pv-rank-num {
+    font-family: 'JetBrains Mono', monospace; font-weight: 800;
+    font-size: 38px; color: var(--accent); letter-spacing: -0.02em;
+  }
+  .pv-rank-of { font-size: 17px; font-weight: 800; color: var(--accent); }
+  .pv-rank-tot { font-size: 11.5px; color: var(--sub2); margin-left: 2px; }
+  .pv-rank-desc {
+    margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: var(--sub); word-break: keep-all;
+  }
+  .pv-rank-desc strong { color: var(--text); font-weight: 700; }
   .pv-score { margin-top: 2px; line-height: 1; color: var(--accent); }
   .pv-score strong { font-size: 38px; font-weight: 800; letter-spacing: -0.02em; }
   .pv-score small { font-size: 16px; font-weight: 800; margin-left: 1px; }
-  .pv-diamond { display: block; width: 100%; height: auto; margin: 2px auto 0; overflow: visible; }
-  /* ⚠️ 본문판(11px)을 그대로 쓰면 축소 다이아몬드에서 라벨끼리 붙는다 */
-  .pv-axis-label {
-    font-size: 11px; fill: var(--sub2); font-family: 'Noto Sans KR', sans-serif;
-    text-anchor: middle; dominant-baseline: auto;
+  .pv-hint { margin: 8px 0 0; font-size: 11px; color: var(--sub2); }
+  .profile-vs.is-compact .pv-hint { margin-top: auto; padding-top: 8px; }
+  /* 🔴 우측 패널과 아래 띠는 **한 카드**다 (ㄱ자). 패널을 행 바닥에 붙이고 아래 모서리·테두리를 열어 띠와 잇는다.
+     따로 떨어뜨리면 "순위 카드" 와 "막대 카드" 가 무관해 보인다 (사용자 지적). 그래서 그리드 row-gap 을 음수 마진으로 상쇄한다 */
+  .profile-vs.is-compact {
+    /* 행 전체 높이 — 윗선이 사진 윗선과 맞아야 ㄱ자 외곽선이 깨끗하다 (end 로 두면 위 80px 이 비어 어색했다).
+       순위는 위, 힌트는 바닥(띠 바로 위)에 */
+    align-self: stretch; position: relative; z-index: 1;
+    /* 1px 더 겹쳐 띠의 위 테두리를 패널 배경으로 덮는다 (안 그러면 패널 밑에 가로줄이 남아 두 카드로 보인다) */
+    margin-bottom: calc(-1 * var(--pv-join, 32px) - 1px); padding-bottom: calc(14px + var(--pv-join, 32px));
+    border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: none;
+    /* 한 카드로 읽히게 — 띠와 같은 테두리색(border2) + 같은 골드 윗선. 두 요소의 윗선이 ㄱ자 외곽선을 만든다 */
+    border-color: var(--border2); border-top: 3px solid var(--accent);
   }
-  .pv-axis-label.bottom { dominant-baseline: hanging; }
-  .pv-legend {
-    display: flex; justify-content: center; gap: 12px;
-    margin-top: 4px; font-size: 10.5px; color: var(--sub2);
-  }
-  .pv-legend-item { display: inline-flex; align-items: center; gap: 4px; }
-  .pv-legend-item i { width: 9px; height: 9px; border-radius: 2px; border: 1px solid; }
-  .pv-legend-item.is-mine i { background: rgba(184,116,12,0.22); border-color: var(--accent); }
-  .pv-legend-item.is-pol  i { background: rgba(122,128,144,0.18); border-color: var(--sub2); border-style: dashed; }
-  .pv-axes { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--border); }
-  .pv-axes > div {
-    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-    padding: 3px 0; font-size: 11.5px;
-  }
-  .pv-axes dt { color: var(--sub2); flex-shrink: 0; }
-  .pv-axes dd { margin: 0; color: var(--sub); text-align: right; overflow-wrap: anywhere; }
-  /* 강도는 한 칸 더 진하게 — 방향보다 강도가 결론에 가깝다 */
-  .pv-axes .pv-int { color: var(--text); font-weight: 700; }
-  .pv-axes .is-near .pv-int { color: var(--accent2); }
+  .profile-identity { --pv-join: 32px; }   /* = .profile-identity 의 gap */
 
-  .pv-main { min-width: 0; }
+  /* ===== 축별 비교 띠 (.pv-band) — 히어로 전체폭, 축마다 양극 막대 한 줄 (2026-08-16)
+     🔴 도형(다이아몬드/삼각)으로 되돌리지 말 것 — |값| 만 그려서 방향이 사라졌고, 세로 패널이 650px 로 늘어나
+        왼쪽이 죽은 공간이 됐다. 막대는 방향·세기·거리를 한 줄에서 보여주고 가로를 쓴다.
+     열: 축이름(+매핑 법안 수) | L끝 | 막대 | R끝 | 해석(+나·의원 값·서명 수) */
+  .pv-band {
+    grid-column: 1 / -1;
+    margin-top: 0; padding: 8px 18px 10px;
+    background: var(--bg2); border: 1px solid var(--border2); border-top: 3px solid var(--accent); border-radius: 12px 0 12px 12px; box-shadow: none;
+  }
+  /* 범례는 제목 **바로 오른쪽**에 붙인다 (space-between 으로 양끝에 갈라두면 제목과 무관해 보인다) */
+  .pv-band-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 2px 0 8px; }
+  .pv-band-title { font-size: 12px; font-weight: 800; color: var(--sub); }
+  .pv-legend { display: inline-flex; align-items: center; gap: 14px; font-size: 11.5px; color: var(--sub); flex-wrap: wrap; }
+  .pv-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+  .pv-legend .pv-mk { position: static; margin: 0; }
+  .pv-legend-gap { width: 26px; height: 6px; border-radius: 3px; background: rgba(184,116,12,0.28); }
+  .pv-row:first-of-type { border-top: 1px dashed var(--border); }
+  .pv-row {
+    display: grid; grid-template-columns: 132px 34px minmax(160px, 1fr) 34px minmax(240px, 0.9fr);
+    align-items: center; column-gap: 10px; padding: 9px 0; border-top: 1px dashed var(--border);
+    font-size: 12.5px; color: var(--sub);
+  }
+  .pv-row-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .pv-row-name b { font-size: 13px; font-weight: 800; color: var(--text); }
+  .pv-row-name small { font-size: 11px; color: var(--sub2); white-space: nowrap; }
+  .pv-end { font-size: 11px; color: var(--sub2); white-space: nowrap; }
+  .pv-end:nth-child(2) { text-align: right; }
+  .pv-track { position: relative; height: 22px; }
+  .pv-track::before {   /* 트랙 */
+    content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px;
+    background: var(--bg3); border-radius: 3px; border: 1px solid var(--border);
+  }
+  .pv-mid { position: absolute; left: 50%; top: 3px; bottom: 3px; width: 0; border-left: 1px dashed var(--border2); }
+  /* 두 점 사이 띠 = 이 축에서의 거리 */
+  .pv-gap { position: absolute; top: 50%; height: 6px; margin-top: -3px; background: rgba(184,116,12,0.28); border-radius: 3px; }
+  .pv-mk { position: absolute; top: 50%; width: 13px; height: 13px; margin: -6.5px 0 0 -6.5px; border-radius: 50%; box-sizing: border-box; }
+  .pv-mk.is-mine { background: var(--accent); border: 2px solid var(--bg2); box-shadow: 0 0 0 1.5px var(--accent); z-index: 2; }
+  .pv-mk.is-pol  { background: var(--bg2); border: 1.5px dashed var(--sub); z-index: 1; }
+  .pv-row-read { min-width: 0; line-height: 1.5; word-break: keep-all; }
+  .pv-row-read .pv-int { color: var(--text); font-weight: 700; }
+  .pv-row.is-near .pv-int { color: var(--accent2); }
+  .pv-row-read .pv-n { display: block; font-size: 11px; color: var(--sub2); }
+  .pv-row.is-weak { opacity: 0.8; }
+  .pv-weak { font-size: 11.5px; color: var(--sub2); }
+  /* 안보 — 트랙을 꺼서 "재지 않았다" 를 도형으로도 말한다 (0 위치에 점을 찍으면 중도로 읽힌다) */
+  .pv-row.is-unmeasured .pv-row-name b { color: var(--sub); }
+  .pv-track.is-off::before { background: repeating-linear-gradient(90deg, var(--bg3) 0 6px, transparent 6px 10px); border-style: dashed; }
+  .pv-off-label { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 10.5px; color: var(--sub2); background: var(--bg2); padding: 0 6px; }
+  .pv-row.is-unmeasured .pv-row-read { font-size: 12px; color: var(--sub2); }
+  .pv-row.is-unmeasured .pv-row-read b { color: var(--sub); }
+  /* 🔴 이 각주를 빼면 순위가 정밀한 값으로 읽힌다 — 무엇으로 만든 수인지 밝히는 게 전제다 */
+  .pv-basis {
+    margin: 4px 0 0; padding-top: 8px; border-top: 1px dashed var(--border);
+    font-size: 11.5px; line-height: 1.6; color: var(--sub2); word-break: keep-all;
+  }
+  .pv-basis strong { color: var(--sub); font-weight: 700; }
+
 
   /* 769~1199px — 우측 320px 을 떼면 가운데 칸이 353px 까지 좁아져 이름·위원회 칩이 무너진다.
      그래서 이 구간은 패널을 히어로 **전체폭 아래**로 내리고 **가로로 눕힌다**
      (세로 스택 그대로 내리면 히어로가 통째로 340px 길어진다) */
   @media (min-width: 769px) and (max-width: 1199px) {
     .profile-identity { grid-template-columns: auto minmax(0, 1fr); }
-    .profile-vs { grid-column: 1 / -1; align-self: auto; flex-direction: row; align-items: center; gap: 24px; }
-    .profile-vs .pv-main { width: 230px; flex-shrink: 0; }
-    .pv-axes {
-      flex: 1; margin: 0; padding: 0 0 0 24px;
-      border-top: 0; border-left: 1px solid var(--border);
-    }
-    .pv-axes > div { font-size: 12.5px; padding: 5px 0; }
+    .profile-vs { grid-column: 1 / -1; align-self: auto; }
+    .profile-vs.is-compact { flex-direction: row; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; align-self: auto; }
+    .profile-vs.is-compact .pv-hint { margin: 0; }
+    .pv-band { border-top-right-radius: 0; border-top-left-radius: 0; border-top: 0; }
+    .profile-vs.is-compact { border-bottom: 1px dashed var(--border); border-radius: 12px 12px 0 0; }
     .profile-vs.is-pending, .profile-vs.is-missing { flex-direction: row; justify-content: center; gap: 14px; align-items: baseline; }
+    .pv-row { grid-template-columns: 112px 30px minmax(120px, 1fr) 30px minmax(200px, 0.9fr); }
   }
 
   /* 미진단·미산출 — 다이아몬드가 없으므로 세로가 짧다.
@@ -273,8 +329,13 @@
     .profile-cmt-label { flex-basis: 100%; }
     /* 768 아래는 가로로 눕힐 폭이 없다 — 다시 세로 스택 */
     .profile-vs { flex-direction: column; max-width: 420px; margin: 0 auto; width: 100%; }
-    .profile-vs .pv-main { width: auto; }
-    .pv-axes { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--border); border-left: 0; }
+    /* 띠는 두 줄로 접는다: [이름 · 해석] / [L 막대 R] */
+    .pv-band { padding: 4px 14px 10px; border-radius: 0 0 12px 12px; border-top: 0; }
+    .profile-vs.is-compact { max-width: none; border-bottom: 1px dashed var(--border); border-radius: 12px 12px 0 0; align-self: auto; }
+    .profile-identity { --pv-join: 20px; }   /* ≤768 의 gap 은 20px */
+    .pv-row { grid-template-columns: 30px minmax(0, 1fr) 30px; row-gap: 4px; padding: 10px 0; }
+    .pv-row-name { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 8px; }
+    .pv-row-read { grid-column: 1 / -1; }
   }
 
   .profile-subinfo {
@@ -400,7 +461,6 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 12px;
-    margin-bottom: 16px;
   }
   /* 🔴 이 미디어 쿼리는 **베이스 규칙 뒤**에 있어야 한다. 위쪽 768 블록에 넣었다가
      같은 특이도에서 나중 규칙(repeat(4,1fr))이 이겨 **모바일에서 4칸이 그대로 나가 가로로 삐져나갔다**
@@ -494,40 +554,28 @@
   .profile-kpi-lead strong { color: var(--accent2); font-weight: 700; }
 
   /* 🔴 KPI 행 아래 주의 문구 — 위 백분위의 전제다. 빼면 "장관은 왜 순위가 없지" 가 고장으로 읽힌다 */
+  /* ⚠️ 이 문구는 KPI 행의 **전제**라 그 행에 붙어 있어야 한다.
+     위 flex gap(20px)을 음수 마진으로 당겨 6px 로 좁힌다 */
   .kpi-caveat {
-    margin: -6px 0 16px;
-    font-size: 11.5px; line-height: 1.7; color: var(--sub2);
+    margin: -14px 0 0;
+    font-size: 12px; line-height: 1.7; color: var(--sub2);
     word-break: keep-all;
   }
   .kpi-caveat strong { color: var(--sub); font-weight: 700; }
 
-  /* ===== 4축 다이아몬드 SVG — 히어로 우측 패널(_profile_vs.ejs)이 쓴다.
-     ⚠️ 클래스 이름의 `bg-vs-` 는 밸런스게임(balance game) 계열 식별자다. 본문 전체폭 비교 블록은
-        2026-08-15 에 히어로로 옮기며 삭제했지만, **도형 스타일만은 여기 남겨 재사용**한다 —
-        나=골드 채움 / 의원=무채색 점선이라는 대비 규칙을 두 곳에서 따로 정의하지 않기 위함.
-     ⚠️ 정당색 금지 — 파랑·빨강으로 가르지 말 것 */
-  .bg-vs-grid { fill: none; stroke: var(--border); stroke-width: 0.5; }
-  .bg-vs-axis-line { stroke: var(--border2); stroke-width: 1; }
-  .bg-vs-fill-pol {
-    fill: rgba(122,128,144,0.18);
-    stroke: var(--sub2);
-    stroke-width: 1.5;
-    stroke-dasharray: 4 3;
-    stroke-linejoin: round;
-  }
-  .bg-vs-fill-mine {
-    fill: rgba(184,116,12,0.22);
-    stroke: var(--accent);
-    stroke-width: 1.5;
-    stroke-linejoin: round;
-  }
-  .bg-vs-dot-pol  { fill: var(--sub2); }
-  .bg-vs-dot-mine { fill: var(--accent); }
+  /* (구 다이아몬드 SVG 스타일 `.bg-vs-*` 는 2026-08-16 축별 막대(.pv-band)로 바뀌며 제거 — 나=골드 채움 / 의원=무채색 점선 규칙은 .pv-mk 가 잇는다) */
 
   /* Tabs */
-  .tab-bar {
+  /* ⚠️ `--nav-h` 는 데스크톱 100px · 모바일 60px 이다. 60px 을 하드코딩하면
+     데스크톱에서 탭바 55px 중 40px 이 고정 nav 뒤로 들어가 밑줄 부근 15px 만 보인다. */
+  /* 🔴 탭바와 분석 탭 목차를 **한 컨테이너로 묶어 통째로** sticky 시킨다.
+     따로 sticky 시키면 목차의 top 을 `nav + 탭바높이` 로 계산해야 하는데, 탭바는
+     가로 스크롤 컨테이너라 폭·폰트에 따라 높이가 흔들리고 목차는 탭에 따라 없어지기도 한다.
+     묶으면 높이 계산이 sticky 경로에서 통째로 사라진다
+     (/bill · /politician 목록의 `.sticky-head` 와 완전히 같은 판단). */
+  .tab-head {
     position: sticky;
-    top: 60px;
+    top: var(--nav-h);
     z-index: 50;
   }
   .tab-bar-inner {
@@ -568,6 +616,49 @@
   }
   .tab-btn.active .tab-count { background: rgba(184,116,12,0.15); color: var(--accent); }
 
+  /* ===== 분석 탭 목차 (JS 가 data-toc 를 읽어 채운다) =====
+     분석 탭이 카드 5종 · 3,068px 라 "뭐가 들어있는지" 를 훑을 수단이 없었다.
+     고정 크롬 실측: 데스크톱 155 → **203px**(800px 의 25%) · 모바일 375px 에서 115 → **163px**(20%).
+     목록 페이지(231px · 29%)보다 얇으니 여기서 더 키우지 말 것.
+     ⚠️ `hidden` 을 명시적으로 죽여둘 것 — 나중에 flex 로 바꾸면 `[hidden]` 이 조용히 안 먹는다
+        (.ba-proposers-grid · .bf-rest · .sp-mts 에서 이미 세 번 겪은 함정). */
+  .ov-toc[hidden] { display: none; }
+  /* ⚠️ 배경·보더는 **가운데 정렬된 inner 에** 준다 (.tab-bar-inner 과 같은 처리).
+     바깥 요소에 주면 1280px 를 넘는 화면에서 목차 줄만 흰색이 끝까지 뻗어 바로 위 탭바와 어긋난다 */
+  .ov-toc-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 8px 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .ov-toc-inner::-webkit-scrollbar { display: none; }
+  /* ⚠️ 12.5px 소형 텍스트라 대비 4.5:1 이 필요하다 —
+     --sub(#4B5362, 8.4) · 활성은 --accent(3.79 미달) 가 아니라 --accent2(#925C09, 5.4) */
+  .ov-toc-link {
+    flex-shrink: 0;
+    padding: 5px 11px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--sub);
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+  }
+  .ov-toc-link:hover { color: var(--text); border-color: var(--border2); }
+  .ov-toc-link.is-active {
+    color: var(--accent2);
+    border-color: var(--accent);
+    background: rgba(184,116,12,0.08);
+  }
+
   .content-wrap {
     max-width: 1280px;
     margin: 0 auto;
@@ -600,14 +691,93 @@
   .bill-filter-tab .dot { width: 6px; height: 6px; border-radius: 50%; }
 
   /* Bill table */
+  /* 표결 내역 탭 상단 요약 — 목록 위에 "전체 몇 건 중 어떻게 갈렸나" 를 먼저 준다 */
+  .vote-tally {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px;
+    align-items: center; padding: 18px 20px; margin-bottom: 12px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .vote-tally-total { display: flex; flex-direction: column; gap: 2px; padding-right: 20px; border-right: 1px solid var(--border); }
+  .vote-tally-total .vt-label { font-size: 12px; color: var(--sub); }
+  .vote-tally-total .vt-num { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1.1; }
+  .vote-tally-total .vt-num small { font-size: 14px; font-weight: 600; margin-left: 2px; }
+  .vote-tally-total .vt-sub { font-size: 11.5px; color: var(--sub2); white-space: nowrap; }
+  .vote-tally-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .vt-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .vt-item .vt-v { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1.1; }
+  .vt-item .vt-v small { font-size: 12px; font-weight: 600; margin-left: 1px; color: var(--sub); }
+  .vt-item .vt-p { font-size: 12px; color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
+  /* 🔴 불참은 분모가 달라 같은 줄에 붙여두면 안 된다 — 점선으로 끊어 "다른 축" 임을 보인다 */
+  .vt-item.is-absent { border-left: 1px dashed var(--border2); padding-left: 10px; }
+  .vote-tally-note { font-size: 12px; color: var(--sub2); line-height: 1.7; margin: 0 0 16px; word-break: keep-all; }
+  @media (max-width: 768px) {
+    .vote-tally { grid-template-columns: 1fr; gap: 14px; }
+    .vote-tally-total { padding-right: 0; padding-bottom: 12px; border-right: none; border-bottom: 1px solid var(--border); }
+    .vote-tally-items { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    /* 2열이 되면 불참이 왼쪽 열로 가 세로 점선이 엉뚱한 자리에 선다 → 위쪽 점선으로 바꾼다 */
+    .vt-item.is-absent { border-left: none; padding-left: 0; border-top: 1px dashed var(--border2); padding-top: 8px; }
+  }
+
+  /* 결과별 필터 칩 */
+  .vote-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .vf-chip {
+    padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border2);
+    background: var(--bg2); color: var(--sub); font-size: 12.5px; cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .vf-chip b { font-family: 'JetBrains Mono', monospace; font-weight: 700; margin-left: 3px; }
+  .vf-chip:hover { border-color: var(--accent); color: var(--text); }
+  /* 정당색 금지 — 활성은 골드 하나로 */
+  .vf-chip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .vf-chip[disabled] { opacity: 0.5; cursor: default; }
+
+  .vote-foot { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 0 4px; }
+  .vote-more-status { margin: 0; font-size: 12px; color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
+
   .bill-table { width: 100%; }
+  /* 🔴 **두 탭이 이 클래스를 공유한다** (법안 활동 / 표결 내역). 열 구성이 다르므로
+     `grid-template-columns` 는 반드시 탭별로 준다 — 여기 공통에 두지 말 것.
+     2026-08-16 에 표결 내역 탭의 위원회명이 잘려 5번째 열을 90 → 200px 로 넓혔는데,
+     공통 규칙이라 **법안 활동 탭의 `표결` 열까지 200px 가 됐다** (97%가 빈 칸인 열이었다). */
   .bill-table-header,
   .bill-table-row {
     display: grid;
-    grid-template-columns: 1fr 110px 110px 110px 90px;
     gap: 12px;
     padding: 14px 18px;
     align-items: center;
+  }
+  /* 표결 내역 탭 — 5열. 🔴 마지막 열은 카테고리가 아니라 **위원회명**이라 길다:
+     `산업통상자원중소벤처기업위원회`(15자)가 12px 에서 200px 다.
+     90px 이던 시절엔 50행 중 44행이 칸 밖으로 삐져나왔다 (최대 110px 초과, 2026-08-16 실측).
+     ⚠️ 값이 공백 없는 한 덩어리라 `keep-all` 로는 절대 안 접힌다 — 아래 배지 규칙과 세트다 */
+  #tab-votes .bill-table-header,
+  #tab-votes .bill-table-row {
+    grid-template-columns: minmax(0, 1fr) 104px 104px 108px 200px;
+  }
+  /* 법안 활동 탭 — 4열. `표결` 열을 없애고 `처리결과` 보조줄로 병합했다 (마크업 주석 참조).
+     처리결과 칸은 108 → 150px: 배지(`수정안반영폐기` 7자) 아래에 `내 표결 · 찬성` 보조줄이 들어간다 */
+  #tab-bills .bill-table-header,
+  #tab-bills .bill-table-row {
+    grid-template-columns: minmax(0, 1fr) 104px 104px 150px;
+  }
+  /* 칸을 넘기지 않게 — 200px 로도 모자라면 줄바꿈으로 흡수한다 (잘라내면 어느 위원회인지 못 읽는다) */
+  .bill-table-row > * { min-width: 0; }
+  /* 처리결과 칸의 보조줄 — 계류면 경과일, 처리됐고 표결기록이 있으면 그 표결. 둘은 동시에 안 생긴다 */
+  .bill-row-days, .bill-row-myvote {
+    display: block; margin-top: 4px; font-size: 12px;
+  }
+  .bill-row-days { font-family: 'JetBrains Mono', monospace; }
+  .bill-row-myvote { color: var(--sub2); }
+  /* ⚠️ 배경 없이 **글자색만** 쓴다 — 칩으로 만들면 행이 높아지고 옆 처리결과 배지와 무게가 같아진다.
+     초록·빨강은 본회의 표결 결과(객관 데이터)라 허용된다 */
+  .bill-row-myvote b { font-weight: 700; background: none; }
+  .bill-row-myvote .v-for     { color: var(--green); }
+  .bill-row-myvote .v-against { color: var(--red); }
+  .bill-row-myvote .v-abstain { color: var(--accent2); }
+  .bill-row-myvote .v-absent  { color: var(--sub); }
+  .bill-table-row .pb-badge-category {
+    display: inline-block; max-width: 100%;
+    white-space: normal; overflow-wrap: anywhere; line-height: 1.35;
   }
   .bill-table-header {
     padding: 10px 18px;
@@ -713,21 +883,105 @@
     color: var(--text);
   }
 
-  .category-bars { display: flex; flex-direction: column; gap: 12px; }
-  .cat-bar-label {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
-    font-size: 13px;
-    color: var(--sub);
+  /* ===== 대표발의 특화 분야 (_propose_focus.ejs) — 2026-08-16 =====
+     구 `.category-bars`/`.cat-bar-*`(절대 건수 막대)를 대체한다. 왜 바꿨는지는 파샬 머리 주석에.
+     🔴 정당색 금지 — 강조는 골드(평균 이상) / 무채색(평균 이하) 로만. */
+  .pf-lede {
+    margin: 0 0 14px; font-size: 13.5px; line-height: 1.65;
+    color: var(--sub); word-break: keep-all;
   }
-  .cat-bar-val {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--accent);
+  .pf-lede strong { color: var(--text); font-weight: 700; }
+  .pf-lede .pf-em { color: var(--accent2); }
+
+  .pf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 13px; }
+  /* ⚠️ 모든 행에 같은 좌우 여백을 준다 — 강조 행에만 주면 그 줄만 안쪽으로 밀려 어긋나고,
+     음수 마진으로 맞추면 `.pf-list` 가 가로로 넘친다 (실제로 그렇게 나왔다) */
+  .pf-row { padding: 0 10px; }
+  .pf-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  /* ⚠️ 위원회명은 `산업통상자원중소벤처기업위원회` 처럼 **공백 없는 한 덩어리**라
+     keep-all 로는 절대 안 접힌다 (.tl-label·위원회 칩과 같은 함정) */
+  .pf-name {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    min-width: 0; overflow-wrap: anywhere;
   }
-  .cat-bar-track { height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
-  .cat-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.8s ease-out; }
+  .pf-lift {
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+    color: var(--sub2);
+  }
+  .pf-row.is-above .pf-lift { color: var(--accent2); }
+  /* 결론이 가리키는 행. ⚠️ 색만으로 가르지 말 것 — 이름이 전부 굵어 색차가 안 읽힌다
+     (격차 눈금의 현재 구간과 같은 판단: 테두리 + 옅은 배경까지 준다) */
+  .pf-row.is-peak {
+    padding: 8px 9px;   /* 보더 1px 을 빼서 다른 행과 내용 좌표를 맞춘다 */
+    background: #FBF5EA; border: 1px solid var(--accent); border-radius: 8px;
+  }
+
+  /* 🔴 막대 **두 줄**(본인 / 평균)을 같은 눈금에 놓는다 — 2026-08-16 재작업.
+     구 버전(골드 막대 1개 + 평균 마커)은 본인 > 평균일 때 **마커가 막대 안에 묻혀**
+     기준선이 아니라 구분선처럼 보였고, 무엇보다 `×N` 이 그림에서 안 나왔다 (사용자 지적).
+     ⚠️ 라벨·막대·숫자를 한 줄에 묶을 것 — 숫자를 아래 줄 좌우 끝에 갈라두면 막대와 연결이 안 보인다. */
+  .pf-pair {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 5px;
+  }
+  .pf-key {
+    flex: 0 0 26px;
+    font-size: 11px; font-weight: 700; color: var(--sub2);
+  }
+  .pf-track {
+    flex: 1 1 auto; min-width: 0; height: 8px;
+    background: var(--bg3); border-radius: 4px; overflow: hidden;
+  }
+  /* ⚠️ `min-width: 3px` 필수 — 모바일 트랙이 131px 이라 1.1% 짜리 평균 막대가 **1px** 이 되어
+     사실상 안 보인다 (`.sp-kind-fill`·`.vp-seg` 에서 이미 겪은 것과 같다).
+     그 대가로 아주 작은 값에서는 길이 비가 실제 배수보다 작게 보이는데,
+     **숫자가 바로 옆에 있고** 안 보이는 막대보다는 낫다. 데스크톱(607px)에선 0.5% 라 영향 없다.
+     EJS 쪽 하한(0.8%)과 세트다 — 둘 중 하나만 두면 좁은 폭에서 다시 사라진다 */
+  .pf-fill {
+    display: block; height: 100%; min-width: 3px;
+    border-radius: 4px; transition: width 0.6s ease-out;
+  }
+  /* 정당색 금지 — 본인은 골드, 평균은 무채색. 평균 이하 행은 본인 막대도 무채색으로 내린다 */
+  .pf-fill.is-me  { background: var(--accent); }
+  .pf-fill.is-avg { background: var(--border2); }
+  .pf-row:not(.is-above) .pf-fill.is-me { background: var(--sub2); }
+  /* 숫자 칸은 고정폭 — 행마다 폭이 달라지면 막대 끝이 들쭉날쭉해 길이 비교가 무너진다 */
+  .pf-val {
+    flex: 0 0 88px; text-align: right;
+    font-size: 11.5px; color: var(--sub2); white-space: nowrap;
+  }
+  .pf-val strong { color: var(--text); font-weight: 700; font-size: 12.5px; }
+  .pf-val i { font-style: normal; color: var(--sub2); }
+
+  .pf-legend {
+    margin: 14px 0 0; padding-top: 12px; border-top: 1px dashed var(--border);
+    font-size: 12px; line-height: 1.7; color: var(--sub2); word-break: keep-all;
+  }
+  .pf-legend strong { color: var(--sub); font-weight: 700; }
+  /* (`.pf-avg-glyph` 는 평균 마커와 함께 삭제 — 이제 막대 두 줄이 그 역할을 한다) */
+
+  /* ⚠️ 같은 분석 탭의 `.sp-caveat`(발언기록 해석 주의)와 **같은 모양**이어야 한다 —
+     한 화면에 해석 주의가 두 개인데 들여쓰기·간격이 다르면 다른 종류의 글로 읽힌다.
+     그쪽이 `li { margin-left }` 방식이라 여기도 맞춘다 (ul 의 padding-left 를 쓰지 않는다) */
+  .pf-caveat {
+    margin: 14px 0 0; padding-left: 0;
+    font-size: 12px; line-height: 1.7; color: var(--sub2); word-break: keep-all;
+  }
+  .pf-caveat li { margin-left: 14px; }
+  .pf-caveat strong { color: var(--sub); font-weight: 700; }
+  .pf-more {
+    display: inline-block; margin-top: 12px;
+    font-size: 12.5px; font-weight: 600; color: var(--accent2); text-decoration: none;
+  }
+  .pf-more:hover { text-decoration: underline; }
+
+  /* 월별 발의 결론 줄 — 막대 12개만으로는 읽을 게 없다 (/xray 섹션들과 같은 규칙) */
+  .mon-lede {
+    margin: 0 0 12px; font-size: 12.5px; line-height: 1.6;
+    color: var(--sub2); word-break: keep-all;
+  }
+  .mon-lede strong { color: var(--sub); font-weight: 700; }
 
   /* ===== 표결 성향 카드 (_vote_profile.ejs) — 2026-08-15 재구성 =====
      구 `.cpv-*` 블록을 대체한다. 되살리기 전에 파샬 머리 주석을 읽을 것.
@@ -738,10 +992,30 @@
   .vp-panel { min-width: 0; }
   /* 구분선은 오른쪽 패널이 그린다 — 1열로 접히면 자동으로 가로선이 된다 */
   .vp-panel + .vp-panel { border-left: 1px solid var(--border); padding-left: 28px; }
-  .vp-h { margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text); }
+
+  /* 🔴 아래 대표발의 블록은 **900px 미디어 쿼리보다 앞**에 있어야 한다 (2026-08-16).
+     처음에 파일 뒤쪽(1490행대)에 뒀다가 같은 특이도에서 **나중 규칙이 이겨**
+     900px 이하에서도 2열이 유지되고 구분선이 세로로 남았다.
+     `.profile-kpis-row` 때 겪은 것과 **완전히 같은 함정** — 파일 순서가 곧 우선순위다. */
+  /* ===== 대표발의 카드 — 한 카드 안 2단 (2026-08-16) =====
+     🔴 `표결 성향`(.vp-grid)과 **같은 구조**다. 카드 두 장을 나란히 두던 구 `.overview-grid.propose-row`
+        를 대체한다 — 특화(772px)/월별(359px) 높이차 413px 이 죽은 공간이 됐다.
+     ⚠️ 1.35fr/1fr — 왼쪽이 넓어야 위원회명이 안 접힌다. 오른쪽은 12칸 막대라 그만큼이면 충분하다 */
+  .pr-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 28px; }
+  .pf-panel { min-width: 0; }
+  /* 구분선은 오른쪽 패널이 그린다 — 1열로 접히면 자동으로 가로선이 된다 (.vp-panel 과 같은 수법) */
+  .pf-panel + .pf-panel { border-left: 1px solid var(--border); padding-left: 28px; }
+  /* 카드 바닥 전체폭 해석 블록 — 범례·한계·링크. 패널 안에 두면 왼쪽만 길어져 두 단이 어긋난다 */
+  .pr-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+  /* L2 섹션 소제목 — 골드 좌측 바로 본문과 확실히 가른다 (크기 차이만으로는 안 갈렸다) */
+  .vp-h, .pc-h, .pr-h {
+    margin: 0 0 6px; font-size: 14px; font-weight: 800; color: var(--text);
+    letter-spacing: -0.01em; padding-left: 10px; border-left: 3px solid var(--accent); line-height: 1.35;
+  }
+  .vp-h { }
   /* 🔴 각 블록 머리의 한 줄 설명 — `자당/타당`·`격차`·`%p` 는 일상어가 아니다 */
-  .vp-lede { margin: 0 0 14px; font-size: 11.5px; line-height: 1.7; color: var(--sub2); word-break: keep-all; }
-  .vp-lede strong { color: var(--sub); font-weight: 700; }
+  .vp-lede, .pr-lede { margin: 0 0 14px; font-size: 11.5px; line-height: 1.7; color: var(--sub2); word-break: keep-all; }
+  .vp-lede strong, .pr-lede strong { color: var(--sub); font-weight: 700; }
   .vp-lede-sub { display: block; color: var(--sub2); opacity: 0.85; }
 
   /* 찬반 구성 누적 막대 — 4줄짜리 0~100% 막대를 이걸로 대체했다 */
@@ -767,7 +1041,7 @@
   .vp-absent-val strong { font-size: 13px; font-weight: 700; color: var(--text); }
   .vp-absent-val span { font-size: 11px; color: var(--sub2); }
 
-  .vp-note { margin: 10px 0 0; font-size: 11px; line-height: 1.7; color: var(--sub2); word-break: keep-all; }
+  .vp-note { margin: 10px 0 0; font-size: 12px; line-height: 1.7; color: var(--sub2); word-break: keep-all; }
   .vp-note strong { color: var(--sub); font-weight: 700; }
   .vp-line { margin: 8px 0 0; font-size: 12px; line-height: 1.7; color: var(--sub); word-break: keep-all; }
   .vp-line strong { color: var(--text); font-weight: 700; }
@@ -848,7 +1122,7 @@
   .vp-bandkey-head {
     margin: 12px 0 8px; padding-top: 12px;
     border-top: 1px dashed var(--border);
-    font-size: 11px; color: var(--sub2); line-height: 1.6; word-break: keep-all;
+    font-size: 12px; color: var(--sub2); line-height: 1.6; word-break: keep-all;
   }
   .vp-bandkey-head strong { color: var(--sub); font-weight: 700; margin-right: 6px; }
   /* ⚠️ auto-fit — 데스크톱 4열, 좁아지면 2열·1열로 알아서 접힌다.
@@ -860,7 +1134,7 @@
   .vp-bandkey li {
     display: flex; flex-direction: column; gap: 1px;
     padding: 7px 9px; border-radius: 7px;
-    font-size: 11px; color: var(--sub2);
+    font-size: 12px; color: var(--sub2);
     border: 1px solid transparent; background: var(--bg3);
   }
   .vp-bandkey-name { font-weight: 700; }
@@ -886,7 +1160,8 @@
         표결이 있었던 달의 순서다. 화면에도 그렇게 쓴다. */
   .vp-trend { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
   .vp-trend-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-  .vp-trend-h { margin: 0; font-size: 12px; font-weight: 700; color: var(--sub); }
+  /* L3 하위 라벨 — 색을 낮추고 자간을 줘서 L2 와 겹치지 않게 */
+  .vp-trend-h { margin: 0; font-size: 11.5px; font-weight: 700; color: var(--sub); letter-spacing: 0.04em; }
   /* 연도 탭 — 🔴 임기 4년이면 표결월이 48개다. 한 줄에 늘어놓으면 막대가 10px 이 되어 못 읽는다 */
   .vp-trend-years { display: flex; gap: 4px; }
   .vp-year {
@@ -896,7 +1171,7 @@
   }
   .vp-year:hover { border-color: var(--border2); color: var(--sub); }
   .vp-year.is-on { color: var(--accent2); border-color: var(--accent2); background: #FBF5EA; }
-  .vp-trend-lede { margin: 4px 0 10px; font-size: 10.5px; color: var(--sub2); line-height: 1.6; word-break: keep-all; }
+  .vp-trend-lede { margin: 4px 0 10px; font-size: 12px; color: var(--sub2); line-height: 1.6; word-break: keep-all; }
   /* ⚠️ flex 가 아니라 block 이라 [hidden] 이 그대로 먹는다 — .sp-mts / .bf-rest 같은 함정 없음 */
   .vp-trend-year[hidden] { display: none; }
   .vp-trend-lede strong { color: var(--sub); font-weight: 700; }
@@ -926,6 +1201,9 @@
     outline-offset: 2px;
   }
   .vp-trend-col:hover .vp-trend-bar { background: var(--accent2); }
+  /* 🔴 선택된 달의 링 — 이게 **막대 ↔ 아래 상세 상자**를 잇는 유일한 시각 신호다.
+     JS 가 진입 시 가장 최근 달을 미리 선택하므로 처음부터 한 칸이 켜져 있다.
+     ⚠️ hover 는 터치에 없어서 affordance 로 못 쓴다 — 링이 그 몫까지 한다 */
   .vp-trend-col[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent2); }
   /* ⚠️ min height 2% — 0% 인 달(장관 취임 후 등)이 아예 안 그려지면 데이터가 빠진 것처럼 보인다 */
   .vp-trend-bar { display: block; width: 100%; background: var(--accent); border-radius: 2px; transition: background 0.12s; }
@@ -959,7 +1237,7 @@
   }
   .vp-trend-mid { font-family: 'Noto Sans KR', sans-serif; }
   .vp-trend-note {
-    margin: 8px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all;
+    margin: 8px 0 0; font-size: 12px; color: var(--sub2); line-height: 1.7; word-break: keep-all;
   }
   .vp-trend-note strong { color: var(--sub); font-weight: 700; }
   /* 범례 글리프는 위 점과 같은 모양이어야 한다 (flex:1 을 끄고 고정폭으로) */
@@ -975,7 +1253,7 @@
     font-size: 11.5px; color: var(--sub); line-height: 1.7;
   }
   .vp-trend-detail[data-empty] { background: transparent; padding: 8px 0 0; }
-  .vp-trend-hint { font-size: 10.5px; color: var(--sub2); }
+  .vp-trend-hint { font-size: 12px; color: var(--sub2); }
   .vtd-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .vtd-ym { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
   .vtd-sum { font-size: 11.5px; color: var(--sub); }
@@ -1016,15 +1294,27 @@
   .vtd-pg:hover:not(:disabled) { color: var(--accent2); border-color: var(--accent2); }
   .vtd-pg:disabled { opacity: 0.4; cursor: default; }
   .vtd-pg-n { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
-  .vtd-none { margin-top: 8px; font-size: 10.5px; color: var(--sub2); }
+  .vtd-none { margin-top: 8px; font-size: 12px; color: var(--sub2); }
+  /* 미리보기 상태의 CTA — 이 버튼이 곧 "누를 수 있다" 는 안내다.
+     ⚠️ 골드 외곽선까지 줘서 확실히 컨트롤로 읽히게 한다. 회색 텍스트로 두면 또 캡션이 된다 */
+  .vtd-open {
+    margin-top: 10px; padding: 6px 13px; border-radius: 999px; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: var(--accent2);
+    background: var(--bg2); border: 1px solid var(--accent);
+    transition: background 0.15s;
+  }
+  .vtd-open:hover { background: #FBF5EA; }
   .bills-loading { padding: 28px 16px; text-align: center; font-size: 12px; color: var(--sub2); }
   .vp-trend-note.is-term { margin-top: 6px; }
 
   /* ⚠️ 1열 전환은 900px 이다 — 카드가 전체폭(1232px)이라 2열 각 패널이 590px 이고,
      900 아래로 가면 패널당 400px 미만이 되어 `.vp-cmp` 2칸이 무너진다 */
   @media (max-width: 900px) {
-    .vp-grid { grid-template-columns: 1fr; gap: 22px; }
-    .vp-panel + .vp-panel {
+    /* ⚠️ 대표발의 카드도 **같은 900px** 에서 접는다 — 한 페이지에서 "두 질문을 나란히" 는
+       하나의 패턴이어야 한다 (표결 성향·정당별 협력과 동일) */
+    .vp-grid, .pr-grid { grid-template-columns: 1fr; gap: 22px; }
+    .vp-panel + .vp-panel,
+    .pf-panel + .pf-panel {
       border-left: 0; padding-left: 0;
       border-top: 1px solid var(--border); padding-top: 22px;
     }
@@ -1060,9 +1350,14 @@
   .sp-fact-sub { margin-top: 3px; font-size: 10.5px; color: var(--sub2); line-height: 1.5; }
 
   .sp-sub-title {
-    font-size: 12px; font-weight: 700; color: var(--sub);
-    margin: 0 0 10px; letter-spacing: 0.02em;
+    font-size: 11.5px; font-weight: 700; color: var(--sub);
+    margin: 0 0 10px; letter-spacing: 0.04em;
   }
+  /* 🔴 제목은 **위 간격이 아래보다 넓어야** 아래 내용에 묶여 읽힌다 (근접성).
+     `회의 종류` 가 위 0 / 아래 10 이라 앞 블록에 붙어 보였다 (2026-08-16 실측).
+     ⚠️ 첫 자식엔 주지 않는다 — 카드 padding 과 겹쳐 위가 뜬다 */
+  .sp-sub-title:not(:first-child) { margin-top: 22px; }
+  .vp-h:not(:first-child), .pc-h:not(:first-child) { margin-top: 20px; }
   .sp-kinds { display: flex; flex-direction: column; gap: 8px; }
   .sp-kind-row { display: grid; grid-template-columns: 76px 1fr 52px; align-items: center; gap: 8px; }
   .sp-kind-lab { font-size: 11.5px; color: var(--sub2); overflow-wrap: anywhere; }
@@ -1185,7 +1480,7 @@
     cursor: pointer;
   }
   .sp-more:hover { color: var(--accent); border-color: var(--border2); }
-  .sp-caveat { margin: 14px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.7; }
+  .sp-caveat { margin: 14px 0 0; font-size: 12px; color: var(--sub2); line-height: 1.7; }
   .sp-caveat li { margin-left: 14px; }
 
   @media (max-width: 560px) {
@@ -1236,16 +1531,21 @@
   /* ⚠️ align-items: start — 카드가 **내용 높이**만 갖게 한다.
      기본값(stretch)이면 한 행의 카드가 제일 큰 놈에 맞춰 늘어나, 짧은 카드 아래에 흰 여백이 생긴다
      (실측: 관심분야 자연 310px 이 581px 로 늘어나 **271px 이 빈 흰 상자**였다). */
+  /* 🔴 분석 탭 세로 리듬은 **flex gap 하나**로 잡는다 (2026-08-16).
+     예전엔 블록마다 margin 을 따로 줘서 실측 간격이 **0 / 10 / 16px 세 가지**로 갈렸고,
+     `.card` 에는 margin 이 아예 없어 **카드끼리 0px 로 맞붙은 곳이 두 군데**였다
+     (표결 성향↔대표발의, 정당별 협력↔발언 기록). 개별 margin 을 되살리지 말 것. */
+  #tab-overview { display: flex; flex-direction: column; gap: 20px; }
   .overview-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 20px;
     align-items: start;
   }
   .overview-grid.two { grid-template-columns: 2fr 1fr; }
   /* 3열 — 월별 발의가 12개월 막대라 제일 넓은 칸을 준다 */
-  .overview-grid.three { grid-template-columns: 1.3fr 1fr 1fr; }
+    /* 🔴 `.three` 는 2026-08-16 에 사라졌다 (주요 법안 이력 카드 삭제). 되살리지 말 것 —
+     이유는 마크업 주석에 있다. 남은 두 장은 무게가 다르다: 특화 목록이 넓어야 위원회명이 안 접힌다 */
   .card {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -1259,9 +1559,19 @@
     align-items: center;
     justify-content: space-between;
   }
+  /* ===== 제목 3단계 =====
+     🔴 예전엔 카드 제목이 14px/600 인데 그 **안의** 소제목이 13.5px/700 이라 계층이 뒤집혀 있었다.
+        상위가 더 가늘어서 어느 것도 제목으로 안 읽히고 전부 본문처럼 보였다 (2026-08-16).
+        L1 카드 제목 = 세리프 900 / 17px   ← 폰트가 달라 한눈에 "제목" 으로 읽힌다 (`/xray` 카드와 같은 처리)
+        L2 섹션 소제목 = 산세리프 800 / 14px + 골드 좌측 바
+        L3 하위 라벨   = 산세리프 700 / 11.5px + 자간 (--sub)
+     ⚠️ 크기만으로 가르려 하지 말 것 — 이 페이지는 12~15px 구간에 전부 몰려 있어
+        1~2px 차이는 구분이 안 된다. **폰트·굵기·색·장식**을 같이 바꿔야 한다 */
   .card-title {
-    font-size: 14px;
-    font-weight: 600;
+    font-family: 'Noto Serif KR', 'Noto Sans KR', serif;
+    font-size: 17px;
+    font-weight: 900;
+    letter-spacing: -0.01em;
     color: var(--text);
     display: flex;
     align-items: center;
@@ -1275,124 +1585,55 @@
   .card-body { padding: 22px; }
 
   /* Monthly chart */
-  .monthly-chart {
-    display: flex;
-    align-items: flex-end;
-    gap: 6px;
-    height: 140px;
-    padding: 18px 0 24px;
-    position: relative;
+  /* ===== 월별 대표발의 (_propose_months.ejs) — 2026-08-16 =====
+     구 `.monthly-chart`/`.month-*`(최근 12개월 롤링 창)를 대체한다.
+     🔴 `_vote_profile.ejs` 의 월별 표결 참여(`.vp-trend-*`)와 **같은 시각 언어**로 맞춘다 —
+        연도 탭 · 1~12월 고정 슬롯 · 빈 달은 빈 칸. 한 페이지의 두 시계열이 달라 보이면 비교가 안 된다. */
+  /* 🔴 연도 탭이 아니라 **연도별로 쌓는다** (small multiples) — 이유는 파샬 머리 주석에.
+     탭 CSS(`.mon-years`/`.mon-year`)와 그 JS 는 함께 제거했다. 되살리지 말 것 */
+  .mon-year-block + .mon-year-block { margin-top: 14px; }
+  .mon-yhead {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    margin-bottom: 4px;
   }
-  .monthly-chart::after {
-    content: '';
-    position: absolute;
-    left: 0; right: 0;
-    bottom: 24px;
-    height: 1px;
-    background: var(--border);
-  }
-  .month-col {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    height: 100%;
-    justify-content: flex-end;
-  }
-  .month-bar-wrap {
-    flex: 1;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-  }
-  .month-bar {
-    position: relative;
-    width: 100%;
-    background: var(--accent);
-    border-radius: 3px 3px 0 0;
-    opacity: 0.8;
-    cursor: pointer;
-    min-height: 6px;
-    transition: opacity 0.2s;
-  }
-  .month-bar:hover { opacity: 1; }
-  .month-bar.highlight { background: var(--accent2); opacity: 1; }
-  .month-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    color: var(--sub2);
-    text-align: center;
-  }
-  .month-val {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-bottom: 3px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--sub);
-    white-space: nowrap;
-  }
-  /* 0건 월 — 막대 없이 baseline 위에 "0" 만 노출 (데이터 0 vs 결측 구분) */
-  .month-val-zero {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--sub2);
-    line-height: 1;
-    margin-bottom: 2px;
-  }
+  .mon-y { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text); }
+  .mon-ysum { font-size: 11.5px; color: var(--sub2); }
+  .mon-ysum strong { color: var(--sub); font-weight: 700; }
 
-  /* Timeline */
-  .timeline {
-    display: flex;
-    flex-direction: column;
+  /* 축 라벨 자리(왼쪽 34px)를 padding 으로 확보 — 막대 위에 겹치면 안 읽힌다 */
+  .mon-plot { position: relative; padding-left: 34px; }
+  .mon-axis { position: absolute; left: 0; top: 0; bottom: 0; width: 30px; }
+  .mon-axis i {
+    position: absolute; right: 0; transform: translateY(50%);
+    font-size: 9px; font-style: normal; color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  /* 50% 지점 가로 점선 — 눈금 숫자만 있으면 어디가 그 높이인지 모른다 (표결 추이와 같은 처리) */
+  .mon-bars {
     position: relative;
+    display: flex; align-items: flex-end; gap: 3px;
+    height: 62px; padding: 0 1px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(to top, transparent calc(50% - 1px), var(--border) calc(50% - 1px), var(--border) 50%, transparent 50%);
   }
-  .timeline::before {
-    content: '';
-    position: absolute;
-    left: 16px;
-    top: 8px;
-    bottom: 8px;
-    width: 1px;
-    background: var(--border);
+  .mon-col {
+    flex: 1; min-width: 0; height: 100%;
+    display: flex; align-items: flex-end;
+    background: var(--bg3); border-radius: 2px;
   }
-  .tl-item {
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-    padding: 12px 0;
-    position: relative;
+  .mon-bar { display: block; width: 100%; background: var(--accent); border-radius: 2px; }
+  /* 🔴 발의가 없었던 달 — **빈 칸**이다. 회색 트랙을 그리면 "0건 발의" 로 읽힌다 */
+  .mon-col.is-none { background: transparent; border-bottom: 1px dashed var(--border2); }
+  .mon-mlabels { display: flex; gap: 3px; padding: 0 1px; margin-top: 4px; }
+  .mon-ml {
+    flex: 1; min-width: 0; text-align: center;
+    font-size: 9px; color: var(--sub2);
+    font-family: 'JetBrains Mono', monospace;
   }
-  .tl-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    margin-top: 4px;
-    flex-shrink: 0;
-    position: relative;
-    z-index: 1;
-    margin-left: 11px;
-  }
-  .tl-dot.passed { background: var(--green); box-shadow: 0 0 8px rgba(15,157,110,0.4); }
-  .tl-dot.alt    { background: var(--sub2); }
-  .tl-dot.pending { background: var(--accent); }
-  .tl-dot.rejected { background: var(--red); }
-  .tl-content { flex: 1; min-width: 0; }
-  .tl-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-    margin-bottom: 3px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .tl-meta { font-size: 11px; color: var(--sub2); display: flex; gap: 8px; }
-  .tl-date { font-family: 'JetBrains Mono', monospace; }
+  .mon-ml.is-none { opacity: 0.35; }
+  /* (`.mon-note` 는 카드 바닥 `.pr-foot` 범례로 통합 — 참조 0) */
+
+  /* (`.timeline`/`.tl-*` 는 2026-08-16 `주요 법안 이력` 카드와 함께 삭제 — 참조 0) */
 
   /* ===== 정당별 공동발의 협력 (_party_coop.ejs) — 전체폭 2단 =====
      🔴 정당색 금지 (2026-08-15 제거). 예전엔 이름·막대에 partyColorOf() 를 뿌려 보라·파랑이 나갔다 —
@@ -1403,16 +1644,16 @@
   .pc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
   .pc-panel { min-width: 0; }
   .pc-panel + .pc-panel { border-left: 1px solid var(--border); padding-left: 28px; }
-  .pc-h { margin: 0 0 4px; font-size: 13.5px; font-weight: 700; color: var(--text); }
+  /* .pc-h 는 위 .vp-h 와 같은 규칙을 공유한다 (한쪽만 고치면 두 카드가 달라 보인다) */
   .pc-lede { margin: 0 0 12px; font-size: 11.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all; }
   .pc-lede strong { color: var(--sub); font-weight: 700; }
   .pc-split { margin: 0 0 12px; font-size: 12px; color: var(--sub2); }
   .pc-split strong { color: var(--sub); font-weight: 700; }
-  .pc-note { margin: 10px 0 0; font-size: 10.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all; }
+  .pc-note { margin: 10px 0 0; font-size: 12px; color: var(--sub2); line-height: 1.7; word-break: keep-all; }
   .pc-note strong { color: var(--sub); font-weight: 700; }
   .pc-foot {
     margin: 16px 0 0; padding-top: 12px; border-top: 1px dashed var(--border);
-    font-size: 10.5px; color: var(--sub2); line-height: 1.7; word-break: keep-all;
+    font-size: 12px; color: var(--sub2); line-height: 1.7; word-break: keep-all;
   }
   .pc-foot strong { color: var(--sub); font-weight: 700; }
   /* ⚠️ .vp-grid 와 같은 900px — 그 아래로 가면 패널당 400px 미만이 되어 막대 행이 무너진다 */
@@ -1567,7 +1808,7 @@
     justify-content: space-between;
     margin-top: 10px;
   }
-  .write-hint { font-size: 11px; color: var(--sub2); }
+  .write-hint { font-size: 12px; color: var(--sub2); }
   .write-submit {
     padding: 7px 18px;
     background: var(--accent);
@@ -1601,15 +1842,26 @@
     .profile-vs.is-pending, .profile-vs.is-missing { text-align: center; }
     .overview-grid { grid-template-columns: 1fr; }
     .overview-grid.two { grid-template-columns: 1fr; }
-    .overview-grid.three { grid-template-columns: 1fr; }
     .eval-layout { grid-template-columns: 1fr; }
-    .bill-table-header, .bill-table-row {
-      grid-template-columns: 1fr 80px 80px;
+    /* ⚠️ 두 탭 모두 3번째(제안일 / 표결일)와 5번째(소관위원회)를 숨겨 **3열**로 접는다.
+       법안 활동 탭은 4열이라 5번째가 없어 그 셀렉터가 no-op 이다 — 지우지 말 것,
+       두 탭이 같은 클래스를 쓰므로 한쪽만 남기면 나머지 탭이 어긋난다.
+       남는 열: 법안 활동 = 법안명·구분·처리결과 / 표결 내역 = 법안명·표결결과·처리결과 */
+    #tab-bills .bill-table-header, #tab-bills .bill-table-row,
+    #tab-votes .bill-table-header, #tab-votes .bill-table-row {
+      grid-template-columns: minmax(0, 1fr) 80px 88px;
     }
     .bill-table-header span:nth-child(3),
     .bill-table-header span:nth-child(5),
     .bill-table-row > *:nth-child(3),
     .bill-table-row > *:nth-child(5) { display: none; }
+    /* ⚠️ 처리결과 배지를 좁은 칸에서 줄바꿈시킨다 — `수정안반영폐기` 가 nowrap 이면 **104px** 이라
+       88px 칸을 16px 넘어간다 (실측). **문서 가로 스크롤은 안 생겨서** 눈치채기 어렵다.
+       `.pb-badge-category`(구분 열)에 이미 같은 처리가 되어 있다 — 그것과 세트다 */
+    .bill-table-row > *:nth-child(4) .pb-badge {
+      display: inline-block; max-width: 100%;
+      white-space: normal; overflow-wrap: anywhere; line-height: 1.35;
+    }
   }
 </style>
 
@@ -1717,17 +1969,31 @@
 </div>
 
 <!-- TABS -->
-<div class="tab-bar">
-  <div class="tab-bar-inner">
-    <button class="tab-btn active" data-tab="overview">분석</button>
-    <button class="tab-btn" data-tab="bills">
-      법안 활동 <span class="tab-count"><%= nf(billsTabCount) %></span>
-    </button>
-    <button class="tab-btn" data-tab="votes">
-      표결 내역 <span class="tab-count"><%= nf(votesTabCount) %></span>
-    </button>
-    <button class="tab-btn" data-tab="comments">국민 평가</button>
+<%# 🔴 탭바 + 목차를 한 덩어리로 묶어 통째로 sticky 시킨다 (.tab-head). 위 CSS 주석 참조 %>
+<div class="tab-head">
+  <div class="tab-bar">
+    <div class="tab-bar-inner">
+      <button class="tab-btn active" data-tab="overview">분석</button>
+      <button class="tab-btn" data-tab="bills">
+        법안 활동 <span class="tab-count"><%= nf(billsTabCount) %></span>
+      </button>
+      <button class="tab-btn" data-tab="votes">
+        표결 내역 <span class="tab-count"><%= nf(votesTabCount) %></span>
+      </button>
+      <button class="tab-btn" data-tab="comments">국민 평가</button>
+    </div>
   </div>
+
+  <%# 분석 탭 목차 — **JS 가 `#tab-overview [data-toc]` 를 읽어 채운다.**
+      🔴 항목을 여기에 손으로 적지 말 것: `정당별 협력`(`_out || _in`)과 `발언 기록`(`speeches`)은
+         데이터가 없으면 **렌더 자체가 안 된다.** 고정 목록을 쓰면 없는 곳으로 보내는 칩이 생긴다.
+         DOM 을 읽으면 그 분기가 저절로 맞고, 카드를 추가할 때도 `data-toc` 한 줄이면 끝난다.
+      ⚠️ 실측 2026-08-16: 현재는 **309명 전원이 5개**다 — 즉 "3개짜리 의원" 을 아직 못 봤다는 뜻이지
+         분기가 없다는 뜻이 아니다. 이 수를 코드에 박지 말 것
+      ⚠️ JS 가 실패하면 비어 있는 채로 `hidden` 이라 화면엔 아무 영향이 없다 %>
+  <nav class="ov-toc" id="ov-toc" aria-label="분석 탭 목차" hidden>
+    <div class="ov-toc-inner"></div>
+  </nav>
 </div>
 
 <div class="content-wrap">
@@ -1761,12 +2027,13 @@
 
       <% if (billCnt.total > 0) { %>
         <div class="bill-table">
+          <%# 🔴 4열이다 (2026-08-16, 구 5열). `표결` 열을 없애고 `처리결과` 보조줄로 병합했다 —
+              이유는 아래 JS `row()` 머리 주석에 실측과 함께 있다. 되살리지 말 것 %>
           <div class="bill-table-header">
             <span>법안명</span>
             <span>구분</span>
             <span>제안일</span>
             <span>처리결과</span>
-            <span>표결</span>
           </div>
           <div id="bills-container"></div>
         </div>
@@ -1779,33 +2046,94 @@
     <!-- ===== 표결 내역 탭 ===== -->
     <div class="tab-panel" id="tab-votes">
       <% if (votes && votes.length > 0) { %>
+        <%# 🔴 목록만 두면 "전체가 몇 건이고 어떻게 갈렸나" 를 셀 수 없다. 요약을 먼저 놓는다.
+            🔴 **분모가 둘이다** — 찬성·반대·기권은 참여한 표결(vsAttended) 기준, 불참은 전체(vsTotal) 기준.
+               한 줄에 5개를 나란히 놓고 같은 분모인 척하면 "더해도 100%가 안 되는데?" 가 된다.
+               그래서 불참은 점선 뒤로 분리하고 각각 분모를 적는다 (표결 성향 카드와 같은 규칙).
+            ⚠️ 추가 쿼리 0 — voteSummary 는 이미 위에서 쓰고 있다 %>
+        <% const vpct = (n, d) => (d > 0 ? Math.round(Number(n) / d * 1000) / 10 : 0); %>
+        <div class="vote-tally">
+          <div class="vote-tally-total">
+            <span class="vt-label">본회의 표결</span>
+            <span class="vt-num"><%= nf(vsTotal) %><small>건</small></span>
+            <span class="vt-sub"><%= nf(vsAttended) %>건 참여 · 참여율 <%= vpct(vsAttended, vsTotal) %>%</span>
+          </div>
+          <div class="vote-tally-items">
+            <% [
+                 { k: 'for',     l: '찬성', n: vs.for_cnt,     d: vsAttended },
+                 { k: 'against', l: '반대', n: vs.against_cnt, d: vsAttended },
+                 { k: 'abstain', l: '기권', n: vs.abstain_cnt, d: vsAttended }
+               ].forEach(it => { %>
+              <div class="vt-item">
+                <span class="vote-result-chip v-<%= it.k %>"><%= it.l %></span>
+                <span class="vt-v"><%= nf(Number(it.n || 0)) %><small>건</small></span>
+                <span class="vt-p"><%= vpct(it.n, it.d) %>%</span>
+              </div>
+            <% }) %>
+            <div class="vt-item is-absent">
+              <span class="vote-result-chip v-absent">불참</span>
+              <span class="vt-v"><%= nf(Number(vs.absent_cnt || 0)) %><small>건</small></span>
+              <span class="vt-p"><%= vpct(vs.absent_cnt, vsTotal) %>%</span>
+            </div>
+          </div>
+        </div>
+        <p class="vote-tally-note">
+          찬성·반대·기권 비율의 분모는 <strong>참여한 <%= nf(vsAttended) %>건</strong>,
+          불참 비율의 분모는 <strong>전체 <%= nf(vsTotal) %>건</strong>입니다.
+          <strong>기권</strong>은 표결에 참여해 찬반 어느 쪽도 택하지 않은 것이고,
+          <strong>불참</strong>은 그 표결에 참여하지 않은 것입니다.
+        </p>
+        <%# 결과별 필터 칩 — 요약 카드에서 "반대 3건" 을 보고 그 3건을 바로 찾을 수 있어야 한다.
+            ⚠️ 0건인 결과는 칩을 그리지 않는다 (누를 수 없는 칩은 노이즈다 — 월별 패널과 같은 규칙).
+            ⚠️ 개수는 voteSummary 에서 온다. 아래 목록은 API 가 같은 조건으로 다시 세므로 두 값이 맞아야 한다 %>
+        <div class="vote-filter" id="vote-filter" role="group" aria-label="표결 결과 필터">
+          <button type="button" class="vf-chip is-on" data-result="">전체 <b><%= nf(vsTotal) %></b></button>
+          <% [
+               { k: 'for',     l: '찬성', n: Number(vs.for_cnt || 0) },
+               { k: 'against', l: '반대', n: Number(vs.against_cnt || 0) },
+               { k: 'abstain', l: '기권', n: Number(vs.abstain_cnt || 0) },
+               { k: 'absent',  l: '불참', n: Number(vs.absent_cnt || 0) }
+             ].forEach(c => { if (c.n > 0) { %>
+            <button type="button" class="vf-chip" data-result="<%= c.l %>"><%= c.l %> <b><%= nf(c.n) %></b></button>
+          <% } }) %>
+        </div>
+
         <div class="bill-table">
           <div class="bill-table-header">
             <span>법안명</span>
             <span>표결결과</span>
             <span>표결일</span>
             <span>처리결과</span>
-            <span>카테고리</span>
+            <%# 값이 `문화체육관광위원회` 같은 위원회명이다 — "카테고리" 는 무엇인지 알 수 없는 라벨이었다 %>
+            <span>소관위원회</span>
           </div>
-          <% votes.slice(0, 50).forEach(v => { %>
-            <a href="/bill/<%= v.bill_id %>" class="bill-table-row">
-              <div class="bill-row-name"><%= v.bill_name || v.bill_id %></div>
-              <div>
-                <span class="vote-result-chip v-<%= v.vote_result === '찬성' ? 'for' : v.vote_result === '반대' ? 'against' : v.vote_result === '기권' ? 'abstain' : 'absent' %>">
-                  <%= v.vote_result %>
-                </span>
-              </div>
-              <div style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2)"><%= v.vote_date %></div>
-              <span><span class="pb-badge <%= resultClass(v.proc_result_name) %>"><%= v.proc_result_name || '—' %></span></span>
-              <span><% if (v.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= v.bill_topic_nm %></span><% } %></span>
-            </a>
-          <% }); %>
+          <%# 🔴 첫 20건만 SSR. 전건(598)을 뿌리면 행당 630B × 598 = **+345KB** 다 (실측).
+              나머지는 `/api/politician/:monaCd/votes?page=N` 이 같은 마크업으로 이어붙인다 —
+              JS 쪽 rowHtml() 과 이 마크업이 어긋나면 페이지를 넘길 때 행 모양이 달라진다 %>
+          <div id="vote-rows">
+            <% votes.slice(0, 20).forEach(v => { %>
+              <a href="/bill/<%= v.bill_id %>" class="bill-table-row">
+                <div class="bill-row-name"><%= v.bill_name || v.bill_id %></div>
+                <div>
+                  <span class="vote-result-chip v-<%= v.vote_result === '찬성' ? 'for' : v.vote_result === '반대' ? 'against' : v.vote_result === '기권' ? 'abstain' : 'absent' %>">
+                    <%= v.vote_result %>
+                  </span>
+                </div>
+                <div style="font-family:'JetBrains Mono';font-size:12px;color:var(--sub2)"><%= v.vote_date %></div>
+                <span><span class="pb-badge <%= resultClass(v.proc_result_name) %>"><%= v.proc_result_name || '—' %></span></span>
+                <span><% if (v.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= v.bill_topic_nm %></span><% } %></span>
+              </a>
+            <% }); %>
+          </div>
         </div>
-        <% if (votes.length > 50) { %>
-          <div style="text-align:center;padding:16px;color:var(--sub2);font-size:12px">
-            최근 50건만 표시. 전체 <%= nf(votes.length) %>건.
-          </div>
-        <% } %>
+        <%# ⚠️ 번호 페이징을 쓴다 — 옆 "법안 활동" 탭(`#bills-pagination`)과 같은 `.pagination-inline` 이다.
+            "더 보기" 로 만들었다가 바꿨다: 598건이면 끝까지 30번을 눌러야 하고, 누른 만큼 DOM 에
+            행이 쌓이며, 같은 페이지의 두 탭이 서로 다르게 동작했다.
+            ⚠️ `data-total` 이 없으면 JS 가 첫 렌더에서 총계를 몰라 "20건 / 전체 20건" 이라고 쓴다 %>
+        <div class="vote-foot">
+          <p class="vote-more-status" id="vote-status" data-total="<%= vsTotal %>">전체 <%= nf(vsTotal) %>건 · 1페이지</p>
+          <div class="pagination-inline" id="vote-pagination"></div>
+        </div>
       <% } else { %>
         <div class="comments-empty">해당 의원의 표결 내역이 없습니다.</div>
       <% } %>
@@ -1822,7 +2150,7 @@
         const rank = locals.kpiRank || null;
         const med  = rank ? rank.median : null;
       %>
-      <div class="profile-kpis-row">
+      <div class="profile-kpis-row" id="ov-kpi" data-toc="활동 지표">
         <div class="profile-kpi">
           <%# 🔴 숫자 옆에 **무엇을 센 건지** 밝힌다. `87` 만 두면 대표발의인지 전체인지 알 수 없다.
               (카운트 카드는 분모가 없으므로 비율 대신 성격을 쓴다)
@@ -1946,102 +2274,58 @@
           crossPartyVote 는 컨트롤러 locals 라 자동으로 보인다 %>
       <%- include('_vote_profile', { vs, vsTotal, vsAttended, nf, votes }) %>
 
-      <%# 표결 성향이 전체폭으로 빠지면서 남은 카드끼리 다시 짝을 지었다 —
-          "무슨 법안을 냈나(이력) | 무슨 주제인가(관심분야)". 높이도 449 vs 310 으로 무난하다 %>
-      <%# 3열 — 표결 성향이 전체폭으로 빠지고 남은 세 장.
-          2열에 3장은 안 맞아 한 장이 통째로 전체폭 행을 먹었고 그만큼 페이지가 길어졌다.
-          "언제 냈나 | 무슨 법안을 냈나 | 무슨 주제인가" 로 묶인다 %>
-      <div class="overview-grid three">
-        <%# 월별 발의 — 이 행에서 제일 넓은 칸(1.3fr). 12개월 막대 + 정당별 협력 막대라 가로가 필요하다 %>
-      <div class="card">
-          <div class="card-header">
-            <span class="card-title">월별 발의 현황 <span class="card-title-mono">최근 12개월</span></span>
-          </div>
-          <div class="card-body">
-            <% if (monthly && monthly.length > 0) { %>
-              <div class="monthly-chart">
-                <% monthly.forEach(m => {
-                     const cnt = Number(m.cnt);
-                     const h = (cnt / monthlyMax) * 100;
-                     const isHigh = cnt >= monthlyMax * 0.8 && cnt > 0;
-                %>
-                  <div class="month-col">
-                    <div class="month-bar-wrap">
-                      <% if (cnt > 0) { %>
-                        <div class="month-bar <%= isHigh ? 'highlight' : '' %>" style="height:<%= h %>%">
-                          <span class="month-val"><%= cnt %></span>
-                        </div>
-                      <% } else { %>
-                        <span class="month-val-zero">0</span>
-                      <% } %>
-                    </div>
-                    <div class="month-label"><%= parseInt(m.mm, 10) %>월</div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } else { %>
-              <div class="notice-block">월별 발의 데이터가 없습니다.</div>
-            <% } %>
-          </div>
+      <%# 🔴 **대표발의 카드 하나 안에 2단**이다 (2026-08-16). 카드 두 장을 나란히 두지 말 것 —
+          특화(772px)와 월별(359px)의 높이차가 커서 **오른쪽에 413px 이 죽은 공간**으로 남았다 (실측).
+          둘 다 `bills.mona_cd`(대표발의) 하나에 대한 질문이라("무엇에 냈나 / 언제 냈나")
+          위 `표결 성향` 카드와 **같은 구조**(한 카드 안 2단)로 묶는 게 맞다.
+          목차 앵커도 원래부터 `대표발의` 하나였다.
+          ⚠️ 지역 const 는 include 로 안 넘어간다 — nf·proposeCnt·monthly·topics 를 명시 전달할 것 %>
+      <div class="card pr-card" id="ov-propose" data-toc="대표발의">
+        <div class="card-header">
+          <span class="card-title">대표발의
+            <span class="card-title-mono"><%= nf(proposeCnt) %>건</span></span>
         </div>
+        <div class="card-body">
+          <div class="pr-grid">
+            <%- include('_propose_focus',  { topics, nf, proposeCnt }) %>
+            <%- include('_propose_months', { monthly, nf }) %>
+          </div>
 
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">주요 법안 이력 <span class="card-title-mono">타임라인</span></span>
-          </div>
-          <div class="card-body">
-            <% if (timeline && timeline.length > 0) { %>
-              <div class="timeline">
-                <% timeline.forEach(t => {
-                     const r = t.proc_result_name || '';
-                     let dotClass = 'pending';
-                     if (r.indexOf('가결') > -1) dotClass = 'passed';
-                     else if (r.indexOf('대안') > -1 || r === '폐기') dotClass = 'alt';
-                     else if (r === '부결' || r === '철회') dotClass = 'rejected';
-                     let lblColor = 'var(--sub2)';
-                     if (r.indexOf('가결') > -1) lblColor = 'var(--green)';
-                     else if (r === '부결' || r === '폐기' || r === '철회') lblColor = 'var(--red)';
-                     else if (!r) { lblColor = 'var(--accent)'; }
-                %>
-                  <div class="tl-item">
-                    <div class="tl-dot <%= dotClass %>"></div>
-                    <div class="tl-content">
-                      <div class="tl-name"><%= t.bill_name %></div>
-                      <div class="tl-meta">
-                        <span class="tl-date"><%= t.propose_dt %></span>
-                        <span style="color: <%= lblColor %>"><%= r || '계류중' %></span>
-                      </div>
-                    </div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } else { %>
-              <div class="notice-block">대표발의 법안이 없습니다.</div>
-            <% } %>
-          </div>
-        </div>
-
-        <%# 관심분야 — 위 행이 아니라 여기다. 이유는 위 행 주석 참조 %>
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">대표발의 관심분야 <span class="card-title-mono">TOP 5</span></span>
-          </div>
-          <div class="card-body">
-            <% if (topics5.length > 0) { %>
-              <div class="category-bars">
-                <% topics5.forEach(t => {
-                     const w = maxTopicCnt > 0 ? (Number(t.cnt) / maxTopicCnt * 100) : 0;
-                %>
-                  <div>
-                    <div class="cat-bar-label"><%= t.topic_name %><span class="cat-bar-val"><%= t.cnt %>건</span></div>
-                    <div class="cat-bar-track"><div class="cat-bar-fill" style="width:<%= w %>%"></div></div>
-                  </div>
-                <% }); %>
-              </div>
-            <% } else { %>
-              <div class="notice-block">아직 대표발의 법안이 없습니다.</div>
-            <% } %>
-          </div>
+          <%# 🔴 범례·해석 한계는 **패널 안이 아니라 카드 바닥 전체폭**이다 (2026-08-16).
+              패널에 두면 왼쪽만 156px 길어져 두 단의 높이차가 벌어진다 (실측 720 vs 309).
+              그리고 이 문단들은 산문이라 좁은 칸보다 전체폭에서 잘 읽힌다.
+              ⚠️ 특화 목록이 없으면(대표발의 0건) 설명할 대상도 없으므로 통째로 숨긴다 %>
+          <% if ((topics || []).length) { %>
+            <div class="pr-foot">
+              <p class="pf-legend">
+                <strong>어떤 분야에 냈나</strong>의 위아래 막대는 <strong>같은 눈금(0~100%)</strong>입니다 —
+                <strong>본인</strong>은 이 의원 대표발의 중 그 위원회의 비중,
+                <strong>평균</strong>은 전체 의원 대표발의에서 그 위원회가 차지하는 비중.
+                <strong>×N</strong> 은 두 막대의 길이 비입니다.
+                <strong>언제 냈나</strong>에서 발의가 없었던 달은 <strong>빈 칸</strong>이고,
+                막대 높이는 <strong>전 연도 같은 기준</strong>이라 연도끼리 비교할 수 있습니다.
+              </p>
+              <%# 🔴 해석 한계 — 이 숫자는 배정 구조를 같이 재고 있다. 빼면 "본인이 고른 관심사" 로 읽힌다 %>
+              <ul class="pf-caveat">
+                <li>위원회는 <strong>배정</strong>되는 것이라 전부 본인이 고른 결과는 아닙니다.</li>
+                <li>위원회마다 법안 총량이 크게 다릅니다 (법제사법 9.3% · 여성가족 0.2%).
+                  그래서 건수가 아니라 <strong>평균 대비 배수</strong>로 봅니다.</li>
+                <%# 🔴 차이를 **숫자로** 밝힌다. "회부 전은 빠집니다" 라고만 쓰면, 같은 페이지 KPI 의
+                    대표발의 수(실측 336)와 특화 목록 분모(334)가 다른 이유를 독자가 스스로 이어붙여야 한다.
+                    ⚠️ 차이가 0이면 이 줄을 아예 안 쓴다 — 없는 차이를 설명하면 노이즈다 %>
+                <% const _prPending = Math.max(0, Number(proposeCnt || 0) - Number(topics[0].own_total || 0)); %>
+                <% if (_prPending > 0) { %>
+                  <li>대표발의 <strong><%= nf(Number(proposeCnt)) %>건</strong> 중
+                    아직 <strong>회부되기 전</strong>인 <strong><%= nf(_prPending) %>건</strong>은
+                    위원회가 정해지지 않아 <strong>어떤 분야에 냈나</strong> 집계에서 빠졌습니다.</li>
+                <% } else { %>
+                  <li>법안이 <strong>회부되기 전</strong>이면 위원회가 비어 있어
+                    <strong>어떤 분야에 냈나</strong> 집계에서 빠집니다.</li>
+                <% } %>
+              </ul>
+              <a class="pf-more" href="#" data-open-tab="bills">법안 활동 탭에서 전체 보기 →</a>
+            </div>
+          <% } %>
         </div>
       </div>
 
@@ -2061,7 +2345,7 @@
            서비스가 이미 걸러서 내려주므로 여기서 role_kind 를 다시 분기하지 않는다.
       %>
       <% if (typeof speeches !== 'undefined' && speeches) { %>
-        <div class="card" id="speech-record">
+        <div class="card" id="speech-record" data-toc="발언 기록">
           <div class="card-header">
             <span class="card-title">회의 발언 기록
               <span class="card-title-mono"><%= speeches.firstDate %> ~ <%= speeches.lastDate %></span>
@@ -2261,6 +2545,35 @@
     PB.mountComments({ containerId: 'comment-widget', type: 'politician', targetId: MONA_CD });
   };
 
+  /* ===== 공용 페이저 (법안 활동 탭 · 표결 내역 탭) =====
+     🔴 두 탭이 각자 `drawPager` 를 갖고 있었다. 하나만 고치면 같은 페이지 안에서
+        페이저 모양이 갈리므로 여기로 합쳤다.
+     ⚠️ 창(window) 방식이라 `1 … 마지막` 을 자동으로 못 보여준다 → **`«` `»` 로 처음·끝 이동**을 준다.
+        서버 렌더 목록(`/bill`·`/community`)은 `1 … totalPages` 를 직접 그려서 이미 끝으로 갈 수 있는데,
+        JS 페이저 두 곳만 창 밖으로 나갈 방법이 없었다 (30페이지면 `→` 를 29번 눌러야 했다).
+     onGo(p) 는 페이지를 바꾸고 다시 로드하는 콜백 */
+  const renderPager = (box, cur, pages, onGo, busy) => {
+    box.innerHTML = '';
+    if (pages <= 1) return;
+    const mk = (label, p, opts) => {
+      const b = document.createElement('button');
+      b.className = 'pg' + (opts && opts.active ? ' active' : '');
+      b.textContent = label;
+      b.disabled = !!(opts && opts.disabled) || !!busy;
+      if (opts && opts.title) b.title = opts.title;
+      b.onclick = () => onGo(p);
+      box.appendChild(b);
+    };
+    const atFirst = cur === 1, atLast = cur === pages;
+    mk('«', 1, { disabled: atFirst, title: '첫 페이지' });
+    mk('←', Math.max(1, cur - 1), { disabled: atFirst });
+    const start = Math.max(1, cur - 3);
+    const end = Math.min(pages, start + 6);
+    for (let p = start; p <= end; p++) mk(String(p), p, { active: p === cur });
+    mk('→', Math.min(pages, cur + 1), { disabled: atLast });
+    mk('»', pages, { disabled: atLast, title: '마지막 페이지 (' + pages + ')' });
+  };
+
   // Tab switching
   const tabs = document.querySelectorAll('.tab-btn');
   const panels = document.querySelectorAll('.tab-panel');
@@ -2276,6 +2589,96 @@
     const btn = document.querySelector('[data-tab="comments"]');
     if (btn) btn.click();
   }
+
+  /* 본문 안에서 탭으로 보내는 링크 (`data-open-tab`).
+     ⚠️ 탭 버튼을 **click() 으로 눌러야** 한다 — 클래스만 갈아끼우면 지연 로딩·목차 표시 같은
+        다른 리스너가 안 돈다. 위임이라 나중에 붙는 마크업에도 걸린다 */
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('[data-open-tab]');
+    if (!link) return;
+    e.preventDefault();
+    const btn = document.querySelector('.tab-btn[data-tab="' + link.dataset.openTab + '"]');
+    if (!btn) return;
+    btn.click();
+    document.querySelector('.tab-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  /* 분석 탭 목차 — 카드 5종 **3,068px**(1600px 실측)을 훑을 수단이 없었다.
+     🔴 항목은 **DOM 에서 읽는다**(`[data-toc]`). 정당별 협력·발언 기록은 데이터가 없으면
+        렌더 자체가 안 돼서, 고정 목록을 쓰면 없는 곳으로 보내는 칩이 생긴다.
+     ⚠️ 이 블록은 hash 처리 **뒤**에 와야 한다 — 위 `btn.click()` 이 먼저 돌아야
+        아래 초기 표시 판정이 실제 활성 탭을 본다. */
+  (function () {
+    const toc  = document.getElementById('ov-toc');
+    const head = document.querySelector('.tab-head');
+    const secs = Array.prototype.slice.call(
+      document.querySelectorAll('#tab-overview [data-toc]'));
+    if (!toc || !head || secs.length < 2) return;   // 한 개짜리는 목차가 아니다
+
+    const inner = toc.querySelector('.ov-toc-inner');
+
+    /* 고정 크롬 높이. 🔴 `head.getBoundingClientRect().bottom` 을 쓰지 말 것 —
+       아직 붙지 않은 상태(페이지 최상단)에서는 히어로 높이만큼 큰 값이 나와 덜 스크롤한다.
+       `--nav-h` 는 반응형(데스크톱 100 · 모바일 60)이라 하드코딩 금지. */
+    const navH = () => parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 60;
+    const offset = () => navH() + head.offsetHeight;
+
+    const links = secs.map((sec) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ov-toc-link';
+      b.textContent = sec.dataset.toc;
+      b.addEventListener('click', () => {
+        const y = sec.getBoundingClientRect().top + window.pageYOffset - offset() - 12;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      });
+      inner.appendChild(b);
+      return b;
+    });
+
+    /* 활성 추적 — IntersectionObserver 의 좁은 활성 띠는 **짧은 마지막 섹션을 못 잡는다**.
+       DOM 순서대로 훑어 "고정 크롬 아래로 들어온 마지막 섹션" 을 고른다 (bill_detail 과 같은 방식). */
+    let ticking = false;
+    const sync = () => {
+      ticking = false;
+      if (toc.hidden) return;
+      const line = offset() + 16;
+      let idx = 0;
+      for (let i = 0; i < secs.length; i++) {
+        if (secs[i].getBoundingClientRect().top <= line) idx = i;
+      }
+      // 페이지 끝에서는 마지막을 강제 활성 (짧은 마지막 섹션이 영영 안 잡히는 문제)
+      if (window.innerHeight + window.pageYOffset >= document.documentElement.scrollHeight - 4) {
+        idx = secs.length - 1;
+      }
+      for (let i = 0; i < links.length; i++) links[i].classList.toggle('is-active', i === idx);
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(sync);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+
+    /* 탭 전환 — 목차는 분석 탭에서만. 기존 핸들러를 건드리지 않고 여기서 따로 듣는다
+       (하나의 관심사가 한 곳에 모여 있어야 나중에 지우기 쉽다)
+       🔴 여기서 `requestAnimationFrame(sync)` 를 쓰지 말 것 — 배경 탭·비가시 상태에서는
+          rAF 콜백이 **아예 안 돈다.** 초기 표시가 통째로 빠져 활성 칩이 하나도 없는 채로 뜬다
+          (실제로 그렇게 나왔다). rAF 는 아래 scroll throttle 에만 쓴다 —
+          거기선 "렌더링을 안 하면 갱신할 것도 없다" 가 참이라 안전하다. */
+    const show = (on) => {
+      toc.hidden = !on;
+      if (on) sync();
+    };
+    document.querySelectorAll('.tab-btn').forEach((b) => {
+      b.addEventListener('click', () => show(b.dataset.tab === 'overview'));
+    });
+
+    const cur = document.querySelector('.tab-btn.active');
+    show(!!cur && cur.dataset.tab === 'overview');
+  })();
 
   // ("당신과의 비교" 펼침 토글은 2026-08-15 제거 — 히어로 우측 패널이라 접을 이유가 없다)
 
@@ -2327,10 +2730,15 @@
         '<li><span class="vtd-r r-' + esc(b.vote_result) + '">' + esc(b.vote_result) + '</span>'
         + '<a href="/bill/' + encodeURIComponent(b.bill_id) + '">' + esc(b.bill_name) + '</a></li>').join('') + '</ul>';
       if (pages > 1) {
+        /* ⚠️ `data-p`(절대 페이지)다. 예전엔 `data-d`(±1 델타)라 처음·끝으로 한 번에 갈 수 없었다 */
+        const pg = (label, p, off, title) => '<button type="button" class="vtd-pg" data-p="' + p + '"'
+          + (off ? ' disabled' : '') + (title ? ' title="' + title + '"' : '') + '>' + label + '</button>';
         h += '<div class="vtd-pager">'
-           + '<button type="button" class="vtd-pg" data-d="-1"' + (page === 1 ? ' disabled' : '') + '>← 이전</button>'
+           + pg('«', 1, page === 1, '첫 페이지')
+           + pg('← 이전', Math.max(1, page - 1), page === 1)
            + '<span class="vtd-pg-n">' + page + ' / ' + pages + '</span>'
-           + '<button type="button" class="vtd-pg" data-d="1"' + (page === pages ? ' disabled' : '') + '>다음 →</button>'
+           + pg('다음 →', Math.min(pages, page + 1), page === pages)
+           + pg('»', pages, page === pages, '마지막 페이지 (' + pages + ')')
            + '</div>';
       }
       box.innerHTML = h;
@@ -2353,21 +2761,46 @@
          });
     };
 
+    /* 선택된 막대 표시 — 막대 ↔ 상세 상자를 잇는 유일한 시각 신호다 */
+    const mark = (ym) => cols.forEach((o) =>
+      o.setAttribute('aria-pressed', String(o.dataset.ym === ym)));
+
+    /* 🔴 미리보기 — **요청 0회**로 상세 상자를 채운다.
+       요약(tot/att/rate)은 window.__VOTE_MONTHS__ 에 이미 있고, API 가 필요한 건 법안 목록뿐이다.
+       "막대를 클릭하세요" 라고 쓰는 대신 **가장 최근 달이 이미 선택된 모습**을 보여준다 —
+       링 걸린 막대와 이 상자의 대응이 눈에 보이면 다른 막대도 눌러본다.
+       ⚠️ 여기에 결과별 칩을 같이 그리지 말 것: 목록이 없는데 필터 칩만 있으면 눌러도 아무 일이 없다 */
+    const preview = (ym) => {
+      const d = data[ym];
+      if (!d) return false;
+      cur = null; filter = ''; page = 1;
+      box.innerHTML = head(d, ym)
+        + '<button type="button" class="vtd-open" data-ym="' + ym + '">법안 ' + d.tot + '건 보기 →</button>';
+      box.removeAttribute('data-empty');
+      mark(ym);
+      return true;
+    };
+
     box.addEventListener('click', (e) => {
+      const openBtn = e.target.closest('.vtd-open');
+      if (openBtn) { open(openBtn.dataset.ym); return; }
       const chip = e.target.closest('.vtd-chip');
       if (chip) { filter = chip.dataset.r; page = 1; render(); return; }
       const pg = e.target.closest('.vtd-pg');
-      if (pg && !pg.disabled) { page += Number(pg.dataset.d); render(); }
+      if (pg && !pg.disabled) { page = Number(pg.dataset.p); render(); }   // 절대 페이지 (구 ±1 델타)
     });
 
     cols.forEach((c) => {
       c.setAttribute('aria-pressed', 'false');
-      c.addEventListener('click', () => {
-        cols.forEach((o) => o.setAttribute('aria-pressed', 'false'));
-        c.setAttribute('aria-pressed', 'true');
-        open(c.dataset.ym);
-      });
+      c.addEventListener('click', () => { mark(c.dataset.ym); open(c.dataset.ym); });
     });
+
+    /* 그 해에서 표결이 있었던 **마지막 달**. 화면에 실제로 그려진 막대에서 뽑는다 —
+       data 키를 직접 훑으면 숨은 연도의 달이 잡힌다 */
+    const latestOf = (yearEl) => {
+      const list = yearEl ? yearEl.querySelectorAll('.vp-trend-col[data-ym]') : [];
+      return list.length ? list[list.length - 1].dataset.ym : null;
+    };
 
     /* 연도 탭 — 선택한 연도만 그린다.
        ⚠️ 연도를 바꾸면 열려 있던 달 패널을 닫는다. 다른 해의 상세가 남아 있으면
@@ -2378,12 +2811,21 @@
         document.querySelectorAll('.vp-trend-year').forEach((y) => {
           y.hidden = y.dataset.y !== btn.dataset.y;
         });
-        cols.forEach((o) => o.setAttribute('aria-pressed', 'false'));
+        /* ⚠️ 빈 힌트로 되돌리지 말 것 — 그 해의 마지막 달로 **다시 미리보기**한다.
+           연도를 바꿀 때마다 상자가 비면 처음에 없앤 그 빈 상태가 되살아난다 */
         cur = null;
-        box.innerHTML = '<span class="vp-trend-hint">막대를 클릭하면 그 달의 표결 내역이 나옵니다.</span>';
-        box.setAttribute('data-empty', '1');
+        const ym = latestOf(document.querySelector('.vp-trend-year[data-y="' + btn.dataset.y + '"]'));
+        if (!ym || !preview(ym)) {
+          cols.forEach((o) => o.setAttribute('aria-pressed', 'false'));
+          box.innerHTML = '<span class="vp-trend-hint">막대를 클릭하면 그 달의 표결 내역이 나옵니다.</span>';
+          box.setAttribute('data-empty', '1');
+        }
       });
     });
+
+    /* 진입 시 — 지금 보이는 연도의 마지막 달을 미리 선택해 둔다 (요청 0회) */
+    const ym0 = latestOf(document.querySelector('.vp-trend-year:not([hidden])'));
+    if (ym0) preview(ym0);
   })();
 
   /* ===== 법안 활동 탭 — API 지연 로딩 =====
@@ -2407,43 +2849,41 @@
       : r.indexOf('대안') > -1 ? 'pb-badge-alt' : 'pb-badge-pending';
     const VOTE_CLASS = { '찬성': 'for', '반대': 'against', '기권': 'abstain', '불참': 'absent' };
 
+    /* 🔴 `표결` 열은 2026-08-16 에 없앴다 (5열 → 4열). 되살리지 말 것 —
+       본회의 표결이 붙는 법안이 **전체의 3.19%**(18,741건 중 598건)뿐이라 열이 거의 항상 비었다.
+       실측 윤준병: 법안 2,106건 중 표결기록 62건(2.94%)이고, 목록이 최신순이라
+       **첫 페이지 20행은 전부 `—`** 였다 (통째로 고장난 것처럼 보였다).
+       비는 이유는 바로 왼쪽 `처리결과` 가 이미 말하고 있다 — 계류(1,561)는 본회의 미도달,
+       대안반영폐기(456)는 위원회 대안으로 흡수돼 **원안에는 표결 자체가 없다**(표결은 '대안' 쪽에 붙는다),
+       철회·폐기도 본회의를 안 거친다. 값이 붙는 건 가결 62건과 정확히 일치했다.
+       → 정보를 버리지 않고 `처리결과` 칸의 **보조줄로 병합**한다 (계류 `+N일` 이 쓰던 그 자리). */
     const row = (b) => {
       /* ⚠️ 계류 일수 색은 서버 렌더와 **같은 임계값**이어야 한다 (200/100일) — 다르면 탭마다 색이 달라진다 */
       const d = b.days_elapsed == null ? null : Number(b.days_elapsed);
       const dColor = d == null ? '' : (d >= 200 ? 'var(--red)' : d >= 100 ? 'var(--accent)' : 'var(--sub2)');
+      /* 보조줄은 **한 줄만** 쓴다 — 계류면 경과일, 처리됐고 본인 표결기록이 있으면 그 표결.
+         ⚠️ 둘이 동시에 성립하지 않는다 (계류면 표결이 없다). 그래서 한 슬롯으로 충분하다.
+         ⚠️ `찬성`·`불참` 만 나온다고 가정하지 말 것 — 실측 분포는 찬성 88.05% / 불참 11.95% 이고
+            반대·기권은 0건이지만, 원천이 네 값을 주므로 VOTE_CLASS 로 전부 받는다 */
+      const sub = (!b.proc_result_name && d != null)
+        ? '<span class="bill-row-days" style="color:' + dColor + '">+' + d + '일</span>'
+        : (b.my_vote_result
+            ? '<span class="bill-row-myvote">내 표결 <b class="v-'
+              + VOTE_CLASS[b.my_vote_result] + '">' + esc(b.my_vote_result) + '</b></span>'
+            : '');
       return '<a href="/bill/' + encodeURIComponent(b.bill_id) + '" class="bill-table-row bills-row">'
         + '<div class="bill-row-name">' + esc(b.bill_name)
         + (b.committee ? '<small>' + esc(b.committee) + '</small>' : '') + '</div>'
         + '<span><span class="pb-badge ' + (b.proposer_yn ? 'pb-badge-category">대표발의' : 'pb-badge-alt">공동발의') + '</span></span>'
         + '<div style="font-family:\'JetBrains Mono\';font-size:12px;color:var(--sub2)">' + esc(b.propose_dt || '—') + '</div>'
         + '<span><span class="pb-badge ' + RESULT_CLASS(b.proc_result_name) + '">' + esc(b.proc_result_name || '계류') + '</span>'
-        + (!b.proc_result_name && d != null
-            ? '<span style="display:block;font-size:12px;color:' + dColor + ';font-family:\'JetBrains Mono\';margin-top:4px">+' + d + '일</span>'
-            : '')
-        + '</span>'
-        + '<div>' + (b.my_vote_result
-            ? '<span class="vote-result-chip v-' + VOTE_CLASS[b.my_vote_result] + '">' + esc(b.my_vote_result) + '</span>'
-            : '<span class="v-none">—</span>') + '</div>'
+        + sub + '</span>'
         + '</a>';
     };
 
-    const drawPager = (cur, pages) => {
-      pager.innerHTML = '';
-      if (pages <= 1) return;
-      const mk = (label, p, opts) => {
-        const b = document.createElement('button');
-        b.className = 'pg' + (opts && opts.active ? ' active' : '');
-        b.textContent = label;
-        b.disabled = !!(opts && opts.disabled);
-        b.onclick = () => { page = p; load(); };
-        pager.appendChild(b);
-      };
-      mk('←', Math.max(1, cur - 1), { disabled: cur === 1 });
-      const start = Math.max(1, cur - 3);
-      const end = Math.min(pages, start + 6);
-      for (let p = start; p <= end; p++) mk(String(p), p, { active: p === cur });
-      mk('→', Math.min(pages, cur + 1), { disabled: cur === pages });
-    };
+    /* 페이저는 공용 renderPager 를 쓴다 (표결 내역 탭과 같은 모양 — 처음·끝 이동 포함) */
+    const drawPager = (cur, pages) => renderPager(pager, cur, pages,
+      (p) => { page = p; load(); }, busy);
 
     const load = () => {
       if (busy) return;
@@ -2455,6 +2895,9 @@
       req.then((d) => {
         wrap.innerHTML = d.rows.length ? d.rows.map(row).join('')
           : '<div class="bills-loading">해당 조건의 법안이 없습니다.</div>';
+        /* ⚠️ `busy` 를 먼저 내린다 — 안 그러면 공용 renderPager 가 busy=true 로 받아
+           **버튼을 전부 disabled 로 그린다** (`.finally()` 는 이 뒤에 돈다). 실제로 그 버그를 냈다 */
+        busy = false;
         drawPager(d.page, d.pages);
         loaded = true;
       }).catch(() => {
@@ -2497,6 +2940,101 @@
         ?.querySelector('.sp-recent')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
+
+  /* ===== 표결 내역 탭 — 결과별 필터 + 페이징 =====
+     🔴 예전엔 전건을 읽어놓고 `slice(0,50)` 으로 잘라 **548건이 도달 불가**였다.
+        이제 첫 20건만 SSR 하고 나머지는 API 로 이어붙인다 (법안 활동 탭과 같은 구조).
+     ⚠️ 여기서 만드는 행 마크업은 **서버 렌더와 같아야 한다.** 어긋나면 "더 보기" 이후
+        행 모양이 달라진다 (계류 일수 색이 갈렸던 법안 활동 탭과 같은 함정) */
+  (function () {
+    const rowsBox = document.getElementById('vote-rows');
+    const filterBox = document.getElementById('vote-filter');
+    const pagerBox = document.getElementById('vote-pagination');
+    const statusEl = document.getElementById('vote-status');
+    if (!pagerBox || !statusEl) return;
+    /* ⚠️ `window.__MONA_CD__` 를 쓰지 말 것 — 그건 `_vote_profile.ejs` 가 **월별 추이를 그릴 때만**
+       정의한다 (표결월 4개 미만이면 아예 안 그려서 undefined 다). 같은 IIFE 의 MONA_CD 를 쓴다 */
+    const mona = MONA_CD;
+    if (!rowsBox || !mona) return;
+
+    const PER = 20;
+    const esc = (t) => String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const RES_CLASS = { '찬성': 'for', '반대': 'against', '기권': 'abstain', '불참': 'absent' };
+    /* 🔴 서버 `resultClass()`(이 파일 상단)와 **글자 그대로 같은 매핑**이어야 한다 —
+       다르면 "더 보기" 로 붙은 행만 배지 색이 달라진다 */
+    const PROC_CLASS = (r) => {
+      if (!r) return 'pb-badge-pending';
+      if (r.indexOf('가결') > -1) return 'pb-badge-passed';
+      if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
+      if (r === '철회') return 'pb-badge-withdrawn';
+      if (r.indexOf('대안') > -1) return 'pb-badge-alt';
+      return 'pb-badge-pending';
+    };
+
+    /* 총계는 SSR 이 이미 안다 (voteSummary) — 첫 렌더부터 "20건 / 전체 598건" 이 나와야 한다 */
+    let result = '', page = 1, loading = false;
+    let total = Number(statusEl?.dataset.total) || null;
+
+    const rowHtml = (v) => '<a href="/bill/' + encodeURIComponent(v.bill_id) + '" class="bill-table-row">'
+      + '<div class="bill-row-name">' + esc(v.bill_name || v.bill_id) + '</div>'
+      + '<div><span class="vote-result-chip v-' + (RES_CLASS[v.vote_result] || 'absent') + '">'
+      + esc(v.vote_result) + '</span></div>'
+      + '<div style="font-family:\'JetBrains Mono\';font-size:12px;color:var(--sub2)">' + esc(v.vote_date) + '</div>'
+      + '<span><span class="pb-badge ' + PROC_CLASS(v.proc_result_name) + '">'
+      + esc(v.proc_result_name || '—') + '</span></span>'
+      + '<span>' + (v.bill_topic_nm
+          ? '<span class="pb-badge pb-badge-category">' + esc(v.bill_topic_nm) + '</span>' : '') + '</span>';
+
+    const pages = () => Math.max(1, Math.ceil((total || 0) / PER));
+
+    const setStatus = () => {
+      statusEl.textContent = (result ? result + ' ' : '전체 ')
+        + (total || 0).toLocaleString('ko-KR') + '건 · ' + page + '/' + pages() + '페이지';
+    };
+
+    /* 페이저는 공용 renderPager 를 쓴다 (법안 활동 탭과 같은 모양) */
+    const drawPager = () => renderPager(pagerBox, page, pages(),
+      (p) => { page = p; load(); }, loading);
+
+    const load = () => {
+      if (loading) return;
+      loading = true;
+      /* 로딩 표시 — 안 두면 느린 회선에서 "안 눌렸나" 로 읽힌다 (법안 활동 탭과 같은 처리) */
+      rowsBox.innerHTML = '<div class="bills-loading">'
+        + (window.PB && PB.spinner ? PB.spinner({ size: 20 }) : '불러오는 중…') + '</div>';
+      const url = '/api/politician/' + encodeURIComponent(mona) + '/votes'
+        + '?page=' + page + '&per=' + PER + (result ? '&result=' + encodeURIComponent(result) : '');
+      fetch(url, { credentials: 'same-origin' })
+        .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then((d) => {
+          total = d.total;
+          rowsBox.innerHTML = (d.rows || []).length
+            ? d.rows.map(rowHtml).join('')
+            : '<div class="bills-loading">해당 결과의 표결이 없습니다.</div>';
+          loading = false; setStatus(); drawPager();
+        })
+        .catch(() => {
+          loading = false;
+          /* ⚠️ 실패를 조용히 넘기지 말 것 — 빈 목록과 구분이 안 된다 */
+          rowsBox.innerHTML = '<div class="bills-loading">표결 내역을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
+          statusEl.textContent = '불러오지 못했습니다.';
+          pagerBox.innerHTML = '';
+        });
+    };
+
+    filterBox?.addEventListener('click', (e) => {
+      const chip = e.target.closest('.vf-chip');
+      if (!chip || loading) return;
+      filterBox.querySelectorAll('.vf-chip').forEach((c) => c.classList.toggle('is-on', c === chip));
+      result = chip.dataset.result || '';
+      page = 1;                       // 필터를 바꾸면 1페이지로 — 안 그러면 범위 밖 페이지를 요청한다
+      load();
+    });
+
+    setStatus();
+    drawPager();                      // 첫 20건은 SSR 이라 페이저만 그린다 (요청 0회)
+  })();
 
 })();
 </script>

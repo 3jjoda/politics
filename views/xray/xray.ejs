@@ -65,12 +65,9 @@
     color: var(--accent); flex-shrink: 0; padding-top: 4px;
   }
   .xr-toggle .tx { flex: 1; min-width: 0; }
-  .xr-toggle .kicker {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.18em; color: var(--sub2);
-  }
   .xr-toggle .ttl {
     font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 18px;
-    color: var(--text); margin: 4px 0 5px; line-height: 1.3; word-break: keep-all;
+    color: var(--text); margin: 0 0 5px; line-height: 1.3; word-break: keep-all;
   }
   /* 접힌 카드는 2행까지만 — 카드 높이를 고르게 유지 */
   .xr-toggle .dsc {
@@ -100,6 +97,15 @@
   .xr-desc { font-size: 14px; color: var(--sub); line-height: 1.7; max-width: 720px; }
   .xr-note { margin-top: 16px; font-size: 12px; color: var(--sub2); line-height: 1.7; border-top: 1px dashed var(--border); padding-top: 12px; }
   .xr-empty { padding: 40px 24px; text-align: center; color: var(--sub2); font-style: italic; }
+  /* 안내형 빈 상태 — "고장" 이 아니라 "아직" 으로 읽혀야 하는 지표용 (이용자 참여로 채워지는 것).
+     기본 .xr-empty 의 이탤릭·흐린 회색은 한 줄짜리 문구용이라 여러 줄 + CTA 에는 안 맞는다 */
+  .xr-empty.is-guide { font-style: normal; color: var(--sub); padding: 32px 24px; }
+  .xr-empty-cta {
+    display: inline-block; font-weight: 700; font-size: 13.5px;
+    color: var(--accent2);              /* 11~14px 소형 텍스트라 --accent(3.79) 대신 --accent2(5.59) */
+    text-decoration: none; border-bottom: 1.5px solid currentColor; padding-bottom: 2px;
+  }
+  .xr-empty-cta:hover { color: #6E4400; }
 
   /* 스탯 타일 */
   .xr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
@@ -177,8 +183,29 @@
   .xr-strip-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--sub2); margin-top: 6px; padding-left: 142px; }
 
   .xr-svg-box { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; overflow: hidden; }
+  /* 가로 스크롤 안내 — 모바일에서만 켜진다 (아래 미디어 쿼리) */
+  .xr-svg-hint { display: none; }
 
   @media (max-width: 768px) {
+    /* 🔴 모바일에서 차트 글자가 2.6~2.8px 이던 문제 (2026-08-15).
+       전 차트가 viewBox 1000 유저단위에 font-size 10~13 을 쓰는데, 화면 폭이 259px 이면
+       0.26 배로 눌려 **아무것도 읽을 수 없었다.** 6개 SVG 섹션 전부 같은 증상이었다.
+       → 축소를 막고(min-width) 박스 안에서 가로 스크롤시킨다. 문서 스크롤이 아니라
+         박스 내부라 페이지 레이아웃은 그대로다 (`.status-tabs-inner` 와 같은 수법).
+       ⚠️ `overflow: hidden` 을 되돌리지 말 것 — 그러면 스크롤이 막혀 오른쪽이 잘린다.
+       ⚠️ 860px 은 "font-size 11 → 화면 9.5px" 이 되는 하한이다. 더 줄이면 다시 안 읽힌다.
+          근본 해결은 차트를 세로형으로 다시 그리는 것이지만 그건 섹션별 재설계다 */
+    .xr-svg-box {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    .xr-svg-box > svg { min-width: 860px; }
+    /* 스크롤된다는 걸 알려준다 — 안 알리면 오른쪽 절반이 없는 것처럼 보인다 */
+    .xr-svg-hint {
+      display: block; font-size: 11.5px; color: var(--sub2); margin-top: 6px;
+    }
+
     .xr-grid { grid-template-columns: 1fr; }   /* 모바일은 1열 */
     /* 1열이라 세로가 길어진다 — 접힌 카드 설명은 1행까지만
        (펼친 카드는 위쪽 [data-open] 규칙이 우선순위로 이겨서 전문 노출) */
@@ -230,8 +257,9 @@
             <section class="xr-item" id="xr-<%= s.id %>" data-section="<%= s.id %>" data-open="false">
               <button type="button" class="xr-toggle" aria-expanded="false" aria-controls="xr-body-<%= s.id %>">
                 <span class="no"><%= s.no %></span>
+                <%# 🔴 kicker(제목 앞 작은 분류 라벨)는 2026-08-15 제거.
+                    제목 앞의 요약이 시선을 나눠서, 제목이 혼자 무슨 차트인지 말하게 했다. 되살리지 말 것 %>
                 <span class="tx">
-                  <span class="kicker"><%= s.kicker %></span>
                   <span class="ttl"><%= s.title %></span>
                   <span class="dsc"><%= s.desc %></span>
                 </span>

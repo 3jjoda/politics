@@ -1,34 +1,39 @@
-// calcPoliticianAxis.js — 의원 4축 좌표 산출 (bill_axis_mapping × bill_votes)
+// calcPoliticianAxis.js — 의원 4축 좌표 산출 (bill_axis_mapping × 표결 또는 공동발의)
 //
-// 알고리즘:
-//   1) bill_axis_mapping 에서 mapping_version 의 매핑된 법안 로드
-//   2) 각 (의원, 축) 에 대해 가중 평균:
-//        numerator   = Σ (찬성→agree_score / 반대→disagree_score) × weight
-//        denominator = Σ weight  (단, 찬성/반대 만 — 기권/불참 제외)
-//        score       = numerator / denominator   →   -1.00 ~ +1.00
-//   3) politician_axis_score (mona_cd, mapping_version) UPSERT
-//   4) 4축 분포 히스토그램 통계 출력 (sanity check)
+// 소스 2종 (2026-08-16 부터 v2 는 공동발의):
+//   votes       (v1) — bill_votes: 찬성→agree_score / 반대→disagree_score, 기권·불참 제외
+//   coproposers (v2) — bill_co_proposers: 이름을 올린 법안의 agree_score 가중평균 (부호는 항상 '찬성')
+//     🔴 왜 바꿨나: 본회의는 반대가 0.66%뿐이라 표결로는 좌표가 뭉치고 출석률을 재게 된다.
+//        공동발의는 본인의 **선택**이라 갈린다 — 단 방향 라벨(매핑)이 균형이어야 한다 (CLAUDE.md 「매핑 확장 파일럿」).
+//     🔴 축당 서명 MIN_SIGNATURES(5) 미만이면 그 축은 NULL. 매핑이 없는 축(안보)도 NULL — 0 으로 채우면 "중도" 로 읽힌다.
+//
+//   score = Σ score×weight / Σ weight  →  -1.00 ~ +1.00,  politician_axis_score (mona_cd, mapping_version) UPSERT
 //
 // 사용:
-//   node batch/calcPoliticianAxis.js                        # mapping_version=v1
-//   node batch/calcPoliticianAxis.js --version v1
-//   node batch/calcPoliticianAxis.js --min-votes 5          # 표결 5건 미만 제외 (기본 1)
+//   node batch/calcPoliticianAxis.js                        # mapping_version=v2 · source=coproposers
+//   node batch/calcPoliticianAxis.js --version v1           # v1 은 자동으로 source=votes
+//   node batch/calcPoliticianAxis.js --source votes|coproposers
+//   node batch/calcPoliticianAxis.js --min-votes 5          # (votes) 표결 5건 미만 제외 (기본 1)
 
 import 'dotenv/config';
 import pg from 'pg';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
+import { POL_MAPPING_VERSION, MIN_SIGNATURES } from '../utils/axisConfig.js';
 
-const DEFAULT_VERSION = 'v1';
+const DEFAULT_VERSION = POL_MAPPING_VERSION;
 const DEFAULT_MIN_VOTES = 1;
 const AXES = ['economy', 'social', 'security', 'institution'];
 
 function parseArgs(argv) {
-    const args = { version: DEFAULT_VERSION, minVotes: DEFAULT_MIN_VOTES };
+    const args = { version: DEFAULT_VERSION, minVotes: DEFAULT_MIN_VOTES, source: null };
     for (let i = 2; i < argv.length; i++) {
         if (argv[i] === '--version') args.version = argv[++i];
         else if (argv[i] === '--min-votes') args.minVotes = parseInt(argv[++i], 10);
+        else if (argv[i] === '--source') args.source = argv[++i];
     }
+    if (!args.source) args.source = args.version === 'v1' ? 'votes' : 'coproposers';
+    if (!['votes', 'coproposers'].includes(args.source)) throw new Error(`--source 는 votes|coproposers: ${args.source}`);
     return args;
 }
 
@@ -80,7 +85,7 @@ function stats(values) {
 
 async function run() {
     const args = parseArgs(process.argv);
-    logger.info(`[Politician Axis START] mapping_version=${args.version} min_votes=${args.minVotes}`);
+    logger.info(`[Politician Axis START] mapping_version=${args.version} source=${args.source} min_votes=${args.minVotes}`);
 
     const pool = new pg.Pool(dbConfig);
     const start = Date.now();
@@ -102,9 +107,8 @@ async function run() {
         logger.info(`--- bill_axis_mapping (${args.version}) ---`);
         mapStat.rows.forEach(r => logger.info(`  ${r.axis.padEnd(11)}: ${r.bills}건 · weight합 ${r.weight_sum}`));
 
-        // 메인 계산 + UPSERT — CTE 한 방
-        const upsertSql = `
-            WITH per_axis AS (
+        // 메인 계산 + UPSERT — CTE 한 방. per_axis 만 소스에 따라 다르고 나머지는 공통
+        const perAxisVotes = `
                 SELECT
                     bv.mona_cd,
                     bam.axis,
@@ -123,28 +127,44 @@ async function run() {
                   FROM bill_votes bv
                   JOIN bill_axis_mapping bam ON bam.bill_id = bv.bill_id
                  WHERE bam.mapping_version = $1::varchar
-                 GROUP BY bv.mona_cd, bam.axis
-            ),
-            per_pol AS (
+                 GROUP BY bv.mona_cd, bam.axis`;
+        // 공동발의: 이름을 올린 것이 곧 '찬성'. 축당 서명이 MIN_SIGNATURES 미만이면 분모를 0 으로 만들어 NULL 이 되게 한다
+        const perAxisCo = `
                 SELECT
-                    mona_cd,
-                    COALESCE(SUM(CASE WHEN axis='economy'     AND denominator > 0
-                                      THEN numerator / denominator ELSE NULL END), 0)::numeric(4,2) AS economy,
-                    COALESCE(SUM(CASE WHEN axis='social'      AND denominator > 0
-                                      THEN numerator / denominator ELSE NULL END), 0)::numeric(4,2) AS social,
-                    COALESCE(SUM(CASE WHEN axis='security'    AND denominator > 0
-                                      THEN numerator / denominator ELSE NULL END), 0)::numeric(4,2) AS security,
-                    COALESCE(SUM(CASE WHEN axis='institution' AND denominator > 0
-                                      THEN numerator / denominator ELSE NULL END), 0)::numeric(4,2) AS institution,
-                    COALESCE(SUM(used_count), 0)::int AS vote_count_used
+                    c.mona_cd,
+                    bam.axis,
+                    SUM(bam.agree_score::numeric * bam.weight) AS numerator,
+                    CASE WHEN COUNT(*) >= ${MIN_SIGNATURES} THEN SUM(bam.weight) ELSE 0 END AS denominator,
+                    COUNT(*)::int AS used_count
+                  FROM bill_co_proposers c
+                  JOIN bill_axis_mapping bam ON bam.bill_id = c.bill_id
+                 WHERE bam.mapping_version = $1::varchar
+                 GROUP BY c.mona_cd, bam.axis`;
+        // 🔴 축 값은 분모>0 일 때만, 아니면 NULL (구 버전은 COALESCE(...,0) 이라 못 잰 축이 "중도 0" 으로 들어갔다)
+        const axisExpr = (ax) => `MAX(CASE WHEN axis='${ax}' AND denominator > 0 THEN numerator / denominator END)::numeric(4,2)`;
+        const cntExpr  = (ax) => `MAX(CASE WHEN axis='${ax}' THEN used_count END)::smallint`;
+        const upsertSql = `
+            WITH per_axis AS (${args.source === 'votes' ? perAxisVotes : perAxisCo}),
+            per_pol AS (
+                SELECT mona_cd,
+                       ${axisExpr('economy')}     AS economy,
+                       ${axisExpr('social')}      AS social,
+                       ${axisExpr('security')}    AS security,
+                       ${axisExpr('institution')} AS institution,
+                       ${cntExpr('economy')}      AS economy_n,
+                       ${cntExpr('social')}       AS social_n,
+                       ${cntExpr('security')}     AS security_n,
+                       ${cntExpr('institution')}  AS institution_n,
+                       COALESCE(SUM(used_count), 0)::int AS vote_count_used
                   FROM per_axis
                  GROUP BY mona_cd
             )
             INSERT INTO politician_axis_score
                 (mona_cd, mapping_version, economy, social, security, institution,
-                 vote_count_used, computed_at)
+                 economy_n, social_n, security_n, institution_n, vote_count_used, computed_at)
             SELECT pp.mona_cd, $1::varchar,
                    pp.economy, pp.social, pp.security, pp.institution,
+                   pp.economy_n, pp.social_n, pp.security_n, pp.institution_n,
                    pp.vote_count_used, NOW()
               FROM per_pol pp
               JOIN politicians p ON p.mona_cd = pp.mona_cd
@@ -154,11 +174,19 @@ async function run() {
               social          = EXCLUDED.social,
               security        = EXCLUDED.security,
               institution     = EXCLUDED.institution,
+              economy_n       = EXCLUDED.economy_n,
+              social_n        = EXCLUDED.social_n,
+              security_n      = EXCLUDED.security_n,
+              institution_n   = EXCLUDED.institution_n,
               vote_count_used = EXCLUDED.vote_count_used,
               computed_at     = NOW()
         `;
         const upsertRes = await pool.query(upsertSql, [args.version, args.minVotes]);
-        logger.info(`✓ politician_axis_score UPSERT ${upsertRes.rowCount}건`);
+        logger.info(`✓ politician_axis_score UPSERT ${upsertRes.rowCount}건 (source=${args.source})`);
+        // 🔴 매핑에서 사라진 의원(공동발의 0건 등)의 옛 행이 남으면 낡은 좌표가 화면에 뜬다 → 이번 산출에 없는 행은 지운다
+        const stale = await pool.query(
+            `DELETE FROM politician_axis_score WHERE mapping_version = $1 AND computed_at < NOW() - INTERVAL '1 minute'`, [args.version]);
+        if (stale.rowCount) logger.info(`  낡은 행 삭제 ${stale.rowCount}건`);
 
         // 사용된 표결 수 분포
         const voteCountSql = await pool.query(

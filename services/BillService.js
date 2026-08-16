@@ -9,6 +9,16 @@ const STATS_CACHE_TTL_MS = 5 * 60 * 1000;
 let _statsCache = null;
 let _statsCachedAt = 0;
 
+/* 홈 히어로 결론 숫자 — 🔴 **10분 캐시 + inflight 공유 필수**.
+   쿼리가 bills(18,741) + bill_votes(177,260) 전체 집계라 실측 **115ms** 인데,
+   홈은 이 사이트에서 가장 많이 열리는 페이지다. 입력은 하루 1회(배치)만 바뀐다.
+   ⚠️ inflight 공유가 없으면 캐시가 비었을 때 동시 요청이 전부 같은 집계를 돌린다
+      (PoliticianService.getKpiPercentiles · XrayService 와 같은 수법). */
+const FACTS_TTL_MS = 10 * 60 * 1000;
+let _factsCache = null;
+let _factsAt = 0;
+let _factsInflight = null;
+
 export default (db) => {
     const billDao = BillDao(db);
 
@@ -17,10 +27,27 @@ export default (db) => {
         getListOne: async (monaCd) => billDao.getListOne(monaCd),
         getDetail: async (billId) => billDao.getDetail(billId),
         getHomeKpi: async () => billDao.getHomeKpi(),
+
+        /* 홈 히어로 결론 숫자 3종.
+           ⚠️ 실패해도 **null 을 돌려 홈은 살린다** — 히어로 숫자 때문에 첫 화면이 500 이 되면 안 된다 */
+        getHomeFacts: async () => {
+            try {
+                if (_factsCache && (Date.now() - _factsAt) < FACTS_TTL_MS) return _factsCache;
+                if (!_factsInflight) {
+                    _factsInflight = billDao.getHomeFacts()
+                        .then((row) => { _factsCache = row; _factsAt = Date.now(); return row; })
+                        .finally(() => { _factsInflight = null; });
+                }
+                return await _factsInflight;
+            } catch (err) {
+                logger.error(`홈 결론 숫자 조회 실패: ${err.message}`);
+                return null;
+            }
+        },
         getTrending: async (sort) => billDao.getTrending(sort),
         getRecentVotes: async () => billDao.getRecentVotes(),
         getMonthlyTrend: async () => billDao.getMonthlyTrend(),
-        getStatusCounts: async (committee, party, billName) => billDao.getStatusCounts(committee, party, billName),
+        getStatusCounts: async (committee, party, billName, search) => billDao.getStatusCounts(committee, party, billName, search),
         getTopicCounts: async () => billDao.getTopicCounts(),
         getPartyCounts: async () => billDao.getPartyCounts(),
         getBillDetailVotes: async (billId) => billDao.getBillDetailVotes(billId),

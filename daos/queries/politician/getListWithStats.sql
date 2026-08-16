@@ -67,7 +67,7 @@ SELECT pol.politician_id
        GROUP BY mona_cd
   ) cp ON cp.mona_cd = pol.mona_cd
   LEFT JOIN politician_axis_score pa
-    ON pa.mona_cd = pol.mona_cd AND pa.mapping_version = 'v1'
+    ON pa.mona_cd = pol.mona_cd AND pa.mapping_version = 'v2'   -- 🔴 utils/axisConfig.js POL_MAPPING_VERSION 과 같아야 한다
   LEFT JOIN politician_cross_party_vote cpv
     ON cpv.mona_cd = pol.mona_cd
  ORDER BY pol.name

@@ -1,9 +1,11 @@
 // middlewares/balanceGame.js
+import { POL_MAPPING_VERSION } from '../utils/axisConfig.js';
 //
 // 모든 요청에 세 값 주입:
 //   res.locals.balanceGameCompleted   : boolean — 미완료 유저는 회색 "📊 진단 후 표시" 배지
 //   res.locals.userAxis               : {economy, social, security, institution} | null
-//   res.locals.userDistanceQuartiles  : {q1, q2, q3} | null — 의원 295명 거리 분포의 25/50/75 분위수
+//   res.locals.userDistanceQuartiles  : {q1, q2, q3} | null — 의원 거리(3축) 분포의 25/50/75 분위수
+//   ⚠️ user_axis_score 의 mapping_version 은 'v1'(문항 버전) 그대로다. 의원 좌표만 v2 — utils/axisConfig.js 참조
 //
 // userAxis 가 있고 politician.axis 가 있으면 의원 카드/상세에 거리 배지 (🎯 결 비슷 (0.85) · 📊 v1) 노출.
 // quartiles 로 tier 분류 (Q1=결 비슷 / Q2=비슷 / Q3=다소 다름 / Q4=다름) — 시각 강도 차등용.
@@ -42,20 +44,21 @@ export const injectBalanceGameStatus = (db) => async (req, res, next) => {
             // 의원 295명 거리 분포의 분위수 — 단일 PERCENTILE_CONT 쿼리 (~수ms)
             const qRes = await db.query(
                 `WITH dists AS (
+                    /* 🔴 3축 · v2 — utils/axisConfig.js MATCH_AXES / POL_MAPPING_VERSION 과 같아야 한다 (안보 제외) */
                     SELECT SQRT(
                         ($1::float8 - economy)::float8 ^ 2 +
                         ($2::float8 - social)::float8 ^ 2 +
-                        ($3::float8 - security)::float8 ^ 2 +
-                        ($4::float8 - institution)::float8 ^ 2
+                        ($3::float8 - institution)::float8 ^ 2
                     ) / 2 AS d
                       FROM politician_axis_score
-                     WHERE mapping_version = 'v1'
+                     WHERE mapping_version = $4
+                       AND economy IS NOT NULL AND social IS NOT NULL AND institution IS NOT NULL
                  )
                  SELECT PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY d)::float8 AS q1,
                         PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY d)::float8 AS q2,
                         PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY d)::float8 AS q3
                    FROM dists`,
-                [ua.economy, ua.social, ua.security, ua.institution]
+                [ua.economy, ua.social, ua.institution, POL_MAPPING_VERSION]
             );
             const q = qRes.rows[0];
             if (q && q.q1 !== null) {

@@ -54,6 +54,13 @@ export default (db) => {
             return rows[0];
         },
 
+        /* 홈 히어로 결론 숫자 3종 (계류율·본회의 반대율·불참률 중앙값).
+           ⚠️ 실측 115ms — 서비스가 10분 캐시한다. 여기서 캐시하지 말 것 (DAO 는 얇게 유지) */
+        getHomeFacts: async () => {
+            const { rows } = await db.query(queries.getHomeFacts);
+            return rows[0];
+        },
+
         /* 홈 - 주목할 법안 (sort: 'recent' | 'close' | 'popular' | 'bipartisan') */
         getTrending: async (sort = 'recent') => {
             const { rows } = await db.query(queries.getTrending, [sort]);
@@ -72,9 +79,9 @@ export default (db) => {
             return rows;
         },
 
-        /* 법안 상태별 카운트 (committee/party 필터 지원) */
-        getStatusCounts: async (committee = null, party = null, billName = null) => {
-            const { rows } = await db.query(queries.getStatusCounts, [committee, party, billName]);
+        /* 법안 상태별 카운트 (committee/party/billName/search 필터 지원) */
+        getStatusCounts: async (committee = null, party = null, billName = null, search = null) => {
+            const { rows } = await db.query(queries.getStatusCounts, [committee, party, billName, search]);
             return rows[0];
         },
 

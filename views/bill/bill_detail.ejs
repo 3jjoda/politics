@@ -313,7 +313,11 @@
   /* opacity 0.8 을 걸면 배경과 합성돼 대비가 5.46 → 3.66 으로 떨어진다. 색으로만 톤을 낮춘다 */
   .ai-analysis-label.is-done .label-meta { color: #8F5800; }
 
-  .bill-ai-analysis {
+  /* ⚠️ `.bill-basic-header` 도 같이 선언한다 — 미분석 분기 헤더가 Zone 1 과 같은 구성이라
+     `.ba-meta-line`·`.ba-bill-name`·발의자 스택이 이 토큰들을 쓴다.
+     빼면 미분석 법안에서 색·폰트가 통째로 무너진다 (var() 가 해석 안 됨) */
+  .bill-ai-analysis,
+  .bill-basic-header {
     /* 분석 섹션 전용 디자인 토큰 — 사용자 스펙 (Brand Assets 기반) */
     --ba-ink:    #0F1B1F;   /* 본문 */
     --ba-sub:    #374151;   /* 보조 */
@@ -375,8 +379,11 @@
   .ba-muted { color: var(--ba-meta); font-weight: 450; }
   .ba-sep   { color: var(--ba-meta); margin: 0 6px; }
 
-  /* ===== Zone 1: 메타 + 헤드라인 ===== */
-  .ba-z1 .ba-meta-line {
+  /* ===== Zone 1: 메타 + 헤드라인 =====
+     ⚠️ 미분석 분기 헤더(.bill-basic-header)도 같은 구성이라 함께 받아야 한다.
+        `.ba-z1` 만 두면 그쪽 메타가 스타일을 못 받아 본문색·기본 폰트로 떨어진다 */
+  .ba-z1 .ba-meta-line,
+  .bill-basic-header .ba-meta-line {
     font-family: var(--ba-mono);
     font-size: 12px;
     letter-spacing: 0.22em;
@@ -384,9 +391,12 @@
     margin-bottom: 6px;
     line-height: 1.6;
   }
-  .ba-z1 .ba-meta-line a { color: var(--ba-meta); text-decoration: none; }
-  .ba-z1 .ba-meta-line a:hover { color: var(--ba-gold); }
-  .ba-z1 .ba-meta-line-sub { margin-bottom: 24px; }
+  .ba-z1 .ba-meta-line a,
+  .bill-basic-header .ba-meta-line a { color: var(--ba-meta); text-decoration: none; }
+  .ba-z1 .ba-meta-line a:hover,
+  .bill-basic-header .ba-meta-line a:hover { color: var(--ba-gold); }
+  .ba-z1 .ba-meta-line-sub,
+  .bill-basic-header .ba-meta-line-sub { margin-bottom: 24px; }
 
   /* ===== Zone 1 — 발의자 컴팩트 스택 (메타라인 직하) ===== */
   .ba-proposers {
@@ -560,7 +570,10 @@
        `min-height` + `align-items: flex-end` 로 히트영역만 위로 키우면 밑줄은 글자 바로 밑에 남는다 */
     .ba-pp-toggle        { flex-basis: 100%; order: 4; justify-content: flex-start;
                            min-height: 44px; align-items: flex-end; }
-    .ba-proposers-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    <%# 🔴 특이도를 맞춰야 한다. 5열은 `.ba-proposers[data-expanded="true"] .ba-proposers-grid`(0,3,0)
+        가 선언하므로, 여기서 `.ba-proposers-grid`(0,1,0) 로 쓰면 **순서와 무관하게 절대 못 이긴다.**
+        그래서 문서엔 "모바일 5→2열" 이라 적혀 있었지만 실제로는 375px 에서도 5열이 나오고 있었다 %>
+    .ba-proposers[data-expanded="true"] .ba-proposers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   .ba-bill-name {
@@ -2120,11 +2133,26 @@
     //   분석 있음 → 원문이 "대조용 참고자료". 길이와 무관하게 항상 접는다
     const RAW_COLLAPSE_LEN = 700;
     const rawNeedsCollapse = analysis ? Boolean(rawSummary) : rawSummary.length > RAW_COLLAPSE_LEN;
+
+    /* 발의자 스택 입력 — 두 분기가 같은 데이터를 쓴다.
+       미분석 분기는 헤더에서 바로 include, 분석 분기는 숨은 홀더에 SSR 해두고
+       mountBillAnalysis 가 Zone 1 으로 옮긴다. 아래 window.__BILL_PROPOSERS__ 도 같은 배열 */
+    const proposerStackData = (coProposers || []).map(cp => ({
+      mona_cd:    cp.mona_cd || null,
+      name:       cp.name    || null,
+      party_name: cp.party_name || null,
+      photo:      cp.photo_url  || null,
+      is_rep:     Boolean(cp.proposer_yn)
+    }));
   %>
 
   <!-- AI 분석 (5-Zone) — 분석 있으면 Zone 1이 히어로, 없으면 기본 헤더 -->
   <% if (analysis) { %>
     <section class="bill-ai-analysis" id="bill-analysis"></section>
+    <%# 발의자 스택을 여기 SSR 해두고 mountBillAnalysis 가 Zone 1 안으로 가져다 쓴다.
+        마크업을 JS 에 다시 두지 않기 위한 홀더다 — 미분석 분기와 **같은 파샬**을 쓴다.
+        hidden 이라 화면엔 안 나오고, JS 가 읽어간 뒤엔 비워진다. %>
+    <div id="proposer-stack-src" hidden><%- include('_proposer_stack', { proposers: proposerStackData }) %></div>
     <%# Zone 1~5 는 JS 가 렌더하므로 EJS 에서 Zone 1 과 Zone 2 사이에 끼어들 수 없다.
         여기 두고 mount 직후 JS 가 `.ba-z1` 뒤로 옮긴다 (모바일 jumpbar 이동과 같은 수법).
         JS 가 실패하면 이 자리에 그대로 남는다 — 위치만 덜 이상적일 뿐 정보는 보인다. %>
@@ -2153,27 +2181,20 @@
       </section>
     <% } %>
   <% } else { %>
+    <%# 🔴 분석 있는 분기의 Zone 1 과 **같은 구성**이다 (메타 2줄 → 발의자 스택 → 법안명).
+        예전엔 발의자가 "대표발의 X · 공동발의 N인" 텍스트뿐이라 **누가 이름을 올렸는지 볼 수 없었다**
+        (발의자 전용 섹션은 Zone 1 통합과 함께 폐기됐는데 이 분기만 통합에서 빠져 있었다).
+        차이는 AI 산출물(한 줄 요약·카테고리·읽기시간)이 없다는 것뿐. %>
     <section class="bill-basic-header">
       <div class="zone-1-top">
         <div class="meta-col">
-          <div class="analysis-hook-meta">
+          <div class="ba-meta-line">
             <span>#<%= bill.bill_no || bill.bill_id %></span>
-            <% if (bill.committee) { %><span class="sep">·</span><span><%= bill.committee %></span><% } %>
-            <span class="sep">·</span><span><%= bill.proc_result_name || '계류' %></span>
+            <% if (bill.committee) { %><span class="ba-sep">·</span><span><%= bill.committee %></span><% } %>
+            <span class="ba-sep">·</span><span><%= bill.proc_result_name || '계류' %></span>
           </div>
-          <div class="analysis-hook-meta">
-            <% if (bill.proposer_name) { %>
-              <span>대표발의
-                <% if (bill.mona_cd) { %><a href="/politician/<%= bill.mona_cd %>"><%= bill.proposer_name %></a><% } else { %><%= bill.proposer_name %><% } %>
-                <% if (coRepCount > 1) { %> 외 <%= coRepCount - 1 %>인 공동대표<% } %>
-              </span>
-              <span class="sep">·</span>
-            <% } %>
-            <span>발의일 <%= proposeDtFmt %></span>
-            <% if (bill.co_proposer_count) { %>
-              <span class="sep">·</span><span>공동발의 <%= bill.co_proposer_count %>인</span>
-            <% } %>
-          </div>
+          <%# 대표발의·공동발의 인원은 아래 스택이 그대로 말해주므로 여기선 발의일만 남긴다 (Zone 1 과 동일) %>
+          <div class="ba-meta-line ba-meta-line-sub"><span>발의일 <%= proposeDtFmt %></span></div>
         </div>
         <%# 원문 섹션이 렌더되면 그쪽 `.raw-src` 가 같은 링크(bill.link_url)를 이미 들고 있어 중복이다.
             원문이 없는 40건(대안반영폐기·철회)에서만 여기가 국회로 가는 유일한 통로라 살려둔다. %>
@@ -2181,7 +2202,8 @@
           <a href="<%= bill.link_url %>" target="_blank" rel="noopener" class="original-link">국회 원문 ↗</a>
         <% } %>
       </div>
-      <h1 class="analysis-hook-title" style="margin-bottom:0"><%= bill.bill_name %></h1>
+      <%- include('_proposer_stack', { proposers: proposerStackData }) %>
+      <h1 class="ba-bill-name" style="margin-bottom:0"><%= bill.bill_name %></h1>
     </section>
 
     <%# 미분석 분기는 SSR 위치가 곧 최종 위치라 JS 이동이 필요 없다 (레이아웃 시프트 없음) %>
@@ -2434,6 +2456,14 @@
         containerId: 'bill-analysis',
         analysisData: window.__BILL_ANALYSIS__,
         proposers: window.__BILL_PROPOSERS__ || [],
+        // SSR 한 발의자 스택을 넘긴다 (마크업 단일 소스). 홀더가 없으면 JS 폴백이 그린다
+        proposerStackHtml: (function () {
+          const src = document.getElementById('proposer-stack-src');
+          if (!src) return '';
+          const html = src.innerHTML;
+          src.remove();          // 같은 id/마크업이 문서에 두 벌 남지 않게
+          return html;
+        })(),
         bill: {
           bill_id:            BILL_ID,
           bill_no:            '<%= bill.bill_no || "" %>',

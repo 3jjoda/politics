@@ -178,7 +178,14 @@
   .bp-disclaimer strong { font-weight: 700; }
 
   .bp-sec { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--border); }
-  .bp-h { font-size: 15px; font-weight: 700; color: var(--text); margin: 0 0 12px; }
+  /* 🔴 섹션 제목(L2). `.bp-thread-theme`(하위 항목 제목)가 **15px/700 으로 완전히 같아서**
+     둘 다 본문처럼 읽혔다 (2026-08-16). 골드 좌측 바로 가른다 — 의원 상세 `.vp-h` 와 같은 처리.
+     ⚠️ 크기만 1~2px 올려서는 안 갈린다. 이 페이지는 13~15px 구간에 전부 몰려 있다 */
+  .bp-h {
+    font-size: 16px; font-weight: 800; color: var(--text); margin: 0 0 12px;
+    letter-spacing: -0.01em; padding-left: 10px; border-left: 3px solid var(--accent); line-height: 1.35;
+  }
+  .bp-h:not(:first-child) { margin-top: 22px; }
   .bp-sub { font-size: 12.5px; line-height: 1.7; color: var(--sub); margin: 8px 0 0; word-break: keep-all; }
   .bp-sub strong { color: var(--text); font-weight: 700; }
 
@@ -186,7 +193,8 @@
   .bp-threads { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
   .bp-thread { border-left: 3px solid var(--accent); background: #FBF5EA; border-radius: 0 10px 10px 0; padding: 13px 16px; }
   .bp-thread-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-  .bp-thread-theme { font-size: 15px; font-weight: 700; color: var(--text); word-break: keep-all; }
+  <%# L3 하위 항목 제목 — 위 `.bp-h`(L2)보다 확실히 낮아야 한다 %>
+  .bp-thread-theme { font-size: 14px; font-weight: 700; color: var(--sub); word-break: keep-all; }
   .bp-thread-cnt {
     font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700;
     color: #8F5800; border: 1px solid #8F5800; border-radius: 5px; padding: 1px 7px; white-space: nowrap;

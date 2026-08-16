@@ -1,0 +1,243 @@
+// mapBillAxisPilot.js — 법안-축 매핑 확장 파일럿 (AI 1차 매핑, 방향 균형 강제)
+//
+// 왜: 4축 좌표의 병목은 소스(표결/공동발의)가 아니라 **방향 라벨(매핑)** 이다 (CLAUDE.md
+//     「공동발의 행렬로 좌표를 뽑는 것도 안 된다」). 매핑 48건 · 방향 13:2 편향으로는 어느 소스든 좌표가 뭉친다.
+//     이 파일럿은 (축 × 방향) 8개 셀에 **정원을 두고** 채워질 때까지 후보를 분류한다.
+//
+// 산출: bill_axis_mapping_pilot (별도 테이블 — v1 48건이 든 bill_axis_mapping 은 PK 가 bill_id 단독이라
+//       버전을 겹쳐 둘 수 없다). 분류 결과는 'none' 까지 전건 저장하고, 균형 선별된 행만 is_selected=TRUE.
+//
+// 사용:
+//   node batch/mapBillAxisPilot.js                       # 목표 300건 (셀당 38 → 축당 75)
+//   node batch/mapBillAxisPilot.js --target 300 --max-candidates 3000
+//   node batch/mapBillAxisPilot.js --select-only         # 분류 없이 기존 결과로 선별만 다시
+//   node batch/mapBillAxisPilot.js --dry-run             # DB 안 씀 (첫 배치 1회만 호출해 형식 확인)
+
+import 'dotenv/config';
+import pg from 'pg';
+import Anthropic from '@anthropic-ai/sdk';
+import dbConfig from '../config/database.js';
+import logger from '../utils/logger.js';
+
+const MODEL = 'claude-haiku-4-5-20251001';
+const PROMPT_VERSION = 'axis-p1';
+const BATCH = 20;              // 호출당 법안 수
+const CONCURRENCY = 5;         // 동시 호출 수 (호출당 ~25초라 직렬이면 3,000건에 1시간이 넘는다)
+const SUMMARY_CHARS = 420;
+const MIN_CO = 8;              // 현직 공동발의자 최소 (표본이 있어야 좌표에 기여)
+const AXES = ['economy', 'social', 'security', 'institution'];
+const PRICE_IN = 1.0, PRICE_OUT = 5.0, PRICE_CW = 1.25, PRICE_CR = 0.10;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function parseArgs(argv) {
+    const a = { target: 300, maxCandidates: 3000, selectOnly: false, dryRun: false };
+    for (let i = 2; i < argv.length; i++) {
+        if (argv[i] === '--target') a.target = parseInt(argv[++i], 10);
+        else if (argv[i] === '--max-candidates') a.maxCandidates = parseInt(argv[++i], 10);
+        else if (argv[i] === '--select-only') a.selectOnly = true;
+        else if (argv[i] === '--dry-run') a.dryRun = true;
+    }
+    return a;
+}
+
+const SYSTEM_PROMPT = `당신은 한국 국회 법안을 4개 정치 성향 축 중 하나에 매핑하는 분류기입니다. 매핑은 의원 성향 좌표 산출에만 쓰이며 화면에 노출되지 않습니다. **정확성보다 일관성과 보수성**이 중요합니다 — 확실하지 않으면 none.
+
+## 4축 정의와 부호 (절대 흔들리지 말 것)
+| axis | -1 (찬성이 이 방향) | +1 (찬성이 이 방향) | 예 |
+|---|---|---|---|
+| economy | 시장 자율 · 규제 완화 · 감세 · 민간 주도 | 정부 개입 · 규제 강화 · 증세/분배 · 공공 확대 | 최저임금, 부동산 세제, 대기업 규제, 복지 확대 |
+| social | 전통 · 질서 · 처벌 강화 · 가족/국가 중심 | 자율 · 다양성 · 개인 권리 · 소수자 보호 | 차별금지, 낙태, 이민, 형벌, 표현의 자유 |
+| security | 한미동맹 강화 · 대북 강경 · 국방력 증강 | 자주 · 대북 대화/교류 · 군축/병역 완화 | 한미일 협력, 남북교류, 병역, 방위비 |
+| institution | 기존 질서 · 안정 · 현 권력구조 유지 · 검찰/사법 권한 유지 | 개혁 · 권력 분산 · 특검/수사기관 개편 · 선거제 개편 | 검찰개혁, 특검, 선관위, 비례제, 국회 권한 |
+
+## 규칙
+- 법안 하나에 **주축 1개**만. 두 축에 걸치면 더 강한 쪽. 어느 축의 어느 방향인지 **명확히 말할 수 없으면 axis="none"**.
+- **none 이 기본값이다.** 다음은 none: 절차·행정·명칭 변경·기술 정비·부칙 / **수당·지원금·보상금·급여의 액수 인상이나 대상 확대**
+  (참전유공자 수당 인상, 장애수당 확대 등 — 사실상 모든 개정안이 이런 확대라 매핑하면 전부 개입 +1 로 쏠린다) /
+  재해·안전·의료·환경·문화 일반 / 지역 개발 / 조직 신설·기금 근거 마련.
+- economy 는 **시장 vs 개입의 대립이 실제로 논쟁되는 사안**에만 준다: 세율·감세/증세, 규제 도입/완화, 노동 보호 vs 유연화,
+  민영화/공공화, 대기업·플랫폼 규제, 임대차·분양가 등 가격 개입.
+- direction: 찬성(공동발의)한 사람이 어느 방향인가. **반드시 아래 축별 고정 라벨 중 하나** (숫자 대신 라벨로 답한다):
+  economy → "시장" | "개입" · social → "전통" | "자율" · security → "동맹" | "자주" · institution → "안정" | "개혁"
+  ("동맹" = 한미동맹 강화·대북 강경·국방 증강 쪽, "자주" = 자주·대북 대화·군축 쪽. 헷갈리면 none.)
+- weight: 명확 1.0 / 약함 0.5.
+- confidence: high / medium / low. low 는 선별에서 제외되므로 애매하면 low.
+- reason: 20자 이내, 축 정의 어휘만 (진영·정당·가치 판단 단어 금지). reason 의 방향 어휘와 direction 이 모순되면 안 된다.
+
+## 출력 (JSON 객체 1개, 코드 펜스·설명 금지)
+{"results":[{"bill_id":"...","axis":"economy|social|security|institution|none","direction":"시장|개입|전통|자율|동맹|자주|안정|개혁|null","weight":1.0|0.5|null,"confidence":"high|medium|low","reason":"..."}, ...]}
+results 순서는 입력 순서와 동일.`;
+
+// 부호는 AI 숫자를 믿지 않고 축별 라벨에서 코드가 정한다 (dry-run 에서 "한미동맹 강화" 라 써놓고 +1 을 준 사례가 있었다)
+const DIR_SIGN = {
+    economy:     { '시장': -1, '개입': 1 },
+    social:      { '전통': -1, '자율': 1 },
+    security:    { '동맹': -1, '자주': 1 },
+    institution: { '안정': -1, '개혁': 1 },
+};
+
+const userMsg = rows => `다음 ${rows.length}건을 매핑하세요.\n\n` + rows.map((r, i) =>
+    `${i + 1}. bill_id=${r.bill_id}\n   법안명: ${r.bill_name}\n   소관위: ${r.committee || '-'}\n   제안이유: ${r.summary}`).join('\n\n');
+
+async function classify(anthropic, rows) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const res = await anthropic.messages.create({
+                model: MODEL, max_tokens: 4096,
+                system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
+                messages: [{ role: 'user', content: userMsg(rows) }],
+            });
+            let text = res.content[0].text.trim();
+            const fence = text.match(/```(?:json)?\s*([\s\S]+?)\s*```/); if (fence) text = fence[1];
+            const parsed = JSON.parse(text);
+            if (!Array.isArray(parsed.results)) throw new Error('results 없음');
+            const u = res.usage;
+            return { results: parsed.results, usage: { in: u.input_tokens, out: u.output_tokens, cw: u.cache_creation_input_tokens || 0, cr: u.cache_read_input_tokens || 0 } };
+        } catch (err) {
+            if (err.status === 429) { const w = parseInt(err.headers?.['retry-after'], 10) || 30; logger.warn(`429 — ${w}초 대기`); await sleep(w * 1000); continue; }
+            if (attempt === 2) throw err;
+            logger.warn(`재시도 (${attempt + 1}): ${err.message.slice(0, 120)}`);
+            await sleep(2000);
+        }
+    }
+}
+
+// 후보 풀 — 위원회별 층화 표집 (안보·외교 등 소수 위원회가 자연히 과표집된다). 이미 분류한 법안·v1 48건 제외
+async function fetchCandidates(pool, limit) {
+    const { rows } = await pool.query(`
+        WITH pool AS (
+            SELECT b.bill_id, b.bill_name, b.committee, LEFT(b.summary, $2) AS summary,
+                   ROW_NUMBER() OVER (PARTITION BY b.committee ORDER BY random()) AS rn
+              FROM bills b
+             WHERE b.summary IS NOT NULL AND b.committee IS NOT NULL
+               AND NOT EXISTS (SELECT 1 FROM bill_axis_mapping_pilot p WHERE p.bill_id = b.bill_id)
+               AND NOT EXISTS (SELECT 1 FROM bill_axis_mapping m WHERE m.bill_id = b.bill_id)
+               AND (SELECT COUNT(*) FROM bill_co_proposers c JOIN politicians pl ON pl.mona_cd = c.mona_cd
+                     WHERE c.bill_id = b.bill_id) >= $3
+        )
+        SELECT bill_id, bill_name, committee, summary FROM pool ORDER BY rn, random() LIMIT $1`,
+        [limit, SUMMARY_CHARS, MIN_CO]);
+    return rows;
+}
+
+async function ensureTable(pool) {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS bill_axis_mapping_pilot (
+            bill_id        VARCHAR(50) PRIMARY KEY REFERENCES bills(bill_id) ON DELETE CASCADE,
+            axis           VARCHAR(20) NOT NULL,          -- economy|social|security|institution|none
+            agree_score    SMALLINT,
+            disagree_score SMALLINT,
+            weight         NUMERIC(3,2),
+            confidence     VARCHAR(10),
+            reason         TEXT,
+            is_selected    BOOLEAN NOT NULL DEFAULT FALSE, -- 방향 균형 선별 통과
+            prompt_version VARCHAR(20) NOT NULL,
+            model          VARCHAR(50) NOT NULL,
+            created_at     TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_bamp_axis ON bill_axis_mapping_pilot (axis, agree_score) WHERE is_selected;`);
+}
+
+// 셀별 현황 (high/medium 만 셈)
+async function cellCounts(pool) {
+    const { rows } = await pool.query(`
+        SELECT axis, agree_score, COUNT(*)::int n FROM bill_axis_mapping_pilot
+         WHERE axis <> 'none' AND confidence IN ('high','medium') GROUP BY 1,2`);
+    const m = {}; for (const ax of AXES) m[ax] = { '-1': 0, '1': 0 };
+    for (const r of rows) if (m[r.axis]) m[r.axis][String(r.agree_score)] = r.n;
+    return m;
+}
+const fmtCells = m => AXES.map(ax => `${ax.padEnd(11)} −1:${String(m[ax]['-1']).padStart(3)} +1:${String(m[ax]['1']).padStart(3)}`).join(' | ');
+
+// 균형 선별: 셀당 quota 이하로, 각 축 안에서 두 방향을 min 으로 맞춘다 (남는 쪽은 버린다 — 균형이 목적)
+async function select(pool, quota, dryRun) {
+    if (!dryRun) await pool.query(`UPDATE bill_axis_mapping_pilot SET is_selected = FALSE`);
+    const cells = await cellCounts(pool);
+    const summary = [];
+    for (const ax of AXES) {
+        const take = Math.min(quota, cells[ax]['-1'], cells[ax]['1']);
+        summary.push({ axis: ax, per_dir: take, total: take * 2, avail_neg: cells[ax]['-1'], avail_pos: cells[ax]['1'] });
+        if (dryRun || take === 0) continue;
+        for (const dir of [-1, 1]) {
+            await pool.query(`
+                UPDATE bill_axis_mapping_pilot SET is_selected = TRUE WHERE bill_id IN (
+                    SELECT bill_id FROM bill_axis_mapping_pilot
+                     WHERE axis = $1 AND agree_score = $2 AND confidence IN ('high','medium')
+                     ORDER BY (confidence = 'high') DESC, weight DESC, random() LIMIT $3)`, [ax, dir, take]);
+        }
+    }
+    return summary;
+}
+
+async function run() {
+    const args = parseArgs(process.argv);
+    const quota = Math.ceil(args.target / 8);
+    logger.info(`[Axis Pilot START] target=${args.target} (셀당 ${quota}) maxCandidates=${args.maxCandidates} selectOnly=${args.selectOnly} dryRun=${args.dryRun}`);
+    if (!args.selectOnly && !process.env.ANTHROPIC_API_KEY) { logger.error('ANTHROPIC_API_KEY 없음'); process.exit(1); }
+
+    const pool = new pg.Pool(dbConfig);
+    const anthropic = args.selectOnly ? null : new Anthropic();
+    const t0 = Date.now();
+    let cost = 0, classified = 0, mapped = 0;
+    try {
+        await ensureTable(pool);
+        if (!args.selectOnly) {
+            let cells = await cellCounts(pool);
+            logger.info(`시작 셀: ${fmtCells(cells)}`);
+            const done = () => AXES.every(ax => cells[ax]['-1'] >= quota && cells[ax]['1'] >= quota);
+            let seen = 0;
+            while (!done() && seen < args.maxCandidates) {
+                const chunk = await fetchCandidates(pool, Math.min(200, args.maxCandidates - seen));
+                if (chunk.length === 0) { logger.warn('후보 소진'); break; }
+                seen += chunk.length;
+                const batches = []; for (let i = 0; i < chunk.length; i += BATCH) batches.push(chunk.slice(i, i + BATCH));
+                for (let g = 0; g < batches.length; g += CONCURRENCY) {
+                  const group = batches.slice(g, g + CONCURRENCY);
+                  const outs = await Promise.all(group.map(rows => classify(anthropic, rows).then(o => ({ rows, ...o }))));
+                  for (const { rows, results, usage } of outs) {
+                    cost += (usage.in * PRICE_IN + usage.out * PRICE_OUT + usage.cw * PRICE_CW + usage.cr * PRICE_CR) / 1e6;
+                    const byId = new Map(results.map(r => [r.bill_id, r]));
+                    const vals = [];
+                    for (const r of rows) {
+                        const x = byId.get(r.bill_id);
+                        if (!x) { logger.warn(`  응답 누락 ${r.bill_id}`); continue; }
+                        let axis = String(x.axis || 'none'); if (!AXES.includes(axis)) axis = 'none';
+                        let ag = axis === 'none' ? null : (DIR_SIGN[axis][String(x.direction || '').trim()] ?? null);
+                        if (axis !== 'none' && ag === null) axis = 'none';   // 라벨이 축과 안 맞으면 버린다
+                        const w = axis === 'none' ? null : (Number(x.weight) === 0.5 ? 0.5 : 1.0);
+                        const conf = ['high', 'medium', 'low'].includes(x.confidence) ? x.confidence : 'low';
+                        vals.push([r.bill_id, axis, ag, ag === null ? null : -ag, w, conf, String(x.reason || '').slice(0, 60)]);
+                        classified++; if (axis !== 'none') mapped++;
+                    }
+                    if (args.dryRun) {
+                        vals.forEach(v => logger.info(`  ${v[1].padEnd(11)} ${v[2] === null ? '  ' : (v[2] > 0 ? '+1' : '-1')} ${v[5].padEnd(6)} ${v[6]}  ← ${rows.find(r => r.bill_id === v[0]).bill_name.slice(0, 40)}`));
+                        logger.info(`[Dry run] 1배치만 호출. 비용 $${cost.toFixed(4)}`); return;
+                    }
+                    if (vals.length) {
+                        const ph = vals.map((_, k) => `($${k * 7 + 1},$${k * 7 + 2},$${k * 7 + 3},$${k * 7 + 4},$${k * 7 + 5},$${k * 7 + 6},$${k * 7 + 7},'${PROMPT_VERSION}','${MODEL}')`).join(',');
+                        await pool.query(`INSERT INTO bill_axis_mapping_pilot
+                            (bill_id, axis, agree_score, disagree_score, weight, confidence, reason, prompt_version, model)
+                            VALUES ${ph} ON CONFLICT (bill_id) DO NOTHING`, vals.flat());
+                    }
+                  }
+                  await sleep(300);
+                }
+                cells = await cellCounts(pool);
+                logger.info(`후보 ${seen}건 · 분류 ${classified} · 매핑 ${mapped} · $${cost.toFixed(3)} | ${fmtCells(cells)}`);
+            }
+        }
+        const sel = await select(pool, quota, args.dryRun);
+        logger.info('--- 균형 선별 (셀당 quota, 축 안에서 두 방향을 같은 수로) ---');
+        sel.forEach(s => logger.info(`  ${s.axis.padEnd(11)} 선별 ${String(s.total).padStart(3)}건 (방향당 ${s.per_dir}) · 가용 −1:${s.avail_neg} +1:${s.avail_pos}`));
+        logger.info(`  합계 ${sel.reduce((a, s) => a + s.total, 0)}건`);
+        const { rows: dist } = await pool.query(`SELECT axis, confidence, COUNT(*)::int n FROM bill_axis_mapping_pilot GROUP BY 1,2 ORDER BY 1,2`);
+        logger.info('--- 분류 전체 분포 (axis × confidence) ---');
+        dist.forEach(d => logger.info(`  ${d.axis.padEnd(11)} ${d.confidence.padEnd(6)} ${d.n}`));
+    } catch (e) {
+        logger.error(`[FATAL] ${e.message}\n${e.stack}`);
+    } finally {
+        await pool.end();
+        logger.info(`[Axis Pilot END] 분류 ${classified} · 비용 $${cost.toFixed(3)} · ${((Date.now() - t0) / 1000).toFixed(0)}초`);
+    }
+}
+run();

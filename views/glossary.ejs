@@ -252,7 +252,7 @@
 <div class="gl-wrap">
   <!-- 목차 -->
   <nav class="gl-toc" aria-label="목차">
-    <div class="gl-toc-title">TABLE OF CONTENTS</div>
+    <div class="gl-toc-title">목차</div>
     <ul class="gl-toc-list">
       <% toc.forEach((t, i) => { %>
         <li>
@@ -267,7 +267,7 @@
 
   <!-- 법안 처리 결과 -->
   <section class="gl-section" id="sec-bill-result">
-    <h2>BILL_RESULT <span>법안 처리 결과</span></h2>
+    <h2><span>법안 처리 결과</span></h2>
     <div class="gl-list">
       <% terms.forEach(t => { %>
         <div class="gl-item" id="<%= t.id %>">
@@ -283,7 +283,7 @@
 
   <!-- 발의자 구분 -->
   <section class="gl-section" id="sec-proposer">
-    <h2>PROPOSER <span>발의자 구분</span></h2>
+    <h2><span>발의자 구분</span></h2>
     <div class="gl-list">
       <% roles.forEach(r => { %>
         <div class="gl-item" id="<%= r.id %>">
@@ -298,7 +298,7 @@
 
   <!-- 표결 결과 -->
   <section class="gl-section" id="sec-vote-result">
-    <h2>VOTE_RESULT <span>본회의 표결 결과</span></h2>
+    <h2><span>본회의 표결 결과</span></h2>
     <div class="gl-list">
       <% votes.forEach(v => { %>
         <div class="gl-item" id="<%= v.id %>">
@@ -317,7 +317,7 @@
 
   <!-- 주요 용어 -->
   <section class="gl-section" id="sec-general">
-    <h2>GLOSSARY <span>주요 용어</span></h2>
+    <h2><span>주요 용어</span></h2>
     <div class="gl-list">
       <% generals.forEach(g => { %>
         <div class="gl-item" id="<%= g.id %>">

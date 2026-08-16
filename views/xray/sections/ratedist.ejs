@@ -1,0 +1,113 @@
+<%# 자당/타당 찬성률 — 데이터: x.rateDist (loader: ratedist)
+     politician_cross_party_vote MV. 바로 위 gapdist 가 두 값의 **차이**라면 여기는 그 **수준**이다.
+
+     🔴 **점 그래프다. 히스토그램으로 되돌리지 말 것** (2026-08-15 교체).
+        겹친 히스토그램은 자당이 한 칸에 92% 몰려 y축을 독점했고, 같은 높이 기준을 쓰는
+        타당 분포가 전부 바닥에 눌려 모양이 사라졌다. 여기선 **높이를 아예 안 쓴다** —
+        두 줄을 같은 x축에 놓고 가로로 얼마나 퍼졌는지만 본다. 그게 이 섹션의 전부다.
+     🔴 정당색 금지 — 자당 골드, 타당 무채색. 정당을 가르는 게 아니라 **관계**를 가르는 것이라 허용된다 %>
+<% const rd = x.rateDist || { dots: [], total: 0 }; %>
+<% if (rd.total > 0) { %>
+  <p class="xr-desc" style="margin-bottom:20px">
+    <strong>점 하나가 의원 한 명</strong>입니다. 위 줄은 <strong>자기 당이 낸 법안</strong>에,
+    아래 줄은 <strong>다른 당이 낸 법안</strong>에 찬성한 비율입니다.
+    오른쪽으로 갈수록 많이 찬성한 것 — <strong>두 줄이 얼마나 퍼져 있는지</strong>를 비교해 보세요.
+  </p>
+
+  <%
+    const dW = 1000, dPadL = 92, dPadR = 24, dPadT = 26, dPadB = 34;
+    const bandH = 58;            // 한 줄의 높이 (지터가 이 안에서만 논다)
+    const rowGap = 16;
+    const dH = dPadT + bandH * 2 + rowGap + dPadB;
+    const X_MIN = 65, X_MAX = 100;
+    const plotW = dW - dPadL - dPadR;
+    /* 축 밖 값이 생기면 가장자리에 붙여 잘리지 않게 한다 (현재 최소 66.1) */
+    const dx = (v) => dPadL + (Math.min(X_MAX, Math.max(X_MIN, v)) - X_MIN) / (X_MAX - X_MIN) * plotW;
+    const ownCy   = dPadT + bandH / 2;
+    const otherCy = dPadT + bandH + rowGap + bandH / 2;
+    const R = 3.1;
+    /* 라벨이 오른쪽 끝에서 잘리던 버그 — 축 끝 12% 안이면 왼쪽으로 뒤집는다 */
+    const anchorFor = (v) => (dx(v) > dPadL + plotW * 0.88 ? 'end' : 'start');
+    const offsetFor = (v) => (anchorFor(v) === 'end' ? -7 : 7);
+  %>
+  <div class="xr-svg-box">
+    <svg viewBox="0 0 <%= dW %> <%= dH %>" style="width:100%;height:auto" role="img"
+         aria-label="의원 <%= rd.total %>명의 자당·타당 법안 찬성률 분포. 자당은 <%= rd.own.min %>~<%= rd.own.max %>%, 타당은 <%= rd.other.min %>~<%= rd.other.max %>% 에 퍼져 있습니다.">
+      <%# 줄 배경 — 두 밴드가 같은 크기임을 보여준다 (높이 비교가 아니라는 신호) %>
+      <rect x="<%= dPadL %>" y="<%= dPadT %>" width="<%= plotW %>" height="<%= bandH %>" fill="#FAFAF7" rx="6"/>
+      <rect x="<%= dPadL %>" y="<%= dPadT + bandH + rowGap %>" width="<%= plotW %>" height="<%= bandH %>" fill="#FAFAF7" rx="6"/>
+
+      <%# 세로 격자 %>
+      <% [70, 80, 90, 100].forEach(t => { %>
+        <line x1="<%= dx(t).toFixed(1) %>" y1="<%= dPadT %>" x2="<%= dx(t).toFixed(1) %>" y2="<%= dPadT + bandH * 2 + rowGap %>"
+              stroke="#E2DFD4" stroke-width="1"/>
+      <% }) %>
+
+      <%# 줄 이름 — 축 왼쪽 %>
+      <text x="<%= dPadL - 12 %>" y="<%= ownCy + 4 %>" text-anchor="end" font-size="13" font-weight="700" fill="#8F5800">자기 당 법안</text>
+      <text x="<%= dPadL - 12 %>" y="<%= otherCy + 4 %>" text-anchor="end" font-size="13" font-weight="700" fill="#4B5362">다른 당 법안</text>
+
+      <%# 점 — 겹치므로 반투명. 지터는 서버에서 결정적으로 만든 값이라 새로고침해도 안 튄다 %>
+      <% rd.dots.forEach(d => { %><circle cx="<%= dx(d.own).toFixed(1) %>" cy="<%= (ownCy + d.j * (bandH / 2 - R - 1)).toFixed(1) %>" r="<%= R %>" fill="#B8740C" opacity="0.42"/><% }) %>
+      <% rd.dots.forEach(d => { %><circle cx="<%= dx(d.other).toFixed(1) %>" cy="<%= (otherCy + d.j * (bandH / 2 - R - 1)).toFixed(1) %>" r="<%= R %>" fill="#4B5362" opacity="0.42"/><% }) %>
+
+      <%# 중앙값 — 각 줄 위에 짧은 눈금 + 라벨 %>
+      <line x1="<%= dx(rd.own.median).toFixed(1) %>" y1="<%= dPadT - 5 %>" x2="<%= dx(rd.own.median).toFixed(1) %>" y2="<%= dPadT + bandH %>"
+            stroke="#8F5800" stroke-width="2"/>
+      <text x="<%= (dx(rd.own.median) + offsetFor(rd.own.median)).toFixed(1) %>" y="<%= dPadT - 10 %>"
+            text-anchor="<%= anchorFor(rd.own.median) %>" font-size="12" font-family="JetBrains Mono" fill="#8F5800">중앙값 <%= rd.own.median %>%</text>
+      <line x1="<%= dx(rd.other.median).toFixed(1) %>" y1="<%= dPadT + bandH + rowGap %>"
+            x2="<%= dx(rd.other.median).toFixed(1) %>" y2="<%= dPadT + bandH * 2 + rowGap + 5 %>"
+            stroke="#4B5362" stroke-width="2"/>
+      <text x="<%= (dx(rd.other.median) + offsetFor(rd.other.median)).toFixed(1) %>" y="<%= dPadT + bandH * 2 + rowGap + 20 %>"
+            text-anchor="<%= anchorFor(rd.other.median) %>" font-size="12" font-family="JetBrains Mono" fill="#4B5362">중앙값 <%= rd.other.median %>%</text>
+
+      <%# x축 %>
+      <% [65, 70, 80, 90, 100].forEach(t => { %>
+        <text x="<%= dx(t).toFixed(1) %>" y="<%= dH - 8 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="#7A8090"><%= t %>%</text>
+      <% }) %>
+    </svg>
+  </div>
+  <p class="xr-svg-hint">← 그래프를 옆으로 밀어서 볼 수 있습니다</p>
+
+  <%# 큰 숫자는 차트 아래로 — 차트가 먼저 눈에 들어오게 %>
+  <div class="xr-stats" style="margin-top:18px">
+    <div class="xr-stat">
+      <div class="v"><%= rd.ownSpread %><small style="font-size:16px">%p</small></div>
+      <div class="l">자기 당 법안 — 퍼진 폭 (<%= rd.own.min %>~<%= rd.own.max %>%)</div>
+    </div>
+    <div class="xr-stat">
+      <div class="v"><em><%= rd.otherSpread %></em><small style="font-size:16px">%p</small></div>
+      <div class="l">다른 당 법안 — 퍼진 폭 (<%= rd.other.min %>~<%= rd.other.max %>%)</div>
+    </div>
+    <div class="xr-stat">
+      <div class="v"><%= rd.own.over99Pct %>%</div>
+      <div class="l">자기 당 법안에 99% 이상 찬성 (<%= nf(rd.own.over99) %>명 / <%= nf(rd.total) %>명)</div>
+    </div>
+    <div class="xr-stat">
+      <div class="v"><%= rd.other.over99Pct %>%</div>
+      <div class="l">다른 당 법안에 99% 이상 찬성 (<%= nf(rd.other.over99) %>명)</div>
+    </div>
+  </div>
+
+  <%# 🔴 이 각주는 숫자와 세트다. 빼면 "당에 갇혀 있다" 는 결론으로 직행하는데, 데이터는 그렇게 말하지 않는다 %>
+  <div class="xr-note" style="margin-top:18px">
+    <p><strong>이 숫자를 읽을 때</strong></p>
+    <ul>
+      <li><strong>본회의에 올라온 법안은 이미 걸러진 것입니다.</strong> 위원회·법사위를 거치며 대체로 합의된 안건이라
+          찬성률이 구조적으로 높습니다 — 표결 <%= nf(rd.floorBills) %>건의 평균 찬성률이 <%= rd.floorAvgFor %>%이고,
+          전체 표결에서 반대는 <%= rd.opposePct %>%뿐입니다.
+          따라서 이 그림은 <em>당파성의 크기</em>가 아니라 <em>본회의가 어떻게 굴러가는지</em>에 더 가깝습니다.</li>
+      <li><strong>낮은 타당 찬성률이 곧 편협함은 아닙니다.</strong> 반대·기권은 법안 내용에 대한 판단일 수 있고,
+          다수당·소수당은 의사일정 구조가 달라 같은 기준으로 비교되지 않습니다.</li>
+      <li>불참은 분모에서 제외했습니다 (넣으면 출석률이 성향과 섞입니다). 자·타당 각 50표 이상인 <%= nf(rd.total) %>명만 집계했고,
+          대표발의자가 특정되지 않는 법안(위원장 대안 등)은 자당/타당을 가릴 수 없어 빠졌습니다.</li>
+      <% if (rd.underMin > 0) { %>
+        <%# 축이 65% 부터라 그 아래 값은 왼쪽 끝에 붙여 그린다 — 붙였다는 사실을 반드시 알린다 %>
+        <li>⚠️ 찬성률 65% 미만인 의원 <%= nf(rd.underMin) %>명은 그래프 왼쪽 끝에 모아 표시했습니다 (실제 값은 더 낮습니다).</li>
+      <% } %>
+    </ul>
+  </div>
+<% } else { %>
+  <p class="xr-empty">집계할 표결 데이터가 아직 없습니다.</p>
+<% } %>

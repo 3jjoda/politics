@@ -22,7 +22,7 @@
   <% if (cr.length >= 6) { %>
     <div class="xr-cols">
       <div>
-        <div class="xr-col-h">처리율 높은 위원회 TOP 5</div>
+        <div class="xr-col-h">처리율 높은 위원회 5곳</div>
         <% cr.slice(0, 5).forEach(c => { %>
           <div class="xr-hbar-row">
             <span class="lb" style="font-size:12px"><%= c.committee.replace('위원회', '') %></span>
@@ -32,7 +32,7 @@
         <% }) %>
       </div>
       <div>
-        <div class="xr-col-h">처리율 낮은 위원회 BOTTOM 5</div>
+        <div class="xr-col-h">처리율 낮은 위원회 5곳</div>
         <% cr.slice(-5).reverse().forEach(c => { %>
           <div class="xr-hbar-row">
             <span class="lb" style="font-size:12px"><%= c.committee.replace('위원회', '') %></span>

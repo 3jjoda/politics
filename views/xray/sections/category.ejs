@@ -2,7 +2,15 @@
 <% const cat = x.categoryCounts || []; %>
 <% if (cat.length > 0) { %>
   <% const catMax = Math.max(1, ...cat.map(c => c.cnt));
-     const catTotal = cat.reduce((s, c) => s + c.cnt, 0); %>
+     const catTotal = cat.reduce((s, c) => s + c.cnt, 0);
+     const catTop3 = [...cat].sort((a, b) => b.cnt - a.cnt).slice(0, 3);
+     const catTop3Pct = pct(catTop3.reduce((s, c) => s + c.cnt, 0), catTotal); %>
+  <%# 🔴 16행 막대만 두면 훑을 게 많고 결론이 없다. 상위 3개가 얼마를 먹는지 먼저 말한다 %>
+  <p class="xr-desc" style="margin-bottom:16px">
+    AI 분석이 끝난 <strong><%= nf(catTotal) %>건</strong>을 16개 분야로 나눈 것입니다.
+    상위 3개 분야(<strong><%= catTop3.map(c => c.category_main).join(' · ') %></strong>)가
+    <strong><%= catTop3Pct %>%</strong>를 차지합니다.
+  </p>
   <% cat.forEach(c => { %>
     <div class="xr-hbar-row">
       <span class="lb"><%= c.category_main %></span>

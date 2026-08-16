@@ -1,122 +1,55 @@
 <%
   const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
-  const fmtDate = (d) => {
-    const t = new Date(d);
-    return t.getFullYear() + '.' + String(t.getMonth() + 1).padStart(2, '0') + '.' + String(t.getDate()).padStart(2, '0');
-  };
-  const k = kpi || {};
-  const totalBills = Number(k.total_bills || 0);
-  const processedBills = Number(k.processed_bills || 0);
-  const pendingBills = Number(k.pending_bills || 0);
-  const processedRate = totalBills > 0 ? (processedBills / totalBills * 100) : 0;
-  const pendingRate   = totalBills > 0 ? (pendingBills   / totalBills * 100) : 0;
+  /* 🔴 결론 3숫자 (2026-08-16 2차부터 「숫자로 본 국회」 스트립에 있다) — **총량이 아니라 결론**이다.
+     구 KPI 5칸은 전체 법안 18,741 · 등록 의원 299 처럼 재고만 말해서 "그래서?" 에 답하지 않았다.
+     지금 셋은 서로 겹치지 않고 하나의 이야기가 된다 — 법안의 운명 → 표결의 실상 → 참여의 실상.
+     ⚠️ 숫자는 전부 `getHomeFacts.sql` 산출값이다. 화면에 하드코딩하지 말 것 — 배치가 매일 움직인다.
+     ⚠️ 쿼리 실패 시 facts 가 null 이라 스트립만 빠지고 페이지는 산다 */
+  const f = locals.facts || null;
 
-  // 일평균 발의 건수 (22대 국회 시작: 2024-05-30)
-  const assemblyStart = new Date('2024-05-30');
-  const today = new Date();
-  const daysSinceStart = Math.max(1, Math.floor((today - assemblyStart) / (1000 * 60 * 60 * 24)));
-  const dailyAvg = totalBills / daysSinceStart;
-
-  // 결과 배지 클래스
-  const resultClass = (r) => {
-    if (!r) return 'pb-badge-pending';
-    if (r.indexOf('가결') > -1) return 'pb-badge-passed';
-    if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
-    if (r === '철회') return 'pb-badge-withdrawn';
-    if (r.indexOf('대안') > -1) return 'pb-badge-alt';
-    return 'pb-badge-pending';
-  };
-
-  // 용어 설명 링크 매핑
-  const termHash = (r) => {
-    if (!r) return 'pending';
-    if (r === '원안가결') return 'original';
-    if (r === '수정가결') return 'modified';
-    if (r === '대안반영폐기') return 'alt-dropped';
-    if (r === '수정안반영폐기') return 'mod-dropped';
-    if (r === '철회') return 'withdrawn';
-    if (r === '부결') return 'rejected';
-    if (r === '폐기') return 'dropped';
-    return 'pending';
-  };
 %>
 
 <style>
-  /* ===== HOME HERO ===== */
-  .home-hero {
-    position: relative;
-    min-height: calc(100vh - 60px);
-    display: flex;
-    align-items: center;
-    padding: 100px 24px 60px;
-    overflow: hidden;
+  /* ===== HOME HERO — 신문 1면 마스트헤드 문법 (2026-08-16 3차) =====
+     🔴 이전 히어로(100vh · 펄스 점 라벨 · Bebas 3행 워드마크 · 그라디언트 글로우 · 알약 버튼 2개 · 페이드업)는
+        전형적인 "스타트업 랜딩" 이라 AI 냄새가 났고 화면 하나를 통째로 먹었다 (사용자 지적). 되살리지 말 것.
+     지금: 날짜줄 → 세리프 헤드라인 한 줄 → 데크 한 문장 → 텍스트 링크 → 어제 브리핑 한 줄. 높이는 내용만큼. */
+  .home-hero { padding: calc(var(--nav-h) + 40px) 24px 36px; border-bottom: 1px solid var(--border); }
+  /* 1열 — 마스트헤드(글) 아래에 의원 3장을 가로 3단으로. 2열(글|카드)로 두면 글이 304px 에서 끝나 카드 열 아래 227px 이 빈다 (실측) */
+  .home-hero-inner { max-width: 1280px; margin: 0 auto; }
+  .hero-left { max-width: 760px; }
+  .hero-dateline {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px;
+    font-size: 12.5px; color: var(--sub2); padding-bottom: 12px; border-bottom: 2px solid var(--text);
   }
-  .home-hero::after {
-    content: '';
-    position: absolute;
-    top: 20%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 800px;
-    height: 400px;
-    background: radial-gradient(ellipse, rgba(184,116,12,0.08) 0%, transparent 70%);
-    pointer-events: none;
+  .hero-dateline b { color: var(--text); font-weight: 700; }
+  .hero-dateline .sep { color: var(--border2); }
+  /* 세리프 900 — /xray 카드 제목·법안 분석 헤드라인과 같은 시각 언어. 한 줄이 원칙 (모바일은 두 줄) */
+  .hero-title {
+    margin: 22px 0 0; font-family: 'Noto Serif KR', serif; font-weight: 900;
+    font-size: clamp(30px, 3.4vw, 42px); line-height: 1.25; letter-spacing: -0.01em; color: var(--text); word-break: keep-all;
   }
-  .home-hero-inner {
-    width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 64px;
-    align-items: center;
-    position: relative;
-    z-index: 1;
+  .hero-title em { font-style: normal; color: var(--accent); }
+  .hero-deck { margin: 14px 0 0; font-size: 15.5px; line-height: 1.8; color: var(--sub); max-width: 520px; word-break: keep-all; }
+  .hero-deck strong { color: var(--text); font-weight: 700; }
+  /* 버튼 대신 텍스트 링크 — 첫 번째만 골드·굵게. 알약 버튼은 랜딩 문법이라 뺐다 */
+  .hero-links { margin: 18px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 14px; }
+  .hero-links a { color: var(--text); text-decoration: none; padding: 4px 0; border-bottom: 1px solid var(--border2); }
+  .hero-links a:hover { color: var(--accent2); border-color: var(--accent2); }
+  .hero-links a.is-primary { color: var(--accent2); font-weight: 800; border-bottom: 2px solid var(--accent); }
+  .hero-links .sep { color: var(--border2); }
+  /* 어제 브리핑 한 줄 — 매일 바뀌는 유일한 문장. 1면 하단 "속보" 자리 */
+  .hero-brief {
+    display: flex; gap: 10px; align-items: baseline; margin: 26px 0 0; padding: 12px 14px;
+    background: var(--bg3); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    text-decoration: none; color: inherit;
   }
-  .home-hero-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 24px;
-  }
-  .home-hero-label::before {
-    content: '';
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    animation: pbPulse 2s infinite;
-  }
-  @keyframes pbPulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(0.8); }
-  }
-  .home-hero-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(48px, 6vw, 80px);
-    line-height: 1;
-    letter-spacing: 0.02em;
-  }
-  /* "당 말고 사람" 3행. 색은 구 카피의 3행 색을 그대로 옮김 —
-     당=구 '끝까지 봅니다'(--sub) / 말고=구 '당신의 한 표가'(--text) / 사람=구 '어디로 갔는지'(--accent).
-     크기 차등(구 line2 의 축소)은 두지 않고 3행 모두 같은 크기. */
-  .home-hero-title span { display: block; }
-  .home-hero-title .w-dang  { color: var(--sub); }
-  .home-hero-title .w-malgo { color: var(--text); }
-  .home-hero-title .w-saram { color: var(--accent); }
-  .home-hero-desc {
-    font-size: 16px;
-    color: var(--sub);
-    line-height: 1.85;
-    margin: 24px 0 40px;
-    max-width: 520px;
-  }
-  .home-hero-desc strong { color: var(--text); }
-  .home-hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-brief:hover { background: #ECE9DE; }
+  .hero-brief-k { flex-shrink: 0; font-size: 11.5px; font-weight: 800; color: var(--accent2); white-space: nowrap; }
+  .hero-brief-t { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.5; word-break: keep-all; }
+  .hero-brief-s { font-size: 12px; color: var(--sub2); margin-left: auto; white-space: nowrap; }
+  /* 홈은 섹션 여백을 조인다 — 전역 72px 은 이 페이지에서 과하다 (사용자 지적: 위아래로 너무 먹는다) */
+  .pb-section { padding-top: 48px; padding-bottom: 48px; }
 
   .btn-primary {
     display: inline-flex;
@@ -137,886 +70,426 @@
     transform: translateY(-1px);
     box-shadow: 0 8px 24px rgba(184,116,12,0.3);
   }
-  .btn-secondary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 26px;
-    background: transparent;
-    color: var(--text);
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 500;
-    transition: all 0.2s;
-  }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* KPI */
-  .home-kpi {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 16px;
-  }
-  .kpi-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    position: relative;
-    overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--accent-color, var(--accent));
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  .kpi-card:hover { border-color: var(--border2); }
-  .kpi-card:hover::before { opacity: 1; }
-  .kpi-card.blue { --accent-color: var(--accent); }
-  .kpi-card.green { --accent-color: var(--green); }
-  .kpi-card.amber { --accent-color: var(--accent); }
-  .kpi-card.purple { --accent-color: var(--purple); }
-
-  .kpi-label {
-    font-size: 13px;
-    color: var(--sub);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 500;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .kpi-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--accent-color, var(--accent));
-  }
-  .kpi-value {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 44px;
-    line-height: 1;
-    letter-spacing: 0.02em;
-    margin-bottom: 8px;
-  }
-  .kpi-card.blue .kpi-value { color: var(--accent); }
-  .kpi-card.green .kpi-value { color: var(--green); }
-  .kpi-card.amber .kpi-value { color: var(--accent); }
-  .kpi-card.purple .kpi-value { color: var(--purple); }
-
-  .kpi-sub {
-    font-size: 12px;
-    color: var(--sub2);
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .kpi-note {
-    font-size: 13px;
-    color: var(--sub);
-    margin-top: 8px;
-    line-height: 1.7;
-  }
-  .kpi-note strong { color: var(--text); font-weight: 500; }
-
-  .kpi-card.large {
-    grid-column: span 2;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-  }
-  .kpi-card.large .kpi-value { font-size: 60px; }
-  .kpi-bar {
-    flex: 1;
-    height: 4px;
-    background: var(--bg3);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-  .kpi-bar-fill {
-    height: 100%;
-    background: var(--green);
-    border-radius: 2px;
-  }
-
-  /* Trending */
-  .trending-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    gap: 16px;
-  }
-  .bill-card-main {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
-  .bill-card-main:hover {
-    border-color: var(--border2);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-  }
-  .bill-card-main::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(184,116,12,0.05) 0%, transparent 60%);
-    pointer-events: none;
-  }
-  .bill-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-  }
-  .bill-name {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 10px;
-    line-height: 1.55;
-  }
-  .bill-info {
-    font-size: 13px;
-    color: var(--sub);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .bill-vote-bar {
-    margin-top: 16px;
-    display: flex;
-    gap: 4px;
-  }
-  .vote-seg { height: 6px; border-radius: 3px; flex-shrink: 0; }
-  .bill-vote-stats { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
-  .vote-stat {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 12px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .vote-dot { width: 6px; height: 6px; border-radius: 50%; }
-  .dot-green { background: var(--green); }
-  .dot-red { background: var(--red); }
-  .dot-gray { background: var(--sub2); }
-
-  .bill-list { display: flex; flex-direction: column; gap: 8px; }
-  .bill-item {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 18px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.2s;
-  }
-  .bill-item:hover { border-color: var(--border2); background: var(--bg3); }
-  .bill-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--sub2);
-    min-width: 32px;
-  }
-  .bill-item-content { flex: 1; min-width: 0; }
-  .bill-item-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-bottom: 4px;
-  }
-  .bill-item-sub { font-size: 12px; color: var(--sub); }
-
-  /* Votes table */
-  .vote-section {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-  }
-  .vote-table-header,
-  .vote-row {
-    display: grid;
-    grid-template-columns: 3fr 1fr 1fr 1fr 1fr 110px;
-    gap: 16px;
-    padding: 16px 24px;
-    align-items: center;
-  }
-  .vote-table-header {
-    padding: 12px 24px;
-    background: var(--bg3);
-    font-size: 12px;
-    color: var(--sub);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .vote-row { border-bottom: 1px solid var(--border); transition: background 0.15s; }
-  .vote-row:hover { background: var(--bg3); }
-  .vote-row:last-child { border-bottom: none; }
-  .vote-bill-name {
-    font-size: 14px;
-    color: var(--text);
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .vote-count {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    text-align: center;
-  }
-  .count-for { color: var(--green); }
-  .count-against { color: var(--red); }
-  .count-abstain { color: var(--sub); }
-  .count-absent { color: var(--sub2); }
-
-  .result-badge {
-    display: inline-flex;
-    padding: 4px 11px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  /* Politicians */
-  .politicians-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
-  }
-  .politician-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 24px 18px;
-    text-align: center;
-    transition: all 0.2s;
-    display: block;
-  }
-  .politician-card:hover {
-    border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(184,116,12,0.1);
-  }
-  .politician-rank {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    color: var(--sub2);
-    margin-bottom: 14px;
-    display: inline-flex;
-    align-items: baseline;
-    gap: 2px;
-    padding: 3px 10px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--bg3);
-  }
-  .politician-rank .rank-num {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    line-height: 1;
-    color: var(--text);
-    letter-spacing: 0.02em;
-  }
-  .politician-rank .rank-sep { color: var(--sub2); }
-  .politician-rank .rank-of { color: var(--sub2); font-size: 12px; }
-  .politician-rank.rank-1 { border-color: var(--accent); background: var(--accent-10); }
-  .politician-rank.rank-1 .rank-num { color: var(--accent); }
-  .politician-rank.rank-2 { border-color: #94A3B8; }
-  .politician-rank.rank-3 { border-color: #CD7C39; }
-
-  .ph-avatar {
-    width: 72px; height: 72px;
-    border-radius: 50%;
-    margin: 0 auto 14px;
-    border: 2px solid var(--border);
-    overflow: hidden;
-  }
-  .ph-avatar img, .ph-avatar svg { width: 100%; height: 100%; display: block; }
-
-  .politician-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 5px;
-  }
-  .politician-party {
-    font-size: 13px;
-    color: var(--sub);
-    margin-bottom: 14px;
-  }
-  .politician-stat {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
-    color: var(--accent);
-    font-weight: 600;
-  }
-  .politician-stat-label {
-    font-size: 11px;
-    color: var(--sub);
-    margin-top: 3px;
-  }
-
-  /* Category tabs */
-  .category-tabs {
-    display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-    margin-bottom: 24px;
-  }
-  .category-tabs::-webkit-scrollbar { display: none; }
-  .cat-tab {
-    flex-shrink: 0;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--sub);
-    transition: all 0.15s;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-  }
-  .cat-tab:hover, .cat-tab.active {
-    background: rgba(184,116,12,0.1);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  /* Trending sort tabs */
-  .trending-sort {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 16px;
-    flex-wrap: wrap;
-  }
-  .trend-sort-btn {
-    padding: 7px 14px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: var(--bg2);
-    color: var(--sub);
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .trend-sort-btn:hover { border-color: var(--border2); color: var(--text); }
-  .trend-sort-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-  .trend-sort-btn:disabled { opacity: 0.6; cursor: wait; }
-  .trending-grid.is-loading { opacity: 0.5; pointer-events: none; transition: opacity 0.15s; }
-
-  @media (max-width: 1024px) {
-    .politicians-grid { grid-template-columns: repeat(3, 1fr); }
-    .trending-grid { grid-template-columns: minmax(0, 1fr); }
-    .vote-table-header, .vote-row {
-      grid-template-columns: 3fr 1fr 1fr 100px;
-    }
-    .vote-table-header span:nth-child(4),
-    .vote-table-header span:nth-child(5),
-    .vote-row div:nth-child(4),
-    .vote-row div:nth-child(5) { display: none; }
-  }
+  /* (구 홈 CSS — KPI·주목할 법안(trending)·표결 표·발의 랭킹·정당 이동·카테고리 탭 — 2026-08-16 2차에 마크업과 함께 제거. 참조 0 확인) */
 
   @media (max-width: 768px) {
-    .home-hero { padding: 80px 20px 40px; }
-    .home-hero-inner { grid-template-columns: 1fr; gap: 40px; }
-    .home-hero-title { font-size: clamp(40px, 10vw, 56px); }
-    .politicians-grid { grid-template-columns: repeat(2, 1fr); }
-    .vote-table-header, .vote-row {
-      grid-template-columns: 1fr 100px;
-      padding: 12px 16px;
-    }
-    .vote-table-header span:not(:first-child):not(:last-child),
-    .vote-row div:not(:first-child):not(:last-child) { display: none; }
-
+    .home-hero { padding: calc(var(--nav-h) + 24px) 16px 28px; }
+    .hero-brief-s { display: none; }
+    .spot-cards { grid-template-columns: 1fr; }
     /* 모바일 여백·폰트 스케일 */
     .pb-section { padding: 48px 12px; }
-    .bill-card-main, .kpi-card { padding: 18px 14px; }
-    .kpi-card.large { flex-direction: column; align-items: stretch; gap: 16px; }
-    .kpi-card.large .kpi-value { font-size: 48px; }
-    .kpi-value { font-size: 36px; }
-    .bill-name { font-size: 16px; overflow-wrap: anywhere; }
-    .bill-info { font-size: 12px; }
-    /* 긴 위원회명이 단일 토큰으로 카드 폭 밀어내지 않도록 배지 텍스트도 필요 시 분리 */
-    .pb-badge { overflow-wrap: anywhere; }
   }
 
-  .pb-section.pm-section { padding-top: 36px; padding-bottom: 36px; }
-  /* 최근 정당 이동 — 카드 캐러셀 (정치색 회피 — 정당색 미사용, 강조는 골드 화살표만) */
-  .pm-carousel { overflow: hidden; position: relative; }
-  .pm-track { display: flex; gap: 12px; width: max-content; }
-  .pm-track.is-animated { animation: pmSlide var(--pm-duration, 40s) linear infinite; }
-  .pm-carousel:hover .pm-track.is-animated,
-  .pm-carousel:focus-within .pm-track.is-animated { animation-play-state: paused; }
-  @keyframes pmSlide {
-    from { transform: translateX(0); }
-    to   { transform: translateX(var(--pm-shift, -50%)); }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .pm-track.is-animated { animation: none; }
-    .pm-carousel { overflow-x: auto; }
-  }
-  .pm-card {
-    flex: 0 0 auto; width: 168px;
-    display: flex; flex-direction: column;
+  /* ===== 홈 재구성 (2026-08-16) ===================================================
+     🔴 구 KPI 5칸(`.home-kpi`/`.kpi-*`)·정당 이동(`.pm-*`)·표결 표(`.vote-*`)·
+        발의 랭킹(`.politician*`)·월별 추이는 함께 제거했다. 되살리기 전에
+        CLAUDE.md "홈 재구성" 항목의 실측(같은 그림 20번 / 기록 2건 / 처리 지연 오해)을 읽을 것. */
+
+  /* ===== 히어로 우측 — 무작위 의원 3명의 축 좌표 (.spot-*) (2026-08-16 2차) =====
+     막대 문법은 의원 상세 `.pv-band` 와 같다 (왼끝 L · 오른끝 R · 골드 점 = 의원). 여기선 비교 대상이 "나" 가 아니라
+     **소속 정당 평균**이라 눈금(세로 선)으로 그린다. 정당색 금지 — 골드·무채색만 */
+  .spot { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .spot-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+  .spot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .spot-title { font-size: 13px; font-weight: 800; color: var(--sub); }
+  .spot-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--sub2); }
+  .spot-legend .spot-dot, .spot-legend .spot-tick { position: static; margin: 0 2px 0 6px; }
+  .spot-card {
+    display: block; padding: 12px 16px 12px;
     background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
-    overflow: hidden; text-decoration: none;
+    text-decoration: none; color: inherit;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .spot-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+  .spot-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .spot-avatar { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; }
+  .spot-name { font-size: 15px; font-weight: 800; color: var(--text); white-space: nowrap; }
+  .spot-meta { font-size: 12px; color: var(--sub2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spot-more { margin-left: auto; font-size: 11.5px; color: var(--accent2); white-space: nowrap; }
+  .spot-rows { margin-top: 8px; display: grid; gap: 5px; }
+  .spot-row { display: grid; grid-template-columns: 56px 26px minmax(0, 1fr) 26px; align-items: center; column-gap: 8px; }
+  .spot-ax { font-size: 12px; font-weight: 700; color: var(--sub); }
+  .spot-end { font-size: 10.5px; color: var(--sub2); white-space: nowrap; }
+  .spot-end:nth-child(2) { text-align: right; }
+  .spot-track { position: relative; display: block; height: 16px; }
+  .spot-track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 5px; margin-top: -2.5px; background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; }
+  .spot-mid  { position: absolute; left: 50%; top: 2px; bottom: 2px; border-left: 1px dashed var(--border2); }
+  /* 정당 평균 눈금 — 막대보다 위아래로 삐져나오는 세로선. 상세 페이지의 평균 마커와 같은 언어 */
+  .spot-tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--sub); box-shadow: 0 0 0 1px var(--bg2); display: inline-block; height: 16px; }
+  .spot-dot  { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg2); box-shadow: 0 0 0 1.5px var(--accent); display: inline-block; z-index: 1; }
+  .spot-note { margin: 10px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--sub2); word-break: keep-all; }
+
+  /* 결론 3숫자 스트립 — 히어로에서 내려온 것 (「숫자로 본 국회」 머리). 순서 = 논리 (계류 → 반대 → 불참) */
+  .facts-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .fact-cell {
+    display: flex; flex-direction: column; gap: 3px; padding: 14px 16px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    text-decoration: none; color: inherit; transition: border-color 0.15s, transform 0.15s;
+  }
+  .fact-cell:hover { border-color: var(--accent); transform: translateY(-2px); }
+  /* ⚠️ 큰 숫자는 mono 로. 한글이 안 섞이는 자리라 폴백 걱정이 없다 */
+  .fact-num { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 30px; line-height: 1; color: var(--accent2); letter-spacing: -0.02em; }
+  .fact-num small { font-size: 15px; margin-left: 2px; }
+  .fact-title { font-size: 13px; font-weight: 800; color: var(--text); }
+  .fact-desc { font-size: 12px; line-height: 1.6; color: var(--sub); word-break: keep-all; }
+  .fact-desc strong { color: var(--text); font-weight: 700; }
+
+  /* 섹션 공통 각주 — 숫자 옆 한계 표기는 이 사이트의 기본 규칙이다 */
+  .pb-sec-note {
+    margin: 14px 0 0; font-size: 12px; line-height: 1.7;
+    color: var(--sub2); word-break: keep-all;
+  }
+
+  /* 브리핑 */
+  .home-bf { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+  .bf-lead {
+    display: block; padding: 24px; text-decoration: none; color: inherit;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .bf-lead:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+  .bf-lead-top { display: flex; align-items: center; gap: 10px; }
+  .bf-lead-date { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--sub); }
+  .bf-lead-badge {
+    padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    border: 1px solid var(--border2); color: var(--sub2);
+  }
+  .bf-lead-badge.is-ai { color: var(--accent2); border-color: var(--accent); background: #FBF5EA; }
+  .bf-lead-title {
+    margin: 12px 0 0; font-family: 'Noto Serif KR', serif; font-weight: 900;
+    font-size: 24px; line-height: 1.35; color: var(--text); word-break: keep-all;
+  }
+  .bf-lead-body {
+    margin: 10px 0 0; font-size: 14px; line-height: 1.75; color: var(--sub);
+    word-break: keep-all;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .bf-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .bf-list a {
+    display: flex; gap: 12px; align-items: baseline; padding: 14px 16px;
+    text-decoration: none; color: inherit; border-radius: 10px;
+    border: 1px solid transparent; transition: background 0.15s, border-color 0.15s;
+  }
+  .bf-list a:hover { background: var(--bg2); border-color: var(--border); }
+  .bf-item-date {
+    flex: 0 0 auto; font-family: 'JetBrains Mono', monospace;
+    font-size: 11.5px; font-weight: 700; color: var(--sub2);
+  }
+  .bf-item-title {
+    min-width: 0; font-size: 13.5px; line-height: 1.5; color: var(--text); word-break: keep-all;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* 나와 맞는 의원 */
+  .match-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .match-card {
+    display: flex; align-items: center; gap: 14px; padding: 16px 18px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    text-decoration: none; color: inherit; transition: border-color 0.15s, transform 0.15s;
+  }
+  .match-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  /* ⚠️ 크기는 래퍼에 준다 — avatarHtml 이 width/height 100% 인라인으로 부모를 채운다
+     (자식에 CSS 로 px 을 걸면 인라인이 이겨서 무시된다. 법안 카드 아바타에서 겪었다) */
+  .match-avatar { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 50%; overflow: hidden; }
+  .match-body { flex: 1 1 auto; min-width: 0; }
+  .match-name { font-size: 15px; font-weight: 700; color: var(--text); }
+  .match-retired {
+    font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--sub2);
+    border: 1px solid var(--border2); border-radius: 4px; padding: 1px 5px; margin-left: 4px;
+  }
+  .match-meta { margin-top: 3px; font-size: 12px; color: var(--sub2); overflow-wrap: anywhere; }
+  /* 순번(1·2·3) — 일치도 %가 아니다. 왜인지는 마크업 주석에 */
+  .match-pct {
+    flex: 0 0 auto; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 24px; color: var(--accent2); line-height: 1;
+    display: flex; align-items: baseline; gap: 2px;
+  }
+  .match-pct small { font-size: 11px; font-family: 'Noto Sans KR', sans-serif; color: var(--sub2); }
+  .match-cta {
+    padding: 32px 28px; text-align: center;
+    background: var(--bg2); border: 1px dashed var(--border2); border-radius: 14px;
+  }
+  .match-cta-lead {
+    margin: 0 auto; max-width: 620px; font-size: 15px; line-height: 1.8;
+    color: var(--text); word-break: keep-all;
+  }
+  .match-cta-sub {
+    margin: 8px auto 20px; max-width: 620px; font-size: 13px; line-height: 1.7;
+    color: var(--sub2); word-break: keep-all;
+  }
+
+  /* 숫자로 본 국회 / 차트 만들기 */
+  .explore-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .explore-card {
+    display: block; padding: 22px; text-decoration: none; color: inherit;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 14px;
     transition: border-color 0.15s, transform 0.15s;
   }
-  .pm-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-  .pm-photo {
-    width: 100%; aspect-ratio: 1 / 1;
-    background: var(--bg3); overflow: hidden;
+  .explore-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .explore-kicker {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; color: var(--accent2);
   }
-  .pm-photo img { object-position: center top; } /* 상반신 사진 상단 기준 크롭 */
-  .pm-body { display: flex; flex-direction: column; gap: 5px; padding: 12px 14px 14px; }
-  .pm-name { font-size: 14px; font-weight: 700; color: var(--text); }
-  .pm-retired { font-style: normal; font-weight: 400; font-size: 12px; color: var(--sub2); }
-  .pm-route { display: flex; align-items: center; gap: 5px; font-size: 12px; flex-wrap: wrap; }
-  .pm-from { color: var(--sub); }
-  .pm-arrow { color: var(--accent); font-weight: 700; }
-  .pm-to { color: var(--text); font-weight: 600; }
-  .pm-date { font-size: 11px; color: var(--sub2); letter-spacing: 0.04em; margin-top: 2px; }
-  .pm-note { margin-top: 10px; font-size: 12px; color: var(--sub2); }
-  @media (max-width: 768px) {
-    .pm-card { width: 140px; }
-    .pm-body { padding: 10px 12px 12px; }
+  .explore-title {
+    margin: 10px 0 0; font-size: 17px; font-weight: 800; color: var(--text);
+    line-height: 1.4; word-break: keep-all;
+  }
+  .explore-desc {
+    margin: 8px 0 0; font-size: 13px; line-height: 1.75; color: var(--sub); word-break: keep-all;
   }
 
-  @keyframes pbFadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+  @media (max-width: 900px) {
+    .spot-cards { grid-template-columns: 1fr; }
+    .home-bf { grid-template-columns: 1fr; }
+    .match-grid, .explore-grid, .facts-strip { grid-template-columns: 1fr; }
   }
-  .home-hero-label { animation: pbFadeUp 0.6s ease-out; }
-  .home-hero-title { animation: pbFadeUp 0.6s 0.1s ease-out both; }
-  .home-hero-desc { animation: pbFadeUp 0.6s 0.2s ease-out both; }
-  .home-hero-actions { animation: pbFadeUp 0.6s 0.3s ease-out both; }
-  .home-kpi { animation: pbFadeUp 0.6s 0.4s ease-out both; }
+  @media (max-width: 768px) {
+    .fact-num { font-size: 26px; }
+    .spot-row { grid-template-columns: 48px 24px minmax(0, 1fr) 24px; }
+    .bf-lead-title { font-size: 20px; }
+    .bf-lead { padding: 20px; }
+  }
+
+  /* (구 홈 전용 CSS 40개 규칙 삭제 — KPI 5칸(.kpi-*) · 정당 이동(.pm-*) · 표결 표(.vote-*) ·
+     발의 랭킹(.politician*). 2026-08-16 홈 재구성으로 마크업이 사라져 참조 0.
+     되살리기 전에 CLAUDE.md "홈 재구성" 의 실측을 읽을 것) */
 </style>
 
 <!-- HERO -->
 <section class="home-hero">
   <div class="home-hero-inner">
-    <div>
-      <div class="home-hero-label">22대 국회 실시간 확인 중</div>
-      <h1 class="home-hero-title">
-        <span class="w-dang">당</span>
-        <span class="w-malgo">말고</span>
-        <span class="w-saram">사람</span>
-      </h1>
-      <p class="home-hero-desc">
-        <strong><%= nf(k.total_bills) %>개 법안</strong>과 <strong><%= nf(k.total_politicians) %>명 의원</strong>의 모든 활동을 확인합니다.<br>
-        당만 보고 투표하는 시대는 끝났습니다. 데이터로 직접 확인하세요.
-      </p>
-      <div class="home-hero-actions">
-        <a href="/politician" class="btn-primary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          의원 검색하기
+    <%
+      /* 날짜줄 — 서버 시각을 KST 로 (로컬 getter 금지 규칙). 어제 브리핑이 있으면 발의 수를 같이 */
+      const _kst = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(new Date());
+      const _bfs = locals.briefings || [];
+      const _lead = _bfs[0] || null;
+      const _leadDate = _lead ? String(_lead.briefing_date || '').slice(5).replace('-', '.') : null;
+      const _st = _lead && _lead.stats ? (typeof _lead.stats === 'string' ? JSON.parse(_lead.stats) : _lead.stats) : null;
+    %>
+    <div class="hero-left">
+      <div class="hero-dateline">
+        <b><%= _kst %></b><span class="sep">·</span><span>22대 국회</span>
+        <% if (_st && _st.proposed != null) { %><span class="sep">·</span><span><%= _leadDate %> 발의 <b><%= nf(_st.proposed) %>건</b></span><% } %>
+        <span class="sep">·</span><span>국회 공개 자료 매일 갱신</span>
+      </div>
+      <h1 class="hero-title">당 말고 <em>사람</em>을 봅니다.</h1>
+      <p class="hero-deck">국회가 공개한 자료를 그대로 모아, <strong>내가 뽑은 사람이 무엇을 하고 있는지</strong>
+        끝까지 지켜볼 수 있게 만듭니다. 정당이 아니라 <strong>한 사람의 기록</strong>으로 읽습니다.</p>
+      <div class="hero-links">
+        <a href="/balance-game" class="is-primary">나와 맞는 의원 찾기 →</a>
+        <span class="sep">·</span><a href="/politician">의원 309명</a>
+        <span class="sep">·</span><a href="/bill">법안</a>
+        <span class="sep">·</span><a href="/xray">숫자로 본 국회</a>
+      </div>
+      <% if (_lead) { %>
+        <a class="hero-brief" href="/briefing/<%= _lead.id %>">
+          <span class="hero-brief-k"><%= _leadDate %> 브리핑</span>
+          <span class="hero-brief-t"><%= _lead.headline %></span>
+          <span class="hero-brief-s">읽기 →</span>
         </a>
-        <a href="/bill" class="btn-secondary">법안 둘러보기 →</a>
-      </div>
+      <% } %>
     </div>
 
-    <div>
-      <div class="home-kpi">
-        <div class="kpi-card blue large">
-          <div>
-            <div class="kpi-label"><span class="kpi-dot"></span>전체 법안</div>
-            <div class="kpi-value" data-count="<%= totalBills %>"><%= nf(totalBills) %></div>
-            <div class="kpi-sub">22대 국회 (2024.05.30~)</div>
-            <div class="kpi-note">평균 <strong><%= dailyAvg.toFixed(1) %>건/일</strong> 발의 · <%= daysSinceStart %>일 누적</div>
-          </div>
-          <div class="kpi-bar">
-            <div class="kpi-bar-fill" style="width: <%= processedRate.toFixed(0) %>%"></div>
-          </div>
+    <%# ===== 히어로 우측 — 무작위 의원 3명의 축 좌표 (2026-08-16 2차) =====
+        🔴 결론 숫자 3개(계류·반대·불참)가 있던 자리다. 그 숫자는 아래 「숫자로 본 국회」 스트립으로 내렸다 (지우지 않았다).
+        왜 바꿨나: 홈이 "국회는 이렇다" 로 시작했는데 이 사이트의 차별점은 "의원 한 명 한 명이 이렇다" 다.
+        🔴 좌표만 보여주면 아무 뜻이 없다 — **소속 정당 평균 눈금**을 같이 찍어야 "당 말고 사람" 이 보인다.
+        🔴 무작위다 (편집 개입 없음). 정당 안배도 하지 않는다 — 안배가 곧 편집이다.
+        막대 문법은 의원 상세 `.pv-band` 와 같다: 왼끝 L · 오른끝 R · 골드 점 = 의원 · 세로 눈금 = 정당 평균 %>
+    <% const sp = locals.spotlight || []; const AM = AXIS.AXIS_META; const pct = (v) => ((Number(v) + 1) / 2 * 100).toFixed(1); %>
+    <% if (sp.length) { %>
+      <div class="spot">
+        <div class="spot-head">
+          <span class="spot-title">의원은 정당 평균과 얼마나 다를까</span>
+          <span class="spot-legend"><i class="spot-dot"></i>의원 <i class="spot-tick"></i>소속 정당 평균</span>
         </div>
-        <div class="kpi-card green">
-          <div class="kpi-label"><span class="kpi-dot"></span>처리 완료</div>
-          <div class="kpi-value" data-count="<%= processedBills %>"><%= nf(processedBills) %></div>
-          <div class="kpi-sub">가결 · 부결 · 폐기 포함</div>
-          <div class="kpi-note">전체의 <strong><%= processedRate.toFixed(1) %>%</strong></div>
-        </div>
-        <div class="kpi-card amber">
-          <div class="kpi-label"><span class="kpi-dot"></span>계류 중</div>
-          <div class="kpi-value" data-count="<%= pendingBills %>"><%= nf(pendingBills) %></div>
-          <div class="kpi-sub">심사 진행 중</div>
-          <div class="kpi-note">전체의 <strong><%= pendingRate.toFixed(1) %>%</strong></div>
-        </div>
-        <div class="kpi-card blue">
-          <div class="kpi-label"><span class="kpi-dot"></span>등록 의원</div>
-          <div class="kpi-value" data-count="<%= k.total_politicians || 0 %>"><%= nf(k.total_politicians) %></div>
-          <div class="kpi-sub">22대 국회의원</div>
-          <div class="kpi-note">평균 <strong><%= (totalBills / Math.max(1, Number(k.total_politicians || 1))).toFixed(0) %>건/인</strong> 발의</div>
-        </div>
-        <div class="kpi-card purple">
-          <div class="kpi-label"><span class="kpi-dot"></span>표결 기록</div>
-          <div class="kpi-value" data-count="<%= k.total_votes || 0 %>"><%= nf(k.total_votes) %></div>
-          <div class="kpi-sub">본회의 표결 기록</div>
-          <% if (Number(k.total_votes || 0) === 0) { %>
-            <div class="kpi-note" style="color:var(--sub2)">데이터 수집 중</div>
-          <% } else { %>
-            <div class="kpi-note">찬성·반대·기권·불참 <span class="pb-help" data-help-href="/glossary#vote-for" title="표결 용어">?</span></div>
-          <% } %>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<% if (partyMoves && partyMoves.length > 0) { %>
-<!-- 최근 정당 이동 -->
-<section class="pb-section pm-section">
-  <div class="pb-section-inner">
-    <div class="pb-section-header">
-      <div>
-        <div class="pb-section-label">소속 변화 추적</div>
-        <div class="pb-section-title">최근 정당 이동</div>
-      </div>
-      <a href="/politician" class="pb-section-link">전체 의원 보기 →</a>
-    </div>
-
-    <div class="pm-carousel" id="pm-carousel">
-      <div class="pm-track" id="pm-track">
-        <% partyMoves.forEach(m => { %>
-          <a href="/politician/<%= m.mona_cd %>" class="pm-card">
-            <div class="pm-photo"><%- avatarHtml(m.name, m.photo_url, 96) %></div>
-            <div class="pm-body">
-              <span class="pm-name">
-                <%= m.name %><% if (m.active_yn === false) { %> <em class="pm-retired">(퇴임)</em><% } %>
-              </span>
-              <span class="pm-route">
-                <span class="pm-from"><%= m.from_party %></span>
-                <span class="pm-arrow">→</span>
-                <span class="pm-to"><%= m.to_party %></span>
-              </span>
-              <span class="pm-date"><%= fmtDate(m.moved_at) %></span>
+        <div class="spot-cards">
+        <% sp.forEach((m) => { %>
+          <a class="spot-card" href="/politician/<%= m.mona_cd %>">
+            <div class="spot-who">
+              <span class="spot-avatar"><%- avatarHtml(m.name, m.photo_url, 44) %></span>
+              <span class="spot-name"><%= m.name %></span>
+              <span class="spot-meta"><%= m.party_name %><% if (m.electoral_district) { %> · <%= m.electoral_district %><% } %></span>
+              <span class="spot-more">상세 →</span>
+            </div>
+            <div class="spot-rows">
+              <% AXIS.MATCH_AXES.forEach((k) => { const v = Number(m[k]); const pv = Number(m['party_' + k]); const showAvg = Number(m.party_n) >= 3; %>
+                <div class="spot-row">
+                  <span class="spot-ax"><%= AM[k].name %></span>
+                  <span class="spot-end"><%= AM[k].L %></span>
+                  <span class="spot-track" title="<%= AM[k].name %>: 의원 <%= (v >= 0 ? '+' : '') + v.toFixed(2) %><%= showAvg ? ' · ' + m.party_name + ' 평균 ' + (pv >= 0 ? '+' : '') + pv.toFixed(2) : '' %>">
+                    <i class="spot-mid"></i>
+                    <% if (showAvg) { %><i class="spot-tick" style="left:<%= pct(pv) %>%"></i><% } %>
+                    <i class="spot-dot" style="left:<%= pct(v) %>%"></i>
+                  </span>
+                  <span class="spot-end"><%= AM[k].R %></span>
+                </div>
+              <% }); %>
             </div>
           </a>
-        <% }) %>
+        <% }); %>
+        </div>
+        <p class="spot-note">공동발의한 법안 × 방향 매핑 약 4,900건(AI 1차)으로 만든 좌표 · 안보축은 입법 기록으로 읽을 수 없어 없음 ·
+          새로고침하면 다른 의원이 나옵니다.</p>
       </div>
-    </div>
-    <p class="pm-note">데이터 수집 시점 기준 소속 변화입니다. 이동 사유(탈당·합당·제명 등)는 공공 API 가 제공하지 않습니다.</p>
+    <% } %>
   </div>
 </section>
 
-<script>
-  // 정당 이동 카드 캐러셀 — 한 화면에 다 안 보일 때만 무한 슬라이드 (hover/focus 시 정지)
-  (function () {
-    var wrap = document.getElementById('pm-carousel');
-    var track = document.getElementById('pm-track');
-    if (!wrap || !track) return;
-
-    function setup() {
-      if (track.scrollWidth <= wrap.clientWidth) return; // 다 보이면 슬라이드 불필요
-      var gap = 12;
-      var baseWidth = track.scrollWidth;
-
-      // 원본 한 벌 복제해 이어붙여 무한 루프 (복제본은 스크린리더/탭 제외)
-      Array.prototype.slice.call(track.children).forEach(function (card) {
-        var clone = card.cloneNode(true);
-        clone.setAttribute('aria-hidden', 'true');
-        clone.tabIndex = -1;
-        track.appendChild(clone);
-      });
-
-      var shift = baseWidth + gap;
-      track.style.setProperty('--pm-shift', '-' + shift + 'px');
-      track.style.setProperty('--pm-duration', Math.max(20, Math.round(shift / 35)) + 's'); // 약 35px/s
-      track.classList.add('is-animated');
-    }
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', setup);
-    } else {
-      setup();
-    }
-  })();
-</script>
-<% } %>
-
-<div class="pb-divider"></div>
-
-<!-- 주목할 법안 -->
+<%# ===== 나와 맞는 의원 (D 레이어) =====
+    🔴 성향 진단이 이 사이트의 핵심 기능인데 홈에서 진입로가 없었다.
+    ⚠️ 일치도 식은 의원 상세·목록과 **같은 값**이어야 한다 (getTopMatches.sql 주석 참조) %>
 <section class="pb-section">
   <div class="pb-section-inner">
     <div class="pb-section-header">
       <div>
-        <div class="pb-section-label">최근 처리된 법안</div>
-        <div class="pb-section-title">주목할 법안</div>
+        <div class="pb-section-label">정당이 아니라 좌표로</div>
+        <div class="pb-section-title">나와 맞는 의원</div>
       </div>
-      <a href="/bill" class="pb-section-link">전체 법안 보기 →</a>
+      <% if (locals.balanceGameCompleted) { %>
+        <a href="/politician?sort=match-desc" class="pb-section-link">전체 일치도 보기 →</a>
+      <% } %>
     </div>
 
-    <div class="category-tabs">
-      <% const homeCatTabs = [
-           { label: '전체',      committee: '' },
-           { label: '보건/복지', committee: '보건복지위원회' },
-           { label: '조세/재정', committee: '기획재정위원회,재정경제기획위원회' },
-           { label: '산업/기술', committee: '산업통상자원중소벤처기업위원회' },
-           { label: '노동/환경', committee: '기후에너지환경노동위원회' },
-           { label: '국토/주택', committee: '국토교통위원회' },
-           { label: '과학/ICT',  committee: '과학기술정보방송통신위원회' },
-           { label: '교육',      committee: '교육위원회' },
-           { label: '사법/행정', committee: '법제사법위원회' }
-         ]; %>
-      <% homeCatTabs.forEach((t, i) => {
-           const href = t.committee ? `/bill?committee=${encodeURIComponent(t.committee)}` : '/bill';
-      %>
-        <a href="<%= href %>" class="cat-tab<%= i === 0 ? ' active' : '' %>"><%= t.label %></a>
-      <% }); %>
-    </div>
+    <% const ms = locals.matches || []; %>
+    <% if (locals.balanceGameCompleted && ms.length) { %>
+      <%# 🔴 카드에 일치도 **%를 쓰지 않는다** (2026-08-16 로직 점검).
+          그 %는 분모 1.5 라는 임의 보정에 의존해 실측 23~90% 가 나오는데 그 값을 설명할 방법이 없다.
+          다만 **정렬(가장 가까운 순)은 보정과 무관**하므로 순번(1·2·3)만 쓴다.
+          근거는 `daos/queries/politician/getMatchContext.sql` 머리 주석에 %>
+      <div class="match-grid">
+        <% ms.forEach((m, mi) => { %>
+          <a class="match-card" href="/politician/<%= m.mona_cd %>">
+            <div class="match-avatar"><%- avatarHtml(m.name, m.photo_url, 72) %></div>
+            <div class="match-body">
+              <div class="match-name"><%= m.name %><% if (m.active_yn === false) { %> <em class="match-retired">퇴임</em><% } %></div>
+              <div class="match-meta"><%= m.party_name || '무소속' %><% if (m.electoral_district) { %> · <%= m.electoral_district %><% } %></div>
+            </div>
+            <div class="match-pct"><%= mi + 1 %><small>번째</small></div>
+          </a>
+        <% }); %>
+      </div>
+      <%# 🔴 이 각주를 빼면 "가장 가까운 3명" 이 정밀한 결과로 읽힌다 %>
+      <p class="pb-sec-note">방향을 매긴 법안 약 <strong>4,900건</strong> 중 의원이 <strong>공동발의로 이름을 올린 법안</strong>으로 만든
+        경제·사회·정치제도 세 축 좌표를 견준 결과입니다. 안보축은 입법 기록으로 읽을 수 없어 빼고,
+        AI 1차 매핑이라 <strong>가까운 몇 명 사이의 차이는 크지 않습니다.</strong></p>
+    <% } else { %>
+      <div class="match-cta">
+        <p class="match-cta-lead">문항에 답하면 <strong>경제·사회·안보·제도</strong> 4개 축 좌표가 나오고,
+          그중 세 축을 의원들이 <strong>공동발의한 법안</strong>에서 만든 좌표와 견줍니다.</p>
+        <p class="match-cta-sub">어느 한 쪽으로 이름 붙이지 않고 <strong>위치</strong>로 보여줍니다.</p>
+        <a href="/balance-game" class="btn-primary">성향 진단 시작하기 →</a>
+      </div>
+    <% } %>
+  </div>
+</section>
 
-    <div class="trending-sort" id="trending-sort">
-      <button type="button" class="trend-sort-btn active" data-sort="recent">최근 가결</button>
-      <button type="button" class="trend-sort-btn" data-sort="close">박빙 표결</button>
-      <button type="button" class="trend-sort-btn" data-sort="popular">많은 동참</button>
-      <button type="button" class="trend-sort-btn" data-sort="bipartisan">여야 협력</button>
-    </div>
+<div class="pb-divider"></div>
 
-    <div id="trending-root">
-    <% const hero = (trending || []).find(t => t && t.bill_id && t.bill_name); %>
-    <% if (hero) { %>
-      <div class="trending-grid">
-        <a href="/bill/<%= hero.bill_id %>" class="bill-card-main" style="text-decoration:none;display:block">
-          <div class="bill-meta">
-            <% if (hero.bill_topic_nm) { %><span class="pb-badge pb-badge-category"><%= hero.bill_topic_nm %></span><% } %>
-            <span class="pb-badge <%= resultClass(hero.proc_result_name) %>">
-              <%= hero.proc_result_name || '계류' %>
-              <span class="pb-help" data-help-href="/glossary#<%= termHash(hero.proc_result_name) %>" title="용어 설명">?</span>
+<%# ===== 오늘의 브리핑 =====
+    🔴 매일 쌓이는 유일한 신규 콘텐츠인데 **홈에 없었다** (2026-08-16 추가).
+    ⚠️ 카드 종류가 셋이다 — AI 브리핑 / 데이터 요약(폴백) / 활동 없음. 배지를 그대로 가져온다 %>
+<% const bfs = locals.briefings || []; %>
+<%# ⚠️ `briefing_date` 는 'YYYY-MM-DD' **문자열**이다. new Date() 로 파싱하지 말 것 —
+    실행 환경 타임존을 타서 하루 밀린다 (프로젝트 공통 규칙). 문자열 그대로 자른다 %>
+<% const bfDate = (d) => String(d || '').slice(5).replace('-', '.'); %>
+<% if (bfs.length) { %>
+  <section class="pb-section">
+    <div class="pb-section-inner">
+      <div class="pb-section-header">
+        <div>
+          <div class="pb-section-label">매일 아침 새로 씁니다</div>
+          <div class="pb-section-title">국회 브리핑</div>
+        </div>
+        <a href="/briefing" class="pb-section-link">지난 브리핑 →</a>
+      </div>
+
+      <% const lead = bfs[0]; const rest = bfs.slice(1); %>
+      <div class="home-bf">
+        <a class="bf-lead" href="/briefing/<%= lead.id %>">
+          <div class="bf-lead-top">
+            <span class="bf-lead-date"><%= bfDate(lead.briefing_date) %></span>
+            <span class="bf-lead-badge<%= lead.isEmpty ? ' is-none' : (lead.isAi ? ' is-ai' : ' is-fallback') %>">
+              <%= lead.isEmpty ? '활동 없음' : (lead.isAi ? 'AI 브리핑' : '데이터 요약') %>
             </span>
           </div>
-          <div class="bill-name"><%= hero.bill_name %></div>
-          <div class="bill-info">
-            <span>대표발의 <%= hero.proposer_name || '—' %></span>
-            <span>·</span>
-            <span><%= hero.propose_dt || '—' %></span>
-            <% if (hero.co_proposer_count) { %>
-              <span>·</span><span>공동발의 <%= hero.co_proposer_count %>인</span>
-            <% } %>
-          </div>
-          <% const vFor     = Number(hero.vote_for || 0);
-             const vAgainst = Number(hero.vote_against || 0);
-             const vAbs     = Number(hero.vote_abstain || 0);
-             const vTotal   = Number(hero.vote_total || 0) || (vFor + vAgainst + vAbs);
-             if (vTotal > 0) {
-               const fp = vFor / vTotal * 100;
-               const ap = vAgainst / vTotal * 100;
-               const bp = vAbs / vTotal * 100; %>
-            <div class="bill-vote-bar">
-              <div class="vote-seg" style="background:var(--green);width:<%= fp %>%"></div>
-              <div class="vote-seg" style="background:var(--red);width:<%= ap %>%"></div>
-              <div class="vote-seg" style="background:var(--sub2);width:<%= bp %>%"></div>
-            </div>
-            <div class="bill-vote-stats">
-              <span class="vote-stat"><span class="vote-dot dot-green"></span>찬성 <%= vFor %></span>
-              <span class="vote-stat"><span class="vote-dot dot-red"></span>반대 <%= vAgainst %></span>
-              <span class="vote-stat"><span class="vote-dot dot-gray"></span>기권/불참 <%= vAbs %></span>
-            </div>
-          <% } %>
+          <h3 class="bf-lead-title"><%= lead.headline %></h3>
+          <% if (lead.body) { %><p class="bf-lead-body"><%= lead.body %></p><% } %>
         </a>
 
-        <div class="bill-list">
-          <% trending.filter(t => t && t.bill_id !== hero.bill_id).slice(0, 5).forEach((b, idx) => { %>
-            <a href="/bill/<%= b.bill_id %>" class="bill-item" style="text-decoration:none">
-              <span class="bill-num"><%= String(idx + 1).padStart(2, '0') %></span>
-              <div class="bill-item-content">
-                <div class="bill-item-name"><%= b.bill_name %></div>
-                <div class="bill-item-sub"><%= b.proc_result_name || '계류' %> · <%= b.bill_topic_nm || '미지정' %></div>
-              </div>
-              <span class="pb-badge <%= resultClass(b.proc_result_name) %>"><%= b.proc_result_name || '계류' %></span>
-            </a>
-          <% }); %>
-        </div>
+        <% if (rest.length) { %>
+          <ul class="bf-list">
+            <% rest.forEach((b) => { %>
+              <li><a href="/briefing/<%= b.id %>">
+                <span class="bf-item-date"><%= bfDate(b.briefing_date) %></span>
+                <span class="bf-item-title"><%= b.headline %></span>
+              </a></li>
+            <% }); %>
+          </ul>
+        <% } %>
       </div>
-    <% } else { %>
-      <div style="color:var(--sub);text-align:center;padding:40px 0">표시할 법안이 없습니다.</div>
+      <p class="pb-sec-note">AI 가 정리한 내용으로 사실과 다를 수 있습니다. 숫자는 국회 자료를 직접 집계한 값입니다.</p>
+    </div>
+  </section>
+  <div class="pb-divider"></div>
+<% } %>
+
+<%# ===== 숫자로 본 국회 / 차트 만들기 =====
+    🔴 홈에서 `/xray`(지표 12종)와 `/xray/chart`(차트 빌더) 진입로가 아예 없었다 (2026-08-16 추가).
+    결론 3숫자 스트립(히어로에서 내려옴, 2026-08-16 2차) + 진입 카드 3장. 스트립 외에 지표 숫자를 더 그리지 말 것 %>
+<section class="pb-section">
+  <div class="pb-section-inner">
+    <div class="pb-section-header">
+      <div>
+        <div class="pb-section-label">직접 확인하고 싶다면</div>
+        <div class="pb-section-title">숫자로 본 국회</div>
+      </div>
+      <a href="/xray" class="pb-section-link">전체 지표 →</a>
+    </div>
+
+    <% if (f) { %>
+      <%# 🔴 결론 3숫자 — 히어로에서 내려온 것. **순서가 곧 논리**다: 계류 → 반대 → 불참
+          ("발의는 넘치는데 대부분 심사 중이고, 본회의에 온 건 거의 다 통과하며, 그마저도 다섯 번 중 한 번은 빠진다").
+          순서를 바꾸거나 하나만 빼면 이야기가 끊긴다 %>
+      <div class="facts-strip">
+        <a class="fact-cell" href="/bill?status=%EA%B3%84%EB%A5%98">
+          <span class="fact-num"><%= f.pending_rate %><small>%</small></span>
+          <span class="fact-title">아직 심사 중</span>
+          <span class="fact-desc">발의 <strong><%= nf(f.bill_total) %>건</strong> 중 <strong><%= nf(f.bill_pending) %>건</strong>이 위원회에 · 본회의 통과 <strong><%= nf(f.bill_passed) %>건</strong></span>
+        </a>
+        <a class="fact-cell" href="/xray#xr-consensus">
+          <span class="fact-num"><%= f.oppose_rate %><small>%</small></span>
+          <span class="fact-title">본회의 반대표</span>
+          <span class="fact-desc">표결 <strong><%= nf(f.vote_total) %>건</strong> 중 반대 <strong><%= nf(f.vote_oppose) %>건</strong> · 걸러지는 곳은 위원회</span>
+        </a>
+        <a class="fact-cell" href="/xray#xr-absent">
+          <span class="fact-num"><%= f.absent_median %><small>%</small></span>
+          <span class="fact-title">불참률 중앙값</span>
+          <span class="fact-desc">의원 <strong><%= nf(f.absent_cohort) %>명</strong> · 절반은 <strong>다섯 번 중 한 번 이상</strong> 자리에 없음</span>
+        </a>
+      </div>
     <% } %>
-    </div>
-  </div>
-</section>
 
-<div class="pb-divider"></div>
-
-<!-- 최근 표결 -->
-<section class="pb-section">
-  <div class="pb-section-inner">
-    <div class="pb-section-header">
-      <div>
-        <div class="pb-section-label">본회의 표결 현황</div>
-        <div class="pb-section-title">최근 표결 결과</div>
-      </div>
-      <a href="/bill?status=%EC%9B%90%EC%95%88%EA%B0%80%EA%B2%B0" class="pb-section-link">가결 법안 보기 →</a>
-    </div>
-
-    <div class="vote-section">
-      <div class="vote-table-header">
-        <span>법안명</span>
-        <span style="text-align:center">찬성</span>
-        <span style="text-align:center">반대</span>
-        <span style="text-align:center">기권</span>
-        <span style="text-align:center">불참</span>
-        <span>결과</span>
-      </div>
-      <% if (recentVotes && recentVotes.length > 0) {
-           recentVotes.forEach(v => { %>
-        <a href="/bill/<%= v.bill_id %>" class="vote-row" style="text-decoration:none">
-          <div class="vote-bill-name"><%= v.bill_name %></div>
-          <div class="vote-count count-for"><%= v.vote_for %></div>
-          <div class="vote-count count-against"><%= v.vote_against %></div>
-          <div class="vote-count count-abstain"><%= v.vote_abstain %></div>
-          <div class="vote-count count-absent"><%= v.vote_absent %></div>
-          <div><span class="result-badge <%= resultClass(v.proc_result_name) %>"><%= v.proc_result_name || '—' %></span></div>
-        </a>
-      <%   });
-         } else { %>
-        <div style="padding:40px 24px;color:var(--sub);text-align:center">표결 데이터가 아직 수집되지 않았습니다.</div>
-      <% } %>
-    </div>
-  </div>
-</section>
-
-<div class="pb-divider"></div>
-
-<!-- 활발한 의원 -->
-<section class="pb-section">
-  <div class="pb-section-inner">
-    <div class="pb-section-header">
-      <div>
-        <div class="pb-section-label">법안 발의 기준</div>
-        <div class="pb-section-title">가장 활발한 의원</div>
-      </div>
-      <a href="/politician" class="pb-section-link">전체 의원 보기 →</a>
-    </div>
-
-    <div class="politicians-grid">
-      <% if (topProposers && topProposers.length > 0) {
-           topProposers.forEach((p, idx) => {
-             const rank = idx + 1;
-             const rankClass = rank <= 3 ? 'rank-' + rank : '';
-      %>
-        <a href="/politician/<%= p.mona_cd %>" class="politician-card" style="text-decoration:none">
-          <div class="politician-rank <%= rankClass %>">
-            <span class="rank-num"><%= rank %></span>
-            <span class="rank-sep">/</span>
-            <span class="rank-of"><%= topProposers.length %></span>
-          </div>
-          <div class="ph-avatar">
-            <%- avatarHtml(p.name, p.photo_url, 64) %>
-          </div>
-          <div class="politician-name"><%= p.name %></div>
-          <div class="politician-party"><%= p.party_name || '무소속' %> · <%= p.electoral_district || '—' %></div>
-          <div class="politician-stat"><%= p.propose_cnt %>건</div>
-          <div class="politician-stat-label">법안 발의</div>
-        </a>
-      <%   });
-         } else { %>
-        <div style="grid-column:1/-1;color:var(--sub);text-align:center;padding:40px 0">
-          의원 발의 데이터를 불러올 수 없습니다.
-        </div>
-      <% } %>
-    </div>
-  </div>
-</section>
-
-<div class="pb-divider"></div>
-
-<!-- 월별 법안 처리 추이 -->
-<section class="pb-section">
-  <div class="pb-section-inner">
-    <div class="pb-section-header">
-      <div>
-        <div class="pb-section-label">최근 12개월</div>
-        <div class="pb-section-title">월별 법안 처리 추이</div>
-      </div>
-      <div style="display:flex;gap:14px;align-items:center;font-size:12px;color:var(--sub);">
-        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:2px;background:var(--accent)"></span>발의</span>
-        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:2px;background:var(--green)"></span>처리</span>
-      </div>
-    </div>
-
-    <%
-      const mt = monthlyTrend || [];
-      const maxMt = mt.length > 0 ? Math.max(1, ...mt.map(m => Number(m.propose_cnt))) : 1;
-      const chartW = 1200, chartH = 240, padL = 48, padR = 16, padT = 20, padB = 36;
-      const plotW = chartW - padL - padR;
-      const plotH = chartH - padT - padB;
-      const xOf = (i) => padL + (mt.length > 1 ? (i * plotW / (mt.length - 1)) : plotW/2);
-      const yOf = (v) => padT + plotH - (Number(v) / maxMt * plotH);
-      const linePath = (field) => mt.map((m, i) => `${i === 0 ? 'M' : 'L'} ${xOf(i).toFixed(1)} ${yOf(m[field]).toFixed(1)}`).join(' ');
-      const areaPath = (field) => {
-        if (mt.length === 0) return '';
-        const pts = mt.map((m, i) => `${xOf(i).toFixed(1)} ${yOf(m[field]).toFixed(1)}`).join(' L ');
-        return `M ${xOf(0).toFixed(1)} ${yOf(0).toFixed(1)} L ${pts} L ${xOf(mt.length-1).toFixed(1)} ${yOf(0).toFixed(1)} Z`;
-      };
-    %>
-
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;overflow:hidden">
-      <% if (mt.length > 0) { %>
-        <svg viewBox="0 0 <%= chartW %> <%= chartH %>" style="width:100%;height:auto" preserveAspectRatio="none">
-          <!-- grid -->
-          <% for (let gi = 0; gi <= 4; gi++) {
-               const gv = Math.round(maxMt * (4 - gi) / 4);
-               const gy = padT + plotH * gi / 4; %>
-            <line x1="<%= padL %>" y1="<%= gy %>" x2="<%= chartW - padR %>" y2="<%= gy %>" stroke="#E2DFD4" stroke-width="1"/>
-            <text x="<%= padL - 8 %>" y="<%= gy + 4 %>" text-anchor="end" fill="#7A8090" font-size="10" font-family="JetBrains Mono"><%= gv %></text>
-          <% } %>
-
-          <!-- area fill (propose) -->
-          <path d="<%= areaPath('propose_cnt') %>" fill="rgba(184,116,12,0.08)" stroke="none"/>
-
-          <!-- propose line (gold) -->
-          <path d="<%= linePath('propose_cnt') %>" fill="none" stroke="#B8740C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <!-- processed line (green) -->
-          <path d="<%= linePath('processed_cnt') %>" fill="none" stroke="#0F9D6E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-
-          <!-- data points + month labels -->
-          <% mt.forEach((m, i) => { %>
-            <circle cx="<%= xOf(i).toFixed(1) %>" cy="<%= yOf(m.propose_cnt).toFixed(1) %>" r="3" fill="#B8740C"/>
-            <circle cx="<%= xOf(i).toFixed(1) %>" cy="<%= yOf(m.processed_cnt).toFixed(1) %>" r="3" fill="#0F9D6E"/>
-            <text x="<%= xOf(i).toFixed(1) %>" y="<%= chartH - padB/2 + 4 %>" text-anchor="middle" fill="#7A8090" font-size="11" font-family="JetBrains Mono"><%= parseInt(m.mm, 10) %>월</text>
-          <% }); %>
-        </svg>
-        <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--sub)">
-          <span>
-            총 발의 <strong style="color:var(--text)"><%= nf(mt.reduce((s, m) => s + Number(m.propose_cnt), 0)) %>건</strong>
-            · 총 처리 <strong style="color:var(--text)"><%= nf(mt.reduce((s, m) => s + Number(m.processed_cnt), 0)) %>건</strong>
-          </span>
-          <span style="font-family:'JetBrains Mono',monospace;color:var(--sub2);font-size:12px">
-            <%= mt[0].ym %> → <%= mt[mt.length - 1].ym %>
-          </span>
-        </div>
-      <% } else { %>
-        <div style="padding:40px;text-align:center;color:var(--sub)">월별 데이터를 불러올 수 없습니다.</div>
-      <% } %>
+    <div class="explore-grid">
+      <a class="explore-card" href="/xray">
+        <div class="explore-kicker">지표 12종</div>
+        <h3 class="explore-title">합의는 얼마나, 이탈은 언제</h3>
+        <p class="explore-desc">당론 이탈·불참률·초당 협력·법안 생존율까지, 표결과 발의를 여러 각도로 잘라 봅니다.
+          각 지표에는 어떻게 읽어야 하는지와 한계가 같이 붙어 있습니다.</p>
+      </a>
+      <a class="explore-card" href="/xray/chart">
+        <div class="explore-kicker">직접 만들기</div>
+        <h3 class="explore-title">원하는 축으로 차트 만들기</h3>
+        <p class="explore-desc">축·지표·필터를 골라 조합하면 그대로 그래프가 됩니다.
+          만든 차트는 주소가 곧 공유 링크라 링크만 보내면 같은 화면이 열립니다.</p>
+      </a>
+      <a class="explore-card" href="/politician">
+        <div class="explore-kicker">의원 309명</div>
+        <h3 class="explore-title">한 사람씩 뜯어보기</h3>
+        <p class="explore-desc">표결 성향·대표발의 특화 분야·정당별 공동발의·상임위 발언 기록까지
+          한 페이지에 모아 두었습니다.</p>
+      </a>
     </div>
   </div>
 </section>
@@ -1045,130 +518,4 @@
   }, { threshold: 0.3 });
   document.querySelectorAll('[data-count]').forEach(el => pbObs.observe(el));
 
-  /* ===== 주목할 법안 정렬 탭 — 동적 재렌더 ===== */
-  (() => {
-    const sortBar = document.getElementById('trending-sort');
-    const root = document.getElementById('trending-root');
-    if (!sortBar || !root) return;
-
-    const esc = (s) => String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-
-    const resultClass = (r) => {
-      if (!r) return 'pb-badge-pending';
-      if (r.indexOf('가결') > -1) return 'pb-badge-passed';
-      if (r === '부결' || r === '폐기') return 'pb-badge-rejected';
-      if (r === '철회') return 'pb-badge-withdrawn';
-      if (r.indexOf('대안') > -1) return 'pb-badge-alt';
-      return 'pb-badge-pending';
-    };
-
-    const termHash = (r) => {
-      if (!r) return 'pending';
-      if (r === '원안가결') return 'original';
-      if (r === '수정가결') return 'modified';
-      if (r === '대안반영폐기') return 'alt-dropped';
-      if (r === '수정안반영폐기') return 'mod-dropped';
-      if (r === '철회') return 'withdrawn';
-      if (r === '부결') return 'rejected';
-      if (r === '폐기') return 'dropped';
-      return 'pending';
-    };
-
-    const renderHero = (h) => {
-      const vFor = Number(h.vote_for || 0);
-      const vAgainst = Number(h.vote_against || 0);
-      const vAbs = Number(h.vote_abstain || 0);
-      const vTotal = Number(h.vote_total || 0) || (vFor + vAgainst + vAbs);
-      const voteBar = vTotal > 0 ? `
-        <div class="bill-vote-bar">
-          <div class="vote-seg" style="background:var(--green);width:${vFor / vTotal * 100}%"></div>
-          <div class="vote-seg" style="background:var(--red);width:${vAgainst / vTotal * 100}%"></div>
-          <div class="vote-seg" style="background:var(--sub2);width:${vAbs / vTotal * 100}%"></div>
-        </div>
-        <div class="bill-vote-stats">
-          <span class="vote-stat"><span class="vote-dot dot-green"></span>찬성 ${vFor}</span>
-          <span class="vote-stat"><span class="vote-dot dot-red"></span>반대 ${vAgainst}</span>
-          <span class="vote-stat"><span class="vote-dot dot-gray"></span>기권/불참 ${vAbs}</span>
-        </div>` : '';
-      const coPart = h.co_proposer_count
-        ? `<span>·</span><span>공동발의 ${esc(h.co_proposer_count)}인</span>` : '';
-      const topicBadge = h.bill_topic_nm
-        ? `<span class="pb-badge pb-badge-category">${esc(h.bill_topic_nm)}</span>` : '';
-      return `
-        <a href="/bill/${esc(h.bill_id)}" class="bill-card-main" style="text-decoration:none;display:block">
-          <div class="bill-meta">
-            ${topicBadge}
-            <span class="pb-badge ${resultClass(h.proc_result_name)}">
-              ${esc(h.proc_result_name || '계류')}
-              <span class="pb-help" data-help-href="/glossary#${termHash(h.proc_result_name)}" title="용어 설명">?</span>
-            </span>
-          </div>
-          <div class="bill-name">${esc(h.bill_name)}</div>
-          <div class="bill-info">
-            <span>대표발의 ${esc(h.proposer_name || '—')}</span>
-            <span>·</span>
-            <span>${esc(h.propose_dt || '—')}</span>
-            ${coPart}
-          </div>
-          ${voteBar}
-        </a>`;
-    };
-
-    const renderItem = (b, idx) => {
-      const num = String(idx + 1).padStart(2, '0');
-      return `
-        <a href="/bill/${esc(b.bill_id)}" class="bill-item" style="text-decoration:none">
-          <span class="bill-num">${num}</span>
-          <div class="bill-item-content">
-            <div class="bill-item-name">${esc(b.bill_name)}</div>
-            <div class="bill-item-sub">${esc(b.proc_result_name || '계류')} · ${esc(b.bill_topic_nm || '미지정')}</div>
-          </div>
-          <span class="pb-badge ${resultClass(b.proc_result_name)}">${esc(b.proc_result_name || '계류')}</span>
-        </a>`;
-    };
-
-    const renderGrid = (items) => {
-      const hero = (items || []).find(t => t && t.bill_id && t.bill_name);
-      if (!hero) {
-        root.innerHTML = '<div style="color:var(--sub);text-align:center;padding:40px 0">표시할 법안이 없습니다.</div>';
-        return;
-      }
-      const rest = items.filter(t => t && t.bill_id !== hero.bill_id).slice(0, 5);
-      root.innerHTML = `
-        <div class="trending-grid">
-          ${renderHero(hero)}
-          <div class="bill-list">
-            ${rest.map((b, i) => renderItem(b, i)).join('')}
-          </div>
-        </div>`;
-    };
-
-    let currentSort = 'recent';
-    const buttons = sortBar.querySelectorAll('.trend-sort-btn');
-    buttons.forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const sort = btn.dataset.sort;
-        if (sort === currentSort) return;
-        buttons.forEach(b => { b.classList.toggle('active', b === btn); b.disabled = true; });
-        // 기존 그리드를 스피너로 교체 (PB.spinner — 공용)
-        root.innerHTML = (window.PB && PB.spinner) ? PB.spinner({ label: '주목할 법안 불러오는 중…' }) : '<div class="pb-muted">불러오는 중…</div>';
-        try {
-          const res = await fetch(`/api/bills/trending?sort=${encodeURIComponent(sort)}`, {
-            credentials: 'include',
-            headers: { 'Accept': 'application/json' }
-          });
-          const data = await res.json();
-          renderGrid(data.items || []);
-          currentSort = sort;
-        } catch (err) {
-          console.error('trending fetch failed', err);
-          root.innerHTML = `<div class="pb-muted" style="text-align:center;padding:40px 0">주목할 법안을 불러올 수 없습니다.</div>`;
-        } finally {
-          buttons.forEach(b => { b.disabled = false; });
-        }
-      });
-    });
-  })();
 </script>

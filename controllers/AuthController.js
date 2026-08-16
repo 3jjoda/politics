@@ -73,7 +73,7 @@ export default (db) => {
                 const pending = req.session.oauthPending;
                 if (!pending) return res.redirect('/');
 
-                const { nickname, gender, ageGroup } = req.body || {};
+                const { nickname, gender, ageGroup, agree } = req.body || {};
                 const v = authService.validateNickname(nickname);
                 if (!v.ok) {
                     return res.status(400).render('auth/setup', {
@@ -114,6 +114,20 @@ export default (db) => {
                         currentUrl: '/auth/setup',
                         pending,
                         error: '연령대를 선택해주세요.'
+                    });
+                }
+
+                /* 🔴 필수 동의 — **여기가 실제 방어선이다.** 화면의 체크박스는 JS 로 우회된다.
+                   ① 개인정보 수집·이용 동의 ② 만 14세 이상이라는 이용자의 진술을 함께 받는다.
+                   연령을 검증할 수단은 없지만, 진술이 있어야 약관 4항의 사후 조치에 근거가 생긴다.
+                   ⚠️ 체크박스 미체크 시 브라우저가 필드를 아예 안 보내므로 `undefined` 도 걸러야 한다 */
+                if (agree !== '1') {
+                    return res.status(400).render('auth/setup', {
+                        pageTitle: '닉네임 설정',
+                        pageStyles: null,
+                        currentUrl: '/auth/setup',
+                        pending,
+                        error: '만 14세 이상이며 이용약관·개인정보처리방침에 동의해야 가입할 수 있습니다.'
                     });
                 }
 

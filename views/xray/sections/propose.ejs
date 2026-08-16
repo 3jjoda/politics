@@ -1,6 +1,16 @@
 <%# 04 발의 산점도 — 데이터: x.proposePass (loader: propose) %>
-<% const pp = x.proposePass || []; %>
+<% const pp = x.proposePass || []; const ps = x.proposeStats; %>
 <% if (pp.length > 0) { %>
+  <%# 🔴 산점도는 "뭘 봐야 하나" 로 끝나기 쉽다. 축이 무엇인지 문장으로 먼저 말하고,
+      결론(많이 내는 것 ≠ 통과시키는 것)을 숫자로 못박는다.
+      ⚠️ 바로 아래 `leader` 섹션도 같은 모양의 산점도다 — 축 설명을 빼면 둘이 구분되지 않는다 %>
+  <p class="xr-desc" style="margin-bottom:16px">
+    <strong>가로축은 대표발의 건수, 세로축은 그중 통과된 비율</strong>입니다. 점 하나가 의원 한 명.
+    <% if (ps) { %>
+      발의 상위 <%= ps.topN %>명과 가결률 상위 <%= ps.topN %>명이 겹치는 사람은
+      <strong><%= ps.overlap %>명</strong> — <strong>많이 내는 것과 통과시키는 것은 다른 일입니다.</strong>
+    <% } %>
+  </p>
   <%
     const ppData = pp.map(r => ({ ...r, rate: pct(r.passed, r.proposed) }));
     const maxProposed = Math.max(...ppData.map(r => r.proposed));
@@ -20,8 +30,8 @@
       <line x1="<%= sPadL %>" y1="<%= sPadT %>" x2="<%= sPadL %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6"/>
       <line x1="<%= sx(mProp).toFixed(1) %>" y1="<%= sPadT %>" x2="<%= sx(mProp).toFixed(1) %>" y2="<%= sH - sPadB %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
       <line x1="<%= sPadL %>" y1="<%= sy(mRate).toFixed(1) %>" x2="<%= sW - sPadR %>" y2="<%= sy(mRate).toFixed(1) %>" stroke="#C9C5B6" stroke-dasharray="4 4"/>
-      <text x="<%= sW - sPadR %>" y="<%= sy(mRate) - 6 %>" text-anchor="end" font-size="10" font-family="JetBrains Mono" fill="#7A8090">가결률 중앙값 <%= mRate %>%</text>
-      <text x="<%= sx(mProp) + 6 %>" y="<%= sPadT + 12 %>" font-size="10" font-family="JetBrains Mono" fill="#7A8090">발의 중앙값 <%= mProp %>건</text>
+      <text x="<%= sW - sPadR %>" y="<%= sy(mRate) - 6 %>" text-anchor="end" font-size="12" font-family="JetBrains Mono" fill="#7A8090">가결률 중앙값 <%= mRate %>%</text>
+      <text x="<%= sx(mProp) + 6 %>" y="<%= sPadT + 12 %>" font-size="12" font-family="JetBrains Mono" fill="#7A8090">발의 중앙값 <%= mProp %>건</text>
       <% ppData.forEach(r => { %>
         <circle cx="<%= sx(r.proposed).toFixed(1) %>" cy="<%= sy(r.rate).toFixed(1) %>" r="4"
                 fill="<%= labeled.has(r.mona_cd) ? '#B8740C' : '#1A1D24' %>" opacity="<%= labeled.has(r.mona_cd) ? 1 : 0.35 %>">
@@ -35,6 +45,7 @@
       <text x="14" y="<%= sPadT + 8 %>" font-size="11" font-family="JetBrains Mono" fill="#7A8090">가결률↑</text>
     </svg>
   </div>
+  <p class="xr-svg-hint">← 그래프를 옆으로 밀어서 볼 수 있습니다</p>
   <div class="xr-note">현직 의원, 대표발의 5건 이상 (<%= nf(ppData.length) %>명). 가결률 = (원안가결+수정가결) ÷ 대표발의. 대안반영폐기는 가결로 세지 않음 — 실제 기여보다 보수적인 수치. 점 위에 마우스를 올리면 상세가 보입니다.</div>
 <% } else { %>
   <div class="xr-empty">발의 데이터가 부족합니다.</div>

@@ -117,7 +117,8 @@
   }));
 %>
 
-<div class="card vp-card">
+<%# data-toc — 분석 탭 목차(politician_detail.ejs `.ov-toc`)가 DOM 에서 읽어간다 %>
+<div class="card vp-card" id="ov-vote" data-toc="표결 성향">
   <div class="card-header">
     <span class="card-title">표결 성향 <span class="card-title-mono">본회의 <%= nf(_tot) %>건</span></span>
   </div>
@@ -177,7 +178,10 @@
                   <% }); %>
                 </div>
               </div>
-              <p class="vp-trend-lede">막대 높이가 그 달의 참여율입니다. <strong>표결이 없었던 달은 빈 칸</strong>입니다.</p>
+              <%# 🔴 "누를 수 있다" 를 여기서 말한다. 예전엔 아래 상세 상자 안 힌트가 유일한 안내였는데
+                  거기는 차트에서 **설명 문단 두 개를 지난 다섯 줄 아래**라 사실상 안 읽혔다 %>
+              <p class="vp-trend-lede">막대 높이가 그 달의 참여율입니다. <strong>표결이 없었던 달은 빈 칸</strong>이고,
+                <strong>막대를 누르면</strong> 그 달에 어떤 법안이 있었는지 아래에 열립니다.</p>
 
               <% _yearRows.forEach((yr) => { %>
                 <div class="vp-trend-year" data-y="<%= yr.y %>"<%= yr.y === _curYear ? '' : ' hidden' %>>
@@ -233,7 +237,12 @@
                 <strong>불참</strong>은 그 표결에 참여하지 않은 것입니다.
               </p>
 
-              <%# 클릭한 달의 상세. 비어 있을 땐 사용법을 안내한다 — 클릭 가능하다는 걸 알려야 눌러본다 %>
+              <%# 클릭한 달의 상세.
+                  🔴 JS 가 로드되면 **가장 최근 달을 미리 선택**해 요약 + `법안 N건 보기` 버튼으로 채운다.
+                     "누르세요" 라고 쓰는 것보다 **막대(링) ↔ 이 상자**의 대응을 한 번 보여주는 편이 세다.
+                     요약 숫자는 window.__VOTE_MONTHS__ 에 이미 있어서 **요청은 여전히 0회**다
+                     (법안 목록만 실제로 열 때 API 를 부른다).
+                  ⚠️ 아래 문구는 **JS 실패 시 폴백**이다. 정상 경로에서는 즉시 교체된다 %>
               <div class="vp-trend-detail" id="vp-trend-detail" data-empty="1">
                 <span class="vp-trend-hint">막대를 클릭하면 그 달의 표결 내역이 나옵니다.</span>
               </div>
