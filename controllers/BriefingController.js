@@ -13,27 +13,54 @@ import { wrapWithContext } from '../utils/wrapWithContext.js';
 // 주제 묶음이 많아도 3장까지만: 캐러셀이 길면 끝까지 넘기지 않는다.
 const MAX_THREAD_SLIDES = 3;
 
+// "그날의 숫자" 장이 비교를 내려면 기준 구간이 최소 이만큼은 있어야 한다 (서비스 시작 직후 방어)
+const MIN_BASE_DAYS = 10;
+// 흐름 장의 법안 목록 상한 — 4건일 땐 위 40% 가 비었다 (피드백). 5건 + 큰 글자로 채운다
+const THREAD_BILLS = 5;
+
 /* 카드 한 장 → 슬라이드 배열.
    ⚠️ 슬라이드 수는 **데이터가 정한다** (폴백 카드는 threads 가 비어 4장, AI 카드는 최대 7장).
-      뷰에서 개수를 가정하지 말 것. */
-function buildSlides(p) {
+      뷰에서 개수를 가정하지 말 것.
+   ctx: BriefingService.getCardContext() — { baseline, lawProposers } (없으면 그 장을 뺀다) */
+function buildSlides(p, ctx = {}) {
     const st = p.stats || {};
     const slides = [{ kind: 'cover' }];
 
     // 활동 없는 날은 숫자가 전부 0이라 보여줄 게 없다 (애초에 올릴 카드가 아니다)
     if (p.isEmpty) return [...slides, { kind: 'outro' }];
 
-    // ⚠️ 단위를 '건' 으로 뭉뚱그리지 말 것 — **사람은 '명'** 이다 ("대표발의 의원 13건" 이 나갔었다)
-    const nums = [];
-    if (st.proposed !== undefined) {
-        nums.push({ v: st.proposed, l: '발의', u: '건' });
-        if (st.proposers) nums.push({ v: st.proposers, l: '대표발의 의원', u: '명' });
-        if (st.cosign) nums.push({ v: st.cosign, l: '공동발의 서명', u: '건' });
+    /* "그날의 숫자" — 🔴 표지의 29/20/341 을 다시 크게 쓰는 장이 아니다 (그렇게 만들었다가 "2번에서 새로 얻는 게 없다"
+       는 지적을 받았다 — 캐러셀은 2번째 이탈이 가장 크다). 표지 숫자에 **비교**를 붙인 장이다:
+         발의 N건      → 최근 30 평일 평균의 몇 배 · 그중 몇 번째로 많은 날   (SQL 기준선, getCardBaseline)
+         법안 1건당 서명 → cosign / proposed                                   (stats 나눗셈)
+         의원 1명당 발의 → proposed / proposers
+       ⚠️ 비교값도 전부 SQL·코드 산출이다 — AI 에게서 받지 않는다 (stats 와 같은 원칙).
+       ⚠️ 기준선이 없으면(조회 실패·서비스 초기) 이 장을 **뺀다.** 표지와 겹치는 장을 내보내느니 6장이 낫다.
+       ⚠️ 위원회별 발의는 뺐다 — 갓 발의된 법안은 회부 전이라 committee 가 NULL 이고, 그 줄은 사실상 나온 적이 없다 */
+    const b = ctx.baseline;
+    if (st.proposed > 0 && b && Number(b.base_days) >= MIN_BASE_DAYS) {
+        const avg = Number(b.base_avg);
+        const ratio = avg > 0 ? st.proposed / avg : null;
+        const rank = Number(b.days_above) + 1;
+        const cmp = [{
+            v: st.proposed, u: '건', l: '발의',
+            s: `최근 ${b.base_days} 평일 평균 ${avg}건` + (ratio ? ` · ${ratio.toFixed(1)}배` : '') + ` · ${rank}번째로 많은 날`,
+        }];
+        if (st.cosign && st.proposed) {
+            cmp.push({ v: (st.cosign / st.proposed).toFixed(1), u: '명', l: '법안 1건당 공동발의',
+                       s: `서명 ${nf(st.cosign)}건 ÷ 법안 ${nf(st.proposed)}건` });
+        }
+        if (st.proposers) {
+            cmp.push({ v: (st.proposed / st.proposers).toFixed(1), u: '건', l: '대표발의 의원 1명당',
+                       s: `${nf(st.proposers)}명이 ${nf(st.proposed)}건을 냈습니다` });
+        }
+        // ⚠️ 단위를 '건' 으로 뭉뚱그리지 말 것 — **사람은 '명'** 이다 ("대표발의 의원 13건" 이 나갔었다)
         const floorTotal = (st.floor || []).reduce((s, f) => s + Number(f.cnt), 0);
-        if (floorTotal > 0) nums.push({ v: floorTotal, l: '본회의 처리', u: '건' });
-    }
-    if (nums.length) {
-        slides.push({ kind: 'stats', nums, committees: (st.committees || []).slice(0, 4) });
+        if (floorTotal > 0) {
+            cmp.push({ v: floorTotal, u: '건', l: '본회의 처리',
+                       s: (st.floor || []).map((f) => `${f.result} ${nf(f.cnt)}`).join(' · ') });
+        }
+        slides.push({ kind: 'stats', nums: cmp });
     }
 
     // 주제 묶음 — AI 카드의 핵심. 묶인 법안 이름을 같이 실어야 검증이 가능하다
@@ -47,12 +74,23 @@ function buildSlides(p) {
             of: threads.length,
             // ⚠️ 대표발의자를 반드시 같이 실을 것 — 법안의 87%가 동명이라 이름만 늘어놓으면
             //    같은 줄이 두 번 찍힌 것처럼 보인다 (실제로 "소득세법 일부개정법률안" 이 2줄 나왔다)
-            bills: (t.bill_ids || []).filter((id) => tb[id]).slice(0, 4)
+            bills: (t.bill_ids || []).filter((id) => tb[id]).slice(0, THREAD_BILLS)
                 .map((id) => ({ name: tb[id].bill_name, by: tb[id].proposer_name })),
         });
     });
 
-    if ((st.hotLaws || []).length) slides.push({ kind: 'laws', laws: st.hotLaws.slice(0, 5) });
+    /* "몰린 법률" — 건수(2건 × 3줄)만으로는 왜 주목할 일인지가 없다. 이 장의 이야기는
+       **같은 법을 두고 서로 다른 의원이 각자 안을 냈다**는 것이라 대표발의자를 같이 싣는다 (getCardLawProposers).
+       이름은 중복 제거 — 한 의원이 같은 이름의 안을 둘 냈으면 한 번만 */
+    if ((st.hotLaws || []).length) {
+        const lp = ctx.lawProposers || {};
+        slides.push({
+            kind: 'laws',
+            laws: st.hotLaws.slice(0, 5).map((l) => ({
+                ...l, by: [...new Set(lp[l.bill_name] || [])],
+            })),
+        });
+    }
 
     slides.push({ kind: 'outro' });
     return slides;

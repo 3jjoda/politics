@@ -680,8 +680,10 @@
   }
   async function share() {
     if (busy) return; busy = true;
-    if (isSamsung && shareFailedOnce) {   // 삼성 인터넷 2회차부터는 저장으로
-      busy = false; await save(); setStatus('삼성 인터넷은 공유 시트가 불안정해 저장으로 대신합니다. 갤러리에서 카톡·인스타에 올리세요.'); return;
+    // 삼성 인터넷: 폴드 펼침·태블릿(넓은 화면)에선 공유 시트가 떠 있는 창으로 뜨면서 재생성을 반복한다 (실기기 확인) → 처음부터 저장으로.
+    // 접은 화면(좁은 폭)은 시트가 정상이라 그대로 두고, 실패한 적이 있으면 그때부터 저장으로
+    if (isSamsung && (window.innerWidth >= 600 || shareFailedOnce)) {
+      busy = false; await save(); setStatus('이 화면에선 공유 시트가 불안정해 저장으로 대신합니다. 갤러리에서 카톡·인스타에 올리세요.'); return;
     }
     try {
       // 미리 만들어 둔 PNG 가 있으면 await 없이 바로 시트를 연다 (사용자 제스처 안에서)

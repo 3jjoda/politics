@@ -176,6 +176,27 @@ export default (db) => {
             return p ? shapePost(p) : null;
         },
 
+        /* 인스타 카드 보조 데이터 (렌더 시 계산 — briefing_posts 에 저장하지 않는다)
+             baseline      { base_days, base_avg, days_above } | null  → "그날의 숫자" 장의 비교 기준
+             lawProposers  { [bill_name]: [이름…] }                     → "몰린 법률" 장의 발의자
+           ⚠️ 실패해도 카드는 산다 — 기준선이 없으면 컨트롤러가 그 장을 **뺀다** (표지와 겹치는 장을 내보내느니 없는 게 낫다),
+              발의자가 없으면 이름 없이 그린다 */
+        getCardContext: async (post) => {
+            const out = { baseline: null, lawProposers: {} };
+            if (!post || post.isEmpty) return out;
+            const names = ((post.stats || {}).hotLaws || []).map((h) => h.bill_name).filter(Boolean);
+            const [b, l] = await Promise.allSettled([
+                dao.getCardBaseline(post.briefing_date),
+                names.length ? dao.getCardLawProposers(post.briefing_date, names) : Promise.resolve([]),
+            ]);
+            if (b.status === 'fulfilled') out.baseline = b.value;
+            else logger.error(`[briefing] 카드 기준선 조회 실패: ${b.reason?.message}`);
+            if (l.status === 'fulfilled') {
+                for (const r of l.value) out.lawProposers[r.bill_name] = r.proposers || [];
+            } else logger.error(`[briefing] 카드 발의자 조회 실패: ${l.reason?.message}`);
+            return out;
+        },
+
         /* 브리핑 전체 데이터 (10분 캐시 + inflight 공유) */
         get: async () => {
             if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.data;
