@@ -844,16 +844,20 @@ input, textarea, select { font-family: inherit; }
   top: 0; right: 0;
   width: 280px;
   height: 100vh;
+  height: 100dvh;           /* iOS 하단 바가 있어도 실제 보이는 높이 (미지원 브라우저는 위 100vh) */
   background: var(--bg2);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
   z-index: 200;
   padding: 72px 16px 20px;
+  overflow-y: auto;
   transform: translateX(100%);
-  transition: transform 0.25s;
+  /* 닫힌 패널은 visibility 로도 잠근다 — 필터 시트와 같은 이유(iOS 삐져나옴 방지) + 숨은 링크에 포커스가 가지 않게 */
+  visibility: hidden;
+  transition: transform 0.25s, visibility 0s linear 0.25s;
 }
 
-.pb-mobile-panel.open { transform: translateX(0); }
+.pb-mobile-panel.open { transform: translateX(0); visibility: visible; transition: transform 0.25s, visibility 0s; }
 
 .pb-mobile-panel ul { list-style: none; }
 

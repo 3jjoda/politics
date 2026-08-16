@@ -2506,6 +2506,9 @@ PC/모바일 동일 패턴으로 통일.
   - 🔴 **닫힌 시트는 `visibility: hidden` 으로도 잠근다** (2026-08-16). `translateY(100%)` 만으로는 iOS Safari 에서
     시트 안 sticky 헤더가 뷰포트 기준으로 계산돼 화면 바닥에 `필터 · 적용 · ×` 줄이 삐져나왔다 (실기기 아이폰 실측).
     데스크톱·크롬 에뮬레이션에선 재현 안 됨. `.sidebar` 의 visibility 전환은 0.25s 지연 (닫힘 애니메이션 유지). `/bill` 도 동일
+    - 같은 이유로 nav 모바일 패널 `.pb-mobile-panel`(main.css)도 닫힘 시 `visibility: hidden` + `height: 100dvh`.
+      **화면 밖으로 밀어두는 fixed 요소는 전부 이 규칙** — 새로 만들 때 transform 만으로 숨기지 말 것.
+      2026-08-16 375px 스윕 16페이지: 가로 오버플로 0, 닫힘 상태에서 보이는 fixed 는 bill 상세 jumpbar(의도)뿐
 - `.sheet-pending` CSS 전역. 서버렌더 `.active` 는 JS init 에서 제거 후 `.sheet-pending` 으로 교체
 
 #### 모바일 select 이동 — 검색바의 드롭다운을 필터 시트로 (2026-08-15)
