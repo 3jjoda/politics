@@ -576,6 +576,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/balance-game/mapping` | `balance/mapping_preview.ejs` | 매핑 미리 보기 (DB 조회, 게임팩별 섹션) |
 | `/auth/welcome` | `auth/welcome.ejs` | 가입 직후 환영 페이지 (1회 노출, [지금 풀기]/[둘러보기]) |
 | `/admin/titles` | `admin/titles.ejs` | **관리자 — 의원 직위 관리** (`requireAdmin`). 수동 직위 CRUD + 재확인 상태 |
+| `/admin/stats` | `admin/stats.ejs` | **관리자 — 방문 통계** (`requireAdmin`). `?days=7|30|90`. 아래 "방문 통계" 참조 |
 | `/about` | `about.ejs` | 사이트 소개 |
 
 ### 🔴 불참 처리는 **바꾸지 못한다** — 5가지 안 전부 실측 실패 (2026-08-16)
@@ -901,6 +902,33 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   🔴 일치도 식(`거리/2`, `(1-d/1.5)*100`)은 **의원 상세·목록과 글자 그대로 같아야** 한다
 - **숫자로 본 국회** — `/xray`·`/xray/chart`·`/politician` 진입 카드 3장.
   ⚠️ 여기에 지표 숫자를 다시 그리지 말 것 (히어로 결론 3칸과 겹친다)
+
+### 방문 통계 — 관리자 전용 `/admin/stats` (2026-08-16)
+"사이트가 얼마나 쓰이나 / 어느 페이지가 보이나" 를 운영자가 알 방법이 없었다. **공개 카운터가 아니라 관리자 화면**이다 —
+초기엔 작은 숫자가 신뢰도를 깎고(CHANGELOG 4057행), 조회 순위를 공개하면 그 자체가 편집이 된다.
+
+```
+middlewares/pageViews.js               ← 수집 (60초 메모리 버퍼 → UPSERT). app.js 의 passport 뒤에 등록
+ddl/migrations/2026-08-16-page-views.sql ← page_views_daily · user_visit_days
+daos/queries/admin/getStats*.sql       ← 읽기 5종 / views/admin/stats.ejs
+```
+
+- 🔴 **개인정보를 남기지 않는다.** IP·UA·리퍼러·방문자 식별자는 DB 에 안 간다 — 일별 × 페이지종류(× 상세 대상) **합계만**.
+  유니크 판정은 프로세스 메모리(하루 단위 Set)에서만 한다 → **재시작하면 그날 방문자가 다시 세어질 수 있는 근사값**. 화면 각주에 적혀 있다
+- 🔴 **로그인 회원은 `user_visit_days(user_id, visit_date, views)` — 날짜 단위 접속 여부뿐, 어느 페이지를 봤는지는 없다.**
+  정치 사이트에서 "누가 어느 의원 페이지를 봤나" 는 민감한 열람 기록이라 만들지 않는다. 사용자별 페이지 로그를 추가하지 말 것.
+  개인정보처리방침 1항(자동 수집)·6항(쿠키 `_v`)에 적혀 있다 — 범위를 바꾸면 거기도 같이
+- 🔴 **봇 필터가 생명선이다** (08-14 크롤러 116,880건이 세어지면 그래프가 죽는다): UA 패턴 + **`Sec-Fetch-Dest: document`**
+  (curl·대부분의 크롤러는 안 보낸다) + `Accept: text/html` + 정적·API·`/admin`·`/auth`·`/my`·robots/sitemap·`/xray/s/`·
+  브리핑 card/threads 제외 + 응답 200·text/html 만. 완벽하지 않으므로 **Cloudflare 대시보드와 같이 본다**
+- 방문자 식별은 경량 쿠키 **`_v`**(랜덤 16hex · 1년 · httpOnly). **세션을 만들지 않는다** — `saveUninitialized:false` 라
+  비로그인은 세션이 없고, 방문자마다 세션 행을 만들면 `session` 테이블만 불어난다. cookie-parser 가 없어 헤더를 직접 파싱
+- 요청마다 DB 를 치지 않는다 — 60초 버퍼 후 UPSERT 한 번(`views += · uniques +=`). SIGTERM/SIGINT 에 마지막 주기분 flush(3초 상한).
+  flush 실패는 로그만 남기고 버린다 — 통계 때문에 서비스가 흔들리면 안 된다
+- 페이지 분류 `PAGE_KINDS`(미들웨어 단일 소스, `KIND_LABEL` 을 화면이 쓴다). 상세는 `target_id`(bill_id·mona_cd·briefing id)를 같이 잡아
+  **의원·법안·브리핑 TOP 20** 을 낸다 — Cloudflare 무료 플랜이 못 주는 유일한 것. `site` 행이 전체 총계
+- 구 `utils/visitorCounter.js`(JSON 파일 저장 — Railway 휘발 FS 에서 재배포마다 0)는 이걸로 대체·삭제됐다
+- 검증 2026-08-16: curl 요청은 Set-Cookie 없음(미집계) / 브라우저 헤더 요청은 `_v` 발급 · 60초 후 `site 6/3 · home 3/3 · politician_detail JC14718Q 1/1` UPSERT 확인 · 뷰 렌더 정상
 
 ### 소개 페이지 재작성 (2026-08-16)
 구 버전이 **사실과 어긋나 있었다**: 첫 문단이 `공약 이행도` 를 제공하는 것처럼 썼는데(만든 적 없음),
@@ -1363,6 +1391,9 @@ npm run insta -- --date 2026-08-10
   **인스타가 알아서 줄여줘서 눈으로는 멀쩡해 보인다.** 그래서 PNG 헤더로 크기를 매번 검증한다
 - ⚠️ `--virtual-time-budget=6000` 필수 — 없으면 웹폰트 로드 전에 찍혀 폴백 폰트로 나온다
 - `caption.txt` 도 같이 쓴다 — **그대로 복사해 인스타 캡션 칸에 붙여넣는 텍스트**
+  - 🔴 **캡션 조립은 `utils/instaCaption.js` 단일 소스다** (2026-08-16). 카드 미리보기 페이지(`/briefing/:id/card`, 쿼리 없음)
+    하단에 **같은 함수로 만든 캡션 + 복사 버튼**이 있어 배치를 안 돌려도 웹에서 미리 보고 복사할 수 있다.
+    캡처 모드(`?slide`·`?story`)에는 안 들어간다. 배치 쪽에 캡션 로직을 다시 쓰지 말 것 — 갈리면 미리보기와 산출물이 달라진다
   - 🔴 캡션은 **이미지를 반복하는 자리가 아니다.** 카드에 이미 있는 걸 다시 적으면 자막이 될 뿐이라
     본문(`body`)을 뺐다. 캡션만 할 수 있는 셋에 집중: ① 검색 유입 ② 프로필 링크 유도 ③ 고지
   - ⚠️ **인스타 캡션의 URL 은 클릭되지 않는다.** `→ dangmalsa.kr` 처럼 링크 모양으로 써두면

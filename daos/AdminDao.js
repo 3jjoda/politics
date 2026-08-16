@@ -48,4 +48,11 @@ export default (db) => ({
 
     remove: (id) =>
         db.query('DELETE FROM politician_titles WHERE id = $1', [id]).then((r) => r.rowCount),
+
+    /* ── 방문 통계 (/admin/stats) — page_views_daily · user_visit_days 읽기 전용 ── */
+    getStatsDaily:      (days)             => db.query(queries.getStatsDaily, [days]).then((r) => r.rows),
+    getStatsByKind:     (days)             => db.query(queries.getStatsByKind, [days]).then((r) => r.rows),
+    getStatsTopTargets: (days, kind, limit) => db.query(queries.getStatsTopTargets, [days, kind, limit]).then((r) => r.rows),
+    getStatsUsers:      (days)             => db.query(queries.getStatsUsers, [days]).then((r) => r.rows[0]),
+    getStatsUserList:   (days, limit)      => db.query(queries.getStatsUserList, [days, limit]).then((r) => r.rows),
 });

@@ -1,0 +1,217 @@
+<%
+  // 관리자 방문 통계 — 소스는 page_views_daily · user_visit_days (middlewares/pageViews.js)
+  // 🔴 이 화면의 숫자는 근사값이다: 유니크는 프로세스 메모리 기준(재시작 시 중복), 봇 필터는 휴리스틱.
+  //    Cloudflare 대시보드(요청·국가·봇 판정)와 같이 봐야 한다 — 하단 각주.
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const maxViews = Math.max(1, ...daily.map((d) => Number(d.views)));
+  const maxUsers = Math.max(1, ...daily.map((d) => Number(d.users)));
+  const kindTotal = byKind.reduce((a, k) => a + Number(k.views), 0) || 1;
+  const rangeLabel = days === 7 ? '최근 7일' : days === 90 ? '최근 90일' : '최근 30일';
+%>
+
+<div class="ad-wrap">
+  <header class="ad-head">
+    <h1>방문 통계</h1>
+    <p class="ad-desc">
+      사람이 브라우저로 연 HTML 페이지만 셉니다 (봇·정적 파일·API 제외).
+      <strong>개인정보는 저장하지 않습니다</strong> — IP·브라우저·리퍼러 없이 일별 합계만 남습니다.
+      로그인 사용자는 <strong>접속한 날짜</strong>만 기록하고 어느 페이지를 봤는지는 기록하지 않습니다.
+    </p>
+    <nav class="st-range">
+      <% daysOptions.forEach((d) => { %>
+        <a href="/admin/stats?days=<%= d %>" class="<%= d === days ? 'is-on' : '' %>">최근 <%= d %>일</a>
+      <% }); %>
+      <a href="/admin/titles" class="st-range-other">직위 관리 →</a>
+    </nav>
+  </header>
+
+  <!-- ── 요약 ── -->
+  <section class="st-kpis">
+    <div class="st-kpi">
+      <div class="st-kpi-l">오늘 방문자</div>
+      <div class="st-kpi-v"><%= nf(today?.uniques) %></div>
+      <div class="st-kpi-s">페이지뷰 <%= nf(today?.views) %> · 어제 <%= nf(yesterday?.uniques) %>명</div>
+    </div>
+    <div class="st-kpi">
+      <div class="st-kpi-l"><%= rangeLabel %> 방문자</div>
+      <div class="st-kpi-v"><%= nf(totals.uniques) %></div>
+      <div class="st-kpi-s">일별 유니크 합 · 페이지뷰 <%= nf(totals.views) %></div>
+    </div>
+    <div class="st-kpi">
+      <div class="st-kpi-l">활동 회원</div>
+      <div class="st-kpi-v"><%= nf(users.active_users) %><span class="st-kpi-of">/ <%= nf(users.total_users) %></span></div>
+      <div class="st-kpi-s"><%= rangeLabel %> 접속 · 2일 이상 <%= nf(users.returning_users) %>명 · 평균 <%= users.avg_days %>일</div>
+    </div>
+    <div class="st-kpi">
+      <div class="st-kpi-l">신규 가입</div>
+      <div class="st-kpi-v"><%= nf(users.new_users) %></div>
+      <div class="st-kpi-s"><%= rangeLabel %></div>
+    </div>
+  </section>
+
+  <!-- ── 일별 ── -->
+  <section class="ad-sec">
+    <h2 class="ad-h">일별 방문자 <span class="st-legend"><i class="st-lg-u"></i> 방문자 <i class="st-lg-p"></i> 페이지뷰(옅게) <i class="st-lg-m"></i> 로그인 회원</span></h2>
+    <div class="st-chart" style="--n: <%= daily.length %>">
+      <% daily.forEach((d) => {
+           const v = Number(d.views), u = Number(d.uniques), m = Number(d.users);
+      %>
+        <div class="st-col<%= d.is_weekend ? ' is-we' : '' %>" title="<%= d.d %> · 방문자 <%= nf(u) %> · 페이지뷰 <%= nf(v) %> · 회원 <%= nf(m) %>">
+          <div class="st-bars">
+            <div class="st-bar st-bar-p" style="height: <%= (v / maxViews * 100).toFixed(1) %>%"></div>
+            <div class="st-bar st-bar-u" style="height: <%= (u / maxViews * 100).toFixed(1) %>%"></div>
+          </div>
+          <div class="st-num"><%= u || '' %></div>
+          <div class="st-mem" style="--h: <%= (m / maxUsers * 100).toFixed(1) %>"><b></b><%= m || '' %></div>
+          <div class="st-lbl"><%= days > 30 ? d.label.slice(3) : d.label %></div>
+        </div>
+      <% }); %>
+    </div>
+    <p class="st-note">막대 위 숫자는 방문자(유니크), 아래 골드 짧은 막대는 로그인 회원 수. 주말은 흐리게. 유니크는 하루 단위 근사값입니다.</p>
+  </section>
+
+  <!-- ── 페이지 종류별 + 사용자 ── -->
+  <div class="st-2col">
+    <section class="ad-sec">
+      <h2 class="ad-h">페이지 종류별 <span class="ad-count"><%= rangeLabel %></span></h2>
+      <% if (!byKind.length) { %><p class="ad-empty">아직 집계가 없습니다.</p><% } else { %>
+      <ul class="st-kinds">
+        <% byKind.forEach((k) => { const pct = Number(k.views) / kindTotal * 100; %>
+          <li>
+            <span class="st-kind-l"><%= kindLabel[k.page_kind] || k.page_kind %></span>
+            <span class="st-kind-bar"><i style="width: <%= pct.toFixed(1) %>%"></i></span>
+            <span class="st-kind-v"><%= nf(k.views) %> <small><%= pct.toFixed(0) %>%</small></span>
+          </li>
+        <% }); %>
+      </ul>
+      <% } %>
+    </section>
+
+    <section class="ad-sec">
+      <h2 class="ad-h">회원별 접속 <span class="ad-count">상위 50</span></h2>
+      <% if (!userList.length) { %><p class="ad-empty">아직 집계가 없습니다.</p><% } else { %>
+      <div class="st-tbl-wrap">
+      <table class="st-tbl">
+        <thead><tr><th>회원</th><th>가입</th><th class="r">접속일</th><th class="r">페이지</th><th class="r">최근</th><th class="r">누적일</th></tr></thead>
+        <tbody>
+          <% userList.forEach((u) => { %>
+            <tr>
+              <td><b><%= u.nickname %></b> <em><%= u.provider %></em></td>
+              <td class="mono"><%= u.joined %></td>
+              <td class="r mono"><%= u.days %></td>
+              <td class="r mono"><%= nf(u.views) %></td>
+              <td class="r mono"><%= u.last_visit %></td>
+              <td class="r mono"><%= u.total_days %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      </div>
+      <p class="st-note">접속일 = 그 기간에 접속한 날 수. 어느 페이지를 봤는지는 저장하지 않습니다.</p>
+      <% } %>
+    </section>
+  </div>
+
+  <!-- ── 상세 TOP ── -->
+  <div class="st-3col">
+    <% [['의원 상세', topPol, (t) => `/politician/${t}`], ['법안 상세', topBill, (t) => `/bill/${t}`], ['브리핑 상세', topBrief, (t) => `/briefing/${t}`]].forEach(([title, rows, href]) => { %>
+      <section class="ad-sec">
+        <h2 class="ad-h"><%= title %> <% if (rows.length) { %><span class="ad-count">TOP <%= rows.length %></span><% } %></h2>
+        <% if (!rows.length) { %><p class="ad-empty">아직 집계가 없습니다.</p><% } else { %>
+        <ol class="st-top">
+          <% rows.forEach((r) => { %>
+            <li>
+              <a href="<%= href(r.target_id) %>" target="_blank" rel="noopener"><%= r.label || r.target_id %></a>
+              <span class="mono"><%= nf(r.views) %> <small>· <%= nf(r.uniques) %>명</small></span>
+            </li>
+          <% }); %>
+        </ol>
+        <% } %>
+      </section>
+    <% }); %>
+  </div>
+
+  <p class="st-foot">
+    <strong>이 숫자는 근사값입니다.</strong> 봇 판별은 UA·요청 헤더 휴리스틱이라 일부 크롤러가 섞이거나 일부 브라우저가 빠질 수 있고,
+    유니크는 서버 프로세스 메모리 기준이라 재시작 시 같은 방문자가 다시 세어질 수 있습니다.
+    요청 총량·국가·봇 판정은 Cloudflare 대시보드가 더 정확하니 같이 보세요. 순위는 관리 참고용이며 사이트에 공개하지 않습니다.
+  </p>
+</div>
+
+<style>
+  .ad-wrap { max-width: 1100px; margin: 0 auto; padding: calc(var(--nav-h) + 28px) 24px 80px; }
+  .ad-head h1 { font-size: 26px; font-weight: 800; margin: 0 0 8px; }
+  .ad-desc { font-size: 13.5px; color: var(--sub); line-height: 1.7; margin: 0 0 14px; word-break: keep-all; }
+  .ad-desc strong { color: var(--text); }
+  .ad-sec { margin-bottom: 30px; min-width: 0; }
+  .ad-h { font-size: 16px; font-weight: 700; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ad-count { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); }
+  .ad-empty { font-size: 13.5px; color: var(--sub2); font-style: italic; }
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+
+  .st-range { display: flex; gap: 6px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
+  .st-range a { font-size: 13px; padding: 5px 12px; border: 1px solid var(--border2); border-radius: 999px; color: var(--sub); text-decoration: none; }
+  .st-range a.is-on { background: var(--text); border-color: var(--text); color: #fff; font-weight: 600; }
+  .st-range a.st-range-other { margin-left: auto; border-color: transparent; color: var(--accent2); }
+
+  .st-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
+  .st-kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: 11px; padding: 14px 16px; min-width: 0; }
+  .st-kpi-l { font-size: 12px; color: var(--sub2); font-weight: 600; margin-bottom: 4px; }
+  .st-kpi-v { font-family: 'JetBrains Mono', monospace; font-size: 30px; font-weight: 700; color: var(--text); line-height: 1.1; }
+  .st-kpi-of { font-size: 14px; font-weight: 500; color: var(--sub2); margin-left: 6px; }
+  .st-kpi-s { font-size: 12px; color: var(--sub); margin-top: 6px; word-break: keep-all; }
+
+  .st-legend { font-size: 12px; font-weight: 500; color: var(--sub); display: inline-flex; gap: 10px; align-items: center; margin-left: 4px; }
+  .st-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .st-lg-u { background: var(--text); } .st-lg-p { background: var(--border2); } .st-lg-m { background: var(--accent); }
+
+  .st-chart { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 3px; align-items: end;
+              background: var(--bg2); border: 1px solid var(--border); border-radius: 11px; padding: 18px 12px 10px; overflow-x: auto; }
+  .st-col { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .st-col.is-we .st-bar-u { opacity: .55; }
+  .st-bars { position: relative; width: 100%; height: 150px; display: flex; align-items: flex-end; justify-content: center; }
+  .st-bar { position: absolute; bottom: 0; border-radius: 3px 3px 0 0; min-height: 1px; }
+  .st-bar-p { width: 80%; background: var(--bg3); border: 1px solid var(--border); border-bottom: 0; }
+  .st-bar-u { width: 50%; background: var(--text); }
+  .st-num { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--sub); margin-top: 4px; }
+  .st-mem { position: relative; width: 100%; height: 34px; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent2); text-align: center; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+  .st-mem b { display: block; width: 40%; height: calc(var(--h) * 0.22px); min-height: 0; background: var(--accent); border-radius: 2px 2px 0 0; }
+  .st-lbl { font-size: 10px; color: var(--sub2); margin-top: 3px; white-space: nowrap; }
+  .st-note { font-size: 12px; color: var(--sub2); margin: 8px 0 0; }
+
+  .st-2col { display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px; }
+  .st-3col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+  .st-kinds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+  .st-kinds li { display: grid; grid-template-columns: 96px 1fr 84px; gap: 10px; align-items: center; font-size: 13px; }
+  .st-kind-l { color: var(--text); font-weight: 600; }
+  .st-kind-bar { height: 10px; background: var(--bg3); border-radius: 5px; overflow: hidden; }
+  .st-kind-bar i { display: block; height: 100%; background: var(--accent); min-width: 2px; }
+  .st-kind-v { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; text-align: right; }
+  .st-kind-v small { color: var(--sub2); }
+
+  .st-tbl-wrap { overflow-x: auto; }
+  .st-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .st-tbl th { text-align: left; font-size: 11.5px; color: var(--sub2); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border2); white-space: nowrap; }
+  .st-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .st-tbl .r { text-align: right; }
+  .st-tbl em { font-style: normal; font-size: 11px; color: var(--sub2); margin-left: 4px; }
+
+  .st-top { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .st-top li { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .st-top a { color: var(--text); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .st-top a:hover { color: var(--accent2); text-decoration: underline; }
+  .st-top .mono { flex: 0 0 auto; }
+  .st-top small { color: var(--sub2); }
+
+  .st-foot { font-size: 12.5px; color: var(--sub); line-height: 1.7; border-top: 1px dashed var(--border2); padding-top: 14px; margin-top: 10px; word-break: keep-all; }
+  .st-foot strong { color: var(--text); }
+
+  @media (max-width: 900px) {
+    .st-kpis { grid-template-columns: repeat(2, 1fr); }
+    .st-2col, .st-3col { grid-template-columns: 1fr; }
+    .st-chart { padding: 14px 8px 8px; }
+    .st-num, .st-mem { display: none; }
+    .st-lbl { font-size: 9px; }
+  }
+</style>

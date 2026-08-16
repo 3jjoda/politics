@@ -4,6 +4,7 @@
 
 import BriefingService from '../services/BriefingService.js';
 import { buildThreadsChain, THREADS_LIMIT } from '../utils/threadsPost.js';
+import { buildCaption } from '../utils/instaCaption.js';
 import { nf, pct } from '../utils/xrayFormat.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
@@ -157,6 +158,8 @@ export default (db) => {
                 slides,
                 single,          // null = 전체 미리보기 / 1-based 인덱스 = 그 장만
                 story,
+                // 미리보기에서만 쓴다 — 배치(genInstaCards)의 caption.txt 와 같은 함수라 웹에서 미리 볼 수 있다
+                caption: (single || story) ? null : buildCaption(post),
                 nf
             });
         } catch (error) {

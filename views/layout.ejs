@@ -103,6 +103,7 @@
                         <%# 관리자에게만. 메인 nav 가 아니라 계정 메뉴에 두는 이유 — 콘텐츠가 아니라 운영 도구다.
                             판정은 requireAdmin 과 같은 isAdminUser() 를 쓴다 (메뉴만 보이고 404 나는 상태 방지) %>
                         <% if (locals.isAdmin) { %>
+                            <a class="pb-user-item pb-user-admin" href="/admin/stats">방문 통계</a>
                             <a class="pb-user-item pb-user-admin" href="/admin/titles">직위 관리</a>
                         <% } %>
                         <form method="post" action="/auth/logout" style="margin:0">
@@ -168,6 +169,7 @@
             <a href="/my" class="pb-mobile-auth-link">마이페이지</a>
             <a href="/my/analysis-requests" class="pb-mobile-auth-link">내가 요청한 분석</a>
             <% if (locals.isAdmin) { %>
+                <a href="/admin/stats" class="pb-mobile-auth-link">방문 통계</a>
                 <a href="/admin/titles" class="pb-mobile-auth-link">직위 관리</a>
             <% } %>
             <form method="post" action="/auth/logout" style="margin:0">

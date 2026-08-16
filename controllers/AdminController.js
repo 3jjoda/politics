@@ -8,6 +8,7 @@
 import AdminDao from '../daos/AdminDao.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
+import { KIND_LABEL } from '../middlewares/pageViews.js';
 
 // DB CHECK 와 같은 값이어야 한다 (ddl/migrations/2026-08-12-politician-titles.sql)
 const CATEGORIES = ['의장단', '국무위원', '교섭단체', '당직'];
@@ -57,6 +58,39 @@ export default (db) => {
             });
         } catch (error) {
             logger.error('관리자 직위 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    /* 방문 통계. ?days=7|30|90 (기본 30). 모르는 값은 30 으로 접는다.
+       ⚠️ 관리자 전용 — 순위표(상세 TOP)를 공개하면 그 자체가 편집이 된다 */
+    const DAYS_OPTIONS = [7, 30, 90];
+    controller.getStatsPage = wrapWithContext(async function getStatsPage(req, res, next) {
+        const days = DAYS_OPTIONS.includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+        try {
+            const [daily, byKind, topPol, topBill, topBrief, users, userList] = await Promise.all([
+                dao.getStatsDaily(days),
+                dao.getStatsByKind(days),
+                dao.getStatsTopTargets(days, 'politician_detail', 20),
+                dao.getStatsTopTargets(days, 'bill_detail', 20),
+                dao.getStatsTopTargets(days, 'briefing_detail', 10),
+                dao.getStatsUsers(days),
+                dao.getStatsUserList(days, 50),
+            ]);
+            const sum = (k) => daily.reduce((a, d) => a + Number(d[k] || 0), 0);
+            res.render('admin/stats', {
+                pageTitle: '방문 통계',
+                pageStyles: null,
+                currentUrl: '/admin/stats',
+                days, daysOptions: DAYS_OPTIONS,
+                daily, byKind, topPol, topBill, topBrief, users, userList,
+                kindLabel: KIND_LABEL,
+                totals: { views: sum('views'), uniques: sum('uniques') },
+                today: daily[daily.length - 1] || null,
+                yesterday: daily[daily.length - 2] || null,
+            });
+        } catch (error) {
+            logger.error('관리자 방문 통계 렌더링 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });

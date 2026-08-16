@@ -6,6 +6,26 @@
 
 ---
 
+## 2026-08-16 (10) — 인스타 카드 페이지에 캡션 블록
+
+- `buildCaption` 을 `batch/genInstaCards.js` 에서 **`utils/instaCaption.js`** 로 뽑아 단일 소스화.
+  `/briefing/:id/card`(미리보기 모드) 하단에 같은 함수로 만든 **인스타 캡션 + 복사 버튼** — 배치를 안 돌려도 웹에서 확인·복사.
+  캡처 모드(`?slide`·`?story`)에는 없다. 해시태그 줄은 휴리스틱이라 "올리기 전 눈으로 볼 것" 안내를 같이 둔다
+
+## 2026-08-16 (9) — 방문 통계 (관리자 전용 `/admin/stats`)
+
+방문자 카운팅을 **관리자 화면부터** 시작했다 (공개 카운터 X — 작은 숫자는 신뢰도를 깎고 순위 공개는 편집이 된다).
+
+- `middlewares/pageViews.js` — 사람이 브라우저로 연 HTML 페이지만 (UA 봇 패턴 · `Sec-Fetch-Dest: document` · Accept text/html ·
+  정적/API/관리자/robots/sitemap 제외 · 200 만). 60초 메모리 버퍼 → `page_views_daily` UPSERT. 유니크는 하루 단위 메모리 Set(근사)
+- 방문자 식별 쿠키 `_v`(16hex · 1년 · httpOnly) — 세션을 만들지 않는다. **IP·UA·리퍼러·쿠키 값은 DB 에 안 간다**, 일별 합계만
+- 로그인 회원은 `user_visit_days(user_id, visit_date, views)` — **접속한 날짜만**. 열람 페이지는 기록하지 않는다 (정치 사이트의 열람 기록은 민감)
+- `/admin/stats?days=7|30|90` — 오늘/기간 방문자 · 활동/재방문/신규 회원 · 일별 막대(방문자·페이지뷰·회원) · 페이지 종류별 ·
+  회원별 접속일 상위 50 · **의원·법안·브리핑 상세 TOP** · "Cloudflare 와 같이 볼 것" 각주
+- 개인정보처리방침 1항(방문 통계 합계·회원 접속일)·6항(`_v` 쿠키) 추가. nav 사용자 메뉴에 `방문 통계`
+- 구 `utils/visitorCounter.js`(JSON 파일 · Railway 에서 재배포마다 0)를 대체
+- 실측: curl 미집계 / 브라우저 요청 `_v` 발급 → 60초 후 UPSERT 확인 (site 6/3 · home 3/3 · politician_detail 1/1)
+
 ## 2026-08-16 (8) — 홈 2차 재구성: 히어로 우측에 무작위 의원 3명의 축 좌표
 
 - 히어로 우측 결론 3숫자 → **무작위 의원 3명 × 경제·사회·제도 막대 + 소속 정당 평균 눈금** (`getAxisSpotlight.sql`, 새로고침마다 다른 3명).

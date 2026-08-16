@@ -20,5 +20,7 @@ export default (db) => {
     router.post('/titles/:id', admin.updateTitle);
     router.post('/titles/:id/delete', admin.deleteTitle);
 
+    router.get('/stats', admin.getStatsPage);
+
     return router;
 };

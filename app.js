@@ -9,6 +9,7 @@ import setupPassport from './config/passport.js';
 import { injectUser } from './middlewares/auth.js';
 import { canonicalHost } from './middlewares/canonicalHost.js';
 import { injectBalanceGameStatus } from './middlewares/balanceGame.js';
+import { pageViews } from './middlewares/pageViews.js';
 import { getContext } from './utils/context.js';
 import { contextMiddleware } from './utils/contextMiddleware.js';
 import { dataFreshnessMiddleware } from './utils/dataFreshness.js';
@@ -213,6 +214,10 @@ app.use(dataFreshnessMiddleware(db));
 
 /* 모든 템플릿에 balanceGameCompleted boolean 주입 — D 레이어 미완료 배지용 */
 app.use(injectBalanceGameStatus(db));
+
+/* 방문 통계 (관리자 /admin/stats 용) — 봇·정적·API 를 거른 HTML 페이지뷰를 60초 버퍼 후 UPSERT.
+   ⚠️ passport 뒤여야 req.user 로 로그인 사용자 접속일을 잡는다. 개인정보(IP·UA)는 남기지 않는다 */
+app.use(pageViews(db));
 
 /* db.query 래핑: SQL + 결과 건수 자동 로깅 */
 const originalQuery = db.query.bind(db);
