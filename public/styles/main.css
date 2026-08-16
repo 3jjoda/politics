@@ -887,7 +887,7 @@ input, textarea, select { font-family: inherit; }
   border: 1px solid rgba(15,157,110,0.2);
   padding: 8px 12px;
   border-radius: 6px;
-  margin-bottom: 12px;
+  margin: 16px 0 0;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -895,13 +895,20 @@ input, textarea, select { font-family: inherit; }
 .pb-mobile-freshness-dot { line-height: 1; }
 
 .pb-mobile-auth {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  /* 패널 맨 위 블록 (2026-08-16 — 구 위치는 메뉴 아래) */
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+body.pb-menu-open { overflow: hidden; }
+.pb-mobile-backdrop {
+  position: fixed; inset: 0; z-index: 199;
+  background: rgba(0,0,0,0.4);   /* 필터 시트 백드롭과 같은 농도 */
+}
+.pb-mobile-backdrop[hidden] { display: none; }
 .pb-mobile-auth-cta {
   display: block;
   text-align: center;

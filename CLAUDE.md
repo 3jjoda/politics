@@ -3048,6 +3048,8 @@ CURRENT_DATE                                   -- 한국 기준 오늘
 ## 브랜드 에셋
 
 ### 현재 사용 중 (`public/assets/imgs/`)
+- **모바일 햄버거 패널 `.pb-mobile-panel`** (2026-08-16): 순서 **계정 → 메뉴 → 갱신 배지**. `overflow-y: auto` + `100dvh` 로 자체 스크롤,
+  열리면 `body.pb-menu-open` 이 뒤 스크롤을 잠그고 백드롭(`#pb-mobile-backdrop`)·ESC 로 닫힌다. 닫힘 상태는 `visibility: hidden`
 - **nav 로고: `[mark-only.svg + wordmark-nav.svg]` │ `tagline.svg` 가로 락업** — 데스크톱 225×36 (마크 36 · 워드마크 h30 · 구분선 1×20 · 태그라인 h18) / 모바일 ≤768 183×30 (30 · h24 · 1×16 · h15). CSS `.pb-logo` > `.pb-logo-brand`(`.pb-logo-mark` + `.pb-logo-wordmark`) + `.pb-logo-div` + `.pb-logo-tagline-img`
 - **login 카드: nav 와 같은 3에셋 조립** — 락업 161×84 (마크 48 · 워드마크 h40 가로배치 / 태그라인 h24 아래). 카드는 세로 여유가 있어 태그라인을 아래로 내리고 배율만 키움. CSS `.auth-logo` / `.auth-logo-brand` / `.auth-logo-mark` / `.auth-logo-wordmark` / `.auth-logo-tagline` (login.ejs 인라인)
 - 파비콘: `favicon.ico`, `favicon-16.svg`, `favicon-32.svg`, `apple-touch-180.png`

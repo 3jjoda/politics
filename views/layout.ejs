@@ -135,25 +135,11 @@
     </div>
 </nav>
 
+<%# 모바일 패널 — 순서: 계정(로그인/사용자) → 메뉴 → 갱신 배지. 계정이 맨 위인 이유는 폰에서 제일 자주 찾는 게
+    "로그인·마이페이지" 이고, 갱신 배지는 정보지 행동이 아니라서 맨 아래. 패널 자체가 스크롤한다(overflow-y) — 항목이 늘어도 잘리지 않게 %>
+<div class="pb-mobile-backdrop" id="pb-mobile-backdrop" hidden></div>
 <div class="pb-mobile-panel" id="pb-mobile-panel">
     <button class="pb-mobile-close" id="pb-mobile-close" aria-label="close">×</button>
-    <% if (locals.dataFreshness) { %>
-        <div class="pb-mobile-freshness" title="법안 데이터 마지막 갱신: <%= dataFreshness.absolute %>">
-            <span class="pb-mobile-freshness-dot">●</span>
-            법안 <%= dataFreshness.relative %> 갱신
-        </div>
-    <% } %>
-    <ul>
-        <li><a href="/">홈</a></li>
-        <li><a href="/briefing">브리핑</a></li>
-        <li><a href="/politician">의원</a></li>
-        <li><a href="/bill">법안</a></li>
-        <li><a href="/xray">차트</a></li>
-        <li><a href="/balance-game">성향 진단</a></li>
-        <li><a href="/community">커뮤니티</a></li>
-        <li><a href="/glossary">용어</a></li>
-        <li><a href="/about">소개</a></li>
-    </ul>
     <div class="pb-mobile-auth">
         <% if (locals.currentUser) { %>
             <div class="pb-mobile-user">
@@ -180,6 +166,23 @@
             <a href="/auth/login" class="pb-mobile-auth-cta">로그인</a>
         <% } %>
     </div>
+    <ul>
+        <li><a href="/">홈</a></li>
+        <li><a href="/briefing">브리핑</a></li>
+        <li><a href="/politician">의원</a></li>
+        <li><a href="/bill">법안</a></li>
+        <li><a href="/xray">차트</a></li>
+        <li><a href="/balance-game">성향 진단</a></li>
+        <li><a href="/community">커뮤니티</a></li>
+        <li><a href="/glossary">용어</a></li>
+        <li><a href="/about">소개</a></li>
+    </ul>
+    <% if (locals.dataFreshness) { %>
+        <div class="pb-mobile-freshness" title="법안 데이터 마지막 갱신: <%= dataFreshness.absolute %>">
+            <span class="pb-mobile-freshness-dot">●</span>
+            법안 <%= dataFreshness.relative %> 갱신
+        </div>
+    <% } %>
 </div>
 
 <main class="pb-main">
@@ -287,9 +290,16 @@
         const btn = document.getElementById('pb-hamburger');
         const panel = document.getElementById('pb-mobile-panel');
         const closeBtn = document.getElementById('pb-mobile-close');
+        const backdrop = document.getElementById('pb-mobile-backdrop');
         if (btn && panel) {
-            btn.addEventListener('click', () => panel.classList.add('open'));
-            closeBtn.addEventListener('click', () => panel.classList.remove('open'));
+            // 열릴 때 body 스크롤을 잠근다 — 안 잠그면 패널을 밀 때 뒤 페이지가 같이 밀리고 (iOS 에서 특히)
+            // 패널 자체는 안 밀리는 것처럼 느껴진다. 백드롭 탭·ESC 로도 닫힌다
+            const openPanel = () => { panel.classList.add('open'); document.body.classList.add('pb-menu-open'); if (backdrop) backdrop.hidden = false; };
+            const closePanel = () => { panel.classList.remove('open'); document.body.classList.remove('pb-menu-open'); if (backdrop) backdrop.hidden = true; };
+            btn.addEventListener('click', openPanel);
+            closeBtn.addEventListener('click', closePanel);
+            backdrop?.addEventListener('click', closePanel);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && panel.classList.contains('open')) closePanel(); });
         }
 
         // User dropdown
