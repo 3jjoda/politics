@@ -12,12 +12,20 @@
 //   node batch/mapBillAxisPilot.js --target 300 --max-candidates 3000
 //   node batch/mapBillAxisPilot.js --select-only         # 분류 없이 기존 결과로 선별만 다시
 //   node batch/mapBillAxisPilot.js --dry-run             # DB 안 씀 (첫 배치 1회만 호출해 형식 확인)
+//   node batch/mapBillAxisPilot.js --sync-v2             # 선별 결과를 bill_axis_mapping v2 에 미러링 (분류·선별 뒤에 붙인다)
+//
+// 정기 갱신 (분기 1회 권장 · 로컬 · 크론 X — 비용 + 희소 셀 사람 검토):
+//   node batch/mapBillAxisPilot.js --target 100000 --max-candidates 20000 --sync-v2
+//     → 미분류 법안만 분류(한 달치 ~700건 ≈ $0.8) → 균형 재선별 → v2 미러링 → 다음날 크론의 calcPoliticianAxis 가 좌표 재계산
+//   🔴 선별은 **결정적**이다 (confidence → weight → 이미 선별됨 → bill_id). random() 으로 뽑으면 재선별마다 법안이 갈려
+//      좌표가 이유 없이 흔들린다. 새 법안은 기존 선별을 밀어내지 않고 빈자리(정원 미달 셀)만 채운다
 
 import 'dotenv/config';
 import pg from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
+import { POL_MAPPING_VERSION, MATCH_AXES } from '../utils/axisConfig.js';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const PROMPT_VERSION = 'axis-p1';
@@ -30,11 +38,12 @@ const PRICE_IN = 1.0, PRICE_OUT = 5.0, PRICE_CW = 1.25, PRICE_CR = 0.10;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function parseArgs(argv) {
-    const a = { target: 300, maxCandidates: 3000, selectOnly: false, dryRun: false };
+    const a = { target: 300, maxCandidates: 3000, selectOnly: false, dryRun: false, syncV2: false };
     for (let i = 2; i < argv.length; i++) {
         if (argv[i] === '--target') a.target = parseInt(argv[++i], 10);
         else if (argv[i] === '--max-candidates') a.maxCandidates = parseInt(argv[++i], 10);
         else if (argv[i] === '--select-only') a.selectOnly = true;
+        else if (argv[i] === '--sync-v2') a.syncV2 = true;
         else if (argv[i] === '--dry-run') a.dryRun = true;
     }
     return a;
@@ -150,29 +159,66 @@ async function cellCounts(pool) {
 const fmtCells = m => AXES.map(ax => `${ax.padEnd(11)} −1:${String(m[ax]['-1']).padStart(3)} +1:${String(m[ax]['1']).padStart(3)}`).join(' | ');
 
 // 균형 선별: 셀당 quota 이하로, 각 축 안에서 두 방향을 min 으로 맞춘다 (남는 쪽은 버린다 — 균형이 목적)
+// 🔴 결정적 순서: high 먼저 → weight 큰 것 → **이미 선별된 것** → bill_id. 재실행해도 같은 입력이면 같은 결과,
+//    새 법안이 들어와도 기존 선별을 밀어내지 않는다 (random() 은 재선별마다 법안이 갈려 좌표를 흔든다)
 async function select(pool, quota, dryRun) {
-    if (!dryRun) await pool.query(`UPDATE bill_axis_mapping_pilot SET is_selected = FALSE`);
     const cells = await cellCounts(pool);
     const summary = [];
+    const chosen = [];
     for (const ax of AXES) {
         const take = Math.min(quota, cells[ax]['-1'], cells[ax]['1']);
         summary.push({ axis: ax, per_dir: take, total: take * 2, avail_neg: cells[ax]['-1'], avail_pos: cells[ax]['1'] });
-        if (dryRun || take === 0) continue;
+        if (take === 0) continue;
         for (const dir of [-1, 1]) {
-            await pool.query(`
-                UPDATE bill_axis_mapping_pilot SET is_selected = TRUE WHERE bill_id IN (
-                    SELECT bill_id FROM bill_axis_mapping_pilot
-                     WHERE axis = $1 AND agree_score = $2 AND confidence IN ('high','medium')
-                     ORDER BY (confidence = 'high') DESC, weight DESC, random() LIMIT $3)`, [ax, dir, take]);
+            const { rows } = await pool.query(`
+                SELECT bill_id FROM bill_axis_mapping_pilot
+                 WHERE axis = $1 AND agree_score = $2 AND confidence IN ('high','medium')
+                 ORDER BY (confidence = 'high') DESC, weight DESC, is_selected DESC, bill_id LIMIT $3`, [ax, dir, take]);
+            rows.forEach(r => chosen.push(r.bill_id));
         }
     }
+    if (!dryRun) {
+        await pool.query(`UPDATE bill_axis_mapping_pilot SET is_selected = (bill_id = ANY($1::text[]))`, [chosen]);
+    }
     return summary;
+}
+
+// v2 미러링 — 선별분(매칭 축만) 을 bill_axis_mapping 에 넣고, 선별에서 빠진 ai_v2 행은 지운다.
+// ⚠️ mapped_by='ai_v2' 행만 지운다 — 사람이 넣은 v2 행이 생기면 건드리지 않게
+async function syncV2(pool) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const up = await client.query(`
+            INSERT INTO bill_axis_mapping (bill_id, axis, agree_score, disagree_score, weight, mapping_version, mapped_by, notes)
+            SELECT bill_id, axis, agree_score, disagree_score, weight, $1, 'ai_v2', confidence || ' · ' || COALESCE(reason, '')
+              FROM bill_axis_mapping_pilot
+             WHERE is_selected AND axis = ANY($2::text[])
+            ON CONFLICT (bill_id, mapping_version) DO UPDATE SET
+              axis = EXCLUDED.axis, agree_score = EXCLUDED.agree_score, disagree_score = EXCLUDED.disagree_score,
+              weight = EXCLUDED.weight, notes = EXCLUDED.notes, updated_at = NOW()
+             WHERE bill_axis_mapping.mapped_by = 'ai_v2'
+               AND (bill_axis_mapping.axis, bill_axis_mapping.agree_score, bill_axis_mapping.weight)
+                   IS DISTINCT FROM (EXCLUDED.axis, EXCLUDED.agree_score, EXCLUDED.weight)`,
+            [POL_MAPPING_VERSION, MATCH_AXES]);
+        const del = await client.query(`
+            DELETE FROM bill_axis_mapping m
+             WHERE m.mapping_version = $1 AND m.mapped_by = 'ai_v2'
+               AND NOT EXISTS (SELECT 1 FROM bill_axis_mapping_pilot p
+                                WHERE p.bill_id = m.bill_id AND p.is_selected AND p.axis = ANY($2::text[]))`,
+            [POL_MAPPING_VERSION, MATCH_AXES]);
+        const { rows: tot } = await client.query(
+            `SELECT axis, agree_score, COUNT(*)::int n FROM bill_axis_mapping WHERE mapping_version = $1 GROUP BY 1,2 ORDER BY 1,2`, [POL_MAPPING_VERSION]);
+        await client.query('COMMIT');
+        return { upserted: up.rowCount, deleted: del.rowCount, totals: tot };
+    } catch (e) { await client.query('ROLLBACK'); throw e; }
+    finally { client.release(); }
 }
 
 async function run() {
     const args = parseArgs(process.argv);
     const quota = Math.ceil(args.target / 8);
-    logger.info(`[Axis Pilot START] target=${args.target} (셀당 ${quota}) maxCandidates=${args.maxCandidates} selectOnly=${args.selectOnly} dryRun=${args.dryRun}`);
+    logger.info(`[Axis Pilot START] target=${args.target} (셀당 ${quota}) maxCandidates=${args.maxCandidates} selectOnly=${args.selectOnly} syncV2=${args.syncV2} dryRun=${args.dryRun}`);
     if (!args.selectOnly && !process.env.ANTHROPIC_API_KEY) { logger.error('ANTHROPIC_API_KEY 없음'); process.exit(1); }
 
     const pool = new pg.Pool(dbConfig);
@@ -230,6 +276,12 @@ async function run() {
         logger.info('--- 균형 선별 (셀당 quota, 축 안에서 두 방향을 같은 수로) ---');
         sel.forEach(s => logger.info(`  ${s.axis.padEnd(11)} 선별 ${String(s.total).padStart(3)}건 (방향당 ${s.per_dir}) · 가용 −1:${s.avail_neg} +1:${s.avail_pos}`));
         logger.info(`  합계 ${sel.reduce((a, s) => a + s.total, 0)}건`);
+        if (args.syncV2 && !args.dryRun) {
+            const r = await syncV2(pool);
+            logger.info(`--- v2 미러링 (bill_axis_mapping · ${POL_MAPPING_VERSION}) --- 신규/변경 ${r.upserted}건 · 삭제 ${r.deleted}건`);
+            r.totals.forEach(t => logger.info(`  ${t.axis.padEnd(11)} ${t.agree_score > 0 ? '+1' : '−1'} ${t.n}`));
+            logger.info(`  → 좌표는 다음 크론(calcPoliticianAxis)에서 재계산된다. 지금 반영하려면: node batch/calcPoliticianAxis.js`);
+        }
         const { rows: dist } = await pool.query(`SELECT axis, confidence, COUNT(*)::int n FROM bill_axis_mapping_pilot GROUP BY 1,2 ORDER BY 1,2`);
         logger.info('--- 분류 전체 분포 (axis × confidence) ---');
         dist.forEach(d => logger.info(`  ${d.axis.padEnd(11)} ${d.confidence.padEnd(6)} ${d.n}`));

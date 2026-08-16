@@ -191,14 +191,14 @@
   .pv-legend-gap { width: 26px; height: 6px; border-radius: 3px; background: rgba(184,116,12,0.28); }
   .pv-row:first-of-type { border-top: 1px dashed var(--border); }
   .pv-row {
-    display: grid; grid-template-columns: 132px 34px minmax(160px, 1fr) 34px minmax(240px, 0.9fr);
+    display: grid; grid-template-columns: minmax(200px, 0.9fr) 76px minmax(160px, 1fr) 76px minmax(220px, 0.8fr);
     align-items: center; column-gap: 10px; padding: 9px 0; border-top: 1px dashed var(--border);
     font-size: 12.5px; color: var(--sub);
   }
   .pv-row-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .pv-row-name b { font-size: 13px; font-weight: 800; color: var(--text); }
-  .pv-row-name small { font-size: 11px; color: var(--sub2); white-space: nowrap; }
-  .pv-end { font-size: 11px; color: var(--sub2); white-space: nowrap; }
+  .pv-row-name small { font-size: 11px; line-height: 1.5; color: var(--sub2); word-break: keep-all; }   /* 축 설명 한 줄 — 양끝 라벨만으론 안 읽힌다 */
+  .pv-end { font-size: 11px; color: var(--sub); white-space: nowrap; font-weight: 600; }
   .pv-end:nth-child(2) { text-align: right; }
   .pv-track { position: relative; height: 22px; }
   .pv-track::before {   /* 트랙 */
@@ -242,7 +242,7 @@
     .pv-band { border-top-right-radius: 0; border-top-left-radius: 0; border-top: 0; }
     .profile-vs.is-compact { border-bottom: 1px dashed var(--border); border-radius: 12px 12px 0 0; }
     .profile-vs.is-pending, .profile-vs.is-missing { flex-direction: row; justify-content: center; gap: 14px; align-items: baseline; }
-    .pv-row { grid-template-columns: 112px 30px minmax(120px, 1fr) 30px minmax(200px, 0.9fr); }
+    .pv-row { grid-template-columns: minmax(160px, 0.9fr) 72px minmax(120px, 1fr) 72px minmax(180px, 0.8fr); }
   }
 
   /* 미진단·미산출 — 다이아몬드가 없으므로 세로가 짧다.
@@ -333,7 +333,8 @@
     .pv-band { padding: 4px 14px 10px; border-radius: 0 0 12px 12px; border-top: 0; }
     .profile-vs.is-compact { max-width: none; border-bottom: 1px dashed var(--border); border-radius: 12px 12px 0 0; align-self: auto; }
     .profile-identity { --pv-join: 20px; }   /* ≤768 의 gap 은 20px */
-    .pv-row { grid-template-columns: 30px minmax(0, 1fr) 30px; row-gap: 4px; padding: 10px 0; }
+    .pv-row { grid-template-columns: 62px minmax(0, 1fr) 62px; row-gap: 4px; padding: 10px 0; }
+    .pv-end { font-size: 10.5px; white-space: normal; line-height: 1.25; }
     .pv-row-name { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: 8px; }
     .pv-row-read { grid-column: 1 / -1; }
   }

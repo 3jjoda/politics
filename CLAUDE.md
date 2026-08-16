@@ -726,6 +726,9 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - 🔴 **패널과 띠는 한 카드(ㄱ자)다.** 패널을 행 바닥에 붙이고(`align-self: end`) 그리드 row-gap 을 음수 마진(`--pv-join`)으로
     상쇄해 띠에 잇는다 — 아래 모서리·테두리를 열고 **1px 더 겹쳐** 띠의 위 테두리를 덮는다 (안 덮으면 패널 밑에 가로줄이 남아 두 카드로 보인다).
     ⚠️ `--pv-join` 은 `.profile-identity` 의 gap 과 같아야 한다 (데스크톱 32 · ≤768 20). gap 을 바꾸면 같이
+  - 🔴 **양끝 라벨은 긴 형** (`시장 자율 ↔ 정부 개입` · `전통·질서 ↔ 자율·다양성` · `현 제도 유지 ↔ 제도 개혁`) + 축 이름 아래
+    **한 줄 설명**(`AXIS_META.desc`). `시장`·`안정`·`전통` 만 두면 무엇의 어느 쪽인지 안 읽힌다 (사용자 지적). 짧은 형(L/R)은 폭이 없는
+    홈 카드·범례에서만 쓰고 title 로 긴 형을 붙인다. `BalanceGameService.AXES`(문항 화면 라벨)도 `AXIS_META` 에서 파생 — 진단 화면과 의원 화면이 같은 말
   - 🔴 **범례는 띠 머리(`.pv-band-head`)의 제목 바로 오른쪽에** — `● 나 · ○ 의원 이름 · ▬ 두 점 사이 = 거리`. 양끝으로 갈라두면 제목과 무관해 보인다 (사용자 지적)
   - 한 카드로 읽히게 패널·띠 모두 `border2` 테두리 + **골드 3px 윗선**, 그림자 없음 — 두 윗선이 ㄱ자 외곽선을 이룬다
 - 🔴 **분모 1.5 는 그대로 뒀다.** 축이 3개라 최대 거리가 1.73 으로 줄었지만 화면 주인공은 순위고 % 는 "근사" 보조라 재보정 안 함
@@ -734,8 +737,12 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 - `calcPoliticianAxis.js` 는 `--version v2` 가 기본이고 소스가 자동으로 `coproposers` 다. 축별 서명 수(`economy_n` 등)를 같이 저장 —
   상세 축 목록에 `서명 N건` 으로 표본 크기를 보인다. 산출에 없는 낡은 행은 삭제한다
 - ⚠️ `/xray` 스펙트럼은 안보 칩을 뺐고, 축 값 NULL 인 의원은 **그 축 계산에서만** 뺀다 (`Number(null)=0` 함정 — `nn()` 로 null 유지)
-- ⚠️ 매핑을 늘리거나 재분류할 땐 `mapBillAxisPilot.js` → `--select-only` → 이 마이그레이션의 INSERT 를 v3 로 → `calcPoliticianAxis --version v3` → `axisConfig` 올리기.
-  **방향 균형(셀별 정원)이 전제**다 — 공동발의는 부호가 항상 찬성이라 균형이 깨지면 전원이 한쪽으로 뭉친다
+- **정기 갱신은 분기 1회 · 로컬 · 명령 하나** — `node batch/mapBillAxisPilot.js --target 100000 --max-candidates 20000 --sync-v2`
+  (미분류 법안만 분류 ≈ 한 달치 $0.8 → 결정적 재선별 → `--sync-v2` 가 v2 에 미러링: 신규 UPSERT · 빠진 `ai_v2` 행 삭제).
+  좌표는 다음날 크론 `calcPoliticianAxis` 가 재계산한다. 🔴 **크론에 넣지 말 것** — 비용 + 희소 셀(안정·동맹) 사람 검토 단계가 있다.
+  매핑 없이 두면 커버리지가 매달 약 4%p 씩 빠진다 (월 ~700건 발의)
+- 🔴 선별은 **결정적**이다 (`confidence → weight → 이미 선별됨 → bill_id`). random() 이면 재선별마다 법안이 갈려 좌표가 이유 없이 흔들린다.
+  새 법안은 기존 선별을 밀어내지 않고 정원 미달 셀만 채운다. **방향 균형(셀별 정원)이 전제**다 — 공동발의는 부호가 항상 찬성이라 균형이 깨지면 전원이 한쪽으로 뭉친다
 - ⚠️ 동명 법안(예: `한미 전략적 투자 관리 특별법안` 4건)은 weight 를 나누지 **않았다** — `조세특례제한법 일부개정법률안` 처럼
   이름은 같아도 내용·방향이 다른 계열이 많아 이름으로 묶으면 오히려 틀린다
 - ✅ 검증 실측 (2026-08-16): 분할-반 신뢰도 경제 0.88 · 사회 0.76 · 제도 0.71 / 당내 |r(불참·활동량)| ≤ 0.1 (제도 ±0.25) /
@@ -852,7 +859,14 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   전형적인 "스타트업 랜딩" 문법이라 AI 냄새가 났고 화면 하나를 통째로 먹었다 (사용자 지적). 지금은 내용만큼만 (실측 히어로 734px · 문서 2,238px, 구 3,000px+)
 - 헤드라인은 **Noto Serif KR 900** (`/xray` 카드 제목·법안 분석 헤드라인과 같은 시각 언어), 버튼 대신 **텍스트 링크**(첫 번째만 골드 밑줄).
   날짜줄은 `Intl.DateTimeFormat(… timeZone:'Asia/Seoul')` (로컬 getter 금지) + 어제 브리핑 `stats.proposed`. 어제 브리핑 헤드라인 한 줄이 "속보" 자리
-- 의원 3장은 **글 아래 가로 3단** — 2열(글|카드)로 두면 글이 304px 에서 끝나 카드 열 아래 227px 이 빈다 (실측)
+- 의원 3장은 글 아래 **전체폭 세로 스택** (왼쪽 인적사항 220px | 오른쪽 막대 3줄, 막대 ~590px · 글자 14/12.5px).
+  가로 3단(399px)은 글자가 10px 까지 내려가 안 읽혔고, 2열(글|카드)은 글이 304px 에서 끝나 카드 열 아래 227px 이 빈다 (둘 다 실측)
+- 축 행은 `축 이름 + 무엇을 다루는지(AXIS_META.short)` | 긴 양끝 라벨 | 막대. **정당 평균은 진한 세로선 + 삼각캡**(사이트 공통 평균 마커 언어),
+  범례는 제목 바로 옆. **≤768 은 축 행을 한 줄 유지** — 양끝을 짧은 라벨(`.ls`)로 바꾸고 `상세 →` 를 숨긴다.
+  세 줄로 접었더니 카드 337px × 3 = 1,197px 로 홈의 1/4 을 먹었다 (실측). 한 줄이면 188px. 🔴 이 규칙은 900px 블록 **뒤**에 있어야 한다 (같은 특이도, 파일 순서)
+- **모바일 실측 (375px, 2026-08-16)**: 홈 문서 4,193 → **3,554px** (의원 카드 압축 · 진입 카드 설명 2줄 클램프 · 스트립 설명 숨김 · 브리핑 본문 3줄).
+  의원 상세는 **7,330px** — 분석 탭 카드 5장(표결 성향 1,733 · 대표발의 1,437 · 발언 1,337 · 정당협력 913 · KPI 469)이 6,179px 로
+  구조적이다. `.ov-toc` 칩이 점프를 맡는다. 더 줄이려면 모바일에서 카드 접기(아코디언)가 다음 후보
 - 홈은 `.pb-section` 여백을 72 → **48px** 로 조인다 (페이지 로컬 오버라이드)
 - 왜: 홈이 "국회는 이렇다"(숫자)로 시작했는데 이 사이트의 차별점은 **"의원 한 명 한 명이 이렇다"** 다. 남의 좌표를 보고 나면
   "나는 어디지" 가 다음 질문이라 바로 아래가 「나와 맞는 의원」이다
@@ -2594,7 +2608,7 @@ PC/모바일 동일 패턴으로 통일.
 | `billCategories.js` | (모듈) | 16종 카테고리·정의·tie-breaker 공유 (분석/재분류 배치가 import) |
 | `calcGroupAxisAvg.js` | DB 집계 | 인구 그룹별 4축 평균 일배치 (밸런스 게임 단계 4 비교용). 'all' + (gender × age_group), user_count >= 50 만 평균 채움 |
 | `calcPoliticianAxis.js` | DB 집계 | `bill_axis_mapping × bill_co_proposers`(v2, 기본) 또는 `× bill_votes`(v1) → `politician_axis_score`. 축당 서명 5건 미만·안보축은 NULL. 인자 `--version v2` `--source coproposers|votes` `--min-votes 1`. 분포 히스토그램 + 정당별 평균 검증 출력. **v2 전환 2026-08-16** — 위 「의원 성향 좌표 v2」 |
-| `mapBillAxisPilot.js` | 법안 원문 + Claude Haiku 4.5 | **법안-축 매핑 확장 파일럿** (2026-08-16). 축·방향·confidence 분류 → `bill_axis_mapping_pilot`, (축×방향) 8셀 정원까지 채움. `--target` `--max-candidates` `--select-only` `--dry-run`. 크론 아님 — 수동 |
+| `mapBillAxisPilot.js` | 법안 원문 + Claude Haiku 4.5 | **법안-축 AI 매핑** (2026-08-16). 축·방향·confidence 분류 → `bill_axis_mapping_pilot`, (축×방향) 8셀 정원까지 채움 → 결정적 균형 선별 → `--sync-v2` 로 `bill_axis_mapping` v2 미러링. `--target` `--max-candidates` `--select-only` `--sync-v2` `--dry-run`. **크론 아님 — 분기 1회 로컬** |
 | `validateAxisPilot.js` | DB 집계 | 파일럿 매핑 × 공동발의 좌표 검증 (η²·탈락률·분할-반 신뢰도·확장 상한). 수동 |
 | `refreshCrossPartyVote.js` | DB 집계 | `politician_cross_party_vote` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~0.4초). 의원 목록의 격차 필터·정렬이 이걸 읽는다. **syncBills·syncVotes 다음에 실행** |
 | `refreshDissent.js` | DB 집계 | `politician_dissent` MV 갱신 (`REFRESH ... CONCURRENTLY`). "숫자로 본 국회"의 소신 표결이 이걸 읽는다. **syncPoliticians·syncVotes 다음에 실행** |

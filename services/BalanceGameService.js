@@ -2,13 +2,10 @@
 import BalanceGameDao from '../daos/BalanceGameDao.js';
 import logger from '../utils/logger.js';
 
+import { AXIS_META } from '../utils/axisConfig.js';
 export const MAPPING_VERSION = 'v1';
-export const AXES = {
-    economy:     { label: '경제',       left: '시장 자율',     right: '정부 개입' },
-    social:      { label: '사회·문화',   left: '전통·질서',     right: '자율·다양성' },
-    security:    { label: '안보·외교',   left: '동맹·대북강경', right: '자주·대북대화' },
-    institution: { label: '정치제도',     left: '안정·기존질서', right: '개혁·재편' }
-};
+// 🔴 축 이름·양끝 라벨은 utils/axisConfig.js AXIS_META 가 단일 소스 — 진단 화면과 의원 화면이 같은 말을 해야 한다 (2026-08-16)
+export const AXES = Object.fromEntries(Object.entries(AXIS_META).map(([k, m]) => [k, { label: m.name, left: m.Lx, right: m.Rx }]));
 
 const VALID_ANSWERS = new Set(['A', 'B', 'C']);
 

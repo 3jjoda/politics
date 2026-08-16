@@ -76,7 +76,6 @@
   @media (max-width: 768px) {
     .home-hero { padding: calc(var(--nav-h) + 24px) 16px 28px; }
     .hero-brief-s { display: none; }
-    .spot-cards { grid-template-columns: 1fr; }
     /* 모바일 여백·폰트 스케일 */
     .pb-section { padding: 48px 12px; }
   }
@@ -90,35 +89,42 @@
      막대 문법은 의원 상세 `.pv-band` 와 같다 (왼끝 L · 오른끝 R · 골드 점 = 의원). 여기선 비교 대상이 "나" 가 아니라
      **소속 정당 평균**이라 눈금(세로 선)으로 그린다. 정당색 금지 — 골드·무채색만 */
   .spot { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--border); }
-  .spot-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
-  .spot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-  .spot-title { font-size: 13px; font-weight: 800; color: var(--sub); }
-  .spot-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--sub2); }
-  .spot-legend .spot-dot, .spot-legend .spot-tick { position: static; margin: 0 2px 0 6px; }
+  .spot-cards { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
+  /* 제목 바로 옆에 범례 — 양끝으로 갈라두면 제목과 무관해 보인다 */
+  .spot-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .spot-title { font-size: 15px; font-weight: 800; color: var(--text); }
+  .spot-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--sub); }
+  .spot-legend .spot-dot, .spot-legend .spot-tick { position: static; margin: 0 4px 0 10px; }
+  /* 카드 = 가로 전체폭. 왼쪽 인적사항 220px | 오른쪽 막대 3줄. 3단(399px)은 글자가 10px 까지 내려가 안 읽혔다 (사용자 지적) */
   .spot-card {
-    display: block; padding: 12px 16px 12px;
+    display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 20px; align-items: center;
+    padding: 14px 20px;
     background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
     text-decoration: none; color: inherit;
     transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
   }
   .spot-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-  .spot-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
-  .spot-avatar { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; overflow: hidden; }
-  .spot-name { font-size: 15px; font-weight: 800; color: var(--text); white-space: nowrap; }
-  .spot-meta { font-size: 12px; color: var(--sub2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .spot-more { margin-left: auto; font-size: 11.5px; color: var(--accent2); white-space: nowrap; }
-  .spot-rows { margin-top: 8px; display: grid; gap: 5px; }
-  .spot-row { display: grid; grid-template-columns: 56px 26px minmax(0, 1fr) 26px; align-items: center; column-gap: 8px; }
-  .spot-ax { font-size: 12px; font-weight: 700; color: var(--sub); }
-  .spot-end { font-size: 10.5px; color: var(--sub2); white-space: nowrap; }
+  .spot-who { display: grid; grid-template-columns: 48px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px; align-items: center; min-width: 0; }
+  .spot-avatar { grid-row: 1 / 3; width: 48px; height: 48px; border-radius: 50%; overflow: hidden; }
+  .spot-name { font-size: 17px; font-weight: 800; color: var(--text); white-space: nowrap; }
+  .spot-meta { font-size: 12.5px; color: var(--sub2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spot-more { grid-column: 2; font-size: 12px; color: var(--accent2); white-space: nowrap; margin-top: 2px; }
+  .spot-rows { display: grid; gap: 8px; }
+  .spot-row { display: grid; grid-template-columns: 150px 84px minmax(0, 1fr) 84px; align-items: center; column-gap: 10px; }
+  .spot-ax { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+  .spot-ax b { font-size: 14px; font-weight: 800; color: var(--text); }
+  .spot-ax small { font-size: 12px; color: var(--sub2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .spot-end { font-size: 12.5px; color: var(--sub); white-space: nowrap; font-weight: 600; }
   .spot-end:nth-child(2) { text-align: right; }
-  .spot-track { position: relative; display: block; height: 16px; }
-  .spot-track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 5px; margin-top: -2.5px; background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; }
-  .spot-mid  { position: absolute; left: 50%; top: 2px; bottom: 2px; border-left: 1px dashed var(--border2); }
-  /* 정당 평균 눈금 — 막대보다 위아래로 삐져나오는 세로선. 상세 페이지의 평균 마커와 같은 언어 */
-  .spot-tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--sub); box-shadow: 0 0 0 1px var(--bg2); display: inline-block; height: 16px; }
-  .spot-dot  { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg2); box-shadow: 0 0 0 1.5px var(--accent); display: inline-block; z-index: 1; }
-  .spot-note { margin: 10px 0 0; font-size: 11.5px; line-height: 1.6; color: var(--sub2); word-break: keep-all; }
+  .spot-end .ls { display: none; }   /* 짧은 라벨은 모바일 전용 */
+  .spot-track { position: relative; display: block; height: 22px; }
+  .spot-track::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 6px; margin-top: -3px; background: var(--bg3); border: 1px solid var(--border); border-radius: 3px; }
+  .spot-mid  { position: absolute; left: 50%; top: 3px; bottom: 3px; border-left: 1px dashed var(--border2); }
+  /* 정당 평균 — 막대 위아래로 삐져나오는 진한 선 + 위 삼각캡. 상임위 참여율·격차 눈금의 평균 마커와 같은 언어 */
+  .spot-tick { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--text); box-shadow: 0 0 0 1.5px var(--bg2); display: inline-block; height: 22px; }
+  .spot-tick::before { content: ''; position: absolute; top: -1px; left: 50%; width: 0; height: 0; margin-left: -4px; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--text); }
+  .spot-dot  { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--accent); border: 2px solid var(--bg2); box-shadow: 0 0 0 1.5px var(--accent); display: inline-block; z-index: 1; }
+  .spot-note { margin: 10px 0 0; font-size: 12px; line-height: 1.6; color: var(--sub2); word-break: keep-all; }
 
   /* 결론 3숫자 스트립 — 히어로에서 내려온 것 (「숫자로 본 국회」 머리). 순서 = 논리 (계류 → 반대 → 불참) */
   .facts-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
@@ -240,13 +246,35 @@
   }
 
   @media (max-width: 900px) {
-    .spot-cards { grid-template-columns: 1fr; }
+    .spot-card { grid-template-columns: 1fr; gap: 12px; }
+    .spot-row { grid-template-columns: 110px 70px minmax(0, 1fr) 70px; }
     .home-bf { grid-template-columns: 1fr; }
     .match-grid, .explore-grid, .facts-strip { grid-template-columns: 1fr; }
   }
   @media (max-width: 768px) {
     .fact-num { font-size: 26px; }
-    .spot-row { grid-template-columns: 48px 24px minmax(0, 1fr) 24px; }
+    /* 모바일 스크롤 피로 — 진입 카드 설명은 2줄, 브리핑 본문은 3줄까지만. 진입 카드는 세로 여백도 조인다 */
+    .explore-card { padding: 16px 18px; }
+    .explore-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .bf-lead-body { -webkit-line-clamp: 3; }
+    .facts-strip { gap: 8px; }
+    .fact-cell { padding: 12px 14px; }
+    .fact-desc { display: none; }   /* 모바일은 큰 숫자 + 제목만 — 설명은 누르면 나오는 페이지가 한다 */
+    /* ⚠️ 900px 블록 뒤에 있어야 한다 — 같은 특이도라 파일 순서가 우선순위다.
+       모바일은 축 행을 **한 줄** 유지 (세 줄로 접으면 카드가 337px, 3장 1,197px 로 홈의 1/4 을 먹었다 — 실측).
+       양끝은 짧은 라벨(시장/개입)로, 긴 형은 .spot-end 의 data-long 을 ::after 로… 대신 축 이름 아래 설명이 남는다 */
+    .spot-card { padding: 12px 14px; gap: 10px; }
+    .spot-who { grid-template-columns: 40px minmax(0, 1fr); }
+    .spot-avatar { width: 40px; height: 40px; }
+    .spot-name { font-size: 15px; }
+    .spot-more { display: none; }
+    .spot-rows { gap: 6px; }
+    .spot-row { grid-template-columns: 82px 30px minmax(0, 1fr) 30px; column-gap: 6px; }
+    .spot-ax b { font-size: 13px; }
+    .spot-ax small { font-size: 10.5px; }
+    .spot-end { font-size: 11px; }
+    .spot-end .lx { display: none; }
+    .spot-end .ls { display: inline; }
     .bf-lead-title { font-size: 20px; }
     .bf-lead { padding: 20px; }
   }
@@ -316,14 +344,14 @@
             <div class="spot-rows">
               <% AXIS.MATCH_AXES.forEach((k) => { const v = Number(m[k]); const pv = Number(m['party_' + k]); const showAvg = Number(m.party_n) >= 3; %>
                 <div class="spot-row">
-                  <span class="spot-ax"><%= AM[k].name %></span>
-                  <span class="spot-end"><%= AM[k].L %></span>
-                  <span class="spot-track" title="<%= AM[k].name %>: 의원 <%= (v >= 0 ? '+' : '') + v.toFixed(2) %><%= showAvg ? ' · ' + m.party_name + ' 평균 ' + (pv >= 0 ? '+' : '') + pv.toFixed(2) : '' %>">
+                  <span class="spot-ax"><b><%= AM[k].name %></b><small><%= AM[k].short %></small></span>
+                  <span class="spot-end"><span class="lx"><%= AM[k].Lx %></span><span class="ls"><%= AM[k].L %></span></span>
+                  <span class="spot-track" title="<%= AM[k].name %> — 왼쪽 <%= AM[k].Lx %> ↔ 오른쪽 <%= AM[k].Rx %> · 의원 <%= (v >= 0 ? '+' : '') + v.toFixed(2) %><%= showAvg ? ' · ' + m.party_name + ' 평균 ' + (pv >= 0 ? '+' : '') + pv.toFixed(2) : '' %>">
                     <i class="spot-mid"></i>
                     <% if (showAvg) { %><i class="spot-tick" style="left:<%= pct(pv) %>%"></i><% } %>
                     <i class="spot-dot" style="left:<%= pct(v) %>%"></i>
                   </span>
-                  <span class="spot-end"><%= AM[k].R %></span>
+                  <span class="spot-end"><span class="lx"><%= AM[k].Rx %></span><span class="ls"><%= AM[k].R %></span></span>
                 </div>
               <% }); %>
             </div>

@@ -28,9 +28,12 @@ export const UNMEASURED_STATS = {
     security: { classified: 18590, mapped: 312, scarceDir: '자주', scarceN: 59, otherDir: '동맹', otherN: 253 },
 };
 
+// 🔴 양끝 라벨은 **긴 형(Lx/Rx)이 기본**이다. 짧은 형(L/R)은 폭이 없는 곳(홈 카드·범례)에서만 쓰고,
+//    `short` 는 홈 카드처럼 폭이 없는 곳의 축 설명 한 조각(무엇을 다루는 축인지). `시장`·`안정`·`전통` 만 두면 무엇의 어느 쪽인지 안 읽힌다 (사용자 지적).
+//    services/BalanceGameService.js 의 AXES(문항 화면)와 같은 어휘 — 두 곳이 갈리면 진단 화면과 의원 화면이 다른 말을 한다
 export const AXIS_META = {
-    economy:     { name: '경제',      L: '시장', R: '개입' },
-    social:      { name: '사회·문화', L: '전통', R: '자율' },
-    security:    { name: '안보·외교', L: '동맹', R: '자주' },
-    institution: { name: '정치제도',  L: '안정', R: '개혁' },
+    economy:     { name: '경제',      L: '시장', R: '개입', Lx: '시장 자율',     Rx: '정부 개입',   short: '세제·규제·노동',      desc: '세제·규제·노동·공공성 법안에서 시장에 맡기는 쪽인가, 정부가 개입하는 쪽인가' },
+    social:      { name: '사회·문화', L: '전통', R: '자율', Lx: '전통·질서',     Rx: '자율·다양성', short: '가족·형벌·이민', desc: '가족·형벌·이민·표현 등에서 질서와 전통을 지키는 쪽인가, 개인의 자율과 다양성을 넓히는 쪽인가' },
+    security:    { name: '안보·외교', L: '동맹', R: '자주', Lx: '동맹·대북강경', Rx: '자주·대북대화', short: '한미동맹·대북',      desc: '한미동맹·대북 강경 쪽인가, 자주·대화 쪽인가 (입법 기록으로는 잴 수 없어 좌표 없음)' },
+    institution: { name: '정치제도',  L: '안정', R: '개혁', Lx: '현 제도 유지',   Rx: '제도 개혁',   short: '검찰·선거·국회', desc: '검찰·사법·선거·국회 권한 등 권력 구조를 지금대로 두는 쪽인가, 바꾸는 쪽인가' },
 };

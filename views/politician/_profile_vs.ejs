@@ -50,8 +50,8 @@
        let direction;
        if (uMid && pMid)          direction = '둘 다 중도';
        else if (uMid || pMid)     direction = '한쪽 중도';
-       else if (uV > 0 && pV > 0) direction = `둘 다 ${SIDE[axis].R} 쪽`;
-       else if (uV < 0 && pV < 0) direction = `둘 다 ${SIDE[axis].L} 쪽`;
+       else if (uV > 0 && pV > 0) direction = `둘 다 ${SIDE[axis].Rx} 쪽`;
+       else if (uV < 0 && pV < 0) direction = `둘 다 ${SIDE[axis].Lx} 쪽`;
        else                       direction = '반대 방향';
        return { direction, intensity, near: diff < 0.25 };
      };
@@ -111,10 +111,10 @@
     <% AXES.forEach((a) => {
          if (a.unmeasured) { %>
       <div class="pv-row is-unmeasured">
-        <div class="pv-row-name"><b><%= a.name %></b><small>매핑 후보 <%= nfv(US.mapped) %>건</small></div>
-        <span class="pv-end"><%= SIDE.security.L %></span>
+        <div class="pv-row-name"><b><%= a.name %></b><small><%= SIDE.security.desc %></small></div>
+        <span class="pv-end"><%= SIDE.security.Lx %></span>
         <div class="pv-track is-off"><span class="pv-off-label">좌표 없음</span></div>
-        <span class="pv-end"><%= SIDE.security.R %></span>
+        <span class="pv-end"><%= SIDE.security.Rx %></span>
         <div class="pv-row-read">국회에 안보 법안 자체가 드뭅니다 — 법안 <%= nfv(US.classified) %>건을 분류해도
           <b><%= US.scarceDir %></b> 방향은 <b><%= US.scarceN %>건</b>뿐(<%= US.otherDir %> <%= US.otherN %>건)이라 좌표를 만들지 않고 일치도에서 뺍니다.</div>
       </div>
@@ -125,15 +125,15 @@
          const lo = Math.min(pct(uV), pct(pV)), hi = Math.max(pct(uV), pct(pV));
     %>
       <div class="pv-row<%- weak ? ' is-weak' : (r.near ? ' is-near' : '') %>">
-        <div class="pv-row-name"><b><%= a.name %></b><small>법안 <%= MAPPED(a.key) != null ? nfv(MAPPED(a.key)) + '건 매핑' : '' %></small></div>
-        <span class="pv-end"><%= SIDE[a.key].L %></span>
-        <div class="pv-track" title="왼쪽 끝 −1(<%= SIDE[a.key].L %>) ~ 오른쪽 끝 +1(<%= SIDE[a.key].R %>)">
+        <div class="pv-row-name"><b><%= a.name %></b><small><%= SIDE[a.key].desc %><% if (MAPPED(a.key) != null) { %> · 법안 <%= nfv(MAPPED(a.key)) %>건 매핑<% } %></small></div>
+        <span class="pv-end"><%= SIDE[a.key].Lx %></span>
+        <div class="pv-track" title="왼쪽 끝 −1(<%= SIDE[a.key].Lx %>) ~ 오른쪽 끝 +1(<%= SIDE[a.key].Rx %>)">
           <i class="pv-mid"></i>
           <span class="pv-gap" style="left:<%= lo.toFixed(1) %>%;width:<%= (hi - lo).toFixed(1) %>%"></span>
           <span class="pv-mk is-pol" style="left:<%= pct(pV).toFixed(1) %>%" title="<%= politician.name %> <%= fmt(pV) %>"></span>
           <span class="pv-mk is-mine" style="left:<%= pct(uV).toFixed(1) %>%" title="나 <%= fmt(uV) %>"></span>
         </div>
-        <span class="pv-end"><%= SIDE[a.key].R %></span>
+        <span class="pv-end"><%= SIDE[a.key].Rx %></span>
         <div class="pv-row-read">
           <% if (weak) { %>
             <span class="pv-weak">의원 <%= Math.round(_spread(a.key) * 100) %>%가 같은 값이라 이 축은 사람을 가르지 못합니다</span>
