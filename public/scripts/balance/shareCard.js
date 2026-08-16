@@ -359,7 +359,7 @@
           ctx.font = font(400, 20, SANS); ctx.fillStyle = T.sub2;
           ctx.fillText('의원 비교 제외', pad + nw + 12, y + 29);
         }
-        y += 30 + g(story ? 30 : 24);   // 마커 라벨 자리(위) 포함
+        y += 30 + g(story ? 40 : 34);   // 마커 삼각형+라벨 자리(위) 포함
         const th = 16, tx = pad + labW, tw = cw - labW * 2, cy = y + th / 2;
         const inner = tw / 2 - 34;      // 핸들(반지름 22)이 트랙 끝을 넘지 않게
         const PX = (val) => tx + tw / 2 + Math.max(-1, Math.min(1, val)) * inner;
@@ -376,19 +376,30 @@
           const marks = [];
           farB.forEach((m, i) => { const mv = Number(m[AXK[a.key]]); if (Number.isFinite(mv)) marks.push({ x: PX(mv), label: 'ABC'[i], on: false }); });
           nearB.forEach((m, i) => { const mv = Number(m[AXK[a.key]]); if (Number.isFinite(mv)) marks.push({ x: PX(mv), label: String(i + 1), on: true }); });
+          // 가까운 마커끼리(<28px)는 한 덩어리로 묶어 삼각형 하나 + "ABC" 한 줄 — 세로로 쌓으면 개별 식별이 안 된다 (피드백)
           marks.sort((p, q) => p.x - q.x);
-          const rows = [];
+          const groups = [];
           marks.forEach(mk => {
-            let lv = 0;
-            while (rows[lv] !== undefined && mk.x - rows[lv] < 26) lv++;
-            rows[lv] = mk.x; mk.lv = lv;
+            const g0 = groups[groups.length - 1];
+            if (g0 && mk.x - g0.xs[g0.xs.length - 1] < 28) { g0.xs.push(mk.x); g0.items.push(mk); }
+            else groups.push({ xs: [mk.x], items: [mk] });
           });
-          marks.forEach(mk => {
-            const col = mk.on ? T.gold : greyM;
+          groups.forEach(gr => {
+            const gx = gr.xs.reduce((a2, b2) => a2 + b2, 0) / gr.xs.length;
+            const anyOn = gr.items.some(i => i.on), allOn = gr.items.every(i => i.on);
+            const col = allOn ? T.gold : anyOn ? T.gold : greyM;
+            // 삼각형 (크게)
             ctx.fillStyle = col;
-            ctx.beginPath(); ctx.moveTo(mk.x, y - 2); ctx.lineTo(mk.x - 7, y - 12); ctx.lineTo(mk.x + 7, y - 12); ctx.closePath(); ctx.fill();
-            ctx.font = font(800, 15, SANS); ctx.fillStyle = mk.on ? T.goldT : greyM;
-            ctx.textAlign = 'center'; ctx.fillText(mk.label, mk.x, y - 16 - mk.lv * 16); ctx.textAlign = 'left';
+            ctx.beginPath(); ctx.moveTo(gx, y - 2); ctx.lineTo(gx - 10, y - 16); ctx.lineTo(gx + 10, y - 16); ctx.closePath(); ctx.fill();
+            // 라벨 — 골드/회색 섞이면 각 글자를 제 색으로
+            ctx.font = font(800, 21, SANS); ctx.textAlign = 'left';
+            // 묶인 라벨은 위치가 아니라 이름 순으로 ("32" 보다 "23", "BCA" 보다 "ABC" 가 읽힌다 — 어차피 한 자리다)
+            const parts = gr.items.slice().sort((a2, b2) => a2.label.localeCompare(b2.label)).map(i => ({ t: i.label, c: i.on ? T.goldT : greyM }));
+            const gap = 3;
+            const total = parts.reduce((w, p_) => w + ctx.measureText(p_.t).width, 0) + gap * (parts.length - 1);
+            let lx = gx - total / 2;
+            const yl = y - 22;
+            parts.forEach(p_ => { ctx.fillStyle = p_.c; ctx.fillText(p_.t, lx, yl); lx += ctx.measureText(p_.t).width + gap; });
           });
         }
         if (has) {
@@ -614,8 +625,8 @@
   let mode = (new URLSearchParams(location.search).get('mode') === 'feed') ? 'feed' : 'story';
   let theme = (new URLSearchParams(location.search).get('theme') === 'dark') ? 'dark' : 'light';
   const themeBtns = document.querySelectorAll('[data-sc-theme]');
-  // 기본은 지도형 — 카드에 "시각적 물체" 를 주는 쪽. 막대형은 4축을 다 보여주고 싶을 때
-  let layout = (new URLSearchParams(location.search).get('layout') === 'bars') ? 'bars' : 'map';
+  // 기본은 막대형 — 4축 + 축별 의원 마커가 지도형보다 정보가 많다 (막대형 피드백으로 뒤집음). 지도형은 전체 분포를 보고 싶을 때
+  let layout = (new URLSearchParams(location.search).get('layout') === 'map') ? 'map' : 'bars';
   const layoutBtns = document.querySelectorAll('[data-sc-layout]');
   let ready = false;
 
