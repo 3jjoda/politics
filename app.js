@@ -70,6 +70,11 @@ app.locals.asset = (p) => `${p}${p.includes('?') ? '&' : '?'}v=${ASSET_VER}`;
 const ADSENSE_CLIENT_ID = (process.env.ADSENSE_CLIENT_ID || '').trim();
 app.locals.adsenseClientId = ADSENSE_CLIENT_ID;
 
+/* ===== 카카오 JS 키 (2026-08-16) — 성향 카드 「카카오톡으로 보내기」 (이미지 카드 + 링크 버튼 한 메시지)
+   OAuth 의 KAKAO_CLIENT_ID(REST 키)와 **다른 키**다. Kakao Developers → 앱 → 앱 키 → JavaScript 키.
+   플랫폼 → Web 에 https://dangmalsa.kr (+ 로컬이면 http://localhost:3000) 도메인 등록 필수. 없으면 버튼이 안 나온다 */
+app.locals.kakaoJsKey = (process.env.KAKAO_JS_KEY || '').trim();
+
 /* ===== 검색엔진 사이트 소유 확인 =====
    네이버 서치어드바이저 / 구글 서치콘솔 이 발급하는 인증 코드. 값이 있을 때만
    layout.ejs <head> 에 <meta name="…-site-verification"> 이 나간다.

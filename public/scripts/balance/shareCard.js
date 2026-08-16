@@ -739,6 +739,39 @@
     say('debug 모드 — 폴드 펼친 상태에서 A~E 눌러보고 어느 게 정상인지 알려주세요');
   }
 
+  // ── 카카오톡으로 보내기 — 이미지 카드 + 링크 버튼이 **한 메시지**로 간다 (시스템 시트는 이미지만 가고 링크가 안 실린다) ──
+  //    이미지는 Kakao.Share.uploadImage 로 카카오 CDN 에 올려 쓴다 (우리 서버 저장 없음). JS 키(KAKAO_JS_KEY) 가 있을 때만 버튼이 있다
+  const kakaoBtn = document.getElementById('sc-kakao');
+  if (kakaoBtn && window.Kakao && window.__KAKAO_JS_KEY__) {
+    try { if (!window.Kakao.isInitialized()) window.Kakao.init(window.__KAKAO_JS_KEY__); } catch (e) {}
+    kakaoBtn.addEventListener('click', async () => {
+      if (!ready || busy) return; busy = true;
+      try {
+        setStatus('카카오톡으로 보낼 준비 중…');
+        const blob = readyBlob || await toBlob();
+        const file = new File([blob], fileName(), { type: 'image/png' });
+        const up = await window.Kakao.Share.uploadImage({ file: [file] });
+        const imageUrl = up && up.infos && up.infos.original && up.infos.original.url;
+        if (!imageUrl) throw new Error('upload');
+        const link = `https://${D.siteHost}/balance-game`;
+        const M = MODES[mode] || MODES.feed;
+        window.Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: `나는 ${typeName()}`,
+            description: (D.type && D.type.sub) ? D.type.sub : '국회의원 좌표 속 나의 위치',
+            imageUrl, imageWidth: M.w, imageHeight: M.h,
+            link: { mobileWebUrl: link, webUrl: link }
+          },
+          buttons: [{ title: '내 유형 알아보기', link: { mobileWebUrl: link, webUrl: link } }]
+        });
+        setStatus('');
+      } catch (e) {
+        setStatus('카카오톡 보내기에 실패했습니다. 공유하기나 이미지 저장을 이용하세요.');
+      } finally { setTimeout(() => { busy = false; }, 800); }
+    });
+  }
+
   modeBtns.forEach(b => b.addEventListener('click', () => { mode = b.dataset.scMode; render(); }));
   themeBtns.forEach(b => b.addEventListener('click', () => { theme = b.dataset.scTheme; render(); }));
   layoutBtns.forEach(b => b.addEventListener('click', () => { layout = b.dataset.scLayout; render(); }));

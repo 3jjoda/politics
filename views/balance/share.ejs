@@ -32,6 +32,9 @@
   .sc-btn.secondary { background: var(--bg2); color: var(--accent2); }
   .sc-btn.secondary:hover { background: #FBF5EA; }
   .sc-btn[hidden] { display: none; }
+  .sc-btn.kakao { background: #FEE500; color: #191919; border-color: #FEE500; flex-direction: column; gap: 2px; line-height: 1.2; }
+  .sc-btn.kakao small { font-size: 11px; font-weight: 500; color: #4a4a4a; }
+  .sc-btn.kakao:hover { background: #F5DC00; }
   .sc-status { min-height: 1.4em; font-size: 12.5px; color: var(--sub); text-align: center; word-break: keep-all; }
 
   .sc-note { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; font-size: 13px; color: var(--sub); line-height: 1.75; word-break: keep-all; }
@@ -79,6 +82,9 @@
         <button type="button" class="sc-mode" data-sc-theme="dark" aria-pressed="false">어두운 판</button>
       </div>
       <button type="button" class="sc-btn primary" id="sc-share">공유하기</button>
+      <% if (locals.kakaoJsKey) { %>
+      <button type="button" class="sc-btn kakao" id="sc-kakao">카카오톡으로 보내기<small>이미지 + 링크 버튼</small></button>
+      <% } %>
       <button type="button" class="sc-btn secondary" id="sc-save">이미지 저장</button>
       <button type="button" class="sc-btn secondary" id="sc-copy">클립보드에 복사</button>
       <div class="sc-status" id="sc-status" aria-live="polite">카드를 그리는 중…</div>
@@ -108,4 +114,8 @@
 </div>
 
 <script>window.__SHARE__ = <%- esc(share) %>;</script>
+<% if (locals.kakaoJsKey) { %>
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.4/kakao.min.js" crossorigin="anonymous"></script>
+<script>window.__KAKAO_JS_KEY__ = <%- JSON.stringify(kakaoJsKey) %>;</script>
+<% } %>
 <script src="<%= asset('/scripts/balance/shareCard.js') %>" defer></script>

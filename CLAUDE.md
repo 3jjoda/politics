@@ -761,6 +761,10 @@ public/scripts/balance/shareCard.js   🔴 그림은 전부 여기 — canvas 2D
   🔴 **share payload 는 `{ files, text }` 다 — `files` 만 넘기지 말 것.** 삼성 인터넷 펼친 폴드(태블릿 모드)에서 files 만 넘기면 시트가 깜빡이며 재생성을 반복했고
   (2026-08-16 실기기 영상), `?debug=1` 실험 모드로 5가지 형태를 눌러본 결과 **files + text 만 정상**이었다. 카톡·인스타는 파일이 있으면 text 를 버리므로 화면 차이는 없다.
   삼성 인터넷에서 그래도 실패·취소하면 다음부턴 저장 폴백. `?debug=1` 실험 버튼(A~E)은 남겨뒀다 — 다른 기기에서 또 깨지면 그걸로 형태를 찾는다
+- 🔴 **카카오톡은 시스템 시트로 보내면 이미지만 가고 링크가 안 실린다** (사용자 지적: 이미지 속 주소를 쳐서 들어올 사람은 없다).
+  → **「카카오톡으로 보내기」 버튼**(`#sc-kakao`, `KAKAO_JS_KEY` 있을 때만): Kakao JS SDK `Share.uploadImage`(카카오 CDN, 우리 저장 없음) →
+  `Share.sendDefault(feed)` 로 **이미지 카드 + `내 유형 알아보기` 버튼 한 메시지**. 제목은 `나는 {유형}`, 설명은 유형 부제.
+  인스타 스토리는 여전히 링크 스티커 수동, X·쓰레드는 시스템 시트가 파일+텍스트를 같이 받는다
 - 공유: `canvas.toBlob → File → navigator.canShare({files})` 면 시스템 시트(모바일 — 인스타·카톡이 여기 뜬다), 아니면 `<a download>`.
   iOS 에서 download 가 안 먹으면 새 탭에 dataURL 을 띄운다(길게 눌러 저장). 데스크톱은 공유 버튼을 숨긴다 — 저장이 곧 공유
   - **`클립보드에 복사`** 버튼(`ClipboardItem` PNG 하나)이 따로 있다 — macOS 공유 시트의 "복사하기" 는 파일 참조+이미지를 같이 넣어
@@ -3003,6 +3007,11 @@ ADMIN_EMAILS=you@example.com
 # Google AdSense (2026-08-10) — 승인 후에만 세팅. 비워두면 광고 관련 출력이 전부 꺼진다
 ADSENSE_CLIENT_ID=ca-pub-0000000000000000
 
+# 카카오 JS 키 (2026-08-16) — 성향 카드 「카카오톡으로 보내기」(이미지 카드 + 링크 버튼). OAuth REST 키(KAKAO_CLIENT_ID)와 다른 키.
+#   Kakao Developers → 내 애플리케이션 → 앱 키 → **JavaScript 키**. 플랫폼 → Web → 사이트 도메인에 https://dangmalsa.kr 등록 (로컬 테스트면 http://localhost:3000 도).
+#   없으면 버튼이 렌더되지 않는다 (시스템 공유 시트만)
+KAKAO_JS_KEY=
+
 # 검색엔진 소유 확인 (2026-08-16) — 콘솔이 준 <meta content="…"> 의 **값만** 넣는다 (태그 전체 X).
 #   있을 때만 layout.ejs <head> 에 <meta name="naver-site-verification"> / google-site-verification 이 나간다.
 #   네이버 서치어드바이저(searchadvisor.naver.com) → 사이트 등록 → HTML 태그 방식. 인증 후 sitemap.xml 제출
@@ -3021,6 +3030,7 @@ GOOGLE_SITE_VERIFICATION=
 | `GOOGLE_*` / `KAKAO_*` | ✅ | — |
 | `ANTHROPIC_API_KEY` | — | ✅ **필수** — `batch:daily` 의 `genBriefing` 이 쓴다 (없으면 폴백 카드만 쌓임) |
 | `ADSENSE_CLIENT_ID` | 승인 후 ✅ | — |
+| `KAKAO_JS_KEY` | ✅ (발급 후) | — |
 | `NAVER_SITE_VERIFICATION` / `GOOGLE_SITE_VERIFICATION` | ✅ (발급 후) | — |
 | `ADMIN_EMAILS` | ✅ | — |
 
