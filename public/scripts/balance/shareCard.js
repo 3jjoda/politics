@@ -657,6 +657,10 @@
     toBlob().then(b => { if (seq === blobSeq) readyBlob = b; }).catch(() => {});
   }
   let busy = false;   // 공유/저장 재진입 차단 — 시트가 열렸다 닫혔다 반복하는 현상 방지
+  // 삼성 인터넷은 Web Share 파일 공유 시트가 불안정하다 (2026-08-16 실기기 영상: 시트가 로딩 상태로 떴다 사라졌다 반복).
+  // 한 번은 시도하되, 실패·취소되면 다음부터는 저장 경로로 보낸다
+  const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
+  let shareFailedOnce = false;
   async function save() {
     if (busy) return; busy = true;
     try {
@@ -676,6 +680,9 @@
   }
   async function share() {
     if (busy) return; busy = true;
+    if (isSamsung && shareFailedOnce) {   // 삼성 인터넷 2회차부터는 저장으로
+      busy = false; await save(); setStatus('삼성 인터넷은 공유 시트가 불안정해 저장으로 대신합니다. 갤러리에서 카톡·인스타에 올리세요.'); return;
+    }
     try {
       // 미리 만들어 둔 PNG 가 있으면 await 없이 바로 시트를 연다 (사용자 제스처 안에서)
       const blob = readyBlob || await toBlob();
@@ -688,7 +695,8 @@
       busy = false;
       await save();   // 시스템 공유 시트가 없으면 저장으로
     } catch (e) {
-      if (e && e.name === 'AbortError') return;   // 사용자가 시트를 닫음
+      shareFailedOnce = true;
+      if (e && e.name === 'AbortError') { if (isSamsung) setStatus('공유 시트가 닫혔어요. 다시 누르면 이미지 저장으로 안내합니다.'); return; }
       if (e && e.name === 'NotAllowedError') { setStatus('브라우저가 공유를 막았습니다. 이미지 저장을 이용하세요.'); return; }
       setStatus('공유에 실패했습니다. 이미지 저장을 이용하세요.');
     } finally { setTimeout(() => { busy = false; }, 800); }
