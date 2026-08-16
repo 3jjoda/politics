@@ -1,212 +1,118 @@
 <%
+  /* /balance-game — 성향 진단 진입 (2026-08-16 재구성)
+     🔴 이 페이지는 "게임팩 목록" 이 아니라 **결과로 가는 문**이다.
+        미완료: 무엇을 얻는지(좌표 · 가까운 의원 · 공유 카드) → 시작 버튼
+        완료:   히어로가 곧 내 결과(4축 막대 + 한 줄 요약) + 결과로 할 수 있는 일 3가지 — 공유가 주인공
+     ⚠️ `게임팩`·`매핑` 같은 내부 용어를 첫 화면에 쓰지 않는다 (사용자가 알 이유가 없다) */
   const generalPack = packs.find(p => p.is_general) || null;
   const otherPacks = packs.filter(p => !p.is_general);
-  const isCompleted = Boolean(completed);
+  const isCompleted = Boolean(completed && axisScore);
+  const META = (locals.AXIS && AXIS.AXIS_META) || {};
+  const ORDER = ['economy', 'social', 'security', 'institution'];
+  const val = (k) => { const v = axisScore ? Number(axisScore[k]) : NaN; return Number.isFinite(v) ? v : null; };
+  // 한 줄 요약 — 공유 카드(shareCard.js headline) 와 같은 규칙: |값| ≥ 0.25 인 축을 세기 순으로 2개, 짧은 극 라벨
+  let headline = '';
+  if (isCompleted) {
+    const rows = ORDER.map(k => ({ m: META[k], v: val(k) })).filter(r => r.m && r.v !== null && Math.abs(r.v) >= 0.25)
+                      .sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 2);
+    headline = rows.length ? rows.map(r => `${r.m.name}는 ${r.v > 0 ? r.m.R : r.m.L}`).join(', ') + ' 쪽' : '네 축 모두 중도에 가깝습니다';
+  }
+  const intensity = (v) => { const a = Math.abs(v); return a < 0.25 ? '중도' : a < 0.5 ? '미세하게' : a < 0.75 ? '약간 뚜렷하게' : '뚜렷하게'; };
 %>
 
 <style>
-  .bg-coll-wrap {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 36px 24px 80px;
-  }
+  .bg-coll-wrap { max-width: 980px; margin: 0 auto; padding: 36px 24px 80px; }
 
-  /* 내 좌표 요약 (완료 유저) */
-  .bg-my-card {
-    margin: 0 auto 32px;
-    max-width: 640px;
-    padding: 18px 22px;
-    background: #FAF6EB;
-    border: 1px solid var(--accent);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-  .bg-my-card-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-  }
-  .bg-my-card-axes {
-    flex: 1;
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    font-size: 13px;
-    color: var(--text);
-  }
-  .bg-my-card-axes b { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
-  .bg-my-card a {
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-    border-bottom: 1px solid var(--accent);
-  }
-
-  /* 입문 게임팩 — 큰 카드 */
-  .bg-pack-feature {
+  /* ── 히어로 카드 (미완료 / 완료 공용 껍데기) ── */
+  .bg-hero {
     background: var(--bg2);
     border: 2px solid var(--accent);
     border-radius: 18px;
-    padding: 36px 36px 32px;
-    margin-bottom: 28px;
+    padding: 36px 38px 34px;
     position: relative;
     overflow: hidden;
   }
-  .bg-pack-feature::before {
-    content: '';
-    position: absolute;
-    inset: 0;
+  .bg-hero::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(ellipse at top right, rgba(184,116,12,0.08), transparent 60%);
-    pointer-events: none;
   }
-  .bg-pack-feature-tags {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-    position: relative;
-  }
-  .bg-tag-start {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 999px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .bg-tag-done {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    background: rgba(15,157,110,0.10);
-    color: var(--green);
-    border: 1px solid var(--green);
-    border-radius: 999px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .bg-tag-meta {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    background: var(--bg3);
-    color: var(--sub);
-    border-radius: 999px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-  }
-  .bg-pack-feature-title {
-    font-family: 'Noto Serif KR', serif;
-    font-weight: 900;
-    font-size: 30px;
-    color: var(--text);
-    margin: 0 0 10px;
-    word-break: keep-all;
-    position: relative;
-  }
-  .bg-pack-feature-desc {
-    font-size: 15px;
-    line-height: 1.7;
-    color: var(--sub);
-    margin: 0 0 22px;
-    max-width: 640px;
-    word-break: keep-all;
-    position: relative;
-  }
-  .bg-pack-feature-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 30px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 700;
-    text-decoration: none;
-    transition: background 0.15s, transform 0.15s;
-    position: relative;
-  }
-  .bg-pack-feature-cta:hover { background: var(--accent2); transform: translateY(-1px); }
-  .bg-pack-feature-cta + .bg-pack-feature-cta { margin-left: 8px; }
-  .bg-pack-feature-cta.secondary {
-    background: var(--bg2);
-    color: var(--accent);
-    border: 1px solid var(--accent);
-  }
-  .bg-pack-feature-cta.secondary:hover { background: #FAF6EB; }
+  .bg-hero > * { position: relative; }
+  .bg-hero-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .bg-tag { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .bg-tag-start { background: var(--accent); color: #fff; font-weight: 700; }
+  .bg-tag-done  { background: rgba(15,157,110,0.10); color: var(--green); border: 1px solid var(--green); font-weight: 700; }
+  .bg-tag-meta  { background: var(--bg3); color: var(--sub); }
+  .bg-hero-title { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 32px; line-height: 1.3; color: var(--text); margin: 0 0 10px; word-break: keep-all; }
+  .bg-hero-desc  { font-size: 15px; line-height: 1.75; color: var(--sub); margin: 0 0 22px; max-width: 640px; word-break: keep-all; }
+  .bg-cta { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 30px; background: var(--accent); color: #fff; border-radius: 10px; font-size: 15px; font-weight: 700; text-decoration: none; transition: background .15s, transform .15s; }
+  .bg-cta:hover { background: var(--accent2); transform: translateY(-1px); }
+  .bg-cta.secondary { background: var(--bg2); color: var(--accent2); border: 1px solid var(--accent); }
+  .bg-cta.secondary:hover { background: #FAF6EB; }
+  .bg-hero-foot { margin-top: 14px; font-size: 12.5px; color: var(--sub2); }
 
-  /* 주제팩 영역 (Phase 2) */
-  .bg-topic-section {
-    margin-top: 32px;
-  }
-  .bg-topic-head {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-  .bg-topic-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: 0.04em;
-  }
-  .bg-topic-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--sub2);
-  }
-  .bg-topic-empty {
-    background: var(--bg3);
-    border: 1px dashed var(--border2);
-    border-radius: 12px;
-    padding: 28px 24px;
-    text-align: center;
-    color: var(--sub);
-    font-size: 14px;
-    line-height: 1.7;
-    word-break: keep-all;
-  }
-  .bg-topic-empty strong { color: var(--text); }
-  .bg-topic-empty a {
-    color: var(--accent);
-    text-decoration: none;
-    border-bottom: 1px dashed var(--accent);
-  }
+  /* ── 미완료: 이렇게 나옵니다 3칸 ── */
+  .bg-what { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+  .bg-what-item { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px 20px 18px; }
+  .bg-what-no { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent2); letter-spacing: .08em; margin-bottom: 8px; }
+  .bg-what-title { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 17px; color: var(--text); margin: 0 0 6px; }
+  .bg-what-desc { font-size: 13.5px; line-height: 1.7; color: var(--sub); word-break: keep-all; margin: 0; }
+  /* 3칸 미니 그림 — 정당색 없이 골드/무채색만 */
+  .bg-what-fig { height: 54px; margin-bottom: 12px; display: flex; flex-direction: column; justify-content: center; gap: 7px; }
+  .bg-what-fig .t { height: 6px; border-radius: 3px; background: var(--border); position: relative; }
+  .bg-what-fig .t i { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); box-shadow: 0 0 0 2px var(--bg2); }
+  .bg-what-fig .r { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sub); }
+  .bg-what-fig .r b { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent2); font-family: 'JetBrains Mono', monospace; font-size: 10px; display: inline-flex; align-items: center; justify-content: center; }
+  .bg-what-fig .r span { flex: 1; height: 8px; border-radius: 4px; background: var(--bg3); }
+  .bg-what-fig .card { width: 34px; height: 54px; border-radius: 4px; border: 1.5px solid var(--accent); background: #FAF6EB; position: relative; }
+  .bg-what-fig .card::before { content: ''; position: absolute; left: 5px; right: 5px; top: 8px; height: 4px; background: var(--accent); border-radius: 2px; }
+  .bg-what-fig .card::after { content: ''; position: absolute; left: 5px; right: 12px; top: 18px; height: 3px; background: var(--border2); border-radius: 2px; box-shadow: 0 8px 0 var(--border2), 0 16px 0 var(--border2); }
 
-  /* 보조 링크 */
-  .bg-coll-aux {
-    margin-top: 32px;
-    text-align: center;
-    font-size: 13px;
-    color: var(--sub2);
-  }
-  .bg-coll-aux a {
-    color: var(--sub);
-    text-decoration: none;
-    border-bottom: 1px dashed var(--border2);
-    padding-bottom: 1px;
-  }
-  .bg-coll-aux a:hover { color: var(--accent); border-color: var(--accent); }
+  /* ── 완료: 내 결과 (2단) ── */
+  .bg-result { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 32px; align-items: start; }
+  .bg-res-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent2); letter-spacing: .08em; margin-bottom: 8px; }
+  .bg-res-headline { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 28px; line-height: 1.3; color: var(--text); margin: 0 0 6px; word-break: keep-all; border-left: 4px solid var(--accent); padding-left: 14px; }
+  .bg-res-sub { font-size: 13px; color: var(--sub2); margin: 0 0 22px; padding-left: 18px; }
+  .bg-ax { display: flex; flex-direction: column; gap: 16px; }
+  .bg-ax-row { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .bg-ax-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .bg-ax-name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 15px; color: var(--text); }
+  .bg-ax-name small { font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 12px; color: var(--sub2); margin-left: 8px; }
+  .bg-ax-phrase { font-size: 12.5px; font-weight: 700; color: var(--accent2); white-space: nowrap; }
+  .bg-ax-phrase.is-mid { color: var(--sub); font-weight: 500; }
+  .bg-ax-track { position: relative; height: 8px; border-radius: 4px; background: var(--border); margin: 2px 8px; }
+  .bg-ax-track::before { content: ''; position: absolute; left: 50%; top: -4px; width: 2px; height: 16px; background: var(--border2); transform: translateX(-1px); }
+  .bg-ax-band { position: absolute; top: 0; height: 100%; background: rgba(184,116,12,0.28); border-radius: 4px; }
+  .bg-ax-dot { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); box-shadow: 0 0 0 3px var(--bg2); }
+  .bg-ax-ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); }
+  .bg-actions { display: flex; flex-direction: column; gap: 10px; }
+  .bg-actions .bg-cta { width: 100%; padding: 13px 16px; font-size: 14.5px; }
+  .bg-actions-note { font-size: 12px; color: var(--sub2); line-height: 1.6; word-break: keep-all; margin: 2px 0 0; }
+  .bg-actions-links { margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; }
+  .bg-actions-links a { color: var(--sub); text-decoration: none; border-bottom: 1px dashed var(--border2); }
+  .bg-actions-links a:hover { color: var(--accent); border-color: var(--accent); }
 
+  /* ── 주제별 문항 (준비 중) — 한 줄 ── */
+  .bg-topic-line { margin-top: 26px; padding: 14px 18px; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 10px; font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .bg-topic-line a { color: var(--sub); text-decoration: none; border-bottom: 1px dashed var(--border2); }
+  .bg-topic-line a:hover { color: var(--accent); border-color: var(--accent); }
+  .bg-topic-grid { margin-top: 26px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .bg-topic-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; text-decoration: none; color: var(--text); transition: border-color .15s; }
+  .bg-topic-card:hover { border-color: var(--accent); }
+  .bg-topic-card .n { font-size: 11px; color: var(--sub2); font-family: 'JetBrains Mono', monospace; margin-bottom: 6px; }
+  .bg-topic-card .t { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+  .bg-topic-card .d { font-size: 13px; color: var(--sub); line-height: 1.5; }
+
+  @media (max-width: 900px) {
+    .bg-result { grid-template-columns: 1fr; gap: 22px; }
+    .bg-what { grid-template-columns: 1fr; }
+  }
   @media (max-width: 768px) {
     .bg-coll-wrap { padding: 20px 16px 60px; }
-    .bg-pack-feature { padding: 24px 22px; }
-    .bg-pack-feature-title { font-size: 24px; }
-    .bg-pack-feature-cta { width: 100%; justify-content: center; }
-    .bg-pack-feature-cta + .bg-pack-feature-cta { margin-left: 0; margin-top: 10px; }
+    .bg-hero { padding: 24px 20px 22px; }
+    .bg-hero-title { font-size: 25px; }
+    .bg-res-headline { font-size: 22px; }
+    .bg-cta { width: 100%; }
+    .bg-ax-phrase { white-space: normal; text-align: right; }
   }
 </style>
 
@@ -214,83 +120,102 @@
   <div class="pb-page-header-inner">
     <div>
       <h1 class="pb-page-title">성향 진단</h1>
-      <p class="pb-page-desc">
-        각 게임팩이 같은 4축 좌표를 다른 각도에서 채웁니다. 응답이 쌓일수록 좌표가 정밀해져요. <span style="color:var(--sub2)">· 매핑 <%= mappingVersion %></span>
-      </p>
+      <p class="pb-page-desc">문항에 답하면 경제·사회·안보·정치제도 네 축의 좌표가 나오고, 좌표가 가장 가까운 국회의원을 찾아드립니다.</p>
     </div>
   </div>
 </div>
 
 <div class="bg-coll-wrap">
 
-  <% if (isCompleted && axisScore) { %>
-    <div class="bg-my-card">
-      <span class="bg-my-card-label">📊 내 카드</span>
-      <div class="bg-my-card-axes">
-        <span><%= axes.economy.label %> <b><%= Number(axisScore.economy ?? 0).toFixed(2) %></b></span>
-        <span><%= axes.social.label %> <b><%= Number(axisScore.social ?? 0).toFixed(2) %></b></span>
-        <span><%= axes.security.label %> <b><%= Number(axisScore.security ?? 0).toFixed(2) %></b></span>
-        <span><%= axes.institution.label %> <b><%= Number(axisScore.institution ?? 0).toFixed(2) %></b></span>
-      </div>
-      <a href="/balance-game/reveal">카드 보기 →</a>
+<% if (!isCompleted) { %>
+  <%# ── 미완료: 무엇을 얻는지 → 시작 ── %>
+  <article class="bg-hero">
+    <div class="bg-hero-tags">
+      <span class="bg-tag bg-tag-start">여기서 시작</span>
+      <% if (generalPack) { %><span class="bg-tag bg-tag-meta"><%= generalPack.active_question_count %>문항</span><% } %>
+      <span class="bg-tag bg-tag-meta">약 5분</span>
+      <span class="bg-tag bg-tag-meta">로그인 필요</span>
     </div>
-  <% } %>
-
-  <!-- 입문 게임팩 -->
-  <% if (generalPack) { %>
-    <article class="bg-pack-feature">
-      <div class="bg-pack-feature-tags">
-        <% if (!isCompleted) { %>
-          <span class="bg-tag-start">🎯 여기서 시작하세요</span>
-        <% } else { %>
-          <span class="bg-tag-done">✓ 완료</span>
-        <% } %>
-        <span class="bg-tag-meta"><%= generalPack.active_question_count %>문항</span>
-        <span class="bg-tag-meta">약 5~7분</span>
-        <span class="bg-tag-meta">4축 균형</span>
-      </div>
-      <h2 class="bg-pack-feature-title"><%= generalPack.title %></h2>
-      <p class="bg-pack-feature-desc"><%= generalPack.description %></p>
-      <% if (!isCompleted) { %>
-        <a href="/balance-game/respond?pack=<%= generalPack.id %>" class="bg-pack-feature-cta">
-          시작하기 →
-        </a>
-      <% } else { %>
-        <a href="/balance-game/reveal" class="bg-pack-feature-cta">카드 보기 →</a>
-        <a href="/balance-game/respond?pack=<%= generalPack.id %>" class="bg-pack-feature-cta secondary">다시 풀기</a>
-      <% } %>
-    </article>
-  <% } %>
-
-  <!-- 주제 게임팩 (Phase 2) -->
-  <section class="bg-topic-section">
-    <div class="bg-topic-head">
-      <span class="bg-topic-title">주제 게임팩</span>
-      <span class="bg-topic-meta">준비 중</span>
-    </div>
-    <% if (otherPacks.length === 0) { %>
-      <div class="bg-topic-empty">
-        <strong>곧 추가됩니다.</strong><br>
-        환경·기후 / 사법·검찰 / 노동·복지 / 젠더·가족 등 주제별 게임팩이 비정기적으로 열려요.<br>
-        같은 4축에 매핑되어 풀수록 좌표가 정밀해집니다.
-        <br><br>
-        <a href="/balance-game/mapping">매핑 미리 보기 →</a>
-      </div>
-    <% } else { %>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
-        <% otherPacks.forEach(p => { %>
-          <a href="/balance-game/respond?pack=<%= p.id %>"
-             style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;text-decoration:none;color:var(--text);transition:border-color .15s">
-            <div style="font-size:11px;color:var(--sub2);font-family:'JetBrains Mono',monospace;margin-bottom:6px"><%= p.active_question_count %>문항</div>
-            <div style="font-weight:700;font-size:16px;margin-bottom:4px"><%= p.title %></div>
-            <div style="font-size:13px;color:var(--sub);line-height:1.5"><%= p.description %></div>
-          </a>
-        <% }); %>
-      </div>
+    <h2 class="bg-hero-title">당신과 가장 가까운<br>국회의원은 누구일까요?</h2>
+    <p class="bg-hero-desc">
+      정당 이름이 아니라 <strong>위치</strong>로 봅니다. 의원의 좌표는 소속 정당이 아니라 그 의원이
+      <strong>공동발의로 이름을 올린 법안</strong>에서 만들었습니다. 한 문항씩 저장되니 중간에 나가도 이어서 풀 수 있어요.
+    </p>
+    <% if (generalPack) { %>
+      <a href="/balance-game/respond?pack=<%= generalPack.id %>" class="bg-cta">진단 시작하기 →</a>
     <% } %>
-  </section>
+    <p class="bg-hero-foot">결과는 비공개입니다. 통계에는 성별·연령대만 익명으로 쓰이고, 어느 쪽으로도 이름 붙이지 않습니다.</p>
+  </article>
 
-  <p class="bg-coll-aux">
-    <a href="/balance-game/mapping">매핑 미리 보기</a>
-  </p>
+  <div class="bg-what">
+    <div class="bg-what-item">
+      <div class="bg-what-fig">
+        <div class="t"><i style="left:68%"></i></div>
+        <div class="t"><i style="left:22%"></i></div>
+        <div class="t"><i style="left:51%"></i></div>
+      </div>
+      <div class="bg-what-no">01</div>
+      <h3 class="bg-what-title">네 축의 내 위치</h3>
+      <p class="bg-what-desc">경제 · 사회·문화 · 안보·외교 · 정치제도. 각 축에서 어느 쪽에 얼마나 있는지를 막대 위 점으로 봅니다.</p>
+    </div>
+    <div class="bg-what-item">
+      <div class="bg-what-fig">
+        <div class="r"><b>1</b><span></span></div>
+        <div class="r"><b>2</b><span style="max-width:70%"></span></div>
+        <div class="r"><b>3</b><span style="max-width:55%"></span></div>
+      </div>
+      <div class="bg-what-no">02</div>
+      <h3 class="bg-what-title">좌표가 가까운 의원</h3>
+      <p class="bg-what-desc">300명 남짓 의원 전체를 거리 순으로 세웁니다. 순위는 나오지만 % 점수는 매기지 않습니다 — 그건 설명할 수 없는 숫자라서요.</p>
+    </div>
+    <div class="bg-what-item">
+      <div class="bg-what-fig"><div class="card"></div></div>
+      <div class="bg-what-no">03</div>
+      <h3 class="bg-what-title">공유 카드</h3>
+      <p class="bg-what-desc">결과를 인스타 스토리·피드 이미지로 저장할 수 있어요. 닉네임 같은 개인정보는 들어가지 않고, 정당명·정당색도 없습니다.</p>
+    </div>
+  </div>
+
+<% } else { %>
+  <%# ── 완료: 히어로 = 내 결과. 공유가 첫 번째 행동 ── %>
+  <article class="bg-hero">
+    <div class="bg-hero-tags">
+      <span class="bg-tag bg-tag-done">✓ 진단 완료</span>
+      <span class="bg-tag bg-tag-meta"><%= fmtDate(axisScore.computed_at) %></span>
+      <span class="bg-tag bg-tag-meta">응답 <%= axisScore.total_responses %></span>
+    </div>
+    <div class="bg-result">
+      <div>
+        <%- include('_result_axes', { axisScore, META, headline }) %>
+      </div>
+      <aside class="bg-actions">
+        <a href="/balance-game/share" class="bg-cta">결과 이미지로 공유 →</a>
+        <a href="/politician?sort=match-desc" class="bg-cta secondary">가까운 의원 보기</a>
+        <a href="/balance-game/compare" class="bg-cta secondary">의원과 비교</a>
+        <p class="bg-actions-note">공유 카드에는 좌표와 가까운 의원 3명만 담기고, 닉네임 등 개인정보는 들어가지 않습니다.</p>
+        <div class="bg-actions-links">
+          <% if (generalPack) { %><a href="/balance-game/respond?pack=<%= generalPack.id %>">다시 풀기</a><% } %>
+        </div>
+      </aside>
+    </div>
+  </article>
+<% } %>
+
+  <%# ── 주제별 문항 — 없으면 한 줄, 있으면 카드 ── %>
+  <% if (otherPacks.length === 0) { %>
+    <div class="bg-topic-line">
+      <span>주제별 문항(환경·사법·노동·젠더 등)은 준비 중입니다. 같은 네 축을 채우므로 풀수록 좌표가 정밀해집니다.</span>
+      <a href="/balance-game/mapping">문항이 어느 축에 닿는지 보기 →</a>
+    </div>
+  <% } else { %>
+    <div class="bg-topic-grid">
+      <% otherPacks.forEach(p => { %>
+        <a href="/balance-game/respond?pack=<%= p.id %>" class="bg-topic-card">
+          <div class="n"><%= p.active_question_count %>문항</div>
+          <div class="t"><%= p.title %></div>
+          <div class="d"><%= p.description %></div>
+        </a>
+      <% }); %>
+    </div>
+  <% } %>
 </div>

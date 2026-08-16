@@ -273,6 +273,26 @@ export default (db) => {
                 return null;
             }
         },
+        /* 성향 진단 「의원과 비교」 — 가장 가까운/먼 N명 + 의원 전체 평균 + 축별 위치.
+           모양: { total, avg:{economy,social,institution}, right:{…}, near:[…], far:[…] } · 좌표 없으면 null */
+        getMatchSpread: async (axis, limit = 3) => {
+            try {
+                if (!axis) return null;
+                const rows = await politicianDao.getMatchSpread(axis, limit);
+                if (!rows.length) return null;
+                const h = rows[0];
+                return {
+                    total: h.total,
+                    avg:   { economy: h.avg_economy, social: h.avg_social, institution: h.avg_institution },
+                    right: { economy: h.right_economy, social: h.right_social, institution: h.right_institution },
+                    near:  rows.filter(r => r.rank_near <= limit).sort((a, b) => a.rank_near - b.rank_near),
+                    far:   rows.filter(r => r.rank_far  <= limit).sort((a, b) => a.rank_far  - b.rank_far)
+                };
+            } catch (err) {
+                logger.error(`의원 비교 조회 실패: ${err.message}`);
+                return null;
+            }
+        },
         /* 홈 히어로 — 무작위 의원 3명의 축 좌표. 실패해도 [] 를 돌려 홈은 살린다 */
         getAxisSpotlight: async (limit = 3) => {
             try { return await politicianDao.getAxisSpotlight(limit); }

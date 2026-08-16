@@ -1,0 +1,98 @@
+<%
+  /* 결과 공유 이미지 — 그림은 public/scripts/balance/shareCard.js 가 canvas 로 그린다.
+     여기서는 재료(JSON) 를 심고 미리보기·버튼만 둔다. */
+  const esc = (s) => JSON.stringify(s).replace(/</g, '\\u003c');
+%>
+<style>
+  .sc-wrap { max-width: 880px; margin: 0 auto; padding: calc(var(--nav-h) + 36px) 24px 80px; }
+  .sc-head { text-align: center; margin-bottom: 28px; }
+  .sc-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.12em; color: var(--accent); text-transform: uppercase; margin-bottom: 10px; }
+  .sc-title { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 34px; color: var(--text); margin: 0 0 8px; word-break: keep-all; }
+  .sc-sub { font-size: 15px; color: var(--sub); word-break: keep-all; line-height: 1.7; }
+
+  .sc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+  /* 미리보기 — canvas 원본은 1080 폭, CSS 로만 줄인다. 저장 결과와 픽셀 단위로 같은 그림 */
+  .sc-preview { background: var(--bg3); border: 1px solid var(--border); border-radius: 16px; padding: 18px; display: flex; justify-content: center; }
+  .sc-preview canvas { width: 100%; max-width: 360px; height: auto; display: block; border-radius: 6px;
+                       box-shadow: 0 8px 28px rgba(26,29,36,0.14); background: #F7F6F1; opacity: .55; transition: opacity .2s; }
+  .sc-preview.is-ready canvas { opacity: 1; }
+  .sc-preview[data-mode="story"] canvas { max-width: 300px; }
+
+  .sc-side { display: flex; flex-direction: column; gap: 14px; }
+  .sc-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sc-mode { padding: 11px 10px; border: 1px solid var(--border2); background: var(--bg2); border-radius: 10px; font-size: 13.5px; font-weight: 700; color: var(--sub); cursor: pointer; text-align: center; }
+  .sc-mode small { display: block; font-weight: 400; font-size: 11.5px; color: var(--sub2); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+  .sc-mode[aria-pressed="true"] { border-color: var(--accent); color: var(--accent2); background: #FBF5EA; }
+  .sc-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 16px; border-radius: 10px; font-size: 14.5px; font-weight: 700; cursor: pointer; border: 1px solid var(--accent); }
+  .sc-btn.primary { background: var(--accent); color: #fff; }
+  .sc-btn.primary:hover { background: var(--accent2); }
+  .sc-btn.secondary { background: var(--bg2); color: var(--accent2); }
+  .sc-btn.secondary:hover { background: #FBF5EA; }
+  .sc-btn[hidden] { display: none; }
+  .sc-status { min-height: 1.4em; font-size: 12.5px; color: var(--sub); text-align: center; word-break: keep-all; }
+
+  .sc-note { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; font-size: 13px; color: var(--sub); line-height: 1.75; word-break: keep-all; }
+  .sc-note strong { color: var(--text); }
+  .sc-note ol { margin: 6px 0 0; padding-left: 18px; }
+  .sc-note li + li { margin-top: 4px; }
+  .sc-note .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent2); }
+  .sc-foot { margin-top: 24px; padding: 14px 18px; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 10px; font-size: 12.5px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
+  .sc-links { margin-top: 18px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; }
+  .sc-links a { color: var(--accent2); font-weight: 600; text-decoration: none; }
+  .sc-links a:hover { text-decoration: underline; }
+
+  @media (max-width: 768px) {
+    .sc-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    .sc-title { font-size: 26px; }
+    .sc-grid { grid-template-columns: 1fr; }
+    .sc-preview canvas, .sc-preview[data-mode="story"] canvas { max-width: 280px; }
+  }
+</style>
+
+<div class="sc-wrap">
+  <header class="sc-head">
+    <div class="sc-eyebrow">결과 공유</div>
+    <h1 class="sc-title">내 성향 좌표를 이미지로</h1>
+    <p class="sc-sub">인스타 스토리·피드에 올릴 수 있는 카드입니다. 좌표와 가장 가까운 의원 3명만 담기고, 닉네임 등 개인정보는 들어가지 않습니다.</p>
+  </header>
+
+  <div class="sc-grid">
+    <div class="sc-preview" id="sc-preview" data-mode="story">
+      <canvas id="sc-canvas" width="1080" height="1920" aria-label="성향 진단 결과 카드 미리보기"></canvas>
+    </div>
+
+    <aside class="sc-side">
+      <div class="sc-modes" role="group" aria-label="크기">
+        <button type="button" class="sc-mode" data-sc-mode="story" aria-pressed="true">스토리<small>1080×1920</small></button>
+        <button type="button" class="sc-mode" data-sc-mode="feed" aria-pressed="false">피드<small>1080×1350</small></button>
+      </div>
+      <button type="button" class="sc-btn primary" id="sc-share">공유하기</button>
+      <button type="button" class="sc-btn secondary" id="sc-save">이미지 저장</button>
+      <button type="button" class="sc-btn secondary" id="sc-copy">클립보드에 복사</button>
+      <div class="sc-status" id="sc-status" aria-live="polite">카드를 그리는 중…</div>
+
+      <div class="sc-note">
+        <strong>스토리에 올릴 때</strong>
+        <ol>
+          <li>이미지를 저장하고 인스타 스토리에 올립니다</li>
+          <li>스티커 → <strong>링크</strong> 를 카드 아래 빈 자리에 놓습니다:<br><span class="mono"><%= share.siteHost %>/balance-game</span></li>
+          <li>스티커를 탭해 색을 흰색으로 바꾸면 카드와 어울립니다</li>
+        </ol>
+      </div>
+    </aside>
+  </div>
+
+  <div class="sc-links">
+    <a href="/balance-game/connect">← 진단 완료 화면</a>
+    <a href="/politician?sort=match-desc">나와 가까운 의원 순으로 보기 →</a>
+  </div>
+
+  <p class="sc-foot">
+    의원 좌표는 공동발의 기록 × 법안 방향 매핑 <%= share.polMapping %> 로 계산한 값이고, 안보·외교 축은 국회 입법 기록으로 잴 수 없어 의원 비교에서 뺍니다.
+    카드에는 순위만 있고 % 일치도는 넣지 않습니다 — 순위는 거리의 순서라 보정값과 무관하지만 % 는 임의 분모에 기대기 때문입니다.
+    정당명·정당색은 넣지 않습니다.
+  </p>
+</div>
+
+<script>window.__SHARE__ = <%- esc(share) %>;</script>
+<script src="<%= asset('/scripts/balance/shareCard.js') %>" defer></script>

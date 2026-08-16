@@ -139,6 +139,13 @@ export default (db) => {
             return rows;
         },
 
+        /* 성향 진단 「의원과 비교」 — 가장 가까운/먼 N명 + 의원 전체 평균 + 축별 위치 (쿼리 주석 참조) */
+        getMatchSpread: async (axis, limit = 3) => {
+            const { rows } = await db.query(queries.getMatchSpread,
+                [axis.economy, axis.social, axis.institution, limit]);   // 3축 — 안보 제외 (utils/axisConfig.js)
+            return rows;
+        },
+
         /* 홈 히어로 — 무작위 N명 + 축 좌표 + 소속 정당 평균 (쿼리 주석 참조) */
         getAxisSpotlight: async (limit = 3) => {
             const { rows } = await db.query(queries.getAxisSpotlight, [limit]);

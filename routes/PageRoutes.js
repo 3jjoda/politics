@@ -115,6 +115,7 @@ export default (db) => {
     router.get('/balance-game/reveal',   balanceGameController.getRevealPage);
     router.get('/balance-game/compare',  balanceGameController.getComparePage);
     router.get('/balance-game/connect',  balanceGameController.getConnectPage);
+    router.get('/balance-game/share',    balanceGameController.getSharePage);     // 결과 공유 이미지 (canvas)
     router.get('/balance-game/mapping',  balanceGameController.getMappingPreviewPage);
 
     return router;

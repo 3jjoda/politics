@@ -188,6 +188,7 @@
   }
 
   /* 나와 맞는 의원 */
+  .match-links { display: flex; gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
   .match-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
   .match-card {
     display: flex; align-items: center; gap: 14px; padding: 16px 18px;
@@ -376,7 +377,10 @@
         <div class="pb-section-title">나와 맞는 의원</div>
       </div>
       <% if (locals.balanceGameCompleted) { %>
-        <a href="/politician?sort=match-desc" class="pb-section-link">전체 일치도 보기 →</a>
+        <div class="match-links">
+          <a href="/balance-game/share" class="pb-section-link">결과 이미지로 공유</a>
+          <a href="/politician?sort=match-desc" class="pb-section-link">전체 일치도 보기 →</a>
+        </div>
       <% } %>
     </div>
 

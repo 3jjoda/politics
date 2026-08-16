@@ -1,0 +1,38 @@
+<%
+  /* _result_axes.ejs — 내 좌표 4축 양극 막대 (2026-08-16)
+     invite(완료 히어로) · reveal(카드) 두 곳이 같은 마크업을 쓴다 — 갈리면 "카드" 가 두 모습이 된다.
+     인자: axisScore (user_axis_score 행) · META (AXIS.AXIS_META) · 선택 headline (없으면 여기서 만든다)
+     CSS 는 부모가 `.bg-ax-*` 규칙을 갖고 있어야 한다 (invite.ejs 의 것을 reveal 이 복사) */
+  const _ORDER = ['economy', 'social', 'security', 'institution'];
+  const _val = (k) => { const v = axisScore ? Number(axisScore[k]) : NaN; return Number.isFinite(v) ? v : null; };
+  const _intensity = (v) => { const a = Math.abs(v); return a < 0.25 ? '중도' : a < 0.5 ? '미세하게' : a < 0.75 ? '약간 뚜렷하게' : '뚜렷하게'; };
+  let _headline = typeof headline === 'string' && headline ? headline : null;
+  if (!_headline) {
+    const rows = _ORDER.map(k => ({ m: META[k], v: _val(k) })).filter(r => r.m && r.v !== null && Math.abs(r.v) >= 0.25)
+                       .sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 2);
+    _headline = rows.length ? rows.map(r => `${r.m.name}는 ${r.v > 0 ? r.m.R : r.m.L}`).join(', ') + ' 쪽' : '네 축 모두 중도에 가깝습니다';
+  }
+%>
+<div class="bg-res-kicker">내 결과</div>
+<h2 class="bg-res-headline"><%= _headline %></h2>
+<p class="bg-res-sub">|값| 0.25 미만은 중도로 봅니다 · 축 이름 옆은 그 축이 다루는 주제</p>
+<div class="bg-ax">
+  <% _ORDER.forEach(k => { const m = META[k]; if (!m) return; const v = _val(k); const has = v !== null;
+       const it = has ? _intensity(v) : null;
+       const phrase = !has ? '응답 없음' : it === '중도' ? '중도' : `${it} ${v > 0 ? m.Rx : m.Lx} 쪽`;
+       const pct = has ? 50 + Math.max(-1, Math.min(1, v)) * 50 : 50; %>
+    <div class="bg-ax-row">
+      <div class="bg-ax-head">
+        <span class="bg-ax-name"><%= m.name %><small><%= m.short %></small></span>
+        <span class="bg-ax-phrase <%= (!has || it === '중도') ? 'is-mid' : '' %>"><%= phrase %></span>
+      </div>
+      <div class="bg-ax-track">
+        <% if (has) { %>
+          <span class="bg-ax-band" style="left:<%= Math.min(50, pct) %>%; width:<%= Math.abs(pct - 50) %>%"></span>
+          <span class="bg-ax-dot" style="left:<%= pct %>%"></span>
+        <% } %>
+      </div>
+      <div class="bg-ax-ends"><span><%= m.Lx %></span><span><%= m.Rx %></span></div>
+    </div>
+  <% }); %>
+</div>

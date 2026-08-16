@@ -236,11 +236,11 @@
       <span class="label">매핑 보기</span>
       <span class="sub">측정 도구</span>
     </a>
-    <button type="button" class="bg-conn-exit" id="bg-share-btn">
-      <span class="icon">🔗</span>
-      <span class="label">결과 공유</span>
-      <span class="sub">URL 복사</span>
-    </button>
+    <a class="bg-conn-exit" href="/balance-game/share">
+      <span class="icon">🖼</span>
+      <span class="label">결과 이미지</span>
+      <span class="sub">인스타 공유</span>
+    </a>
     <a class="bg-conn-exit" href="/balance-game/respond?pack=general">
       <span class="icon">🔄</span>
       <span class="label">다시 풀기</span>
@@ -263,20 +263,3 @@
     재검사로 갱신해도 과거 응답은 매핑 버전별로 보존됩니다.
   </p>
 </div>
-
-<script>
-(() => {
-  const shareBtn = document.getElementById('bg-share-btn');
-  shareBtn?.addEventListener('click', async () => {
-    const url = window.location.origin + '/balance-game';
-    try {
-      await navigator.clipboard.writeText(url);
-      const orig = shareBtn.querySelector('.label').textContent;
-      shareBtn.querySelector('.label').textContent = '복사됨 ✓';
-      setTimeout(() => { shareBtn.querySelector('.label').textContent = orig; }, 1500);
-    } catch (e) {
-      alert('URL 복사 실패. 수동으로 복사해주세요: ' + url);
-    }
-  });
-})();
-</script>

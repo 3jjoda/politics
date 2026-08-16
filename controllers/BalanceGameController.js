@@ -6,9 +6,14 @@
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 import BalanceGameService, { AXES, MAPPING_VERSION } from '../services/BalanceGameService.js';
+import PoliticianService from '../services/PoliticianService.js';
+import { AXIS_META, ALL_AXES, MATCH_AXES, POL_MAPPING_VERSION } from '../utils/axisConfig.js';
+import { siteUrl } from '../utils/threadsPost.js';
+import { fmtDate } from '../utils/datetime.js';
 
 export default (db) => {
     const svc = BalanceGameService(db);
+    const politicianService = PoliticianService(db);
     const controller = {};
 
     /* ===========================================================
@@ -92,25 +97,17 @@ export default (db) => {
                 return res.redirect('/balance-game/respond?pack=general');
             }
 
-            // 응답 분포 (시장/개입 / 무관심) — 종합팩 한정
-            const { rows: distRows } = await db.query(
-                `SELECT
-                    COUNT(*) FILTER (WHERE score < 0)::int AS left_count,
-                    COUNT(*) FILTER (WHERE score > 0)::int AS right_count,
-                    COUNT(*) FILTER (WHERE score = 0)::int AS skip_count
-                   FROM balance_game_responses
-                  WHERE user_id = $1 AND pack_id = 'general' AND mapping_version = $2`,
-                [userId, MAPPING_VERSION]
-            );
-            const distribution = distRows[0] || { left_count: 0, right_count: 0, skip_count: 0 };
+            // 2026-08-16: 카드 = 4축 막대 + 가까운 의원 3명 (구 |값| 다이아몬드 · 응답 분포 제거)
+            const userAxis = {};
+            for (const k of ALL_AXES) userAxis[k] = axisScore[k] == null ? null : Number(axisScore[k]);
+            const matches = await politicianService.getTopMatches(userAxis, 3);
 
             res.render('balance/reveal', {
                 pageTitle: '당신의 카드',
-                pageStyles: 'balance/reveal',
+                pageStyles: null,
                 currentUrl: '/balance-game/reveal',
-                axes: AXES,
                 axisScore,
-                distribution,
+                matches: matches || [],
                 mappingVersion: MAPPING_VERSION
             });
         } catch (err) {
@@ -137,9 +134,14 @@ export default (db) => {
                 ? svc.buildGroupKey({ gender: user.gender, ageGroup: user.age_group })
                 : null;
 
-            const [overall, group] = await Promise.all([
+            // 2026-08-16: 화면의 주인공은 **의원과의 비교**(좌표 있는 의원 292명 — 데이터가 있다).
+            // 응답자 평균(전체·그룹)은 50명 임계값이라 당분간 잠겨 있다 (실측 6명) — 잠금 상태를 정직하게 보인다
+            const userAxis = {};
+            for (const k of ALL_AXES) userAxis[k] = axisScore[k] == null ? null : Number(axisScore[k]);
+            const [overall, group, spread] = await Promise.all([
                 svc.getOverallAxisAvg(),
-                groupKey ? svc.getGroupAxisAvg(groupKey) : Promise.resolve(null)
+                groupKey ? svc.getGroupAxisAvg(groupKey) : Promise.resolve(null),
+                politicianService.getMatchSpread(userAxis, 3)
             ]);
 
             // 임계값 처리
@@ -149,11 +151,13 @@ export default (db) => {
             else if (group && groupCount >= svc.GROUP_THRESHOLD_LOW)  groupTier = 'low';
 
             res.render('balance/compare', {
-                pageTitle: '당신의 위치',
-                pageStyles: 'balance/compare',
+                pageTitle: '의원과 비교 · 성향 진단',
+                pageStyles: null,
                 currentUrl: '/balance-game/compare',
                 axes: AXES,
                 axisScore,
+                userAxis,
+                spread,
                 overall,
                 group,
                 groupKey,
@@ -191,6 +195,54 @@ export default (db) => {
             });
         } catch (err) {
             logger.error('연결 화면 렌더링 중 에러:', `${err.message}\n${err.stack}`);
+            next(err);
+        }
+    });
+
+    /* ===========================================================
+       결과 공유 이미지 (`/balance-game/share`) — 2026-08-16
+       사용자가 자기 좌표를 인스타 스토리·피드 이미지로 뽑아 가는 자리.
+       그림은 클라이언트 canvas 가 그린다 (public/scripts/balanceShareCard.js) —
+       서버는 재료(좌표 4축 · 가장 가까운 의원 3명 · 축 메타)만 JSON 으로 심는다.
+       ⚠️ 의원 사진은 싣지 않는다 — 외부 도메인 이미지를 canvas 에 그리면 taint 돼 PNG 를 못 뽑는다.
+       ⚠️ 정당명도 싣지 않는다 (인스타 카드와 같은 규칙 — 카드 한 장에 정당명이 늘어서면 그 자체가 대비 구도)
+       =========================================================== */
+    controller.getSharePage = wrapWithContext(async function getSharePage(req, res, next) {
+        try {
+            const userId = req.session?.userId;
+            if (!userId) {
+                const next_ = encodeURIComponent('/balance-game/share');
+                return res.redirect(`/auth/login?next=${next_}`);
+            }
+            const axisScore = await svc.getUserAxisScore(userId);
+            if (!svc.isCompleted(axisScore)) return res.redirect('/balance-game/respond?pack=general');
+
+            const userAxis = {};
+            for (const k of ALL_AXES) userAxis[k] = axisScore[k] == null ? null : Number(axisScore[k]);
+
+            const matches = await politicianService.getTopMatches(userAxis, 3);
+            const share = {
+                axis: userAxis,
+                axes: ALL_AXES.map(k => ({ key: k, ...AXIS_META[k], measured: MATCH_AXES.includes(k) })),
+                matches: (matches || []).map(m => ({
+                    name: m.name,
+                    district: m.electoral_district || '',
+                    retired: m.active_yn === false
+                })),
+                total: Number(axisScore.total_responses || 0),
+                date: fmtDate(axisScore.computed_at || new Date()),   // KST 'YYYY.MM.DD'
+                polMapping: POL_MAPPING_VERSION,
+                siteHost: siteUrl().replace(/^https?:\/\//, '')   // 로컬이면 대표 도메인으로 (threadsPost 와 같은 판정)
+            };
+
+            res.render('balance/share', {
+                pageTitle: '결과 이미지 · 성향 진단',
+                pageStyles: null,   // 다른 balance 뷰처럼 인라인 <style> (public/styles/balance/ 는 없다)
+                currentUrl: '/balance-game/share',
+                share
+            });
+        } catch (err) {
+            logger.error('결과 공유 이미지 화면 렌더링 중 에러:', `${err.message}\n${err.stack}`);
             next(err);
         }
     });

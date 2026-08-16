@@ -145,6 +145,7 @@ const ROBOTS_TXT = [
     'Disallow: /balance-game/reveal',
     'Disallow: /balance-game/compare',
     'Disallow: /balance-game/connect',
+    'Disallow: /balance-game/share',
     '',
     '# 같은 브리핑을 SNS 배포용으로 다시 그린 것 — 색인되면 중복 콘텐츠가 된다',
     'Disallow: /briefing/*/card',

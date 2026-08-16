@@ -1,434 +1,237 @@
 <%
-  const econ = Number(axisScore.economy ?? 0);
-  const soci = Number(axisScore.social ?? 0);
-  const sec  = Number(axisScore.security ?? 0);
-  const inst = Number(axisScore.institution ?? 0);
+  /* /balance-game/compare — 「의원과 비교」 (2026-08-16 전면 재작성)
+     🔴 구 버전은 응답자 평균(전체·그룹)과 겹치는 다이아몬드였는데 임계값 50명에 실측 6명이라 **전부 잠긴 빈 화면**이었고,
+        정작 데이터가 있는 「의원」 비교는 "준비 중" 으로 남아 있었다. 뒤집었다:
+          ① 축별 위치 — 내 점 vs 의원 전체 평균 마커 + "의원 N명 중 M명이 나보다 ○○ 쪽"
+          ② 좌표가 가장 가까운 3명 / 가장 먼 3명 — 3축 미니 막대에 나·의원 두 점
+          ③ 다른 응답자 평균 — 50명 모이면 ①의 막대에 마커로 열린다. 그전엔 잠금 상태를 숫자로 보인다
+     ⚠️ 다이아몬드로 되돌리지 말 것 — |값| 만 그려서 방향이 안 보인다 (의원 상세에서 이미 버린 이유와 같다)
+     ⚠️ % 일치도 없음 · 정당명·정당색 없음. 순위(N명 중 M위)까지만 */
+  const META = (locals.AXIS && AXIS.AXIS_META) || {};
+  const MATCH = (locals.AXIS && AXIS.MATCH_AXES) || ['economy', 'social', 'institution'];
+  const UNMEASURED = (locals.AXIS && AXIS.UNMEASURED_AXES) || ['security'];
+  const REASON = (locals.AXIS && AXIS.UNMEASURED_REASON) || '';
+  const my = (k) => { const v = userAxis ? Number(userAxis[k]) : NaN; return Number.isFinite(v) ? v : null; };
+  const pos = (v) => 50 + Math.max(-1, Math.min(1, Number(v))) * 50;   // −1..+1 → 0..100%
+  const intensity = (v) => { const a = Math.abs(v); return a < 0.25 ? '중도' : a < 0.5 ? '미세하게' : a < 0.75 ? '약간 뚜렷하게' : '뚜렷하게'; };
+  const phrase = (m, v) => v === null ? '응답 없음' : intensity(v) === '중도' ? '중도' : `${intensity(v)} ${v > 0 ? m.Rx : m.Lx} 쪽`;
 
-  // 임계값: 응답자 50명+ 부터 비교 의미. 그 미만은 비활성화 + 안내.
+  // 응답자 평균 — 50명 임계값 (구 버전 승계). 미달이면 잠금 안내만
   const OVERALL_THRESHOLD = 50;
   const overallCount = overall ? Number(overall.user_count || 0) : 0;
-  const overallExists = Boolean(overall) && overallCount >= OVERALL_THRESHOLD;
-  const overallEcon = overall ? Number(overall.economy_avg ?? 0)     : 0;
-  const overallSoci = overall ? Number(overall.social_avg ?? 0)      : 0;
-  const overallSec  = overall ? Number(overall.security_avg ?? 0)    : 0;
-  const overallInst = overall ? Number(overall.institution_avg ?? 0) : 0;
-
-  const groupExists = group && groupTier !== 'absent';
-  const groupEcon = group ? Number(group.economy_avg ?? 0)     : 0;
-  const groupSoci = group ? Number(group.social_avg ?? 0)      : 0;
-  const groupSec  = group ? Number(group.security_avg ?? 0)    : 0;
-  const groupInst = group ? Number(group.institution_avg ?? 0) : 0;
+  const overallOpen = Boolean(overall) && overallCount >= OVERALL_THRESHOLD;
+  const groupOpen = Boolean(group) && groupTier !== 'absent';
   const groupCount = group ? Number(group.user_count || 0) : 0;
+  const avgOf = (row, k) => row ? Number(row[`${k}_avg`]) : NaN;
 
-  // 그룹 라벨 — 추상화. 인구 정보(20대 남성)는 active 시 메타로만 별도 노출.
-  // 화면 노출 시 옆 사람에게 보이는 개인정보 우려 회피.
-  const buildGroupDetail = (key) => {
-    if (!key) return '';
-    const parts = {};
-    String(key).split(',').forEach(s => {
-      const [k, v] = s.split(':');
-      parts[k] = v;
-    });
-    const gender = ({ male: '남성', female: '여성', other: '그 외' })[parts.gender] || '';
-    const age = parts.age ? parts.age.replace('s', '대') : '';
-    return [age, gender].filter(Boolean).join(' ');
-  };
-  const groupDetail = buildGroupDetail(groupKey);
-
-  // 축별 한 줄 해석 — 강도 4단계
-  //   |점수| < 0.25 → 중도
-  //   0.25 ≤ |점수| < 0.5  → 미세하게
-  //   0.5  ≤ |점수| < 0.75 → 약간 뚜렷하게
-  //   0.75 ≤ |점수|        → 뚜렷하게
-  const axisLine = (axisKey, val) => {
-    const a = axes[axisKey];
-    const v = Math.abs(Number(val) || 0);
-    if (v < 0.25) return `${a.label} 축에서 중도입니다 — ${a.left}/${a.right} 양쪽 입장이 비슷합니다`;
-    const side = val > 0 ? a.right : a.left;
-    const intensity = v >= 0.75 ? '뚜렷하게'
-                    : v >= 0.5  ? '약간 뚜렷하게'
-                    :              '미세하게';
-    return `${a.label} 축에서 ${intensity} ${side} 쪽입니다`;
-  };
+  const sp = locals.spread || null;
+  const total = sp ? sp.total : 0;
 %>
 
 <style>
-  .bg-cmp-wrap {
-    max-width: 920px;
-    margin: 0 auto;
-    padding: calc(var(--nav-h) + 36px) 24px 80px;
-  }
+  .cp-wrap { max-width: 920px; margin: 0 auto; padding: calc(var(--nav-h) + 36px) 24px 80px; }
+  .cp-head { margin-bottom: 26px; }
+  .cp-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .12em; color: var(--accent); margin-bottom: 8px; }
+  .cp-title { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 34px; color: var(--text); margin: 0 0 8px; word-break: keep-all; }
+  .cp-sub { font-size: 15px; color: var(--sub); line-height: 1.7; word-break: keep-all; max-width: 720px; }
 
-  .bg-cmp-head {
-    text-align: center;
-    margin-bottom: 32px;
-  }
-  .bg-cmp-eyebrow {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.12em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 10px;
-  }
-  .bg-cmp-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 44px;
-    color: var(--text);
-    margin: 0;
-    letter-spacing: 0.02em;
-  }
-  .bg-cmp-sub {
-    font-family: 'Noto Serif KR', serif;
-    font-weight: 500;
-    font-size: 16px;
-    color: var(--sub);
-    margin-top: 8px;
-    word-break: keep-all;
-  }
+  .cp-card { background: var(--bg2); border: 1px solid var(--border2); border-top: 3px solid var(--accent); border-radius: 14px; padding: 22px 24px 20px; margin-bottom: 20px; }
+  .cp-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .cp-card-title { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 17px; color: var(--text); margin: 0; }
+  .cp-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--sub); }
+  .cp-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .cp-lg-me  { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .cp-lg-pol { width: 10px; height: 10px; border-radius: 50%; border: 2px dashed var(--sub); background: var(--bg2); box-sizing: border-box; }
+  .cp-lg-avg { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--text); }
+  .cp-lg-resp { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--sub2); opacity: .8; }
 
-  /* 비교 토글 */
-  .bg-cmp-toggle {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 24px;
-  }
-  .bg-cmp-toggle button {
-    padding: 8px 16px;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    color: var(--sub);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.15s;
-    font-family: inherit;
-  }
-  .bg-cmp-toggle button:hover { border-color: var(--accent); color: var(--accent); }
-  .bg-cmp-toggle button.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-  .bg-cmp-toggle button:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    color: var(--sub2);
-  }
-  .bg-cmp-toggle button:disabled:hover {
-    border-color: var(--border);
-    color: var(--sub2);
-  }
-  .bg-cmp-locked-note {
-    text-align: center;
-    font-size: 12px;
-    color: var(--sub2);
-    margin-bottom: 16px;
-  }
+  /* 축 행 — 양극 막대 (의원 상세 .pv-band 와 같은 문법) */
+  .cp-ax { display: flex; flex-direction: column; gap: 18px; }
+  .cp-ax-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .cp-ax-name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 15px; color: var(--text); }
+  .cp-ax-name small { font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 12px; color: var(--sub2); margin-left: 8px; }
+  .cp-ax-phrase { font-size: 12.5px; font-weight: 700; color: var(--accent2); }
+  .cp-ax-phrase.is-mid { color: var(--sub); font-weight: 500; }
+  .cp-track { position: relative; height: 8px; border-radius: 4px; background: var(--border); margin: 12px 10px 4px; }
+  .cp-track::before { content: ''; position: absolute; left: 50%; top: -4px; width: 2px; height: 16px; background: var(--border2); transform: translateX(-1px); }
+  .cp-band { position: absolute; top: 0; height: 100%; background: rgba(184,116,12,0.28); border-radius: 4px; }
+  .cp-me { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); box-shadow: 0 0 0 3px var(--bg2); z-index: 2; }
+  .cp-pol { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; border: 2px dashed var(--sub); background: var(--bg2); box-sizing: border-box; transform: translate(-50%, -50%); z-index: 1; }
+  /* 평균 마커 — 진한 세로선 + 삼각캡 (사이트 공통 평균 마커 언어) */
+  .cp-avg { position: absolute; top: -9px; height: 26px; width: 2px; background: var(--text); transform: translateX(-1px); z-index: 1; }
+  .cp-avg::before { content: ''; position: absolute; top: -6px; left: 50%; transform: translateX(-50%); border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid var(--text); }
+  .cp-avg.is-resp { background: var(--sub2); opacity: .85; }
+  .cp-avg.is-resp::before { border-top-color: var(--sub2); }
+  .cp-ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); padding: 0 2px; }
+  .cp-ax-note { font-size: 12.5px; color: var(--sub); line-height: 1.6; margin: 6px 0 0; word-break: keep-all; }
+  .cp-ax-note b { color: var(--text); font-weight: 700; }
+  .cp-ax-row.is-unmeasured .cp-ax-name, .cp-ax-row.is-unmeasured .cp-ends { color: var(--sub2); }
+  .cp-ax-row.is-unmeasured .cp-me { background: var(--sub2); }
+  .cp-card-foot { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 12.5px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
 
-  /* 다이아몬드 + 오버레이 */
-  .bg-cmp-diamond {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 32px 24px;
-    margin-bottom: 24px;
-  }
-  .bg-cmp-diamond-svg {
-    width: 100%;
-    max-width: 360px;
-    margin: 0 auto;
-    display: block;
-    overflow: visible;
-  }
-  .cmp-grid       { fill: none; stroke: var(--border); stroke-width: 0.5; }
-  .cmp-axis-line  { stroke: var(--border2); stroke-width: 1; }
-  .cmp-fill-mine  { fill: rgba(184, 116, 12, 0.20); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
-  .cmp-fill-cmp   {
-    fill: rgba(122, 128, 144, 0.10);
-    stroke: var(--sub2);
-    stroke-width: 1.2;
-    stroke-dasharray: 4 4;
-    stroke-linejoin: round;
-    transition: opacity 0.4s ease;
-  }
-  .cmp-dot-mine   { fill: var(--accent); }
-  .cmp-axis-label { fill: var(--sub); font-family: 'JetBrains Mono', monospace; font-size: 11px; text-anchor: middle; }
-  .cmp-axis-label.bottom { dominant-baseline: hanging; }
+  /* 가까운 / 먼 의원 — 2단 */
+  .cp-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .cp-pol-list { display: flex; flex-direction: column; gap: 12px; }
+  .cp-p { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; text-decoration: none; color: inherit; display: block; transition: border-color .15s; }
+  .cp-p:hover { border-color: var(--accent); }
+  .cp-p-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .cp-p-rank { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent2); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .cp-p-avatar { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex: 0 0 auto; }
+  .cp-p-name { font-weight: 700; font-size: 15px; color: var(--text); }
+  .cp-p-name em { font-style: normal; font-size: 11px; color: var(--sub2); margin-left: 6px; font-weight: 500; }
+  .cp-p-meta { font-size: 12px; color: var(--sub); }
+  .cp-mini { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px 10px; align-items: center; }
+  .cp-mini-lab { font-size: 11px; color: var(--sub2); text-align: right; }
+  .cp-mini-track { position: relative; height: 6px; border-radius: 3px; background: var(--border); }
+  .cp-mini-track::before { content: ''; position: absolute; left: 50%; top: -3px; width: 1px; height: 12px; background: var(--border2); }
+  .cp-mini-track .cp-me { width: 11px; height: 11px; box-shadow: 0 0 0 2px var(--bg2); }
+  .cp-mini-track .cp-pol { width: 10px; height: 10px; border-width: 1.5px; }
+  .cp-mini-track .cp-gap { position: absolute; top: 0; height: 100%; background: rgba(184,116,12,0.22); }
+  .cp-empty { font-size: 13px; color: var(--sub); padding: 12px 0; }
 
-  /* 자기 설명 — 다이아몬드 읽는 법 (펼침 카드와 동일) */
-  .cmp-diamond-help {
-    font-size: 12px;
-    color: var(--sub2);
-    text-align: center;
-    margin: 8px 0 0;
-    letter-spacing: 0.02em;
-    word-break: keep-all;
-  }
+  /* 응답자 평균 잠금 */
+  .cp-locked { background: var(--bg3); border: 1px dashed var(--border2); border-radius: 12px; padding: 14px 18px; font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; margin-bottom: 20px; }
+  .cp-locked b { color: var(--text); }
 
-  .cmp-legend {
-    display: flex;
-    gap: 18px;
-    justify-content: center;
-    margin-top: 12px;
-    flex-wrap: wrap;
-    font-size: 12px;
-    color: var(--sub);
-  }
-  .cmp-legend-item { display: inline-flex; align-items: center; gap: 6px; }
-  .cmp-legend-swatch {
-    display: inline-block;
-    width: 18px;
-    height: 10px;
-    border-radius: 2px;
-    border: 1px solid;
-  }
-  .cmp-legend-mine .cmp-legend-swatch { background: rgba(184,116,12,0.25); border-color: var(--accent); }
-  .cmp-legend-cmp  .cmp-legend-swatch { background: rgba(122,128,144,0.15); border-color: var(--sub2); border-style: dashed; }
-
-  /* 축별 해석 */
-  .bg-cmp-axes-list {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px 22px;
-    margin-bottom: 20px;
-  }
-  .bg-cmp-axes-list > div {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 10px 0;
-    border-bottom: 1px dashed var(--border);
-    font-family: 'Noto Serif KR', serif;
-    font-weight: 500;
-    font-size: 15px;
-    line-height: 1.6;
-    color: var(--text);
-    word-break: keep-all;
-  }
-  .bg-cmp-axes-list > div:last-child { border-bottom: 0; }
-  .bg-cmp-axes-list .axis-name {
-    flex-shrink: 0;
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 12px;
-    color: var(--accent);
-    background: #FAF6EB;
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    padding: 2px 8px;
-    margin-top: 2px;
-  }
-
-  /* 진행도 + 다음 */
-  .bg-cmp-foot {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 24px;
-    padding-top: 18px;
-    border-top: 1px solid var(--border);
-  }
-  .bg-cmp-progress {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--sub2);
-  }
-  .bg-cmp-next-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 700;
-    text-decoration: none;
-    transition: background 0.15s;
-  }
-  .bg-cmp-next-cta:hover { background: var(--accent2); }
+  .cp-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .cp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border-radius: 10px; font-size: 14px; font-weight: 700; text-decoration: none; border: 1px solid var(--accent); }
+  .cp-btn.primary { background: var(--accent); color: #fff; }
+  .cp-btn.primary:hover { background: var(--accent2); }
+  .cp-btn.secondary { background: var(--bg2); color: var(--accent2); }
+  .cp-btn.secondary:hover { background: #FAF6EB; }
+  .cp-actions .more { margin-left: auto; font-size: 13px; color: var(--sub); text-decoration: none; border-bottom: 1px dashed var(--border2); }
+  .cp-actions .more:hover { color: var(--accent); border-color: var(--accent); }
 
   @media (max-width: 768px) {
-    .bg-cmp-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
-    .bg-cmp-title { font-size: 34px; }
-    .bg-cmp-toggle { gap: 6px; }
-    .bg-cmp-toggle button { font-size: 12px; padding: 7px 12px; }
-    .bg-cmp-foot { flex-direction: column; gap: 14px; align-items: stretch; }
-    .bg-cmp-next-cta { justify-content: center; }
+    .cp-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    .cp-title { font-size: 26px; }
+    .cp-two { grid-template-columns: 1fr; }
+    .cp-btn { width: 100%; }
+    .cp-actions .more { margin-left: 0; }
   }
 </style>
 
-<div class="bg-cmp-wrap">
-  <header class="bg-cmp-head">
-    <div class="bg-cmp-eyebrow">📊 단계 4 — 비교</div>
-    <h1 class="bg-cmp-title">당신의 위치</h1>
-    <p class="bg-cmp-sub">내 좌표는 분포 안의 한 점입니다. 기준을 바꿔가며 비교해 보세요.</p>
+<div class="cp-wrap">
+  <header class="cp-head">
+    <div class="cp-eyebrow">성향 진단 · 비교</div>
+    <h1 class="cp-title">의원과 비교</h1>
+    <p class="cp-sub">내 좌표를 국회의원 <%= total ? total + '명' : '' %>의 좌표 위에 놓아 봅니다. 의원 좌표는 소속 정당이 아니라
+      그 의원이 <strong>공동발의로 이름을 올린 법안</strong>으로 만든 값이라, 같은 당 안에서도 자리가 다릅니다.</p>
   </header>
 
-  <!-- 비교 토글 — "내 좌표만" 토글 제거.
-       디폴트 active 는 첫 활성 토글 (overall 우선, 미달 시 group, 둘 다 미달이면 안 누름). -->
-  <%
-    const defaultCmp = overallExists ? 'overall'
-                     : groupExists   ? 'group'
-                     : '';
-  %>
-  <div class="bg-cmp-toggle" role="tablist">
-    <button type="button"
-      class="<%= defaultCmp === 'overall' ? 'active' : '' %>"
-      data-cmp="overall"
-      <%= overallExists ? '' : 'disabled' %>
-      role="tab"
-      aria-selected="<%= defaultCmp === 'overall' ? 'true' : 'false' %>"
-      title="<%= overallExists ? '전체 응답자 평균과 겹쳐 보기' : '응답자 ' + OVERALL_THRESHOLD + '명+ 부터 활성' %>">
-      전체 평균<% if (overall && overall.user_count) { %> (<%= overall.user_count %>명)<% } %>
-    </button>
-    <button type="button"
-      class="<%= defaultCmp === 'group' ? 'active' : '' %>"
-      data-cmp="group"
-      <%= groupExists ? '' : 'disabled' %>
-      role="tab"
-      aria-selected="<%= defaultCmp === 'group' ? 'true' : 'false' %>"
-      title="<%= groupExists ? '같은 그룹 평균과 겹쳐 보기' : '데이터가 충분히 모이면 표시됩니다' %>">
-      당신과 같은 그룹 평균<% if (groupExists) { %> (<%= groupCount %>명)<% } %>
-    </button>
-    <button type="button" disabled title="준비 중 — 의원 거리 계산 후 활성화됩니다">
-      비슷한 의원 (준비 중)
-    </button>
-  </div>
+  <%# ── ① 축별 위치 ── %>
+  <section class="cp-card">
+    <div class="cp-card-head">
+      <h2 class="cp-card-title">축별 위치 — 나와 의원 전체</h2>
+      <div class="cp-legend">
+        <span><i class="cp-lg-me"></i>나</span>
+        <% if (sp) { %><span><i class="cp-lg-avg"></i>의원 평균</span><% } %>
+        <% if (overallOpen) { %><span><i class="cp-lg-resp"></i>응답자 평균</span><% } %>
+      </div>
+    </div>
+    <div class="cp-ax">
+      <% MATCH.forEach(k => { const m = META[k]; if (!m) return; const v = my(k);
+           const avg = sp ? Number(sp.avg[k]) : NaN; const right = sp ? Number(sp.right[k]) : NaN;
+           const rAvg = overallOpen ? avgOf(overall, k) : NaN; %>
+        <div class="cp-ax-row">
+          <div class="cp-ax-head">
+            <span class="cp-ax-name"><%= m.name %><small><%= m.short %></small></span>
+            <span class="cp-ax-phrase <%= (v === null || intensity(v) === '중도') ? 'is-mid' : '' %>"><%= phrase(m, v) %></span>
+          </div>
+          <div class="cp-track">
+            <% if (v !== null) { %>
+              <span class="cp-band" style="left:<%= Math.min(50, pos(v)) %>%; width:<%= Math.abs(pos(v) - 50) %>%"></span>
+              <span class="cp-me" style="left:<%= pos(v) %>%" title="나 <%= v.toFixed(2) %>"></span>
+            <% } %>
+            <% if (Number.isFinite(avg)) { %><span class="cp-avg" style="left:<%= pos(avg) %>%" title="의원 평균 <%= avg.toFixed(2) %>"></span><% } %>
+            <% if (Number.isFinite(rAvg)) { %><span class="cp-avg is-resp" style="left:<%= pos(rAvg) %>%" title="응답자 평균 <%= rAvg.toFixed(2) %>"></span><% } %>
+          </div>
+          <div class="cp-ends"><span><%= m.Lx %></span><span><%= m.Rx %></span></div>
+          <% if (sp && v !== null && Number.isFinite(right)) { %>
+            <p class="cp-ax-note">의원 <b><%= total %>명</b> 중 <b><%= right %>명</b>이 나보다 더 <%= m.Rx %> 쪽, <b><%= total - right %>명</b>이 <%= m.Lx %> 쪽에 있습니다.</p>
+          <% } %>
+        </div>
+      <% }); %>
 
-  <%# 임계값 안내 — overall 미달이 가장 큰 케이스. group 도 별도 안내. %>
-  <% if (!overallExists) { %>
-    <div class="bg-cmp-locked-note">
-      ⏳ 데이터가 충분하지 않습니다 (현재 <%= overallCount %>명 — <%= OVERALL_THRESHOLD %>명+ 부터 활성)
+      <% UNMEASURED.forEach(k => { const m = META[k]; if (!m) return; const v = my(k); %>
+        <div class="cp-ax-row is-unmeasured">
+          <div class="cp-ax-head">
+            <span class="cp-ax-name"><%= m.name %><small><%= m.short %></small></span>
+            <span class="cp-ax-phrase is-mid"><%= phrase(m, v) %> · 의원 좌표 없음</span>
+          </div>
+          <div class="cp-track">
+            <% if (v !== null) { %><span class="cp-me" style="left:<%= pos(v) %>%" title="나 <%= v.toFixed(2) %>"></span><% } %>
+          </div>
+          <div class="cp-ends"><span><%= m.Lx %></span><span><%= m.Rx %></span></div>
+          <p class="cp-ax-note"><%= REASON %></p>
+        </div>
+      <% }); %>
     </div>
-  <% } else if (groupTier === 'absent') { %>
-    <div class="bg-cmp-locked-note">
-      <em>당신과 같은 그룹 응답자가 50명 이상 모이면 자동 활성됩니다 (현재 <%= groupCount %>명)</em>
+    <p class="cp-card-foot">의원 좌표는 방향을 매긴 법안 약 4,900건 × 공동발의 기록으로 계산했습니다 (축당 서명 5건 미만인 의원은 빠집니다).
+      의원 평균은 좌표가 있는 <%= total %>명의 평균이고, 응답자 평균은 <%= OVERALL_THRESHOLD %>명이 모이면 같은 막대에 표시됩니다.</p>
+  </section>
+
+  <%# ── ② 가장 가까운 / 먼 의원 ── %>
+  <% if (sp) { %>
+    <div class="cp-two">
+      <% [['좌표가 가장 가까운 의원', sp.near, 'rank_near'], ['좌표가 가장 먼 의원', sp.far, 'rank_far']].forEach(([title, list, rk]) => { %>
+        <section class="cp-card">
+          <div class="cp-card-head">
+            <h2 class="cp-card-title"><%= title %></h2>
+            <div class="cp-legend"><span><i class="cp-lg-me"></i>나</span><span><i class="cp-lg-pol"></i>의원</span></div>
+          </div>
+          <div class="cp-pol-list">
+            <% (list || []).forEach(p => {
+                 const rankLabel = rk === 'rank_near' ? `${total}명 중 ${p.rank_near}위` : `${total}명 중 ${total - p.rank_far + 1}위`; %>
+              <a class="cp-p" href="/politician/<%= p.mona_cd %>">
+                <div class="cp-p-top">
+                  <span class="cp-p-avatar"><%- avatarHtml(p.name, p.photo_url, 34) %></span>
+                  <span>
+                    <span class="cp-p-name"><%= p.name %><% if (p.active_yn === false) { %><em>퇴임</em><% } %></span>
+                    <span class="cp-p-meta"> · <%= p.electoral_district || '' %></span>
+                  </span>
+                  <span class="cp-p-rank" style="margin-left:auto"><%= rankLabel %></span>
+                </div>
+                <div class="cp-mini">
+                  <% MATCH.forEach(k => { const m = META[k]; if (!m) return; const mv = my(k); const pv = Number(p[k]);
+                       const a = mv === null ? null : pos(mv), b = pos(pv); %>
+                    <span class="cp-mini-lab" title="<%= m.Lx %> ↔ <%= m.Rx %>"><%= ({ economy: '경제', social: '사회', institution: '제도' })[k] || m.name.slice(0, 2) %></span>
+                    <span class="cp-mini-track">
+                      <% if (a !== null) { %><span class="cp-gap" style="left:<%= Math.min(a, b) %>%; width:<%= Math.abs(a - b) %>%"></span><% } %>
+                      <span class="cp-pol" style="left:<%= b %>%" title="<%= p.name %> <%= pv.toFixed(2) %>"></span>
+                      <% if (a !== null) { %><span class="cp-me" style="left:<%= a %>%" title="나 <%= mv.toFixed(2) %>"></span><% } %>
+                    </span>
+                  <% }); %>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        </section>
+      <% }); %>
     </div>
-  <% } else if (groupTier === 'low') { %>
-    <div class="bg-cmp-locked-note">
-      ⚠ 응답자 <%= groupCount %>명 기준 — 정밀도 낮음 (200명+ 부터 안정)
-    </div>
+    <p class="cp-locked" style="margin-top:0">
+      순위는 세 축 거리의 순서입니다. AI 1차 매핑이라 <b>가까운 몇 명 사이의 차이는 크지 않습니다</b> — 이름보다 축별 위치를 보세요.
+      막대의 띠는 나와 그 의원 사이의 거리입니다.
+    </p>
+  <% } else { %>
+    <div class="cp-locked">의원 좌표를 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</div>
   <% } %>
 
-  <!-- 다이아몬드 -->
-  <div class="bg-cmp-diamond">
-    <% const cx = 180, cy = 180, R = 140; %>
-    <svg class="bg-cmp-diamond-svg" viewBox="0 0 360 360" id="cmp-svg" xmlns="http://www.w3.org/2000/svg">
-      <% [0.25, 0.50, 0.75, 1.00].forEach(scale => {
-           const r = R * scale;
-      %>
-        <polygon class="cmp-grid"
-          points="<%= cx %>,<%= cy - r %> <%= cx + r %>,<%= cy %> <%= cx %>,<%= cy + r %> <%= cx - r %>,<%= cy %>"/>
-      <% }); %>
-      <line class="cmp-axis-line" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
-      <line class="cmp-axis-line" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
-
-      <!-- 비교 면적 (overall/group) — 처음엔 hidden -->
-      <polygon class="cmp-fill-cmp" id="cmp-fill-cmp" style="opacity:0"
-        points="<%= cx %>,<%= cy %> <%= cx %>,<%= cy %> <%= cx %>,<%= cy %> <%= cx %>,<%= cy %>"/>
-
-      <!-- 내 면적 — 절대값 기반(강도 시각화). 부호는 점수 텍스트가 보존 -->
-      <polygon class="cmp-fill-mine"
-        points="<%= cx %>,<%= cy - R*Math.abs(sec) %> <%= cx + R*Math.abs(econ) %>,<%= cy %> <%= cx %>,<%= cy + R*Math.abs(inst) %> <%= cx - R*Math.abs(soci) %>,<%= cy %>"/>
-
-      <!-- 내 점 -->
-      <circle class="cmp-dot-mine" cx="<%= cx %>"                       cy="<%= cy - R*Math.abs(sec) %>" r="5"/>
-      <circle class="cmp-dot-mine" cx="<%= cx + R*Math.abs(econ) %>"    cy="<%= cy %>"                    r="5"/>
-      <circle class="cmp-dot-mine" cx="<%= cx %>"                       cy="<%= cy + R*Math.abs(inst) %>" r="5"/>
-      <circle class="cmp-dot-mine" cx="<%= cx - R*Math.abs(soci) %>"    cy="<%= cy %>"                    r="5"/>
-
-      <!-- 축 라벨 -->
-      <text class="cmp-axis-label"        x="<%= cx %>"            y="<%= cy - R - 12 %>"><%= axes.security.label %></text>
-      <text class="cmp-axis-label"        x="<%= cx + R + 26 %>"   y="<%= cy + 4 %>"><%= axes.economy.label %></text>
-      <text class="cmp-axis-label bottom" x="<%= cx %>"            y="<%= cy + R + 14 %>"><%= axes.institution.label %></text>
-      <text class="cmp-axis-label"        x="<%= cx - R - 26 %>"   y="<%= cy + 4 %>"><%= axes.social.label %></text>
-    </svg>
-
-    <!-- 자기 설명 — 다이아몬드 읽는 법 (펼침 카드와 동일 카피) -->
-    <div class="cmp-diamond-help">중심은 중도, 가장자리는 뚜렷한 입장</div>
-
-    <div class="cmp-legend">
-      <span class="cmp-legend-item cmp-legend-mine"><span class="cmp-legend-swatch"></span>내 좌표</span>
-      <span class="cmp-legend-item cmp-legend-cmp" id="cmp-legend-cmp" style="display:none"><span class="cmp-legend-swatch"></span><span id="cmp-legend-label">비교</span></span>
+  <%# ── ③ 다른 응답자와 비교 (잠금/열림) ── %>
+  <% if (!overallOpen) { %>
+    <div class="cp-locked">
+      <b>다른 응답자와의 비교</b>는 응답자 <%= OVERALL_THRESHOLD %>명이 모이면 열립니다 — 지금 <b><%= overallCount %>명</b>.
+      열리면 위 막대에 응답자 평균 마커가 함께 표시됩니다. 성별·연령대가 같은 그룹 평균도 그룹당 <%= OVERALL_THRESHOLD %>명부터 보입니다.
     </div>
-    <%# 그룹 active 시 인구 정보 메타 — 추상 라벨 옆에 작게 노출 %>
-    <% if (groupDetail) { %>
-      <div id="cmp-group-detail" style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sub2);margin-top:6px;display:none">
-        같은 그룹 = <%= groupDetail %> 응답자 (<%= groupCount %>명)
-      </div>
-    <% } %>
-  </div>
+  <% } else if (!groupOpen) { %>
+    <div class="cp-locked">응답자 <b><%= overallCount %>명</b> 평균을 위 막대에 표시했습니다. 성별·연령대가 같은 그룹 평균은 그 그룹이 <%= OVERALL_THRESHOLD %>명이 되면 표시됩니다 (지금 <%= groupCount %>명).</div>
+  <% } else { %>
+    <div class="cp-locked">응답자 <b><%= overallCount %>명</b> 평균을 위 막대에 표시했습니다. 같은 그룹 <b><%= groupCount %>명</b><%= groupTier === 'low' ? ' — 200명 미만이라 아직 흔들립니다' : '' %>.</div>
+  <% } %>
 
-  <!-- 축별 한 줄 해석 -->
-  <div class="bg-cmp-axes-list">
-    <div><span class="axis-name">경제</span><span><%= axisLine('economy', econ) %></span></div>
-    <div><span class="axis-name">사회</span><span><%= axisLine('social', soci) %></span></div>
-    <div><span class="axis-name">안보</span><span><%= axisLine('security', sec) %></span></div>
-    <div><span class="axis-name">제도</span><span><%= axisLine('institution', inst) %></span></div>
-  </div>
-
-  <div class="bg-cmp-foot">
-    <span class="bg-cmp-progress">여기까지 봤어요 80%</span>
-    <a class="bg-cmp-next-cta" href="/balance-game/connect">연결 단계로 →</a>
+  <div class="cp-actions">
+    <a class="cp-btn primary" href="/balance-game/share">결과 이미지로 공유 →</a>
+    <a class="cp-btn secondary" href="/politician?sort=match-desc">가까운 순으로 의원 전체 보기</a>
+    <a class="more" href="/balance-game/connect">진단 완료 화면 →</a>
   </div>
 </div>
-
-<script>
-(() => {
-  const SVG_CX = 180, SVG_CY = 180, SVG_R = 140;
-  const overall = <%- overallExists ? `{ economy: ${overallEcon}, social: ${overallSoci}, security: ${overallSec}, institution: ${overallInst} }` : 'null' %>;
-  const group   = <%- groupExists   ? `{ economy: ${groupEcon},   social: ${groupSoci},   security: ${groupSec},   institution: ${groupInst}   }` : 'null' %>;
-  const DEFAULT_CMP = <%- JSON.stringify(defaultCmp || '') %>;
-
-  const fillCmp = document.getElementById('cmp-fill-cmp');
-  const legendCmp = document.getElementById('cmp-legend-cmp');
-  const legendLabel = document.getElementById('cmp-legend-label');
-  const groupDetailEl = document.getElementById('cmp-group-detail');
-  const buttons = document.querySelectorAll('.bg-cmp-toggle button[data-cmp]');
-
-  const setComparison = (key) => {
-    let data = null;
-    let labelText = '';
-    if (key === 'overall' && overall) { data = overall; labelText = '전체 평균'; }
-    else if (key === 'group' && group) { data = group; labelText = '당신과 같은 그룹 평균'; }
-
-    if (!data) {
-      fillCmp.style.opacity = '0';
-      legendCmp.style.display = 'none';
-      if (groupDetailEl) groupDetailEl.style.display = 'none';
-      return;
-    }
-    // 절대값 기반(강도 시각화) — 다이아몬드 좌표 일관성
-    const pts = [
-      [SVG_CX,                                  SVG_CY - SVG_R * Math.abs(data.security)],
-      [SVG_CX + SVG_R * Math.abs(data.economy), SVG_CY],
-      [SVG_CX,                                  SVG_CY + SVG_R * Math.abs(data.institution)],
-      [SVG_CX - SVG_R * Math.abs(data.social),  SVG_CY]
-    ].map(([x, y]) => x.toFixed(2) + ',' + y.toFixed(2)).join(' ');
-    fillCmp.setAttribute('points', pts);
-    fillCmp.style.opacity = '1';
-    legendLabel.textContent = labelText;
-    legendCmp.style.display = 'inline-flex';
-    // group active 시에만 인구 정보 메타 노출
-    if (groupDetailEl) groupDetailEl.style.display = (key === 'group') ? 'block' : 'none';
-  };
-
-  buttons.forEach(btn => {
-    if (btn.disabled) return;
-    btn.addEventListener('click', () => {
-      buttons.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
-      setComparison(btn.dataset.cmp);
-    });
-  });
-
-  // 페이지 진입 시 디폴트 비교 자동 적용 (서버에서 결정한 값)
-  if (DEFAULT_CMP) setComparison(DEFAULT_CMP);
-})();
-</script>
