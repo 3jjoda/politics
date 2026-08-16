@@ -12,9 +12,13 @@
                        .sort((a, b) => Math.abs(b.v) - Math.abs(a.v)).slice(0, 2);
     _headline = rows.length ? rows.map(r => `${r.m.name}는 ${r.v > 0 ? r.m.R : r.m.L}`).join(', ') + ' 쪽' : '네 축 모두 중도에 가깝습니다';
   }
+  // 유형 이름 — utils/axisConfig.js typeOf (카드와 같은 단일 소스). 경제×사회 사분면 4종 + 온건한/균형 조율자
+  const _t = (locals.AXIS && AXIS.typeOf) ? AXIS.typeOf({ economy: _val('economy'), social: _val('social') }) : null;
 %>
 <div class="bg-res-kicker">내 결과</div>
-<h2 class="bg-res-headline"><%= _headline %></h2>
+<% if (_t) { %><h2 class="bg-res-headline"><%= _t.name %></h2>
+<p class="bg-res-desc"><%= _t.desc %> <span class="bg-res-line"><%= _headline.replace(/ 쪽$/, '') %>에 가깝습니다.</span></p>
+<% } else { %><h2 class="bg-res-headline"><%= _headline %></h2><% } %>
 <p class="bg-res-sub">|값| 0.25 미만은 중도로 봅니다 · 축 이름 옆은 그 축이 다루는 주제</p>
 <div class="bg-ax">
   <% _ORDER.forEach(k => { const m = META[k]; if (!m) return; const v = _val(k); const has = v !== null;

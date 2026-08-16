@@ -293,6 +293,11 @@ export default (db) => {
                 return null;
             }
         },
+        /* 공유 카드 좌표 지도 — [[economy, social, institution], …]. 실패하면 [] */
+        getAxisCloud: async () => {
+            try { return (await politicianDao.getAxisCloud()).map(r => [r.economy, r.social, r.institution]); }
+            catch (err) { logger.error(`좌표 지도 조회 실패: ${err.message}`); return []; }
+        },
         /* 홈 히어로 — 무작위 의원 3명의 축 좌표. 실패해도 [] 를 돌려 홈은 살린다 */
         getAxisSpotlight: async (limit = 3) => {
             try { return await politicianDao.getAxisSpotlight(limit); }

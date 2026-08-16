@@ -146,6 +146,12 @@ export default (db) => {
             return rows;
         },
 
+        /* 공유 카드 좌표 지도 — 좌표 있는 의원 전원의 축 값만 (익명) */
+        getAxisCloud: async () => {
+            const { rows } = await db.query(queries.getAxisCloud);
+            return rows;
+        },
+
         /* 홈 히어로 — 무작위 N명 + 축 좌표 + 소속 정당 평균 (쿼리 주석 참조) */
         getAxisSpotlight: async (limit = 3) => {
             const { rows } = await db.query(queries.getAxisSpotlight, [limit]);

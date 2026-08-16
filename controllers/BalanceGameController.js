@@ -7,7 +7,7 @@ import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 import BalanceGameService, { AXES, MAPPING_VERSION } from '../services/BalanceGameService.js';
 import PoliticianService from '../services/PoliticianService.js';
-import { AXIS_META, ALL_AXES, MATCH_AXES, POL_MAPPING_VERSION } from '../utils/axisConfig.js';
+import { AXIS_META, ALL_AXES, MATCH_AXES, POL_MAPPING_VERSION, typeOf } from '../utils/axisConfig.js';
 import { siteUrl } from '../utils/threadsPost.js';
 import { fmtDate } from '../utils/datetime.js';
 
@@ -172,32 +172,8 @@ export default (db) => {
         }
     });
 
-    /* ===========================================================
-       단계 5 — 연결 (`/balance-game/connect`)
-       =========================================================== */
-    controller.getConnectPage = wrapWithContext(async function getConnectPage(req, res, next) {
-        try {
-            const userId = req.session?.userId;
-            if (!userId) {
-                const next_ = encodeURIComponent('/balance-game/connect');
-                return res.redirect(`/auth/login?next=${next_}`);
-            }
-            const axisScore = await svc.getUserAxisScore(userId);
-            if (!svc.isCompleted(axisScore)) return res.redirect('/balance-game/respond?pack=general');
-
-            res.render('balance/connect', {
-                pageTitle: '진단 완료',
-                pageStyles: 'balance/connect',
-                currentUrl: '/balance-game/connect',
-                axes: AXES,
-                axisScore,
-                mappingVersion: MAPPING_VERSION
-            });
-        } catch (err) {
-            logger.error('연결 화면 렌더링 중 에러:', `${err.message}\n${err.stack}`);
-            next(err);
-        }
-    });
+    /* 단계 5 「연결」(`/balance-game/connect`) 은 2026-08-16 폐지 — 카드(reveal)가 가까운 의원·공유·비교를 다 갖게 되어 역할이 겹쳤다.
+       라우트는 reveal 로 301 (routes/PageRoutes.js). 카드 컬렉션 구상은 주제팩이 생기면 그때 (balance_game_packs 는 그대로) */
 
     /* ===========================================================
        결과 공유 이미지 (`/balance-game/share`) — 2026-08-16
@@ -220,15 +196,17 @@ export default (db) => {
             const userAxis = {};
             for (const k of ALL_AXES) userAxis[k] = axisScore[k] == null ? null : Number(axisScore[k]);
 
-            const matches = await politicianService.getTopMatches(userAxis, 3);
+            // 가까운 3명 + 가장 먼 3명 (반대 성향) — compare 와 같은 쿼리
+            const [spread, cloud] = await Promise.all([politicianService.getMatchSpread(userAxis, 3), politicianService.getAxisCloud()]);
+            const slim = (m) => ({ name: m.name, district: m.electoral_district || '', retired: m.active_yn === false, e: Number(m.economy), s: Number(m.social) });   // e·s: 지도에 점 찍기용
             const share = {
                 axis: userAxis,
                 axes: ALL_AXES.map(k => ({ key: k, ...AXIS_META[k], measured: MATCH_AXES.includes(k) })),
-                matches: (matches || []).map(m => ({
-                    name: m.name,
-                    district: m.electoral_district || '',
-                    retired: m.active_yn === false
-                })),
+                matches: spread ? spread.near.map(slim) : [],
+                far:     spread ? spread.far.map(slim)  : [],
+                polTotal: spread ? spread.total : 0,
+                cloud,                                   // 좌표 지도용 — 이름·정당 없는 [e,s,i] 배열
+                type: typeOf(userAxis),                  // 유형 이름 (utils/axisConfig.js 단일 소스)
                 total: Number(axisScore.total_responses || 0),
                 date: fmtDate(axisScore.computed_at || new Date()),   // KST 'YYYY.MM.DD'
                 polMapping: POL_MAPPING_VERSION,
