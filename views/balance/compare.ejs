@@ -89,6 +89,29 @@
   .cp-mini-track .cp-gap { position: absolute; top: 0; height: 100%; background: rgba(184,116,12,0.22); }
   .cp-empty { font-size: 13px; color: var(--sub); padding: 12px 0; }
 
+  /* 전체 분포 산점도 — 경제×사회 평면에 의원 전원(익명) + 나 + 가까운/먼 배지 */
+  .cp-scatter { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 22px; align-items: start; }
+  .cp-scatter svg { width: 100%; height: auto; display: block; }
+  .cp-scatter .pane { fill: var(--bg3); }
+  .cp-scatter .pane.on { fill: #FBF5EA; }
+  .cp-scatter .ax { stroke: var(--border2); stroke-width: 1; stroke-dasharray: 3 4; }
+  .cp-scatter .pt { fill: rgba(75,83,98,0.28); }
+  .cp-scatter .qn { font-size: 11px; font-weight: 700; fill: var(--sub2); }
+  .cp-scatter .me { fill: var(--accent); stroke: var(--bg2); stroke-width: 3; }
+  .cp-scatter .me-halo { fill: rgba(184,116,12,0.16); }
+  .cp-scatter .me-l { font-size: 12px; font-weight: 800; fill: var(--text); }
+  .cp-scatter .bd { stroke: var(--bg2); stroke-width: 1.5; }
+  .cp-scatter .bd.near { fill: var(--accent); }
+  .cp-scatter .bd.far { fill: #8A909B; }
+  .cp-scatter .bl { font-size: 8.5px; font-weight: 800; fill: #fff; text-anchor: middle; }
+  .cp-scatter .dash { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; }
+  .cp-scatter-side { font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
+  .cp-scatter-side b { color: var(--text); }
+  .cp-scatter-side .lg { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 12px; font-size: 12.5px; }
+  .cp-scatter-side .lg span { display: inline-flex; align-items: center; gap: 7px; }
+  .cp-scatter-side .lg i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  @media (max-width: 768px) { .cp-scatter { grid-template-columns: 1fr; } }
+
   /* 응답자 평균 잠금 */
   .cp-locked { background: var(--bg3); border: 1px dashed var(--border2); border-radius: 12px; padding: 14px 18px; font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; margin-bottom: 20px; }
   .cp-locked b { color: var(--text); }
@@ -215,6 +238,56 @@
     </p>
   <% } else { %>
     <div class="cp-locked">의원 좌표를 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</div>
+  <% } %>
+
+  <%# ── ②-b 전체 분포 속 나 — 산점도 (공유 카드 지도형과 같은 그림. 카드는 막대형이 기본이라 분포는 여기서 본다) ── %>
+  <% const cl = Array.isArray(locals.cloud) ? cloud : []; const ue = my('economy'), us = my('social');
+     if (cl.length > 10 && sp) {
+       const SW = 520, SH = 380, IN = 22;
+       const X = (v) => IN + (Math.max(-1, Math.min(1, v)) + 1) / 2 * (SW - IN * 2);
+       const Y = (v) => SH - IN - (Math.max(-1, Math.min(1, v)) + 1) / 2 * (SH - IN * 2);
+       const mE = META.economy, mS = META.social; %>
+    <section class="cp-card">
+      <div class="cp-card-head">
+        <h2 class="cp-card-title">전체 분포 속 나 — 경제 × 사회·문화</h2>
+        <div class="cp-legend"><span><i class="cp-lg-me"></i>나</span><span><i style="width:10px;height:10px;border-radius:50%;background:rgba(75,83,98,0.4);display:inline-block"></i>의원 한 명</span></div>
+      </div>
+      <div class="cp-scatter">
+        <svg viewBox="0 0 <%= SW %> <%= SH %>" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="의원 <%= total %>명 좌표 분포와 내 위치">
+          <% const qOn = (r, t) => (ue !== null && us !== null) && ((ue >= 0) === r) && ((us >= 0) === t); %>
+          <rect class="pane <%= qOn(false, true) ? 'on' : '' %>" x="0" y="0" width="<%= SW/2 %>" height="<%= SH/2 %>"/>
+          <rect class="pane <%= qOn(true, true) ? 'on' : '' %>" x="<%= SW/2 %>" y="0" width="<%= SW/2 %>" height="<%= SH/2 %>"/>
+          <rect class="pane <%= qOn(false, false) ? 'on' : '' %>" x="0" y="<%= SH/2 %>" width="<%= SW/2 %>" height="<%= SH/2 %>"/>
+          <rect class="pane <%= qOn(true, false) ? 'on' : '' %>" x="<%= SW/2 %>" y="<%= SH/2 %>" width="<%= SW/2 %>" height="<%= SH/2 %>"/>
+          <line class="ax" x1="<%= SW/2 %>" y1="6" x2="<%= SW/2 %>" y2="<%= SH-6 %>"/>
+          <line class="ax" x1="6" y1="<%= SH/2 %>" x2="<%= SW-6 %>" y2="<%= SH/2 %>"/>
+          <% cl.forEach(p => { %><circle class="pt" cx="<%= X(p[0]).toFixed(1) %>" cy="<%= Y(p[1]).toFixed(1) %>" r="3.2"/><% }); %>
+          <text class="qn" x="10" y="16"><%= mE.L %> · <%= mS.R %></text>
+          <text class="qn" x="<%= SW-10 %>" y="16" text-anchor="end"><%= mE.R %> · <%= mS.R %></text>
+          <text class="qn" x="10" y="<%= SH-8 %>"><%= mE.L %> · <%= mS.L %></text>
+          <text class="qn" x="<%= SW-10 %>" y="<%= SH-8 %>" text-anchor="end"><%= mE.R %> · <%= mS.L %></text>
+          <% if (ue !== null && us !== null) { sp.near.forEach(p => { %><line class="dash" x1="<%= X(ue).toFixed(1) %>" y1="<%= Y(us).toFixed(1) %>" x2="<%= X(Number(p.economy)).toFixed(1) %>" y2="<%= Y(Number(p.social)).toFixed(1) %>"/><% }); } %>
+          <% sp.far.forEach((p, i) => { %><g><circle class="bd far" cx="<%= X(Number(p.economy)).toFixed(1) %>" cy="<%= Y(Number(p.social)).toFixed(1) %>" r="7"/><text class="bl" x="<%= X(Number(p.economy)).toFixed(1) %>" y="<%= (Y(Number(p.social)) + 3).toFixed(1) %>"><%= 'ABC'[i] %></text><title><%= p.name %></title></g><% }); %>
+          <% sp.near.forEach((p, i) => { %><g><circle class="bd near" cx="<%= X(Number(p.economy)).toFixed(1) %>" cy="<%= Y(Number(p.social)).toFixed(1) %>" r="7"/><text class="bl" x="<%= X(Number(p.economy)).toFixed(1) %>" y="<%= (Y(Number(p.social)) + 3).toFixed(1) %>"><%= i + 1 %></text><title><%= p.name %></title></g><% }); %>
+          <% if (ue !== null && us !== null) { %>
+            <circle class="me-halo" cx="<%= X(ue).toFixed(1) %>" cy="<%= Y(us).toFixed(1) %>" r="16"/>
+            <circle class="me" cx="<%= X(ue).toFixed(1) %>" cy="<%= Y(us).toFixed(1) %>" r="8"/>
+            <text class="me-l" x="<%= (X(ue) + 13).toFixed(1) %>" y="<%= (Y(us) + 4).toFixed(1) %>">나</text>
+          <% } %>
+        </svg>
+        <div class="cp-scatter-side">
+          <b>점 하나가 의원 한 명</b> — 좌표 있는 <%= total %>명 전원을 이름·정당 없이 뿌렸습니다. 두 덩어리로 갈리는 게 보이는데, 색을 입히지 않은 건
+          그것이 곧 정당 지도가 되기 때문입니다.
+          <div class="lg">
+            <span><i style="background:var(--accent)"></i>①②③ 좌표가 가장 가까운 의원</span>
+            <span><i style="background:#8A909B"></i>ⒶⒷⒸ 가장 먼 의원</span>
+            <span><i style="border:1px dashed var(--accent);background:none"></i>나 → 가까운 의원 거리</span>
+          </div>
+          가로 <%= mE.Lx %> ↔ <%= mE.Rx %> · 세로 <%= mS.Lx %> ↔ <%= mS.Rx %>. 가까운/먼 순위는 정치제도까지 <b>세 축</b> 거리로 매기므로,
+          이 평면에서 가장 가까워 보이지 않을 수 있습니다.
+        </div>
+      </div>
+    </section>
   <% } %>
 
   <%# ── ③ 다른 응답자와 비교 (잠금/열림) ── %>

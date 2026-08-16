@@ -138,10 +138,11 @@ export default (db) => {
             // 응답자 평균(전체·그룹)은 50명 임계값이라 당분간 잠겨 있다 (실측 6명) — 잠금 상태를 정직하게 보인다
             const userAxis = {};
             for (const k of ALL_AXES) userAxis[k] = axisScore[k] == null ? null : Number(axisScore[k]);
-            const [overall, group, spread] = await Promise.all([
+            const [overall, group, spread, cloud] = await Promise.all([
                 svc.getOverallAxisAvg(),
                 groupKey ? svc.getGroupAxisAvg(groupKey) : Promise.resolve(null),
-                politicianService.getMatchSpread(userAxis, 3)
+                politicianService.getMatchSpread(userAxis, 3),
+                politicianService.getAxisCloud()          // 「전체 분포 속 나」 산점도 (익명 점구름)
             ]);
 
             // 임계값 처리
@@ -158,6 +159,7 @@ export default (db) => {
                 axisScore,
                 userAxis,
                 spread,
+                cloud,
                 overall,
                 group,
                 groupKey,
