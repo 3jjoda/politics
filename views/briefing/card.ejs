@@ -107,6 +107,9 @@
              justify-content: center; justify-content: safe center;
              overflow: hidden; padding: 44px 0; }
   .sl-body > * { flex: 0 0 auto; }
+  /* 흐름 장은 위에 붙인다 — 내용이 600px 남짓이라 가운데 정렬이면 위 40% 가 빈다 (피드백).
+     safe center 는 넘칠 때 어차피 flex-start 로 떨어지므로 위 세 줄 세트와 충돌하지 않는다 */
+  .sl-body.is-top { justify-content: flex-start; padding-top: 72px; }
 
   /* 간격 2단 분리: 브랜드 안쪽 12px / 구분선 바깥 16px.
      nav 기준(마크 36 · 안 9px · 밖 12px · 구분선 1×20 · 태그라인 h18)을 마크 46 배율로 옮긴 값 */
@@ -139,27 +142,33 @@
   .nums, .laws { display: flex; flex-direction: column; justify-content: space-evenly; }
   .nums.is-few, .laws.is-few { justify-content: center; }
   .nums.is-few .num, .laws.is-few .law { padding: 44px 0; }
-  .num { display: flex; align-items: baseline; gap: 24px; padding: 30px 0; border-bottom: 2px solid var(--line); }
+  /* 2026-08-16: 표지 숫자의 반복이 아니라 **비교**를 싣는 장이 됐다 — 큰 숫자 아래 기준선 한 줄(.num-s)이 본체다.
+     ⚠️ 라벨·숫자·기준선을 한 행에 묶는다 — 갈라놓으면 어느 기준이 어느 숫자 것인지 안 읽힌다 */
+  .num { display: flex; flex-direction: column; gap: 10px; padding: 34px 0; border-bottom: 2px solid var(--line); }
   .num:last-child { border-bottom: 0; }
-  .num-l { font-size: 40px; font-weight: 500; color: var(--sub); }
+  .num-top { display: flex; align-items: baseline; gap: 24px; }
+  .num-l { font-size: 38px; font-weight: 500; color: var(--sub); }
   .num-v { margin-left: auto; font-family:'JetBrains Mono',monospace; font-size: 96px; font-weight: 700; color: var(--gold-d); line-height: 1; }
   .num-u { font-size: 34px; font-weight: 500; color: var(--sub2); }
+  .num-s { font-size: 30px; line-height: 1.6; color: var(--sub2); }
   .cmt { margin: 34px 0 0; font-size: 30px; line-height: 1.7; color: var(--sub); }
+  /* 몰린 법률 장은 설명이 **위**다 — "몰렸다" 가 무슨 뜻인지 먼저 읽어야 아래 목록이 이해된다 (피드백: 순서가 거꾸로였다) */
+  .cmt.is-lead { margin: 0 0 12px; }
 
   /* ── 주제 묶음 ── */
   /* 줄 수를 고정해야 카드 높이가 예측된다 — AI 출력은 길이가 들쭉날쭉하다 */
-  .th-theme { font-family:'Noto Serif KR',serif; font-size: 62px; font-weight: 900; line-height: 1.36; margin: 0 0 28px;
+  .th-theme { font-family:'Noto Serif KR',serif; font-size: 64px; font-weight: 900; line-height: 1.36; margin: 0 0 34px;
               display:-webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .th-what { font-size: 38px; line-height: 1.72; color: var(--sub); margin: 0;
-             display:-webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+             display:-webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
   .th-cnt { font-family:'JetBrains Mono',monospace; font-size: 30px; font-weight: 700; color: var(--gold-d);
             border: 2px solid var(--gold-d); border-radius: 9px; padding: 5px 16px; background: var(--tint); white-space: nowrap; }
-  .th-bills { list-style: none; margin: 40px 0 0; padding: 26px 0 0; border-top: 2px solid var(--line);
-              display: flex; flex-direction: column; gap: 14px; }
-  .th-bills li { font-size: 30px; line-height: 1.5; color: var(--sub); padding-left: 22px; border-left: 5px solid var(--line2);
+  .th-bills { list-style: none; margin: 56px 0 0; padding: 40px 0 0; border-top: 2px solid var(--line);
+              display: flex; flex-direction: column; gap: 30px; }
+  .th-bills li { font-size: 36px; line-height: 1.5; color: var(--ink); padding-left: 24px; border-left: 5px solid var(--line2);
                  display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   <%# 이름만 — 정당은 넣지 않는다. 카드 한 장에 정당명이 늘어서면 그 자체가 대비 구도가 된다 %>
-  .th-by { color: var(--sub2); margin-left: 12px; font-size: 26px; }
+  .th-by { color: var(--sub2); margin-left: 12px; font-size: 28px; }
 
   /* ── 몰린 법률 ── */
   .law { display: flex; align-items: baseline; gap: 22px; padding: 26px 0; border-bottom: 2px solid var(--line); }
@@ -169,6 +178,9 @@
   .law:last-child { border-bottom: 0; }
   .law-n { font-size: 36px; font-weight: 500; line-height: 1.45;
            display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .law-l { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  <%# 대표발의자 — 이름만 (정당 없음). "서로 다른 의원이 각자 냈다" 가 이 장의 이야기 %>
+  .law-by { font-size: 28px; color: var(--sub2); line-height: 1.5; }
   .law-c { margin-left: auto; font-family:'JetBrains Mono',monospace; font-size: 72px; font-weight: 700; color: var(--gold-d); line-height: 1; white-space: nowrap; }
 
   /* ── 아웃트로 ── */
@@ -291,14 +303,14 @@
           <div class="nums<%= s.nums.length <= 2 ? ' is-few' : '' %>">
             <% s.nums.forEach((n) => { %>
               <div class="num">
-                <span class="num-l"><%= n.l %></span>
-                <span class="num-v"><%= nf(n.v) %></span><span class="num-u"><%= n.u %></span>
+                <div class="num-top">
+                  <span class="num-l"><%= n.l %></span>
+                  <span class="num-v"><%= typeof n.v === 'number' ? nf(n.v) : n.v %></span><span class="num-u"><%= n.u %></span>
+                </div>
+                <% if (n.s) { %><span class="num-s"><%= n.s %></span><% } %>
               </div>
             <% }); %>
           </div>
-          <% if (s.committees.length) { %>
-            <p class="cmt">위원회별 발의 — <%= s.committees.map((c) => `${c.committee} ${c.cnt}건`).join(' · ') %></p>
-          <% } %>
         </div>
 
       <% } else if (s.kind === 'thread') { %>
@@ -310,7 +322,7 @@
             <span class="th-cnt"><%= nf(s.t.bill_count) %>건</span>
           </span>
         </div>
-        <div class="sl-body">
+        <div class="sl-body is-top">
           <h2 class="th-theme"><%= s.t.theme %></h2>
           <p class="th-what"><%= s.t.what %></p>
           <% if (s.bills.length) { %>
@@ -327,18 +339,21 @@
           <span class="sl-label">같은 법률에 몰린 개정안</span>
           <span class="sl-date"><%= D %></span>
         </div>
-        <div class="sl-body">
+        <div class="sl-body is-top">
+          <%# 설명이 **먼저**다 — "몰렸다" 가 무슨 뜻인지 모르면 아래는 숫자 나열이다. 목록 뒤에 뒀다가 순서가 거꾸로라는 지적을 받았다 %>
+          <p class="cmt is-lead">같은 법률을 고치는 개정안이 이날 하루에 여러 건 올라왔습니다. 누가 각각 냈는지 함께 적었습니다.</p>
           <%# .nums 와 같은 이유로 감싼다 — 2~5행뿐이라 안 감싸면 위아래가 텅 빈다 %>
           <div class="laws<%= s.laws.length <= 2 ? ' is-few' : '' %>">
             <% s.laws.forEach((l) => { %>
               <div class="law">
-                <span class="law-n"><%= l.bill_name %></span>
+                <span class="law-l">
+                  <span class="law-n"><%= l.bill_name %></span>
+                  <% if (l.by && l.by.length) { %><span class="law-by"><%= l.by.join(' · ') %></span><% } %>
+                </span>
                 <span class="law-c"><%= nf(l.cnt) %><span class="law-u">건</span></span>
               </div>
             <% }); %>
           </div>
-          <%# 여백을 메우려고 넣은 문장이 아니다 — "몰렸다" 가 무슨 뜻인지 모르면 이 장은 숫자 나열이다 %>
-          <p class="cmt">하나의 법률을 고치는 개정안이 이날 하루에 여러 건 올라온 경우입니다.</p>
         </div>
 
       <% } else { %>

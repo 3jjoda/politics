@@ -44,7 +44,7 @@ function buildSlides(p, ctx = {}) {
         const rank = Number(b.days_above) + 1;
         const cmp = [{
             v: st.proposed, u: '건', l: '발의',
-            s: `최근 ${b.base_days} 평일 평균 ${avg}건` + (ratio ? ` · ${ratio.toFixed(1)}배` : '') + ` · ${rank}번째로 많은 날`,
+            s: `최근 ${b.base_days} 평일 평균 ${avg}건` + (ratio ? `의 ${ratio.toFixed(1)}배` : '') + ` · 그중 ${rank}번째로 많은 날`,
         }];
         if (st.cosign && st.proposed) {
             cmp.push({ v: (st.cosign / st.proposed).toFixed(1), u: '명', l: '법안 1건당 공동발의',
@@ -177,7 +177,7 @@ export default (db) => {
                 });
             }
 
-            const slides = buildSlides(post);
+            const slides = buildSlides(post, await briefingService.getCardContext(post));
 
             // ?slide 는 범위를 벗어나면 에러가 아니라 접는다 (손으로 URL 을 고쳐도 빈 화면이 안 나오게)
             const raw = req.query.slide;
@@ -267,7 +267,7 @@ export default (db) => {
             if (!post) return res.status(404).json({ error: 'not found', ready: false });
 
             const site = siteUrl();
-            const slides = buildSlides(post);
+            const slides = buildSlides(post, await briefingService.getCardContext(post));
             const base = `${site}/briefing/${post.id}`;
             const strip = (arr) => arr.map((p) => ({ n: p.n, role: p.role, text: p.text, len: p.len }));
             res.set('Cache-Control', 'no-store');

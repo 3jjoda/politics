@@ -721,6 +721,22 @@
   copyBtn?.addEventListener('click', () => { if (ready) copy(); });
   if (!(navigator.clipboard && window.ClipboardItem)) copyBtn?.setAttribute('hidden', '');
 
+  // ── 실험 모드 (?debug=1): 삼성 인터넷 펼친 화면에서 어떤 공유 형태가 정상인지 기기에서 직접 확인하기 위한 변형들 ──
+  if (new URLSearchParams(location.search).get('debug') === '1') {
+    const box = document.createElement('div');
+    box.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px;font-size:12px';
+    const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'sc-btn secondary'; b.textContent = label; b.addEventListener('click', fn); box.appendChild(b); return b; };
+    const say = (m) => setStatus('[실험] ' + m);
+    const withFile = (type, ext) => new Promise(res => canvas.toBlob(b => res(new File([b], `card.${ext}`, { type })), type, 0.92));
+    mk('실험 A · PNG 파일만 (title 없음)', async () => { const f = await withFile('image/png', 'png'); try { await navigator.share({ files: [f] }); say('A 완료'); } catch (e) { say('A 실패 ' + e.name); } });
+    mk('실험 B · JPEG 파일 + 제목', async () => { const f = await withFile('image/jpeg', 'jpg'); try { await navigator.share({ files: [f], title: '당말사' }); say('B 완료'); } catch (e) { say('B 실패 ' + e.name); } });
+    mk('실험 C · 파일 + 링크 텍스트', async () => { const f = await withFile('image/png', 'png'); try { await navigator.share({ files: [f], text: `${D.siteHost}/balance-game` }); say('C 완료'); } catch (e) { say('C 실패 ' + e.name); } });
+    mk('실험 D · 미리 만든 PNG, 지연 0 (현재 방식)', () => { if (!readyBlob) { say('아직 준비 안 됨'); return; } const f = new File([readyBlob], 'card.png', { type: 'image/png' }); navigator.share({ files: [f], title: '당말사' }).then(() => say('D 완료')).catch(e => say('D 실패 ' + e.name)); });
+    mk('실험 E · 링크만 (브리핑과 같은 방식)', () => { navigator.share({ title: '당말사', url: `https://${D.siteHost}/balance-game` }).then(() => say('E 완료')).catch(e => say('E 실패 ' + e.name)); });
+    (shareBtn ? shareBtn.parentNode : document.body).insertBefore(box, shareBtn ? shareBtn.nextSibling : null);
+    say('debug 모드 — 폴드 펼친 상태에서 A~E 눌러보고 어느 게 정상인지 알려주세요');
+  }
+
   modeBtns.forEach(b => b.addEventListener('click', () => { mode = b.dataset.scMode; render(); }));
   themeBtns.forEach(b => b.addEventListener('click', () => { theme = b.dataset.scTheme; render(); }));
   layoutBtns.forEach(b => b.addEventListener('click', () => { layout = b.dataset.scLayout; render(); }));
