@@ -2865,6 +2865,12 @@ ADMIN_EMAILS=you@example.com
 
 # Google AdSense (2026-08-10) — 승인 후에만 세팅. 비워두면 광고 관련 출력이 전부 꺼진다
 ADSENSE_CLIENT_ID=ca-pub-0000000000000000
+
+# 검색엔진 소유 확인 (2026-08-16) — 콘솔이 준 <meta content="…"> 의 **값만** 넣는다 (태그 전체 X).
+#   있을 때만 layout.ejs <head> 에 <meta name="naver-site-verification"> / google-site-verification 이 나간다.
+#   네이버 서치어드바이저(searchadvisor.naver.com) → 사이트 등록 → HTML 태그 방식. 인증 후 sitemap.xml 제출
+NAVER_SITE_VERIFICATION=
+GOOGLE_SITE_VERIFICATION=
 ```
 
 ### Railway 서비스별 변수 배분 (2026-08-04)
@@ -2878,6 +2884,7 @@ ADSENSE_CLIENT_ID=ca-pub-0000000000000000
 | `GOOGLE_*` / `KAKAO_*` | ✅ | — |
 | `ANTHROPIC_API_KEY` | — | ✅ **필수** — `batch:daily` 의 `genBriefing` 이 쓴다 (없으면 폴백 카드만 쌓임) |
 | `ADSENSE_CLIENT_ID` | 승인 후 ✅ | — |
+| `NAVER_SITE_VERIFICATION` / `GOOGLE_SITE_VERIFICATION` | ✅ (발급 후) | — |
 | `ADMIN_EMAILS` | ✅ | — |
 
 ---

@@ -70,6 +70,13 @@ app.locals.asset = (p) => `${p}${p.includes('?') ? '&' : '?'}v=${ASSET_VER}`;
 const ADSENSE_CLIENT_ID = (process.env.ADSENSE_CLIENT_ID || '').trim();
 app.locals.adsenseClientId = ADSENSE_CLIENT_ID;
 
+/* ===== 검색엔진 사이트 소유 확인 =====
+   네이버 서치어드바이저 / 구글 서치콘솔 이 발급하는 인증 코드. 값이 있을 때만
+   layout.ejs <head> 에 <meta name="…-site-verification"> 이 나간다.
+   콘솔에서 발급받은 content 값만 env 에 넣으면 된다 (태그 전체가 아니라 값만). */
+app.locals.naverSiteVerification  = (process.env.NAVER_SITE_VERIFICATION  || '').trim();
+app.locals.googleSiteVerification = (process.env.GOOGLE_SITE_VERIFICATION || '').trim();
+
 /* ads.txt — "이 도메인의 광고 재고를 팔 권한이 있는 사업자" 선언.
    없으면 AdSense 가 "수익 손실 위험" 경고를 계속 띄운다. 반드시 apex 루트에서 200 이어야 한다
    (www·railway.app 로 오면 canonicalHost 가 301 로 넘겨주므로 크롤러가 따라온다).

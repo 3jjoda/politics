@@ -11,6 +11,13 @@
     <meta name="description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
     <meta name="keywords" content="정치, 국회, 법안, 의원, 투표, 공약, 22대 국회, 정치 데이터">
     <meta name="theme-color" content="#B8740C">
+    <%# 검색엔진 소유 확인 — env NAVER_SITE_VERIFICATION / GOOGLE_SITE_VERIFICATION 이 있을 때만 (app.js) %>
+    <% if (locals.naverSiteVerification) { %>
+    <meta name="naver-site-verification" content="<%= naverSiteVerification %>">
+    <% } %>
+    <% if (locals.googleSiteVerification) { %>
+    <meta name="google-site-verification" content="<%= googleSiteVerification %>">
+    <% } %>
     <%# 대표 주소 고지 — 여러 도메인(apex·www·railway.app)이 같은 내용을 서빙하므로 검색엔진에 정본을 알려준다.
         쿼리스트링은 일부러 뺀다 (?page=2 같은 게 별도 URL 로 색인되지 않게) %>
     <link rel="canonical" href="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.currentUrl || '/') %>">
