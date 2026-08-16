@@ -1432,6 +1432,25 @@ npm run insta -- --date 2026-08-10
   같은 공개 데이터를 다르게 그린 것뿐이고, 막으면 로그인 상태에 따라 미리보기가 안 되는 상황이 생긴다 (`noindex` 는 걸어둠)
 - ⚠️ **AI 고지·출처 표기가 마무리 장에 반드시 있어야 한다.** 카드는 사이트 밖으로 나가므로 여기가 유일한 고지 지점이다
 
+#### SNS 자동 게시 — 서비스 안에서 하지 않는다. `/api/briefing/export` 를 자동화 툴이 읽는다 (2026-08-16)
+Meta 토큰·재시도·스케줄을 서비스에 들이지 않기로 했다 (사용자 결정). 우리는 **재료만** JSON 으로 내고,
+Make · n8n 같은 툴이 매일 아침 이걸 읽어 올린다.
+
+```
+GET /api/briefing/export           → 최신 카드   (?date=YYYY-MM-DD · ?id=N 도 가능)
+{ ready, id, date, kind:'ai'|'fallback'|'none', publishable, headline, url,
+  threads: { limit:500, short:[{n,role,text,len}…3], full:[…6] },
+  instagram: { caption, slideCount, slides:[…/card?slide=N], story:…/card?story=1, size } }
+```
+- 🔴 **`publishable` 이 false 면 올리지 말 것** — 폴백(`fallback`)·활동 없음(`none`) 카드는 게시 대상이 아니다. 툴의 필터 조건으로 건다
+- 🔴 **멱등은 툴이 책임진다** — 같은 `id` 를 두 번 올리지 않도록 툴 쪽 데이터스토어(마지막 게시 id)로 막을 것. 서버는 게시 여부를 모른다
+- 쓰레드: `short`(3개, 링크 1·3번) 를 권장 — 텍스트만이라 **툴만으로 완전 자동**이 된다. 체인은 `reply_to_id` 로 잇는다
+- 인스타: `slides` 는 **HTML 페이지 URL**이다. Instagram API 는 공개 JPEG URL 을 요구하므로 툴에서 **스크린샷 서비스(URL→이미지, 뷰포트 1080×1350·1080×1920, DPR 1)** 를 한 단계 끼운다.
+  🔴 **스토리 링크 스티커는 API 로 못 붙인다** — 스토리는 계속 수동 (사이트 유입의 유일한 탭 경로라 포기하면 안 된다)
+- 보호: `BRIEFING_EXPORT_KEY` env 를 두면 `?key=` 또는 `X-Export-Key` 가 같아야 하고, 아니면 **404**(존재를 숨긴다). 공개 데이터라 없어도 동작한다. `/api` 는 robots 에서 이미 막혀 있다
+- 응답 `Cache-Control: no-store` — 툴이 오래된 카드를 다시 올리지 않게. `id` 는 BIGINT 라 `Number()` 로 바꿔 낸다
+- 배치 순서상 카드는 새벽 04:00 KST 체인 맨 뒤(`genBriefing`)에서 만들어지므로 툴 스케줄은 **05:00 이후**로
+
 #### 프롬프트 v2 — 🔴 AI 에게 집계를 다시 말하게 시키지 말 것 (2026-08-11)
 v1 은 `"3~4문장. 무엇이 몇 건 있었고 어디에 몰렸는지"` 를 시켰는데, 그건 **`composeFallback()` 의
 직무기술서**였다. 결과적으로 AI 카드와 폴백 카드가 어순만 다른 같은 글이 나왔고
@@ -2448,6 +2467,7 @@ D 레이어 본체. **분석 탭 본문의 전체폭 접힘 띠(`bg-vs-collapsib
 | GET | `/api/bills/trending?sort=recent\|close\|popular\|bipartisan` | 홈 주목할 법안 (정렬 탭 동적 교체) |
 | GET | `/api/bill/:id/analysis-status` | AI 분석 요청 상태 `{count, hasRequested, threshold}` |
 | POST | `/bill/:id/request-analysis` | AI 분석 요청 (requireLogin, 멱등). `ALREADY_ANALYZED` 면 400 |
+| GET | `/api/briefing/export[?date=YYYY-MM-DD\|?id=N]` | **자동화 툴(Make·n8n)용 내보내기** — 최신(또는 지정) 브리핑의 `publishable`·쓰레드 체인(short/full)·인스타 캡션·슬라이드 URL 을 JSON 하나로. env `BRIEFING_EXPORT_KEY` 가 있으면 `?key=`/`X-Export-Key` 필수. 아래 "SNS 자동 게시" 참조 |
 | POST | `/community` | 게시글 작성 |
 | PUT / DELETE | `/community/:id` | 수정/삭제 (본인만) |
 
@@ -2483,6 +2503,9 @@ PC/모바일 동일 패턴으로 통일.
   - bill: `pendingCmt` / `pendingParty` / `pendingAiCategory` Set, 적용 시 `?committee=A,B&party=X,Y&ai_category_main=X,Y` navigation. "기타/특별위원회" 는 minor 이름 쉼표 value 로 atomic 토글
 - **단일 선택 (enum)**: bill 의 통합 AI 분석 카드 — `pendingHasAnalysis` ('' | 'Y' | 'N') + `pendingRequestStatus` ('' | 'any' | 'priority') 두 변수가 한 항목 클릭에 페어로 동시 토글. 같은 항목 재클릭 시 둘 다 '' 로 복귀(전체)
 - 모바일(≤768px): `filter-sheet-btn` 이 검색 바 위 전체폭. 바텀시트 슬라이드업 + 백드롭. 활성 필터 카운트 뱃지엔 모든 필터 합산
+  - 🔴 **닫힌 시트는 `visibility: hidden` 으로도 잠근다** (2026-08-16). `translateY(100%)` 만으로는 iOS Safari 에서
+    시트 안 sticky 헤더가 뷰포트 기준으로 계산돼 화면 바닥에 `필터 · 적용 · ×` 줄이 삐져나왔다 (실기기 아이폰 실측).
+    데스크톱·크롬 에뮬레이션에선 재현 안 됨. `.sidebar` 의 visibility 전환은 0.25s 지연 (닫힘 애니메이션 유지). `/bill` 도 동일
 - `.sheet-pending` CSS 전역. 서버렌더 `.active` 는 JS init 에서 제거 후 `.sheet-pending` 으로 교체
 
 #### 모바일 select 이동 — 검색바의 드롭다운을 필터 시트로 (2026-08-15)

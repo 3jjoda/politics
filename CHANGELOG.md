@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-08-16 (13) — iOS 에서 닫힌 필터 시트 헤더가 바닥에 삐져나오던 것
+
+- 실기기 아이폰에서 `/politician` 하단에 `필터 · 적용 · ×` 줄이 상시 노출됐다. 닫힌 시트를 `translateY(100%)` 로만 밀어둬서,
+  시트 안 `.filter-sheet-header`(sticky)가 WebKit 에서 뷰포트 기준으로 붙은 것 → 닫힘 상태에 `visibility: hidden` 추가 (`/bill` 도)
+
+## 2026-08-16 (12) — SNS 자동 게시 재료 `/api/briefing/export` (자동화 툴용)
+
+- 인스타·쓰레드 자동 업로드는 **서비스 안에서 하지 않고 Make·n8n 같은 툴로** 하기로 (사용자 결정 — Meta 토큰·재시도를 서비스에 안 들인다).
+  우리 쪽은 `GET /api/briefing/export` 하나 — 최신(또는 `?date`·`?id`) 카드의 `publishable`, 쓰레드 체인(short/full), 인스타 캡션·슬라이드 URL
+- `publishable=false`(폴백·활동없음)는 올리지 말 것 · 멱등은 툴 데이터스토어가 책임 · 인스타는 슬라이드 HTML → 스크린샷 서비스 필요 · 스토리 링크 스티커는 여전히 수동
+- 선택 보호 `BRIEFING_EXPORT_KEY` (없으면 공개, 있으면 키 불일치 시 404). `utils/threadsPost.js` 의 `siteUrl` 을 export
+
 ## 2026-08-16 (11) — 구 로고 파비콘 잔재 정리
 
 - 루트 `public/favicon.ico` 가 **리브랜딩 전 파일**(2025-10)이었다. `layout.ejs` 는 `/assets/imgs/favicon.ico` 를 걸어 정상이었지만,

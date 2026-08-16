@@ -19,7 +19,7 @@ export const charLen = (s) => [...String(s)].length;
 /* 게시할 사이트 주소.
    ⚠️ BASE_URL 은 로컬에서 localhost 라 그대로 쓰면 복사 텍스트에 localhost 링크가 박힌다.
       canonicalHost.js 와 같은 방식으로 로컬을 걸러내고 대표 도메인으로 떨어뜨린다. */
-function siteUrl(explicit) {
+export function siteUrl(explicit) {
     const b = explicit || process.env.BASE_URL || '';
     if (!b || /localhost|127\.0\.0\.1/.test(b)) return 'https://dangmalsa.kr';
     return b.replace(/\/$/, '');

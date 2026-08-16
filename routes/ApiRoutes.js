@@ -5,6 +5,7 @@ import InitController from '../controllers/InitController.js';
 import PoliticianController from '../controllers/PoliticianController.js';
 import BillController from '../controllers/BillController.js';
 import BalanceGameController from '../controllers/BalanceGameController.js';
+import BriefingController from '../controllers/BriefingController.js';
 
 export default (db) => {
     const router = express.Router();
@@ -13,6 +14,7 @@ export default (db) => {
     const politicianController = PoliticianController(db);
     const billController = BillController(db);
     const balanceGameController = BalanceGameController(db);
+    const briefingController = BriefingController(db);
 
     // API 목록
     /* 초기화 */
@@ -31,6 +33,9 @@ export default (db) => {
     router.get('/bills/trending', billController.getTrending); // 홈 주목할 법안 (sort)
     router.get('/bills/search', billController.search);     // 법안 검색 (커뮤니티 첨부용)
     router.get('/bill/:id/analysis-status', billController.getAnalysisStatus); // AI 분석 요청 상태
+
+    /* 브리핑 내보내기 — Make·n8n 등 자동화 툴이 쓰레드·인스타 게시 재료를 가져가는 곳 */
+    router.get('/briefing/export', briefingController.getBriefingExport);
 
     /* 밸런스 게임 — 응답 저장·점수 조회 */
     router.post('/balance-game/respond', balanceGameController.respondApi);

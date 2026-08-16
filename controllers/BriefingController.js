@@ -3,7 +3,7 @@
 // 1단계: 데이터만. AI 호출 0회.
 
 import BriefingService from '../services/BriefingService.js';
-import { buildThreadsChain, THREADS_LIMIT } from '../utils/threadsPost.js';
+import { buildThreadsChain, THREADS_LIMIT, siteUrl } from '../utils/threadsPost.js';
 import { buildCaption } from '../utils/instaCaption.js';
 import { nf, pct } from '../utils/xrayFormat.js';
 import logger from '../utils/logger.js';
@@ -197,6 +197,65 @@ export default (db) => {
             });
         } catch (error) {
             logger.error('브리핑 쓰레드 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    /* 자동화 툴(Make · n8n 등)용 내보내기 — 쓰레드 체인 · 인스타 캡션 · 슬라이드 URL 을 JSON 하나로.
+     *
+     * 왜 우리 안에서 안 올리나: SNS 토큰·재시도·스케줄을 서비스에 들이지 않는다. 우리는 데이터만 낸다.
+     *   GET /api/briefing/export            → 최신 카드
+     *   GET /api/briefing/export?date=YYYY-MM-DD | ?id=N
+     * 응답의 `publishable` 이 false 면 올리지 말 것 (폴백·활동없음 카드). 툴 쪽 필터 조건으로 쓴다.
+     * ⚠️ 인스타 이미지는 HTML 페이지 URL(`?slide=N`)이다 — API 는 공개 JPEG URL 을 요구하므로 툴에서
+     *    스크린샷 서비스(URL→이미지)를 한 단계 끼워야 한다. 스토리 링크 스티커는 API 로 못 붙여 스토리는 수동.
+     * 보호: env `BRIEFING_EXPORT_KEY` 가 있으면 `?key=` 또는 `X-Export-Key` 헤더가 같아야 한다 (공개 데이터라 없어도 동작) */
+    controller.getBriefingExport = wrapWithContext(async function getBriefingExport(req, res, next) {
+        try {
+            const need = process.env.BRIEFING_EXPORT_KEY;
+            if (need && req.query.key !== need && req.get('x-export-key') !== need) {
+                return res.status(404).json({ error: 'not found' });   // 존재를 숨긴다 (admin 과 같은 판단)
+            }
+            let post = null;
+            if (req.query.id) {
+                const id = Number(req.query.id);
+                post = Number.isInteger(id) && id > 0 ? await briefingService.getPost(id) : null;
+            } else {
+                const feed = await briefingService.getFeed(1);
+                const want = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : null;
+                const hit = want ? feed.posts.find((p) => p.briefing_date === want) : feed.posts[0];
+                post = hit ? await briefingService.getPost(hit.id) : null;
+            }
+            if (!post) return res.status(404).json({ error: 'not found', ready: false });
+
+            const site = siteUrl();
+            const slides = buildSlides(post);
+            const base = `${site}/briefing/${post.id}`;
+            const strip = (arr) => arr.map((p) => ({ n: p.n, role: p.role, text: p.text, len: p.len }));
+            res.set('Cache-Control', 'no-store');
+            res.json({
+                ready: true,
+                id: Number(post.id),   // BIGINT 가 문자열로 온다 — 툴에서 숫자 비교하게
+                date: post.briefing_date,
+                kind: post.isAi ? 'ai' : (post.isEmpty ? 'none' : 'fallback'),
+                publishable: !!post.isAi,   // 폴백·활동없음은 올릴 카드가 아니다
+                headline: post.headline,
+                url: base,
+                threads: {
+                    limit: THREADS_LIMIT,
+                    short: strip(buildThreadsChain(post, { mode: 'short', baseUrl: site })),
+                    full:  strip(buildThreadsChain(post, { mode: 'full',  baseUrl: site })),
+                },
+                instagram: {
+                    caption: buildCaption(post),
+                    slideCount: slides.length,
+                    slides: slides.map((_, i) => `${base}/card?slide=${i + 1}`),   // 1080×1350 HTML — 스크린샷 서비스로 이미지화
+                    story: `${base}/card?story=1`,                                   // 1080×1920 HTML — 링크 스티커는 수동
+                    size: { feed: [1080, 1350], story: [1080, 1920] },
+                },
+            });
+        } catch (error) {
+            logger.error('브리핑 export 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });
