@@ -342,33 +342,57 @@
       ctx.fillText(rest.join('  ·  ') + `  ·  점 하나가 의원 한 명 (${D.polTotal || D.cloud.length}명)`, pad, y + 24);
       y += 24 + g(story ? 34 : 24) + sp;
     } else {
-      // 축 4줄 — 이름 / [L] ━━━●━━ [R]
-      const rowGap = g(story ? 26 : 18);
-      const labW = 96;                       // 극 라벨 자리 (2~3글자)
+      // 축 4줄 — 이름 / [L] ━━━●━━ [R]  + 가까운 ①②③ · 먼 ⒶⒷⒸ 마커 (축별로 "어디는 같고 어디는 다른가" 가 보인다 — 막대형 피드백)
+      const rowGap = g(story ? 30 : 22);
+      const labW = 96;
+      const AXK = { economy: 'e', social: 's', institution: 'i' };   // 의원 좌표 필드
+      const nearB = (Array.isArray(D.matches) ? D.matches.slice(0, 3) : []);
+      const farB  = (Array.isArray(D.far) ? D.far.slice(0, 3) : []);
+      const greyM = theme === 'dark' ? '#8B93A1' : '#8A909B';
       for (const a of D.axes) {
         const v = Number(D.axis[a.key]);
         const has = Number.isFinite(v);
         ctx.font = font(700, f(30), SANS); ctx.fillStyle = T.ink;
         ctx.fillText(a.name, pad, y + 30);
-        if (!a.measured) {   // 안보축 — 의원 비교엔 안 쓰인다는 표시만 살짝
+        if (!a.measured) {
           const nw = ctx.measureText(a.name).width;
           ctx.font = font(400, 20, SANS); ctx.fillStyle = T.sub2;
           ctx.fillText('의원 비교 제외', pad + nw + 12, y + 29);
         }
-        y += 30 + g(16);
+        y += 30 + g(story ? 30 : 24);   // 마커 라벨 자리(위) 포함
         const th = 16, tx = pad + labW, tw = cw - labW * 2, cy = y + th / 2;
-        // 극 라벨 — 내가 있는 쪽을 진하게
+        const inner = tw / 2 - 34;      // 핸들(반지름 22)이 트랙 끝을 넘지 않게
+        const PX = (val) => tx + tw / 2 + Math.max(-1, Math.min(1, val)) * inner;
         const side = has ? (v < -0.05 ? 'L' : v > 0.05 ? 'R' : '') : '';
         ctx.font = font(700, 27, SANS); ctx.textBaseline = 'middle';
-        // 왼쪽 라벨은 트랙에 붙여 오른쪽 정렬 — 축 이름 바로 아래(pad)에 두면 "경제/시장" 두 줄 라벨처럼 읽힌다
         ctx.fillStyle = side === 'L' ? T.ink : T.sub2; ctx.textAlign = 'right'; ctx.fillText(a.L, tx - 18, cy + 1);
         ctx.fillStyle = side === 'R' ? T.ink : T.sub2; ctx.textAlign = 'left';  ctx.fillText(a.R, tx + tw + 18, cy + 1);
         ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-        // 트랙 + 중앙 눈금
+        // 트랙 + 중앙 기준선 (조금 진하게 — 네 막대가 같은 x 라 세로로 정렬돼 보인다)
         ctx.fillStyle = T.track; rr(ctx, tx, y, tw, th, th / 2); ctx.fill();
-        ctx.fillStyle = T.tick; ctx.fillRect(tx + tw / 2 - 1, y - 8, 2, th + 16);
+        ctx.fillStyle = T.sub2; ctx.fillRect(tx + tw / 2 - 1, y - 10, 2, th + 20);
+        // 의원 마커 — 트랙 위쪽에 작은 삼각형 + 번호. 겹치면 위로 한 단 올린다
+        if (a.measured) {
+          const marks = [];
+          farB.forEach((m, i) => { const mv = Number(m[AXK[a.key]]); if (Number.isFinite(mv)) marks.push({ x: PX(mv), label: 'ABC'[i], on: false }); });
+          nearB.forEach((m, i) => { const mv = Number(m[AXK[a.key]]); if (Number.isFinite(mv)) marks.push({ x: PX(mv), label: String(i + 1), on: true }); });
+          marks.sort((p, q) => p.x - q.x);
+          const rows = [];
+          marks.forEach(mk => {
+            let lv = 0;
+            while (rows[lv] !== undefined && mk.x - rows[lv] < 26) lv++;
+            rows[lv] = mk.x; mk.lv = lv;
+          });
+          marks.forEach(mk => {
+            const col = mk.on ? T.gold : greyM;
+            ctx.fillStyle = col;
+            ctx.beginPath(); ctx.moveTo(mk.x, y - 2); ctx.lineTo(mk.x - 7, y - 12); ctx.lineTo(mk.x + 7, y - 12); ctx.closePath(); ctx.fill();
+            ctx.font = font(800, 15, SANS); ctx.fillStyle = mk.on ? T.goldT : greyM;
+            ctx.textAlign = 'center'; ctx.fillText(mk.label, mk.x, y - 16 - mk.lv * 16); ctx.textAlign = 'left';
+          });
+        }
         if (has) {
-          const px = tx + tw / 2 + Math.max(-1, Math.min(1, v)) * (tw / 2 - 26);   // ±1 이어도 점(반지름 22)이 트랙 안에 — 라벨을 덮지 않게
+          const px = PX(v);
           ctx.fillStyle = a.measured ? T.gold : T.sub2;
           const bx = Math.min(px, tx + tw / 2), bw = Math.abs(px - tx - tw / 2);
           ctx.globalAlpha = 0.45; rr(ctx, bx, y, Math.max(bw, 1), th, th / 2); ctx.fill(); ctx.globalAlpha = 1;
@@ -376,6 +400,12 @@
           ctx.beginPath(); ctx.arc(px, cy, 17, 0, Math.PI * 2); ctx.fillStyle = a.measured ? T.gold : T.sub2; ctx.fill();
         }
         y += th + rowGap;
+      }
+      // 마커 범례 한 줄
+      if (nearB.length || farB.length) {
+        ctx.font = font(500, 21, SANS); ctx.fillStyle = T.sub2;
+        ctx.fillText('▲ 골드 ①②③ 좌표가 가장 가까운 의원  ·  ▲ 회색 ⒶⒷⒸ 가장 먼 의원  ·  안보·외교는 의원 좌표 없음', pad, y + 21);
+        y += 21 + g(story ? 22 : 14);
       }
       y += g(story ? 24 : 12) + sp;
     }

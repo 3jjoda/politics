@@ -198,7 +198,7 @@ export default (db) => {
 
             // 가까운 3명 + 가장 먼 3명 (반대 성향) — compare 와 같은 쿼리
             const [spread, cloud] = await Promise.all([politicianService.getMatchSpread(userAxis, 3), politicianService.getAxisCloud()]);
-            const slim = (m) => ({ name: m.name, district: m.electoral_district || '', retired: m.active_yn === false, e: Number(m.economy), s: Number(m.social) });   // e·s: 지도에 점 찍기용
+            const slim = (m) => ({ name: m.name, district: m.electoral_district || '', retired: m.active_yn === false, e: Number(m.economy), s: Number(m.social), i: Number(m.institution) });   // e·s·i: 지도·막대에 점 찍기용
             const share = {
                 axis: userAxis,
                 axes: ALL_AXES.map(k => ({ key: k, ...AXIS_META[k], measured: MATCH_AXES.includes(k) })),
