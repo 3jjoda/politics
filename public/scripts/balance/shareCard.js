@@ -622,6 +622,7 @@
   const saveBtn = document.getElementById('sc-save');
   const shareBtn = document.getElementById('sc-share');
   const status = document.getElementById('sc-status');
+  // 정사각(square)·가로형(og)은 UI 에서 막아둠 — URL 로도 안 열리게 story/feed 만 받는다
   let mode = (new URLSearchParams(location.search).get('mode') === 'feed') ? 'feed' : 'story';
   let theme = (new URLSearchParams(location.search).get('theme') === 'dark') ? 'dark' : 'light';
   const themeBtns = document.querySelectorAll('[data-sc-theme]');
@@ -642,17 +643,28 @@
     modeBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.scMode === mode ? 'true' : 'false'));
     themeBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.scTheme === theme ? 'true' : 'false'));
     if (r.overflow > 0) console.warn('[shareCard] 내용이 푸터를 넘음', r.overflow);
+    prepareBlob();
   }
   function fileName() { return `당말사-성향-${(D.date || '').replace(/\./g, '')}-${mode}-${theme}-${layout}.png`; }
   function toBlob() {
     return new Promise((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('toBlob 실패')), 'image/png'));
   }
+  // 그릴 때마다 PNG 를 미리 만들어 둔다 — 공유/저장 클릭 순간에 await 없이 바로 쓰기 위해
+  // (모바일 브라우저는 사용자 제스처 안에서만 share 를 허용하고, await 뒤에는 그 권한이 사라지는 경우가 있다)
+  let readyBlob = null, blobSeq = 0;
+  function prepareBlob() {
+    const seq = ++blobSeq; readyBlob = null;
+    toBlob().then(b => { if (seq === blobSeq) readyBlob = b; }).catch(() => {});
+  }
+  let busy = false;   // 공유/저장 재진입 차단 — 시트가 열렸다 닫혔다 반복하는 현상 방지
   async function save() {
+    if (busy) return; busy = true;
     try {
-      const blob = await toBlob();
+      const blob = readyBlob || await toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = fileName();
+      a.setAttribute('data-no-loader', '');   // 페이지 전환 로더(layout.ejs)가 이 클릭을 내부 이동으로 오인하지 않게
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       setStatus('저장했습니다. 사진 앱에서 인스타에 올리세요.');
@@ -660,22 +672,26 @@
       // iOS 사파리 등 download 가 안 먹으면 새 탭에 띄운다 (길게 눌러 저장)
       try { window.open(canvas.toDataURL('image/png'), '_blank'); setStatus('새 탭의 이미지를 길게 눌러 저장하세요.'); }
       catch (e2) { setStatus('저장에 실패했습니다.'); }
-    }
+    } finally { setTimeout(() => { busy = false; }, 800); }
   }
   async function share() {
+    if (busy) return; busy = true;
     try {
-      const blob = await toBlob();
+      // 미리 만들어 둔 PNG 가 있으면 await 없이 바로 시트를 연다 (사용자 제스처 안에서)
+      const blob = readyBlob || await toBlob();
       const file = new File([blob], fileName(), { type: 'image/png' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title: '나의 정치 성향 · 당말사' });
         setStatus('');
         return;
       }
+      busy = false;
       await save();   // 시스템 공유 시트가 없으면 저장으로
     } catch (e) {
       if (e && e.name === 'AbortError') return;   // 사용자가 시트를 닫음
+      if (e && e.name === 'NotAllowedError') { setStatus('브라우저가 공유를 막았습니다. 이미지 저장을 이용하세요.'); return; }
       setStatus('공유에 실패했습니다. 이미지 저장을 이용하세요.');
-    }
+    } finally { setTimeout(() => { busy = false; }, 800); }
   }
 
   // 클립보드 복사 — PNG 하나만 넣는다. (macOS 공유 시트의 "복사하기" 는 파일 참조+이미지를 같이 넣어
