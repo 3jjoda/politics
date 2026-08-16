@@ -3025,6 +3025,9 @@ CURRENT_DATE                                   -- 한국 기준 오늘
 - **nav 로고: `[mark-only.svg + wordmark-nav.svg]` │ `tagline.svg` 가로 락업** — 데스크톱 225×36 (마크 36 · 워드마크 h30 · 구분선 1×20 · 태그라인 h18) / 모바일 ≤768 183×30 (30 · h24 · 1×16 · h15). CSS `.pb-logo` > `.pb-logo-brand`(`.pb-logo-mark` + `.pb-logo-wordmark`) + `.pb-logo-div` + `.pb-logo-tagline-img`
 - **login 카드: nav 와 같은 3에셋 조립** — 락업 161×84 (마크 48 · 워드마크 h40 가로배치 / 태그라인 h24 아래). 카드는 세로 여유가 있어 태그라인을 아래로 내리고 배율만 키움. CSS `.auth-logo` / `.auth-logo-brand` / `.auth-logo-mark` / `.auth-logo-wordmark` / `.auth-logo-tagline` (login.ejs 인라인)
 - 파비콘: `favicon.ico`, `favicon-16.svg`, `favicon-32.svg`, `apple-touch-180.png`
+  - ⚠️ **루트 `public/favicon.ico` 도 같은 파일이어야 한다** — `layout:false` 페이지(인스타 카드)나 아이콘 링크가 없는 응답은
+    브라우저가 루트로 떨어진다. 2026-08-16 까지 리브랜딩 전 파일이 남아 카드 페이지에 구 로고가 떴다.
+    `layout:false` 뷰를 새로 만들면 `<head>` 에 파비콘 링크를 직접 걸 것 (`card.ejs` 참조)
 - 앱 아이콘: `app-icon-192.png`, `app-icon-512.png` (`public/manifest.json` 참조)
 - OG: `og-image.png` (1200×630)
 

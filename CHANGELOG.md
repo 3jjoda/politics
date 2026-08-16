@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-08-16 (11) — 구 로고 파비콘 잔재 정리
+
+- 루트 `public/favicon.ico` 가 **리브랜딩 전 파일**(2025-10)이었다. `layout.ejs` 는 `/assets/imgs/favicon.ico` 를 걸어 정상이었지만,
+  `layout:false` 인 인스타 카드 페이지는 아이콘 링크가 없어 브라우저가 루트 `/favicon.ico` 로 떨어져 **구 로고가 떴다**.
+  → 루트 파일을 새 것으로 교체 + `card.ejs` `<head>` 에 파비콘 링크 추가
+- 참조 0인 구 에셋 `_favicon.png`·`_logo.png`·`views/partials/old_header.ejs` 삭제
+- ⚠️ 브라우저가 파비콘을 강하게 캐시한다 — 바뀐 게 안 보이면 시크릿 창으로 확인할 것
+
 ## 2026-08-16 (10) — 인스타 카드 페이지에 캡션 블록
 
 - `buildCaption` 을 `batch/genInstaCards.js` 에서 **`utils/instaCaption.js`** 로 뽑아 단일 소스화.

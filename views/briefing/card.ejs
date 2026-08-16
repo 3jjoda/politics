@@ -44,6 +44,10 @@
 <meta charset="utf-8">
 <title><%= D %> 인스타 카드 · 당말사</title>
 <meta name="robots" content="noindex">
+<%# layout:false 라 파비콘도 여기서 직접 건다. 안 걸면 브라우저가 루트 /favicon.ico 로 떨어진다 (layout.ejs 와 같은 에셋) %>
+<link rel="icon" type="image/svg+xml" href="/assets/imgs/favicon-32.svg">
+<link rel="shortcut icon" href="/assets/imgs/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="/assets/imgs/apple-touch-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif+KR:wght@700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
