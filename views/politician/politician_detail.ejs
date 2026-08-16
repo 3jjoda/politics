@@ -1536,7 +1536,9 @@
      예전엔 블록마다 margin 을 따로 줘서 실측 간격이 **0 / 10 / 16px 세 가지**로 갈렸고,
      `.card` 에는 margin 이 아예 없어 **카드끼리 0px 로 맞붙은 곳이 두 군데**였다
      (표결 성향↔대표발의, 정당별 협력↔발언 기록). 개별 margin 을 되살리지 말 것. */
-  #tab-overview { display: flex; flex-direction: column; gap: 20px; }
+  /* 🔴 반드시 `.active` 를 붙일 것. `#tab-overview { display:flex }` 만 두면 id 특이도가 `.tab-panel { display:none }` 을 이겨
+     **다른 탭을 눌러도 분석 탭이 아래에 그대로 남는다** (실제로 그렇게 나갔다, 2026-08-16) */
+  #tab-overview.active { display: flex; flex-direction: column; gap: 20px; }
   .overview-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -1614,7 +1614,8 @@ controllers/BriefingController.js
 `.card` 에는 margin 이 아예 없어 **카드끼리 0px 로 맞붙은 곳이 두 군데**였다
 (표결 성향↔대표발의, 정당별 협력↔발언 기록). 개별 margin 을 되살리지 말 것.
 
-- `#tab-overview { display: flex; flex-direction: column; gap: 20px }`
+- `#tab-overview.active { display: flex; flex-direction: column; gap: 20px }` — 🔴 **`.active` 필수.** id 단독으로 두면 특이도가
+  `.tab-panel { display:none }` 을 이겨 다른 탭을 눌러도 분석 탭이 아래에 그대로 남는다 (2026-08-16 실제 발생, 사용자 발견)
 - 예외는 `.kpi-caveat` 하나 — KPI 행의 **전제**라 붙어 있어야 해서 `margin-top: -14px` 로 6px 까지 당긴다
 - 실측 후: `6 · 20 · 20 · 20 · 20`. 카드 4장 전부 전체폭 1222px (1280px 기준)
 
