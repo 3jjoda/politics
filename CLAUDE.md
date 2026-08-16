@@ -2506,6 +2506,11 @@ PC/모바일 동일 패턴으로 통일.
   - 🔴 **닫힌 시트는 `visibility: hidden` 으로도 잠근다** (2026-08-16). `translateY(100%)` 만으로는 iOS Safari 에서
     시트 안 sticky 헤더가 뷰포트 기준으로 계산돼 화면 바닥에 `필터 · 적용 · ×` 줄이 삐져나왔다 (실기기 아이폰 실측).
     데스크톱·크롬 에뮬레이션에선 재현 안 됨. `.sidebar` 의 visibility 전환은 0.25s 지연 (닫힘 애니메이션 유지). `/bill` 도 동일
+    - 🔴 **그래도 `/bill` 에선 실기기에서 흰 띠가 하단 바 자리에 간헐적으로 남았다** (뒤로/앞으로 이동하면 사라졌다 나타남 —
+      합성 레이어 상태 문제). → `interactions.js` 의 시트 가드가 닫힘 완료 후(260ms) `#filter-sidebar` 에 **`hidden`(display:none)** 을 걸고,
+      열 때는 풀고 20ms 뒤 클래스를 다시 붙여 전환을 살린다 (body 클래스 MutationObserver · resize · pageshow).
+      두 뷰의 모바일 블록에 `.sidebar[hidden] { display: none }` 이 있어야 한다 (`.sidebar` 가 display:flex 라 UA 규칙만으론 안 숨는다).
+      ⚠️ 여기서도 rAF 금지 — 비가시 탭에서 열림 자체가 안 됐다
     - 같은 이유로 nav 모바일 패널 `.pb-mobile-panel`(main.css)도 닫힘 시 `visibility: hidden` + `height: 100dvh`.
       **화면 밖으로 밀어두는 fixed 요소는 전부 이 규칙** — 새로 만들 때 transform 만으로 숨기지 말 것.
       2026-08-16 375px 스윕 16페이지: 가로 오버플로 0, 닫힘 상태에서 보이는 fixed 는 bill 상세 jumpbar(의도)뿐

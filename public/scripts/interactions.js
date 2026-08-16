@@ -957,6 +957,44 @@
   window.PB = PB;
 
   /* ===================================================================
+     모바일 필터 바텀시트(#filter-sidebar) — 닫혀 있을 땐 DOM 에서도 치운다 (display:none)
+     - 목록 페이지(/bill·/politician)의 시트는 CSS 로 translateY(100%)+visibility:hidden 으로 숨기는데,
+       iOS Safari 에선 그래도 흰 띠가 하단 바 자리에 남는 경우가 있었다 (2026-08-16 실기기, /bill 에서 간헐).
+       fixed + transform 요소를 합성 레이어로 남겨두면 생기는 문제라 닫힘이 끝난 뒤(260ms) `hidden` 을 건다.
+     - 여는 쪽은 body 클래스 토글이라 MutationObserver 로 잡는다. 열 때는 hidden 을 풀고 한 프레임 뒤 클래스를
+       다시 붙여 슬라이드 애니메이션을 살린다. 데스크톱(>768)에선 사이드바가 항상 보이므로 손대지 않는다.
+  =================================================================== */
+  (() => {
+    const sheet = document.getElementById('filter-sidebar');
+    if (!sheet) return;
+    const mq = window.matchMedia('(max-width: 768px)');
+    const OPEN = 'filter-sheet-open';
+    let timer = null, reopening = false;
+    const isOpen = () => document.body.classList.contains(OPEN);
+    const settle = () => {
+      clearTimeout(timer);
+      if (!mq.matches) { sheet.hidden = false; return; }          // 데스크톱: 항상 표시
+      if (isOpen()) {
+        if (!sheet.hidden || reopening) return;
+        // 닫힌 상태(hidden)에서 열림 — 클래스를 잠깐 떼고 표시한 뒤 다시 붙여 전환이 돌게 한다
+        reopening = true;
+        document.body.classList.remove(OPEN);
+        sheet.hidden = false;
+        void sheet.offsetHeight;                                     // reflow
+        // ⚠️ requestAnimationFrame 금지 — 비가시 탭에선 콜백이 안 돌아 열림 자체가 안 된다 (프로젝트 공통 함정)
+        setTimeout(() => { document.body.classList.add(OPEN); reopening = false; }, 20);
+      } else {
+        timer = setTimeout(() => { if (!isOpen() && mq.matches) sheet.hidden = true; }, 260);
+      }
+    };
+    new MutationObserver(settle).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    mq.addEventListener?.('change', settle);
+    window.addEventListener('resize', settle);
+    window.addEventListener('pageshow', settle);                    // bfcache 복원 시 상태 재정렬
+    if (mq.matches && !isOpen()) sheet.hidden = true;               // 초기 상태
+  })();
+
+  /* ===================================================================
      pb-help 용어 설명 링크 — <a> 중첩 방지용 <span> + 클릭 위임
      대상: <span class="pb-help" data-help-href="/glossary#...">?</span>
   =================================================================== */

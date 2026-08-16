@@ -6,6 +6,12 @@
 
 ---
 
+## 2026-08-16 (15) — 필터 시트: 닫히면 display:none 까지 (iOS `/bill` 흰 띠 간헐 잔존)
+
+- `visibility: hidden` 뒤에도 실기기 `/bill` 하단 바 자리에 흰 띠가 간헐적으로 남았다 (뒤로/앞으로 이동 시 사라졌다 나타남).
+  `interactions.js` 에 시트 가드 추가 — 닫힘 완료 후 `#filter-sidebar[hidden]`, 열 때 해제 후 20ms 뒤 클래스 재부착(전환 유지).
+  `.sidebar[hidden]{display:none}` 을 두 목록 뷰 모바일 블록에 추가
+
 ## 2026-08-16 (14) — 모바일 햄버거 패널: 스크롤 · 순서 · 백드롭
 
 - 패널(`.pb-mobile-panel`)에 `overflow-y` 가 없어 **내부 스크롤이 안 됐다** → `overflow-y: auto` + `100dvh`. 열릴 때 `body.pb-menu-open` 으로 뒤 페이지 스크롤 잠금
