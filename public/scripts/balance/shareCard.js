@@ -162,10 +162,11 @@
   }
 
   /* ---------- 팔레트 (밝은 판 / 어두운 판) ---------- */
-  // 어두운 판은 피드에서 눈에 띄라고 둔 것 — 정당색은 여전히 없고 강조는 골드 하나
+  // 어두운 판은 피드에서 눈에 띄라고 둔 것 — 정당색은 여전히 없고 강조는 골드 하나.
+  // ⚠️ 어두운 판의 면(tint·내 사분면)은 **무채색**으로 — 골드를 다크 위에 얹으면 탁한 갈색이 된다 (피드백). 골드는 선·점·글자에만
   const THEMES = {
     light: { bg: '#F7F6F1', ink: '#1A1D24', sub: '#4B5362', sub2: '#5F6674', track: '#E2DFD4', tick: '#C9C5B6', gold: '#B8740C', goldT: '#8F5800', tint: '#FBF5EA', line: '#E2DFD4', halo: '#F7F6F1', dim: '#A8A095', mid: '#6B7280' },
-    dark:  { bg: '#15171C', ink: '#F7F6F1', sub: '#C3C7CF', sub2: '#9AA0AB', track: '#2C3038', tick: '#454A55', gold: '#D9A040', goldT: '#E5B45C', tint: 'rgba(217,160,64,0.10)', line: '#2C3038', halo: '#15171C', dim: '#6E7480', mid: '#9AA0AB' }
+    dark:  { bg: '#15171C', ink: '#F7F6F1', sub: '#C3C7CF', sub2: '#9AA0AB', track: '#2C3038', tick: '#454A55', gold: '#D9A040', goldT: '#E5B45C', tint: 'rgba(255,255,255,0.045)', line: '#2C3038', halo: '#15171C', dim: '#6E7480', mid: '#9AA0AB' }
   };
 
   /* ---------- 본체 — 포스터형 (2026-08-16 v2) ----------
@@ -228,7 +229,8 @@
       const myQ = (Number.isFinite(ue0) && Number.isFinite(us0)) ? { r: ue0 >= 0, t: us0 >= 0 } : null;
       if (myQ) {
         ctx.save(); rr(ctx, mx, my, mw, mh, 24); ctx.clip();
-        ctx.fillStyle = theme === 'dark' ? 'rgba(217,160,64,0.10)' : 'rgba(184,116,12,0.09)';
+        // 어두운 판은 골드를 얹으면 탁한 갈색이 된다 → 배경보다 밝기만 올린 무채색 (피드백). 밝은 판은 옅은 골드 틴트
+        ctx.fillStyle = theme === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(184,116,12,0.09)';
         ctx.fillRect(myQ.r ? X(0) : mx, myQ.t ? my : Y(0), mw / 2, mh / 2);
         ctx.restore();
       }
@@ -271,13 +273,13 @@
         }
         placedB.push({ x: bx, y: by });
         if (moved) {   // 점 표시 + 리더선
-          ctx.strokeStyle = on ? T.gold : (theme === 'dark' ? '#6E7480' : '#8A909B'); ctx.lineWidth = 2;
+          ctx.strokeStyle = on ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.lineWidth = 2;
           ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(bx, by); ctx.stroke();
-          ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : (theme === 'dark' ? '#6E7480' : '#8A909B'); ctx.fill();
+          ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.fill();
         }
         ctx.beginPath(); ctx.arc(bx, by, R_B + 3, 0, Math.PI * 2); ctx.fillStyle = T.halo; ctx.fill();
-        ctx.beginPath(); ctx.arc(bx, by, R_B, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : (theme === 'dark' ? '#4A505B' : '#8A909B'); ctx.fill();
-        ctx.font = font(800, 16, SANS); ctx.fillStyle = on ? (theme === 'dark' ? '#15171C' : '#FFFFFF') : '#FFFFFF';
+        ctx.beginPath(); ctx.arc(bx, by, R_B, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.fill();   // 어두운 판 회색은 한 단계 밝게 — #4A505B 는 배경에 묻혔다 (피드백)
+        ctx.font = font(800, 16, SANS); ctx.fillStyle = on ? (theme === 'dark' ? '#15171C' : '#FFFFFF') : (theme === 'dark' ? '#15171C' : '#FFFFFF');
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx, by + 1);
         ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       };
@@ -392,8 +394,8 @@
           const isNear = col.list === near;
           const bx = col.x + 15, by = cy0 + 22;
           ctx.beginPath(); ctx.arc(bx, by, 15, 0, Math.PI * 2);
-          ctx.fillStyle = isNear ? T.gold : (theme === 'dark' ? '#4A505B' : '#8A909B'); ctx.fill();
-          ctx.font = font(800, 16, SANS); ctx.fillStyle = isNear ? (theme === 'dark' ? '#15171C' : '#FFFFFF') : '#FFFFFF';
+          ctx.fillStyle = isNear ? T.gold : (theme === 'dark' ? '#8B93A1' : '#8A909B'); ctx.fill();
+          ctx.font = font(800, 16, SANS); ctx.fillStyle = isNear ? (theme === 'dark' ? '#15171C' : '#FFFFFF') : (theme === 'dark' ? '#15171C' : '#FFFFFF');
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(isNear ? String(i + 1) : 'ABC'[i], bx, by + 1);
           ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
           ctx.font = font(800, f(story ? 32 : 29), SANS); ctx.fillStyle = T.ink;
@@ -468,7 +470,7 @@
     const ue = Number(D.axis.economy), us = Number(D.axis.social);
     if (Number.isFinite(ue) && Number.isFinite(us)) {
       ctx.save(); rr(ctx, mx, my, mw, mh, 18); ctx.clip();
-      ctx.fillStyle = theme === 'dark' ? 'rgba(217,160,64,0.10)' : 'rgba(184,116,12,0.09)';
+      ctx.fillStyle = theme === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(184,116,12,0.09)';
       ctx.fillRect(ue >= 0 ? X(0) : mx, us >= 0 ? my : Y(0), mw / 2, mh / 2); ctx.restore();
     }
     ctx.strokeStyle = T.line; ctx.lineWidth = 2; rr(ctx, mx, my, mw, mh, 18); ctx.stroke();
@@ -486,7 +488,7 @@
     const R_B = 10, placedB = [];
     const OFFS = [[0, 0], [-24, -18], [24, -18], [-24, 18], [24, 18], [-36, 0], [36, 0], [0, -32], [0, 32], [-44, -30], [44, -30], [-44, 30], [44, 30]];
     const inMap = (x, yy) => x > mx + R_B + 3 && x < mx + mw - R_B - 3 && yy > my + R_B + 3 && yy < my + mh - R_B - 3;
-    const grey = theme === 'dark' ? '#4A505B' : '#8A909B', greyL = theme === 'dark' ? '#6E7480' : '#8A909B';
+    const grey = theme === 'dark' ? '#8B93A1' : '#8A909B', greyL = theme === 'dark' ? '#8B93A1' : '#8A909B';
     const badge = (px, py, label, on) => {
       let bx = px, by = py, moved = false;
       for (const [dx, dy] of OFFS) {
@@ -502,7 +504,7 @@
       }
       ctx.beginPath(); ctx.arc(bx, by, R_B + 2, 0, Math.PI * 2); ctx.fillStyle = T.halo; ctx.fill();
       ctx.beginPath(); ctx.arc(bx, by, R_B, 0, Math.PI * 2); ctx.fillStyle = on ? T.gold : grey; ctx.fill();
-      ctx.font = font(800, 12, SANS); ctx.fillStyle = on ? (theme === 'dark' ? '#15171C' : '#FFFFFF') : '#FFFFFF';
+      ctx.font = font(800, 12, SANS); ctx.fillStyle = theme === 'dark' ? '#15171C' : '#FFFFFF';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, bx, by + 1); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     };
     const nearL = (D.matches || []).slice(0, 3).filter(m => Number.isFinite(m.e) && Number.isFinite(m.s));
