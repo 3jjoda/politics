@@ -35,6 +35,8 @@
   .sc-btn.kakao { background: #FEE500; color: #191919; border-color: #FEE500; flex-direction: column; gap: 2px; line-height: 1.2; }
   .sc-btn.kakao small { font-size: 11px; font-weight: 500; color: #4a4a4a; }
   .sc-btn.kakao:hover { background: #F5DC00; }
+  .sc-btn.stack { flex-direction: column; gap: 2px; line-height: 1.2; }
+  .sc-btn.stack small { font-size: 11px; font-weight: 500; opacity: .85; }
   .sc-status { min-height: 1.4em; font-size: 12.5px; color: var(--sub); text-align: center; word-break: keep-all; }
 
   .sc-note { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; font-size: 13px; color: var(--sub); line-height: 1.75; word-break: keep-all; }
@@ -81,9 +83,11 @@
         <button type="button" class="sc-mode" data-sc-theme="light" aria-pressed="true">밝은 판</button>
         <button type="button" class="sc-mode" data-sc-theme="dark" aria-pressed="false">어두운 판</button>
       </div>
-      <button type="button" class="sc-btn primary" id="sc-share">공유하기</button>
       <% if (locals.kakaoJsKey) { %>
-      <button type="button" class="sc-btn kakao" id="sc-kakao">카카오톡으로 보내기<small>이미지 + 링크 버튼</small></button>
+      <button type="button" class="sc-btn kakao" id="sc-kakao">카카오톡으로 보내기<small>이미지 + 바로 들어오는 링크 버튼</small></button>
+      <button type="button" class="sc-btn primary stack" id="sc-share">다른 앱으로 공유<small>인스타·X·쓰레드 등 · 이미지 (X·쓰레드는 링크도)</small></button>
+      <% } else { %>
+      <button type="button" class="sc-btn primary" id="sc-share">공유하기</button>
       <% } %>
       <button type="button" class="sc-btn secondary" id="sc-save">이미지 저장</button>
       <button type="button" class="sc-btn secondary" id="sc-copy">클립보드에 복사</button>
