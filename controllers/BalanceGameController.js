@@ -7,7 +7,7 @@ import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 import BalanceGameService, { AXES, MAPPING_VERSION } from '../services/BalanceGameService.js';
 import PoliticianService from '../services/PoliticianService.js';
-import { AXIS_META, ALL_AXES, MATCH_AXES, POL_MAPPING_VERSION, typeOf } from '../utils/axisConfig.js';
+import { AXIS_META, ALL_AXES, MATCH_AXES, POL_MAPPING_VERSION, typeOf, TYPE_LIST, D_CENTER, D_STRONG, AXIS_MID } from '../utils/axisConfig.js';
 import { siteUrl } from '../utils/threadsPost.js';
 import { fmtDate } from '../utils/datetime.js';
 
@@ -221,6 +221,33 @@ export default (db) => {
             });
         } catch (err) {
             logger.error('결과 공유 이미지 화면 렌더링 중 에러:', `${err.message}\n${err.stack}`);
+            next(err);
+        }
+    });
+
+    /* ===========================================================
+       유형 9종 안내 (`/balance-game/types`) — 2026-08-16
+       이름 체계·판정 기준을 화면에 명시한다 (외부 제안 채택). 로그인 없이 볼 수 있고,
+       진단 완료 유저면 내 유형을 강조한다. 데이터는 utils/axisConfig.js 하나에서 온다
+       =========================================================== */
+    controller.getTypesPage = wrapWithContext(async function getTypesPage(req, res, next) {
+        try {
+            const userId = req.session?.userId || null;
+            const axisScore = userId ? await svc.getUserAxisScore(userId) : null;
+            const completed = svc.isCompleted(axisScore);
+            const my = completed ? typeOf({ economy: Number(axisScore.economy), social: Number(axisScore.social) }) : null;
+            res.render('balance/types', {
+                pageTitle: '성향 유형 9종',
+                pageStyles: null,
+                currentUrl: '/balance-game/types',
+                types: TYPE_LIST,
+                thresholds: { center: D_CENTER, strong: D_STRONG, axisMid: AXIS_MID },
+                my,
+                myAxis: completed ? { economy: Number(axisScore.economy), social: Number(axisScore.social) } : null,
+                completed
+            });
+        } catch (err) {
+            logger.error('유형 안내 화면 렌더링 중 에러:', `${err.message}\n${err.stack}`);
             next(err);
         }
     });

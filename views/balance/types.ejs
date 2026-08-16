@@ -1,0 +1,200 @@
+<%
+  /* /balance-game/types — 성향 유형 9종 안내 (2026-08-16)
+     "이름표" 체계를 화면에 명시한다: 유형 지도(사분면 + 원점 거리 링) · 9종 카드(부제·설명·조건) · 판정 기준.
+     데이터는 utils/axisConfig.js (TYPE_LIST · typeOf) 하나 — 여기 문구를 손으로 다시 쓰지 말 것.
+     진단 완료 유저면 내 유형 카드를 강조하고 지도에 내 점을 찍는다. */
+  const T = thresholds;
+  const quads = [
+    { key: 'L,R', x: 0, y: 0 }, { key: 'R,R', x: 1, y: 0 },
+    { key: 'L,L', x: 0, y: 1 }, { key: 'R,L', x: 1, y: 1 }
+  ];
+  const strongOf = Object.fromEntries(types.filter(t => t.zone === 'strong').map(t => [t.key, t]));
+  const mildOf   = Object.fromEntries(types.filter(t => t.zone === 'moderate').map(t => [t.key, t]));
+  const mid = types.find(t => t.zone === 'center');
+  // SVG 지도: viewBox 400×400, 원점 (200,200), 반경 1.0 = 180
+  const S = 400, C = 200, R = 180;
+  const px = (v) => C + v * R, py = (v) => C - v * R;
+%>
+<style>
+  .ty-wrap { max-width: 980px; margin: 0 auto; padding: calc(var(--nav-h) + 36px) 24px 80px; }
+  .ty-head { margin-bottom: 26px; }
+  .ty-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .12em; color: var(--accent); margin-bottom: 8px; }
+  .ty-title { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 34px; color: var(--text); margin: 0 0 10px; word-break: keep-all; }
+  .ty-sub { font-size: 15px; color: var(--sub); line-height: 1.75; word-break: keep-all; max-width: 760px; }
+  .ty-sub strong { color: var(--text); }
+
+  .ty-grid { display: grid; grid-template-columns: 420px minmax(0, 1fr); gap: 28px; align-items: start; margin-bottom: 28px; }
+  .ty-map { background: var(--bg2); border: 1px solid var(--border2); border-top: 3px solid var(--accent); border-radius: 14px; padding: 18px; }
+  .ty-map svg { width: 100%; height: auto; display: block; }
+  .ty-map .q { fill: var(--bg3); }
+  .ty-map .q.on { fill: #FBF5EA; }
+  .ty-map .ring { fill: none; stroke: var(--border2); stroke-width: 1.5; stroke-dasharray: 4 5; }
+  .ty-map .ring-c { fill: rgba(184,116,12,0.10); stroke: var(--accent); stroke-width: 1.5; }
+  .ty-map .ax { stroke: var(--border2); stroke-width: 1; }
+  .ty-map .qn { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 15px; fill: var(--text); }
+  .ty-map .qs { font-size: 10.5px; fill: var(--sub2); font-weight: 500; }
+  .ty-map .qm { font-size: 10.5px; fill: var(--accent2); font-weight: 700; }
+  .ty-map .cn { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 12px; fill: var(--accent2); text-anchor: middle; }
+  .ty-map .rl { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; fill: var(--sub2); }
+  .ty-map .pole { font-size: 11px; font-weight: 700; fill: var(--sub); }
+  .ty-map .me { fill: var(--accent); stroke: var(--bg2); stroke-width: 3; }
+  .ty-map .me-l { font-size: 12px; font-weight: 800; fill: var(--text); }
+  .ty-map-cap { margin: 10px 2px 0; font-size: 12px; color: var(--sub2); line-height: 1.6; word-break: keep-all; }
+
+  .ty-rules { display: flex; flex-direction: column; gap: 12px; }
+  .ty-rule { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .ty-rule-h { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .ty-rule-h .z { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent2); letter-spacing: .06em; }
+  .ty-rule-h .n { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 16px; color: var(--text); }
+  .ty-rule p { margin: 0; font-size: 13.5px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
+  .ty-map-cap code, .ty-rule code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent2); background: var(--bg3); padding: 1px 6px; border-radius: 4px; }
+  .ty-rule.is-guard { border-style: dashed; }
+  .ty-my { background: #FBF5EA; border: 1px solid var(--accent); border-radius: 12px; padding: 14px 16px; }
+  .ty-my .k { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent2); letter-spacing: .08em; margin-bottom: 4px; }
+  .ty-my .n { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 22px; color: var(--text); }
+  .ty-my .s { font-size: 13.5px; color: var(--sub); margin-top: 4px; word-break: keep-all; }
+  .ty-my a { display: inline-block; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--accent2); text-decoration: none; }
+  .ty-my a:hover { text-decoration: underline; }
+  .ty-cta { background: var(--bg2); border: 1px dashed var(--border2); border-radius: 12px; padding: 14px 16px; font-size: 13.5px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
+  .ty-cta a { color: var(--accent2); font-weight: 700; text-decoration: none; }
+
+  .ty-sec-h { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 20px; color: var(--text); margin: 8px 0 14px; }
+  .ty-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .ty-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; position: relative; }
+  .ty-card.is-mine { border-color: var(--accent); background: #FBF5EA; box-shadow: 0 0 0 3px rgba(184,116,12,0.10); }
+  .ty-card.is-mine::after { content: '내 유형'; position: absolute; top: 14px; right: 16px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: .08em; color: #fff; background: var(--accent); padding: 3px 8px; border-radius: 999px; }
+  .ty-card.is-center { grid-column: 1 / -1; }
+  .ty-card .q { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); letter-spacing: .06em; margin-bottom: 6px; }
+  .ty-card .q b { color: var(--accent2); font-weight: 600; margin-left: 8px; }
+  .ty-card .n { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 22px; color: var(--text); margin: 0 0 6px; }
+  .ty-card .n small { font-family: 'Noto Sans KR', sans-serif; font-weight: 500; font-size: 12px; color: var(--sub2); margin-left: 8px; }
+  .ty-card .s { font-size: 14px; font-weight: 700; color: var(--text); margin: 0 0 6px; word-break: keep-all; }
+  .ty-card .d { font-size: 13.5px; color: var(--sub); line-height: 1.7; margin: 0; word-break: keep-all; }
+  .ty-pair { display: contents; }
+
+  .ty-foot { margin-top: 26px; padding: 14px 18px; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 10px; font-size: 12.5px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
+  .ty-links { margin-top: 18px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; }
+  .ty-links a { color: var(--accent2); font-weight: 600; text-decoration: none; }
+  .ty-links a:hover { text-decoration: underline; }
+
+  @media (max-width: 900px) { .ty-grid { grid-template-columns: 1fr; } .ty-cards { grid-template-columns: 1fr; } .ty-card.is-center { grid-column: auto; } }
+  @media (max-width: 768px) { .ty-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; } .ty-title { font-size: 26px; } }
+</style>
+
+<div class="ty-wrap">
+  <header class="ty-head">
+    <div class="ty-eyebrow">성향 진단 · 유형 체계</div>
+    <h1 class="ty-title">성향 유형 9종</h1>
+    <p class="ty-sub">경제 축(시장 ↔ 개입)과 사회·문화 축(전통 ↔ 자율)이 만드는 <strong>사분면 이름 4개</strong>에, 원점에서 얼마나 떨어져 있는지로
+      <strong>뚜렷 / 온건한</strong> 두 단계를 두고, 어느 쪽으로도 기울지 않은 <strong>균형 조율자</strong>를 더해 9종입니다.
+      네 이름은 어느 쪽도 치켜세우거나 깎지 않도록 같은 무게로 지었고, 정당명·이념명은 쓰지 않습니다.</p>
+  </header>
+
+  <div class="ty-grid">
+    <%# ── 유형 지도 ── %>
+    <div class="ty-map">
+      <svg viewBox="0 0 <%= S %> <%= S %>" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="유형 지도 — 사분면 4개와 거리 링">
+        <% quads.forEach(q => { const on = my && my.key === q.key; %>
+          <rect class="q <%= on ? 'on' : '' %>" x="<%= q.x ? C : C - R %>" y="<%= q.y ? C : C - R %>" width="<%= R %>" height="<%= R %>" rx="0"/>
+        <% }); %>
+        <line class="ax" x1="<%= C - R %>" y1="<%= C %>" x2="<%= C + R %>" y2="<%= C %>"/>
+        <line class="ax" x1="<%= C %>" y1="<%= C - R %>" x2="<%= C %>" y2="<%= C + R %>"/>
+        <circle class="ring" cx="<%= C %>" cy="<%= C %>" r="<%= T.strong * R %>"/>
+        <circle class="ring-c" cx="<%= C %>" cy="<%= C %>" r="<%= T.center * R %>"/>
+        <text class="rl" x="<%= C + T.center * R + 4 %>" y="<%= C - 4 %>">d <%= T.center %></text>
+        <text class="rl" x="<%= C + T.strong * R + 4 %>" y="<%= C - 4 %>">d <%= T.strong %></text>
+        <%# 사분면 이름 (모서리) %>
+        <% [
+          { k: 'L,R', x: C - R + 12, y: C - R + 26, a: 'start' }, { k: 'R,R', x: C + R - 12, y: C - R + 26, a: 'end' },
+          { k: 'L,L', x: C - R + 12, y: C + R - 30, a: 'start' }, { k: 'R,L', x: C + R - 12, y: C + R - 30, a: 'end' }
+        ].forEach(l => { const t = strongOf[l.k]; %>
+          <text class="qn" x="<%= l.x %>" y="<%= l.y %>" text-anchor="<%= l.a %>"><%= t.name %></text>
+          <text class="qs" x="<%= l.x %>" y="<%= l.y + 15 %>" text-anchor="<%= l.a %>"><%= t.quad %></text>
+        <% }); %>
+        <%# 온건 띠 라벨 — 각 사분면 안쪽, 링 사이 %>
+        <% [
+          { x: C - 0.38 * R, y: C - 0.34 * R }, { x: C + 0.38 * R, y: C - 0.34 * R },
+          { x: C - 0.38 * R, y: C + 0.42 * R }, { x: C + 0.38 * R, y: C + 0.42 * R }
+        ].forEach(l => { %><text class="qm" x="<%= l.x %>" y="<%= l.y %>" text-anchor="middle">온건한</text><% }); %>
+        <text class="cn" x="<%= C %>" y="<%= C + 4 %>"><%= mid.name.split(' ')[0] %></text>
+        <text class="cn" x="<%= C %>" y="<%= C + 17 %>"><%= mid.name.split(' ')[1] || '' %></text>
+        <%# 극 라벨 %>
+        <text class="pole" x="<%= C - R + 4 %>" y="<%= C - 6 %>">시장</text>
+        <text class="pole" x="<%= C + R - 4 %>" y="<%= C - 6 %>" text-anchor="end">개입</text>
+        <text class="pole" x="<%= C + 5 %>" y="<%= C - R + 12 %>">자율</text>
+        <text class="pole" x="<%= C + 5 %>" y="<%= C + R - 5 %>">전통</text>
+        <% if (myAxis) { const mx = px(Math.max(-1, Math.min(1, myAxis.economy))), myy = py(Math.max(-1, Math.min(1, myAxis.social))); %>
+          <circle class="me" cx="<%= mx.toFixed(1) %>" cy="<%= myy.toFixed(1) %>" r="7"/>
+          <text class="me-l" x="<%= (mx + 11).toFixed(1) %>" y="<%= (myy + 4).toFixed(1) %>">나</text>
+        <% } %>
+      </svg>
+      <p class="ty-map-cap">가로 경제(−1 시장 ~ +1 개입) · 세로 사회·문화(−1 전통 ~ +1 자율). 원점에서의 거리 <code>d = √(x² + y²)</code> 가 강도를 정합니다.</p>
+    </div>
+
+    <%# ── 판정 기준 + 내 유형 ── %>
+    <div class="ty-rules">
+      <% if (my) { %>
+        <div class="ty-my">
+          <div class="k">내 유형</div>
+          <div class="n"><%= my.name %></div>
+          <div class="s"><%= my.sub %>. <span style="color:var(--sub2)">d = <%= my.d != null ? my.d.toFixed(2) : '—' %></span></div>
+          <a href="/balance-game/share">결과 이미지로 공유 →</a>
+        </div>
+      <% } else { %>
+        <div class="ty-cta">아직 진단 전이라면 20문항으로 내 유형을 알 수 있어요. <a href="/balance-game">진단 시작하기 →</a></div>
+      <% } %>
+      <div class="ty-rule">
+        <div class="ty-rule-h"><span class="z">ZONE 0 · 중심</span><span class="n"><%= mid.name %></span></div>
+        <p><code>d &lt; <%= T.center %></code> — 사분면을 따지지 않고 단일 유형으로 봅니다.</p>
+      </div>
+      <div class="ty-rule">
+        <div class="ty-rule-h"><span class="z">ZONE 1 · 온건</span><span class="n">온건한 [사분면명]</span></div>
+        <p><code><%= T.center %> ≤ d &lt; <%= T.strong %></code> — 방향은 있지만 강도가 낮은 구간입니다.</p>
+      </div>
+      <div class="ty-rule">
+        <div class="ty-rule-h"><span class="z">ZONE 2 · 뚜렷</span><span class="n">[사분면명]</span></div>
+        <p><code>d ≥ <%= T.strong %></code> — 수식어 없이 이름만 씁니다. 짧은 쪽이 기본값입니다.</p>
+      </div>
+      <div class="ty-rule is-guard">
+        <div class="ty-rule-h"><span class="z">안전장치</span><span class="n">한 축이 가운데면 온건</span></div>
+        <p>이름은 두 축의 <em>부호</em>로 정해집니다. 그래서 거리가 커도 <strong>한 축이 |값| &lt; <%= T.axisMid %></strong> 이면 온건으로 내립니다 —
+          경제 +0.05·사회 +0.9인 사람을 "개입·자율" 이라고 부르면 개입은 거짓이 되기 때문입니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 9종 카드 ── %>
+  <h2 class="ty-sec-h">아홉 가지 유형</h2>
+  <div class="ty-cards">
+    <% const isMine = (t) => my && my.key === t.key && my.zone === t.zone; %>
+    <div class="ty-card is-center <%= isMine(mid) ? 'is-mine' : '' %>">
+      <div class="q"><%= mid.quad %><b><%= mid.cond %></b></div>
+      <h3 class="n"><%= mid.name %></h3>
+      <p class="s"><%= mid.sub %></p>
+      <p class="d"><%= mid.desc %></p>
+    </div>
+    <% ['L,R', 'R,R', 'L,L', 'R,L'].forEach(k => { const st = strongOf[k], md = mildOf[k]; %>
+      <div class="ty-card <%= isMine(st) ? 'is-mine' : '' %>">
+        <div class="q"><%= st.quad %><b><%= st.cond %></b></div>
+        <h3 class="n"><%= st.name %></h3>
+        <p class="s"><%= st.sub %></p>
+        <p class="d"><%= st.desc %></p>
+      </div>
+      <div class="ty-card <%= isMine(md) ? 'is-mine' : '' %>">
+        <div class="q"><%= md.quad %><b><%= md.cond %></b></div>
+        <h3 class="n"><%= md.name %></h3>
+        <p class="s"><%= md.sub %></p>
+        <p class="d"><%= md.desc %></p>
+      </div>
+    <% }); %>
+  </div>
+
+  <p class="ty-foot">유형 이름은 경제·사회·문화 두 축으로만 정합니다. 정치제도 축은 이름에 들어가지 않고 결과 화면과 카드에 따로 표시되며,
+    안보·외교 축은 국회 입법 기록으로 잴 수 없어 의원 비교에서 뺍니다. 임계값 <%= T.center %> / <%= T.strong %> 는 유형이 고르게 나뉜다는 가정값이라,
+    응답이 쌓이면 분포를 보고 조정합니다.</p>
+
+  <div class="ty-links">
+    <a href="/balance-game">← 성향 진단</a>
+    <% if (completed) { %><a href="/balance-game/reveal">내 카드 보기 →</a><a href="/balance-game/compare">의원과 비교 →</a><% } %>
+  </div>
+</div>

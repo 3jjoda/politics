@@ -208,9 +208,8 @@
     while (ctx.measureText(tn).width > cw - 48 && hs > 60) { hs -= 6; ctx.font = font(900, hs, SERIF); }
     ctx.fillText(tn, pad, y + hs);
     y += hs + g(story ? 20 : 14);
-    // 부제 한 줄 — 내 축 문장("…에 가깝습니다"). 유형 설명은 같은 말의 반복이라 카드에선 뺐다 (사이트 결과 화면에 있다)
-    const hl = headline();
-    const sub1 = (hl && !/중도에 가깝/.test(hl)) ? hl + '에 가깝습니다.' : (typeDesc().split('. ')[0] + '.');
+    // 부제 한 줄 — 유형의 한 줄 문구(typeOf().sub, 9종 체계). 정치제도 축은 지도 아래 한 줄이 맡는다
+    const sub1 = (D.type && D.type.sub) ? D.type.sub : headline();
     ctx.font = font(600, f(story ? 28 : 25), SANS); ctx.fillStyle = T.sub;
     ctx.fillText(ellipsize(ctx, sub1, cw), pad, y + 28);
     y += 28 + g(story ? 44 : 32) + sp;
@@ -466,9 +465,9 @@
     let hs = 88; ctx.font = font(900, hs, SERIF); ctx.fillStyle = T.ink;
     while (ctx.measureText(tn).width > leftW && hs > 48) { hs -= 6; ctx.font = font(900, hs, SERIF); }
     ctx.fillText(tn, pad, y + hs - 12); y += hs + 14;
-    const desc = typeDesc().split('. ')[0];
+    const desc = (D.type && D.type.sub) ? D.type.sub : typeDesc().split('. ')[0];
     ctx.font = font(500, 24, SANS); ctx.fillStyle = T.sub;
-    wrap(ctx, desc + (desc.endsWith('.') ? '' : '.'), leftW).slice(0, 2).forEach((l, i) => ctx.fillText(l, pad, y + 24 + i * 34));
+    wrap(ctx, desc, leftW).slice(0, 2).forEach((l, i) => ctx.fillText(l, pad, y + 24 + i * 34));
     // 브랜드 (왼쪽 아래)
     drawBrandRow(ctx, pad, H - M.bottom - 44, leftW, { mark: 40, wm: 30, tag: 22, T });
     if (!isMap) { ctx.font = font(500, 22, MONO); ctx.fillStyle = T.goldT; ctx.textAlign = 'right'; ctx.fillText(`${D.siteHost}/balance-game`, W - pad, H - M.bottom - 20); return { overflow: 0, slack: 0 }; }
@@ -560,7 +559,7 @@
       '의원 좌표는 공동발의 기록 × 법안 방향 매핑 · 안보축은 입법 기록으로 잴 수 없어 제외', '응답 없음', '네 축 모두 중도에 가깝습니다'];
     D.axes.forEach(a => t.push(a.name, a.short, a.Lx, a.Rx));
     (D.matches || []).concat(D.far || []).forEach(m => t.push(m.name, m.district || ''));
-    t.push(typeName(), typeDesc(), '나의 정치 성향 유형', '당신은 어떤 유형일까요?', '가로', '세로', '가장 먼 (반대 성향)', '에 가깝습니다.', '나', '점 하나가 의원 한 명', '균형 조율자', '좌표가 가장 가까운', '반대 성향', '의원 비교 제외', '명 · 공동발의 기록으로 만든 좌표 · 안보축 제외', '퇴임 · ');
+    t.push(typeName(), typeDesc(), (D.type && D.type.sub) || '', '나의 정치 성향 유형', '당신은 어떤 유형일까요?', '가로', '세로', '가장 먼 (반대 성향)', '에 가깝습니다.', '나', '점 하나가 의원 한 명', '균형 조율자', '좌표가 가장 가까운', '반대 성향', '의원 비교 제외', '명 · 공동발의 기록으로 만든 좌표 · 안보축 제외', '퇴임 · ');
     return t.join('');
   }
   async function loadFonts() {

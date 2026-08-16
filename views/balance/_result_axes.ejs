@@ -17,7 +17,8 @@
 %>
 <div class="bg-res-kicker">내 결과</div>
 <% if (_t) { %><h2 class="bg-res-headline"><%= _t.name %></h2>
-<p class="bg-res-desc"><%= _t.desc %> <span class="bg-res-line"><%= _headline.replace(/ 쪽$/, '') %>에 가깝습니다.</span></p>
+<p class="bg-res-desc"><span class="bg-res-line"><%= _t.sub %>.</span> <%= _t.desc %>
+  <a class="bg-res-types" href="/balance-game/types">유형 9종 보기 →</a></p>
 <% } else { %><h2 class="bg-res-headline"><%= _headline %></h2><% } %>
 <p class="bg-res-sub">|값| 0.25 미만은 중도로 봅니다 · 축 이름 옆은 그 축이 다루는 주제</p>
 <div class="bg-ax">

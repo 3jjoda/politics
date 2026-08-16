@@ -116,6 +116,7 @@ export default (db) => {
     router.get('/balance-game/compare',  balanceGameController.getComparePage);
     router.get('/balance-game/connect',  (req, res) => res.redirect(301, '/balance-game/reveal'));   // 2026-08-16 폐지 — 카드(reveal)가 마지막 화면. 옛 링크 보호
     router.get('/balance-game/share',    balanceGameController.getSharePage);     // 결과 공유 이미지 (canvas)
+    router.get('/balance-game/types',    balanceGameController.getTypesPage);     // 유형 9종 안내 (공개)
     router.get('/balance-game/mapping',  balanceGameController.getMappingPreviewPage);
 
     return router;
