@@ -30,9 +30,9 @@ import 'dotenv/config';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import logger from '../utils/logger.js';
-import { findBrowser, shoot } from '../utils/headlessShot.js';
+import { findBrowser } from '../utils/headlessShot.js';
+import { W, H, BG, sh, has, esc, probeDuration, ttsConfig, edgeCmd, tts, shootFrame, ts, toSubLines, assemble, FONT_LINK, mark, subHtml } from '../utils/shortsKit.js';
 
 const arg = (name, dflt = null) => {
     const i = process.argv.indexOf(`--${name}`);
@@ -44,50 +44,12 @@ const OUT_ROOT = arg('out') || path.resolve('out/video');
 const INSTA_ROOT = arg('insta') || path.resolve('out/insta');
 const TTS = arg('tts') || 'edge';
 const FORMAT = arg('format') || 'thread';
-const VOICE = arg('voice') || (TTS === 'say' ? 'Yuna' : 'ko-KR-SunHiNeural');
+const VOICE = arg('voice') || (TTS === 'say' ? 'Yuna' : 'ko-KR-InJoonNeural');   // 남성 InJoon 기본 (2026-08-17 사용자 선택)
 const RATE = arg('rate') || (TTS === 'say' ? '205' : '+8%');   // say: 분당 단어수 / edge: 상대 속도
-const W = 1080, H = 1920;                          // 쇼츠 9:16
+Object.assign(ttsConfig, { engine: TTS, voice: VOICE, rate: RATE });
 const MIN_SLIDE = 3.0, TAIL = 0.45;                 // 슬라이드 최소 길이 · 나레이션 뒤 여백(초)
-const BG = '#F7F6F1';                              // 카드 4:5 를 9:16 에 얹을 때 위아래 색 (브랜드 베이지)
-
-const sh = (cmd, args, opts = {}) => execFileSync(cmd, args, { stdio: 'pipe', encoding: 'utf8', ...opts });
-const has = (cmd) => { try { sh('which', [cmd]); return true; } catch { return false; } };
-
-function probeDuration(file) {
-    const out = sh('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).trim();
-    return Number(out) || 0;
-}
-
-/* TTS — 문장 → wav. edge-tts 는 mp3, `say` 는 aiff 로 뱉으므로 ffmpeg 로 wav 변환. 빈 문장이면 무음 1초 */
-let EDGE_CMD = null;   // ['edge-tts'] 또는 ['python3','-m','edge_tts']
-function edgeCmd() {
-    if (EDGE_CMD) return EDGE_CMD;
-    if (has('edge-tts')) return (EDGE_CMD = ['edge-tts']);
-    for (const py of ['python3', 'python']) {
-        try { sh(py, ['-c', 'import edge_tts']); return (EDGE_CMD = [py, '-m', 'edge_tts']); } catch {}
-    }
-    return null;
-}
-function tts(text, outWav) {
-    const t = String(text || '').replace(/\s+/g, ' ').trim();
-    if (!t) { sh('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', '1', outWav]); return; }
-    if (TTS === 'say') {
-        const aiff = outWav.replace(/\.wav$/, '.aiff');
-        sh('say', ['-v', VOICE, '-r', String(RATE), '-o', aiff, t]);
-        sh('ffmpeg', ['-y', '-i', aiff, '-ar', '44100', '-ac', '1', outWav]);
-        fs.unlinkSync(aiff);
-    } else {
-        const mp3 = outWav.replace(/\.wav$/, '.mp3');
-        const [cmd, ...pre] = edgeCmd();
-        sh(cmd, [...pre, '--voice', VOICE, `--rate=${RATE}`, '--text', t, '--write-media', mp3]);
-        // 앞뒤 무음을 잘라 컷 타이밍이 말과 맞게 (edge-tts 는 앞에 0.1~0.3초 여백을 붙인다)
-        sh('ffmpeg', ['-y', '-i', mp3, '-af', 'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse', '-ar', '44100', '-ac', '1', outWav]);
-        fs.unlinkSync(mp3);
-    }
-}
 
 /* 프레임 렌더 — 카드 PNG + 자막 한 줄을 HTML 로 그려 헤드리스 크롬으로 1080×1920 캡처 (utils/headlessShot.js) */
-const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function frameHtml(cardPngAbs, line, n, count) {
     // 카드(1080×1350)를 y=150 에, 아래 420px 띠에 자막. 서체는 카드와 같은 계열(시스템 한글 산세리프)
     return `<!doctype html><meta charset="utf-8"><style>
@@ -103,9 +65,6 @@ html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden;background:${BG};f
    컷마다 내용을 조금씩 더 드러낸다 (훅: 주제 → 설명 / 법안: 한 줄씩) — 정지 화면의 연속이라도 움직임이 있어야 손가락이 멈춘다.
    서체는 카드와 같다 (Noto Serif KR 900 헤드라인 · Pretendard 본문 · JetBrains Mono 메타) — 구글 폰트를 프레임마다 받는다
    (--user-data-dir 캐시라 두 번째부터는 빠르다). 정당 없음 · 골드 단색 */
-const FONT_LINK = '<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@700;900&family=Noto+Sans+KR:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=block" rel="stylesheet">';
-const MARK = '<svg viewBox="0 0 64 64" width="{S}" height="{S}"><circle cx="32" cy="32" r="28" fill="none" stroke="#B8740C" stroke-width="5"/><path d="M32 16v32M32 30l12 10" fill="none" stroke="#B8740C" stroke-width="5" stroke-linecap="round"/></svg>';
-const mark = (size) => MARK.replace(/\{S\}/g, size);
 function sceneHtml(sc, S, cut, cuts, line) {
     const shortName = (n) => String(n).replace(/\s*(일부|전부)?개정법률안$/, ' 일부개정안').replace(/\s*법률안$/, ' 법률안');
     const css = `${FONT_LINK}<style>
@@ -187,35 +146,7 @@ html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden;background:${BG};c
     return `<!doctype html><meta charset="utf-8">${css}${top}${body}${sub}`;
 }
 
-const shootFrame = (browser, htmlFile, outPng, budgetMs = 1500) => shoot(browser, `file://${htmlFile}`, outPng, { width: W, height: H, budgetMs, extraArgs: ['--allow-file-access-from-files'] });
 
-/* SRT 시각 포맷 (유튜브 자막 파일용 — 화면엔 굽지 않고 별도 업로드 가능) */
-const ts = (sec) => {
-    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60), ms = Math.round((sec % 1) * 1000);
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
-};
-/* 나레이션을 자막 줄로 — 한 줄 24자 안팎으로 접는다 (세로 화면). 문장 단위 → 길면 공백에서 */
-function toSubLines(text) {
-    const sents = String(text).split(/(?<=[.!?。])\s+/).filter(Boolean);
-    const lines = [];
-    for (const s of sents) {
-        if ([...s].length <= 26) { lines.push(s); continue; }
-        let cur = '';
-        for (const w of s.split(' ')) {
-            if ([...(cur + ' ' + w)].length > 26 && cur) { lines.push(cur); cur = w; } else cur = cur ? cur + ' ' + w : w;
-        }
-        if (cur) lines.push(cur);
-    }
-    // `2.` · `당 말고 사람.` 같은 짧은 조각은 혼자 한 컷이 되면 어색하다 → 다음 조각 앞에 붙인다 (마지막이면 앞 조각 뒤에)
-    const out = [];
-    for (let i = 0; i < lines.length; i++) {
-        const l = lines[i];
-        if ([...l].length < 8 && i + 1 < lines.length && [...(l + ' ' + lines[i + 1])].length <= 30) { lines[i + 1] = l + ' ' + lines[i + 1]; continue; }
-        if ([...l].length < 8 && out.length && [...(out[out.length - 1] + ' ' + l)].length <= 30) { out[out.length - 1] += ' ' + l; continue; }
-        out.push(l);
-    }
-    return out;
-}
 
 async function main() {
     for (const c of ['ffmpeg', 'ffprobe']) if (!has(c)) { logger.error(`[video] ${c} 가 없습니다 → brew install ffmpeg`); process.exit(1); }
@@ -298,24 +229,8 @@ async function main() {
     }
     fs.writeFileSync(path.join(dir, 'sub.srt'), srt.join('\n'), 'utf8');
 
-    // 4) 영상: 프레임 concat(길이 지정) / 오디오: 장면 wav 를 각 길이로 패딩 후 concat → 먹스
-    const vlist = path.join(work, 'v.txt');
-    fs.writeFileSync(vlist, frames.map((f) => `file '${f.png}'\nduration ${f.dur.toFixed(3)}`).join('\n') + `\nfile '${frames[frames.length - 1].png}'\n`, 'utf8');
-    const vmp4 = path.join(work, 'v.mp4');
-    sh('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', vlist, '-fps_mode', 'vfr', '-pix_fmt', 'yuv420p',
-        '-c:v', 'libx264', '-crf', '20', '-tune', 'stillimage', vmp4]);
-    const apads = [];
-    wavs.forEach((w, i) => {
-        const p2 = path.join(work, `a${i + 1}.wav`);
-        sh('ffmpeg', ['-y', '-i', w.wav, '-af', `apad,atrim=0:${w.dur.toFixed(3)}`, p2]);
-        apads.push(p2);
-    });
-    const alist = path.join(work, 'a.txt');
-    fs.writeFileSync(alist, apads.map((a2) => `file '${a2}'`).join('\n'), 'utf8');
-    const awav = path.join(work, 'a.wav');
-    sh('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', alist, '-c', 'copy', awav]);
-    const out = path.join(dir, 'short.mp4');
-    sh('ffmpeg', ['-y', '-i', vmp4, '-i', awav, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart', out]);
+    // 4) 영상 조립 (utils/shortsKit.assemble)
+    const out = assemble(work, frames, wavs, path.join(dir, 'short.mp4'));
     const parts = wavs;
     const narr = narrList;
 
