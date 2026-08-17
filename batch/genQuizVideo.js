@@ -189,8 +189,6 @@ const CSS = `${FONT_LINK}<style>${BASE_CSS}
 .opt.pick{border-color:#B8740C;background:#FBF5EA;box-shadow:0 0 0 6px rgba(184,116,12,.18)}
 .opt.pick .k{background:#B8740C;color:#fff}
 .opt.dim{opacity:.35}
-.cnt{position:absolute;left:0;right:0;top:1000px;height:360px;text-align:center;font:700 230px/360px "JetBrains Mono",monospace;color:#B8740C}
-.ring{position:absolute;left:50%;top:1000px;width:360px;height:360px;margin-left:-180px;border-radius:50%;border:16px solid #E2DFD4;border-top-color:#B8740C;box-sizing:border-box}
 .big{font:700 200px/1 "JetBrains Mono",monospace;color:#8F5800;letter-spacing:-.04em;margin:30px 0 14px}
 .big.mid{font-size:150px}
 .cap{font-size:36px;color:#4B5362;font-weight:500}
@@ -224,8 +222,6 @@ function sceneHtml(sc, cut, cuts, line) {
     if (sc.kind === 'q') {
         const shown = Math.min(sc.opts.length, Math.max(1, Math.round((cut + 1) / cuts * sc.opts.length)));
         body = `<div class="body">${whoHtml}<div class="qno">Q${sc.no}</div><h1 class="q">${sc.q}</h1>${sc.opts.slice(0, shown).map((o, i) => `<div class="opt"><div class="k">${'ABC'[i]}</div>${esc(o)}</div>`).join('')}</div>`;
-    } else if (sc.kind === 'count') {
-        body = `<div class="body" style="justify-content:flex-start;padding-top:40px"><div class="qno">Q${sc.no}</div><h1 class="q" style="font-size:64px;margin-bottom:0">${sc.q}</h1></div><div class="ring"></div><div class="cnt">${sc.n}</div>`;
     } else if (sc.kind === 'reveal') {
         const pair = sc.pair ? `<div class="pair">${sc.pair.map((t) => { const w = t.split(' '); const v = w.pop(); return `<div>${esc(w.join(' '))}<b>${esc(v)}</b></div>`; }).join('')}</div>` : '';
         body = `<div class="body"><div class="qno">Q${sc.no} 정답</div>${optsHtml(sc.opts, sc.pick, true)}<div class="big${sc.pair ? ' mid' : ''}">${esc(sc.big)}</div><div class="cap">${esc(sc.cap)}</div>${cut > 0 ? pair : ''}</div>`;
@@ -237,7 +233,7 @@ function sceneHtml(sc, cut, cuts, line) {
         body = `<div class="outro">${face}<div class="tease">${sc.tease}</div><div class="ask">${esc(sc.sub)}</div>${mark(120)}<div class="nm2">당말사</div><div class="tg">당 말고 <b>사람</b></div><div class="url">dangmalsa.kr</div><div class="desc">${sc.desc}</div></div>`;
         return `<!doctype html><meta charset="utf-8">${CSS}${body}${subHtml(line)}`;
     }
-    return `<!doctype html><meta charset="utf-8">${CSS}${top}${body}${sc.kind === 'count' ? '' : subHtml(line)}`;
+    return `<!doctype html><meta charset="utf-8">${CSS}${top}${body}${subHtml(line)}`;
 }
 
 async function main() {
