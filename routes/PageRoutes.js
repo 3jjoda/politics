@@ -107,6 +107,7 @@ export default (db) => {
 
     // 마이페이지
     router.get('/my',                   requireLogin, myController.getMyPage);
+    router.get('/my/activity',          requireLogin, myController.getActivityJson);   // 내 활동 페이징 (JSON)
     router.get('/my/analysis-requests', requireLogin, billController.getMyAnalysisRequestsPage);
 
     // 성향 진단 (밸런스 게임) — 5단계 + 매핑 페이지

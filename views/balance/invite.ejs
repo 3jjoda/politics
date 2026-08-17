@@ -95,6 +95,16 @@
   .bg-actions-links a { color: var(--sub); text-decoration: none; border-bottom: 1px dashed var(--border2); }
   .bg-actions-links a:hover { color: var(--accent); border-color: var(--accent); }
 
+  /* ── 왜 이렇게 만들었나 — 진단의 의도와 한계 (2026-08-16)
+        🔴 지우지 말 것. 이 문단이 없으면 사용자는 이 진단을 "측정 도구" 로 읽고,
+        그 순간 "문항 20개와 의원 기록을 왜 같은 자로 안 쟀나" 가 결점이 된다.
+        의도를 밝히면 같은 한계가 전제가 된다 — 사이트가 다른 곳에서 하는 것과 같은 방식 */
+  .bg-why { margin-top: 26px; background: var(--bg2); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 12px; padding: 22px 26px 20px; }
+  .bg-why-title { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 17px; color: var(--text); margin: 0 0 12px; }
+  .bg-why p { font-size: 14px; line-height: 1.8; color: var(--sub); margin: 0 0 10px; word-break: keep-all; max-width: 760px; }
+  .bg-why p:last-child { margin-bottom: 0; }
+  .bg-why strong { color: var(--text); font-weight: 700; }
+
   /* ── 주제별 문항 (준비 중) — 한 줄 ── */
   .bg-topic-line { margin-top: 26px; padding: 14px 18px; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 10px; font-size: 13px; color: var(--sub); line-height: 1.7; word-break: keep-all; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .bg-topic-line a { color: var(--sub); text-decoration: none; border-bottom: 1px dashed var(--border2); }
@@ -205,6 +215,24 @@
     </div>
   </article>
 <% } %>
+
+  <%# ── 왜 이렇게 만들었나 — 미완료·완료 공통. 진단이 무엇이고 무엇이 아닌지 ── %>
+  <section class="bg-why" aria-labelledby="bg-why-title">
+    <h2 class="bg-why-title" id="bg-why-title">이 진단은 무엇이고, 무엇이 아닌가</h2>
+    <p>
+      <strong>당신과 의원을 같은 자로 잴 수는 없습니다.</strong> 의원의 좌표는 실제 기록 — 공동발의로 이름을 올린 법안 수백 건 —
+      에서 나오지만, 당신에게 그 법안을 전부 읽고 찬반을 매기라고 할 수는 없습니다. 그래서 당신 쪽은 가벼운 문항으로 기준을 세우고,
+      의원 쪽은 활동으로 기준을 세운 뒤 두 기준이 겹치는 자리를 찾습니다. 서로 다른 자로 잰 값을 겹친 <strong>근사</strong>이지, 정밀한 측정이 아닙니다.
+    </p>
+    <p>
+      <strong>결과가 익숙한 정당 쪽으로 나와도 괜찮습니다.</strong> 이 진단의 목적은 정당을 지우는 게 아니라,
+      당만 보고 찍어 온 사람이 한 번이라도 <strong>사람 이름</strong>을 보게 하는 것입니다. 가까운 의원이 나오면 그 사람이 낸 법안·표결·발언을
+      이 사이트에서 이어서 볼 수 있습니다. 거기까지가 이 진단이 하려는 일입니다.
+    </p>
+    <p>
+      그래서 % 점수 대신 순위만 내고, 어느 유형도 치켜세우거나 깎지 않으며, 좌표를 만든 법안 수와 재지 못한 축을 화면에 그대로 씁니다.
+    </p>
+  </section>
 
   <%# ── 주제별 문항 — 없으면 한 줄, 있으면 카드 ── %>
   <% if (otherPacks.length === 0) { %>

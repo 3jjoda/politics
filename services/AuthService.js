@@ -78,6 +78,11 @@ export default (db) => {
         },
 
         /* 닉네임 변경 — 마이페이지 인라인 편집용 */
+        /* 성별·연령대 변경 (2026-08-16). 값은 위 validate* 를 통과한 것만 받는다 */
+        updateProfile: async (userId, gender, ageGroup) => userDao.updateProfile(userId, gender, ageGroup),
+        getActivityCounts: (userId) => userDao.getActivityCounts(userId),
+        getActivityPage: (userId, kind, page, per) => userDao.getActivityPage(userId, kind, page, per),
+
         updateNickname: async (userId, nickname) => {
             const updated = await userDao.updateNickname(userId, nickname);
             if (updated) {

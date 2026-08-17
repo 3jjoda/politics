@@ -11,7 +11,8 @@
 외부 피드백 3건 반영 (헤드라인 절제는 브랜드 판단으로 유지).
 - **「그날의 숫자」 장**: 표지 29/20/341 의 반복이었다(위원회별 줄은 회부 전이라 NULL 로 사실상 미노출) → `발의 N건 — 최근 30 평일 평균의 M배 · 그중 K번째` ·
   `법안 1건당 공동발의` · `대표발의 의원 1명당` 으로 교체. 기준선은 렌더 시 SQL (`getCardBaseline.sql`, 날짜 −3 이전 30 평일 · 주말 제외),
-  없으면 장을 뺀다. `BriefingService.getCardContext` 신규 (export API 도 같은 경로)
+  없으면 장을 뺀다. `BriefingService.getCardContext` 신규 (export API 도 같은 경로).
+  2차 피드백으로 첫 줄을 **조건부**로 — 배수는 ≥1.3/≤0.7 · 순위는 상하위 5위 안일 때만, 평범한 날은 `이번 주 누적 N건` (SQL `week_cnt`)
 - **흐름 장** `.sl-body.is-top` — 위 40% 공백 제거, 법안 5건·36px
 - **몰린 법률 장** — 설명을 목록 위로, 법률마다 대표발의자(`getCardLawProposers.sql`, 이름만)
 - 실측: 카드 4건 전 슬라이드 넘침 0 · export slideCount 7 유지

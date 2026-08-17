@@ -779,6 +779,7 @@ input, textarea, select { font-family: inherit; }
 }
 .cv-legend-item { display: flex; align-items: center; gap: 6px; }
 .cv-legend-item strong { color: var(--text); }
+.cv-legend-item .cv-pct { font-style: normal; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text); margin-left: 2px; }
 .cv-dot { width: 10px; height: 10px; border-radius: 50%; }
 .cv-dot-agree    { background: var(--vote-pro); }
 .cv-dot-disagree { background: var(--vote-con); }

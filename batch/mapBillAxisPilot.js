@@ -13,6 +13,9 @@
 //   node batch/mapBillAxisPilot.js --select-only         # 분류 없이 기존 결과로 선별만 다시
 //   node batch/mapBillAxisPilot.js --dry-run             # DB 안 씀 (첫 배치 1회만 호출해 형식 확인)
 //   node batch/mapBillAxisPilot.js --sync-v2             # 선별 결과를 bill_axis_mapping v2 에 미러링 (분류·선별 뒤에 붙인다)
+//   node batch/mapBillAxisPilot.js --reclassify social,institution --sync-v2
+//        # 이미 분류된 행 중 해당 축인 것을 **현재 프롬프트로 다시 분류해 덮어쓴다** (2026-08-16 눈금 보정 —
+//        #   사회·제도 축 정의를 문항이 재는 것에 맞게 바꾼 뒤 5,544건 재분류 ≈ $6). 후보 신규 표집은 안 한다
 //
 // 정기 갱신 (분기 1회 권장 · 로컬 · 크론 X — 비용 + 희소 셀 사람 검토):
 //   node batch/mapBillAxisPilot.js --target 100000 --max-candidates 20000 --sync-v2
@@ -28,7 +31,7 @@ import logger from '../utils/logger.js';
 import { POL_MAPPING_VERSION, MATCH_AXES } from '../utils/axisConfig.js';
 
 const MODEL = 'claude-haiku-4-5-20251001';
-const PROMPT_VERSION = 'axis-p1';
+const PROMPT_VERSION = 'axis-p2';   // p1: 초기 정의 · p2: 사회·제도 축 정의 보정 (2026-08-16)
 const BATCH = 20;              // 호출당 법안 수
 const CONCURRENCY = 5;         // 동시 호출 수 (호출당 ~25초라 직렬이면 3,000건에 1시간이 넘는다)
 const SUMMARY_CHARS = 420;
@@ -38,14 +41,17 @@ const PRICE_IN = 1.0, PRICE_OUT = 5.0, PRICE_CW = 1.25, PRICE_CR = 0.10;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function parseArgs(argv) {
-    const a = { target: 300, maxCandidates: 3000, selectOnly: false, dryRun: false, syncV2: false };
+    const a = { target: 300, maxCandidates: 3000, selectOnly: false, dryRun: false, syncV2: false, reclassify: null };
     for (let i = 2; i < argv.length; i++) {
         if (argv[i] === '--target') a.target = parseInt(argv[++i], 10);
         else if (argv[i] === '--max-candidates') a.maxCandidates = parseInt(argv[++i], 10);
         else if (argv[i] === '--select-only') a.selectOnly = true;
         else if (argv[i] === '--sync-v2') a.syncV2 = true;
         else if (argv[i] === '--dry-run') a.dryRun = true;
+        else if (argv[i] === '--reclassify') a.reclassify = String(argv[++i] || '').split(',').map(x => x.trim()).filter(x => AXES.includes(x));
     }
+    // 🔴 재분류 뒤의 선별은 정원 제한 없이 (기본 300 을 그대로 두면 셀당 38 로 줄여 is_selected 를 통째로 덮어쓴다 — 실제로 한 번 그랬다)
+    if (a.reclassify && !argv.includes('--target')) a.target = 100000;
     return a;
 }
 
@@ -55,9 +61,18 @@ const SYSTEM_PROMPT = `당신은 한국 국회 법안을 4개 정치 성향 축 
 | axis | -1 (찬성이 이 방향) | +1 (찬성이 이 방향) | 예 |
 |---|---|---|---|
 | economy | 시장 자율 · 규제 완화 · 감세 · 민간 주도 | 정부 개입 · 규제 강화 · 증세/분배 · 공공 확대 | 최저임금, 부동산 세제, 대기업 규제, 복지 확대 |
-| social | 전통 · 질서 · 처벌 강화 · 가족/국가 중심 | 자율 · 다양성 · 개인 권리 · 소수자 보호 | 차별금지, 낙태, 이민, 형벌, 표현의 자유 |
+| social | 전통 · 가족/성 역할 보수 · 이민 제한 · 표현/집회 규제 · 청소년 보호 규제 · 형벌 우선(사형 유지, 마약 비범죄화 반대) | 자율 · 다양성 · 개인 권리 · 소수자 보호 · 이민 개방 · 표현 자유 · 재활/인권 우선 | 차별금지, 낙태, 동성혼·생활동반자, 이민, 집회, 청소년 규제, 사형, 마약 |
 | security | 한미동맹 강화 · 대북 강경 · 국방력 증강 | 자주 · 대북 대화/교류 · 군축/병역 완화 | 한미일 협력, 남북교류, 병역, 방위비 |
-| institution | 기존 질서 · 안정 · 현 권력구조 유지 · 검찰/사법 권한 유지 | 개혁 · 권력 분산 · 특검/수사기관 개편 · 선거제 개편 | 검찰개혁, 특검, 선관위, 비례제, 국회 권한 |
+| institution | 기존 권력기관(검찰·법원·헌재·선관위·행정부)의 **현행 권한·구성·독립성 유지 또는 강화** · 견제 장치 축소 | 그 기관들에 대한 **외부 견제·권한 분산·구성 개편·투명성 확대** | 수사권 분리, 특검, 공수처, 판결문 공개, 대법관·재판관 인선 개편, 비례제, 국회 감시권 |
+
+## 🔴 social · institution 에서 특히 지켜야 할 것 (2026-08-16 보정)
+- **범죄 처벌 강화·형량 가중·단속·수사권 강화 일반은 social 이 아니다 → none.** 여야가 모두 찬성하는 상식이라 성향을 가르지 못한다.
+  social 은 "가치 대립이 실제로 있는" 사안에만 — 처벌 vs 재활/인권(사형·마약·소년범·수형자 권리), 가족·성 역할, 이민, 표현·집회, 청소년 규제.
+- **institution 은 "바꾸나/두나" 가 아니라 "권력을 어디로 옮기나" 다.** 어떤 개정안이든 무언가를 바꾸므로 "바꾼다 = 개혁" 으로 판정하면 안 된다.
+  안정 = 검찰 수사권 유지·확대, 공수처 폐지, 사법부·선관위 독립성/자율 강화, 국회 감시권 축소, 정보 비공개.
+  개혁 = 수사권 분리·이관, 특검·공수처 강화, 판결문·수사기록 공개, 대법관 증원·인선 절차 개편, 선거제 비례성, 국회 통제 강화,
+         **대통령·행정부 권한 제한(사면권 제한, 인사권 견제 등)** — 기존 권력을 제한하는 쪽은 개혁이다.
+- **"헌정질서 수호"·"내란 처벌"·"질서 유지" 는 안정이 아니다.** 처벌·질서 어휘가 붙었다고 안정/전통으로 보내지 말 것 → 위 규칙대로 none 이 기본.
 
 ## 규칙
 - 법안 하나에 **주축 1개**만. 두 축에 걸치면 더 강한 쪽. 어느 축의 어느 방향인지 **명확히 말할 수 없으면 axis="none"**.
@@ -126,6 +141,16 @@ async function fetchCandidates(pool, limit) {
         )
         SELECT bill_id, bill_name, committee, summary FROM pool ORDER BY rn, random() LIMIT $1`,
         [limit, SUMMARY_CHARS, MIN_CO]);
+    return rows;
+}
+
+// 재분류 대상 — 파일럿 테이블에서 해당 축으로 분류된 행 전부 (confidence 불문). 표집이 아니라 전건이다
+async function fetchReclassify(pool, axes, limit, offset) {
+    const { rows } = await pool.query(`
+        SELECT b.bill_id, b.bill_name, b.committee, LEFT(b.summary, $1) AS summary
+          FROM bill_axis_mapping_pilot p JOIN bills b USING (bill_id)
+         WHERE p.axis = ANY($2::text[]) AND p.prompt_version <> $3 AND b.summary IS NOT NULL
+         ORDER BY b.bill_id LIMIT $4 OFFSET $5`, [SUMMARY_CHARS, axes, PROMPT_VERSION, limit, offset]);
     return rows;
 }
 
@@ -227,7 +252,53 @@ async function run() {
     let cost = 0, classified = 0, mapped = 0;
     try {
         await ensureTable(pool);
-        if (!args.selectOnly) {
+        if (args.reclassify && args.reclassify.length) {
+            // ── 재분류: 기존 행을 현재 프롬프트로 다시 분류해 UPDATE. prompt_version 이 이미 현재값인 행은 건너뛴다 (재실행 안전)
+            const { rows: [{ n: total }] } = await pool.query(
+                `SELECT COUNT(*)::int n FROM bill_axis_mapping_pilot p WHERE p.axis = ANY($1::text[]) AND p.prompt_version <> $2`, [args.reclassify, PROMPT_VERSION]);
+            logger.info(`재분류 대상 ${total}건 (${args.reclassify.join(',')}) · 프롬프트 ${PROMPT_VERSION}`);
+            const moved = {};   // 이전 축 → 새 축 이동 집계
+            let seen = 0;
+            while (true) {
+                const chunk = await fetchReclassify(pool, args.reclassify, 200, 0);   // UPDATE 로 prompt_version 이 바뀌므로 OFFSET 0 고정
+                if (chunk.length === 0) break;
+                const { rows: prev } = await pool.query(`SELECT bill_id, axis, agree_score FROM bill_axis_mapping_pilot WHERE bill_id = ANY($1::text[])`, [chunk.map(r => r.bill_id)]);
+                const prevBy = new Map(prev.map(r => [r.bill_id, r]));
+                const batches = []; for (let i = 0; i < chunk.length; i += BATCH) batches.push(chunk.slice(i, i + BATCH));
+                for (let g = 0; g < batches.length; g += CONCURRENCY) {
+                    const group = batches.slice(g, g + CONCURRENCY);
+                    const outs = await Promise.all(group.map(rows => classify(anthropic, rows).then(o => ({ rows, ...o }))));
+                    for (const { rows, results, usage } of outs) {
+                        cost += (usage.in * PRICE_IN + usage.out * PRICE_OUT + usage.cw * PRICE_CW + usage.cr * PRICE_CR) / 1e6;
+                        const byId = new Map(results.map(r => [r.bill_id, r]));
+                        for (const r of rows) {
+                            const x = byId.get(r.bill_id);
+                            if (!x) { logger.warn(`  응답 누락 ${r.bill_id}`); continue; }
+                            let axis = String(x.axis || 'none'); if (!AXES.includes(axis)) axis = 'none';
+                            let ag = axis === 'none' ? null : (DIR_SIGN[axis][String(x.direction || '').trim()] ?? null);
+                            if (axis !== 'none' && ag === null) axis = 'none';
+                            const w = axis === 'none' ? null : (Number(x.weight) === 0.5 ? 0.5 : 1.0);
+                            const conf = ['high', 'medium', 'low'].includes(x.confidence) ? x.confidence : 'low';
+                            const p = prevBy.get(r.bill_id);
+                            const key = `${p?.axis}${p?.agree_score > 0 ? '+' : p?.agree_score < 0 ? '−' : ''} → ${axis}${ag > 0 ? '+' : ag < 0 ? '−' : ''}`;
+                            moved[key] = (moved[key] || 0) + 1;
+                            classified++; if (axis !== 'none') mapped++;
+                            if (args.dryRun) { logger.info(`  ${key.padEnd(28)} ${conf.padEnd(6)} ${String(x.reason || '').slice(0, 40)}  ← ${r.bill_name.slice(0, 40)}`); continue; }
+                            await pool.query(`UPDATE bill_axis_mapping_pilot SET axis=$2, agree_score=$3, disagree_score=$4, weight=$5, confidence=$6, reason=$7,
+                                                 prompt_version=$8, model=$9, is_selected = CASE WHEN $10 THEN FALSE ELSE is_selected END
+                                               WHERE bill_id=$1`,
+                                [r.bill_id, axis, ag, ag === null ? null : -ag, w, conf, String(x.reason || '').slice(0, 60), PROMPT_VERSION, MODEL, axis === 'none']);
+                        }
+                        if (args.dryRun) { logger.info(`[Dry run] 1배치만 호출. 비용 $${cost.toFixed(4)}`); return; }
+                    }
+                    await sleep(300);
+                }
+                seen += chunk.length;
+                logger.info(`재분류 ${seen}/${total} · $${cost.toFixed(3)}`);
+            }
+            logger.info('--- 이동 집계 (이전 → 새) ---');
+            Object.entries(moved).sort((a, b) => b[1] - a[1]).forEach(([k, n]) => logger.info(`  ${k.padEnd(28)} ${n}`));
+        } else if (!args.selectOnly) {
             let cells = await cellCounts(pool);
             logger.info(`시작 셀: ${fmtCells(cells)}`);
             const done = () => AXES.every(ax => cells[ax]['-1'] >= quota && cells[ax]['1'] >= quota);

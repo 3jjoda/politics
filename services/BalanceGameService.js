@@ -90,7 +90,9 @@ export default (db) => {
             return {
                 questions,
                 answers: answersById,
-                answered_count: responses.length,
+                // ⚠️ 활성 문항 기준으로 센다 — 비활성화된 옛 문항(q6·q7·q8·q10, 2026-08-16 교체)의 응답이 남아 있어
+                //    responses.length 로 세면 20/20 인데 next_index 는 남는 모순이 난다
+                answered_count: questions.filter(q => answeredSet.has(q.id)).length,
                 total: questions.length,
                 next_index: nextIdx === -1 ? questions.length : nextIdx,
                 completed: nextIdx === -1 && questions.length > 0

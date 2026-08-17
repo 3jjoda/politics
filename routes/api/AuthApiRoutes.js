@@ -12,6 +12,9 @@ export default (db) => {
     // 닉네임 변경 (마이페이지 인라인 편집)
     router.put('/nickname', requireLogin, c.updateNickname);
 
+    // 성별·연령대 변경 (마이페이지)
+    router.put('/profile', requireLogin, c.updateProfile);
+
     // 회원 탈퇴 (익명화)
     router.delete('/withdraw', requireLogin, c.withdraw);
 

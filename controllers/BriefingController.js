@@ -39,13 +39,21 @@ function buildSlides(p, ctx = {}) {
        ⚠️ 위원회별 발의는 뺐다 — 갓 발의된 법안은 회부 전이라 committee 가 NULL 이고, 그 줄은 사실상 나온 적이 없다 */
     const b = ctx.baseline;
     if (st.proposed > 0 && b && Number(b.base_days) >= MIN_BASE_DAYS) {
+        /* 첫 줄은 **조건부**다 — "평균의 1.0배 · 14번째로 많은 날" 은 정보량이 0 이라 첫 지표부터 김이 빠진다 (2차 피드백).
+             배수는 1.3배 이상 / 0.7배 이하일 때만, 순위는 상위·하위 5위 안일 때만.
+             평범한 날엔 다른 축 — 이번 주 누적 (2일 이상 쌓였을 때) — 그것도 없으면 평균과 비슷하다는 사실만 */
         const avg = Number(b.base_avg);
         const ratio = avg > 0 ? st.proposed / avg : null;
         const rank = Number(b.days_above) + 1;
-        const cmp = [{
-            v: st.proposed, u: '건', l: '발의',
-            s: `최근 ${b.base_days} 평일 평균 ${avg}건` + (ratio ? `의 ${ratio.toFixed(1)}배` : '') + ` · 그중 ${rank}번째로 많은 날`,
-        }];
+        const n = Number(b.base_days);
+        const parts = [];
+        if (ratio && (ratio >= 1.3 || ratio <= 0.7)) parts.push(`최근 ${n} 평일 평균 ${avg}건의 ${ratio.toFixed(1)}배`);
+        else if (Number(b.week_days) >= 2) parts.push(`이번 주 누적 ${nf(b.week_cnt)}건 (${b.week_days}일째)`);
+        else parts.push(`최근 ${n} 평일 평균 ${avg}건과 비슷한 수준`);
+        const fromBottom = n + 2 - rank;   // 오늘까지 n+1 일 중 뒤에서 몇 번째
+        if (rank <= 5) parts.push(`최근 ${n} 평일 중 ${rank}번째로 많은 날`);
+        else if (fromBottom <= 5) parts.push(`최근 ${n} 평일 중 ${fromBottom}번째로 적은 날`);
+        const cmp = [{ v: st.proposed, u: '건', l: '발의', s: parts.join(' · ') }];
         if (st.cosign && st.proposed) {
             cmp.push({ v: (st.cosign / st.proposed).toFixed(1), u: '명', l: '법안 1건당 공동발의',
                        s: `서명 ${nf(st.cosign)}건 ÷ 법안 ${nf(st.proposed)}건` });

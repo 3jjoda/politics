@@ -588,10 +588,10 @@
         </div>
         <div class="cv-legend">
           <div class="cv-legend-item">
-            <span class="cv-dot cv-dot-agree"></span>찬성 <strong>${agree}</strong>명
+            <span class="cv-dot cv-dot-agree"></span>찬성 <strong>${agree}</strong>명${total > 0 ? ` <em class="cv-pct">${agreeRate.toFixed(1)}%</em>` : ''}
           </div>
           <div class="cv-legend-item">
-            <span class="cv-dot cv-dot-disagree"></span>반대 <strong>${disagree}</strong>명
+            <span class="cv-dot cv-dot-disagree"></span>반대 <strong>${disagree}</strong>명${total > 0 ? ` <em class="cv-pct">${disagreeRate.toFixed(1)}%</em>` : ''}
           </div>
           <div class="cv-total">총 <strong>${total}</strong>명 참여</div>
         </div>

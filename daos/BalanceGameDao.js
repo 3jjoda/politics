@@ -95,14 +95,14 @@ export default (db) => {
                         total_responses, packs_completed, computed_at)
                 SELECT
                     $1::int, $2::varchar,
-                    AVG(score) FILTER (WHERE axis = 'economy'     AND score <> 0)::numeric(4,2),
-                    COUNT(*) FILTER  (WHERE axis = 'economy'     AND score <> 0)::int::smallint,
-                    AVG(score) FILTER (WHERE axis = 'social'      AND score <> 0)::numeric(4,2),
-                    COUNT(*) FILTER  (WHERE axis = 'social'      AND score <> 0)::int::smallint,
-                    AVG(score) FILTER (WHERE axis = 'security'    AND score <> 0)::numeric(4,2),
-                    COUNT(*) FILTER  (WHERE axis = 'security'    AND score <> 0)::int::smallint,
-                    AVG(score) FILTER (WHERE axis = 'institution' AND score <> 0)::numeric(4,2),
-                    COUNT(*) FILTER  (WHERE axis = 'institution' AND score <> 0)::int::smallint,
+                    AVG(r.score) FILTER (WHERE r.axis = 'economy'     AND r.score <> 0)::numeric(4,2),
+                    COUNT(*) FILTER  (WHERE r.axis = 'economy'     AND r.score <> 0)::int::smallint,
+                    AVG(r.score) FILTER (WHERE r.axis = 'social'      AND r.score <> 0)::numeric(4,2),
+                    COUNT(*) FILTER  (WHERE r.axis = 'social'      AND r.score <> 0)::int::smallint,
+                    AVG(r.score) FILTER (WHERE r.axis = 'security'    AND r.score <> 0)::numeric(4,2),
+                    COUNT(*) FILTER  (WHERE r.axis = 'security'    AND r.score <> 0)::int::smallint,
+                    AVG(r.score) FILTER (WHERE r.axis = 'institution' AND r.score <> 0)::numeric(4,2),
+                    COUNT(*) FILTER  (WHERE r.axis = 'institution' AND r.score <> 0)::int::smallint,
                     COUNT(*)::int::smallint,
                     -- packs_completed: 각 팩의 question_count 만큼 응답이 있으면 ID 누적
                     (SELECT string_agg(p.id, ',' ORDER BY p.id)
@@ -111,13 +111,17 @@ export default (db) => {
                         AND p.question_count = (
                             SELECT COUNT(DISTINCT r.question_id)::int
                               FROM balance_game_responses r
+                              JOIN balance_game_questions q ON q.id = r.question_id AND q.is_active = TRUE
                              WHERE r.user_id = $1::int
                                AND r.pack_id = p.id
                                AND r.mapping_version = $2::varchar
                         )),
                     NOW()
-                FROM balance_game_responses
-                WHERE user_id = $1::int AND mapping_version = $2::varchar
+                -- 🔴 활성 문항의 응답만 (2026-08-16). 문항을 교체하면 옛 문항은 is_active=FALSE 로 남고 응답도 남는다 —
+                --    조인 없이 전 응답을 평균하면 옛 문항이 좌표에 계속 섞이고, 완료 판정도 옛 응답으로 채워져 새 문항을 안 풀어도 '완료' 가 된다
+                FROM balance_game_responses r
+                JOIN balance_game_questions q ON q.id = r.question_id AND q.is_active = TRUE
+                WHERE r.user_id = $1::int AND r.mapping_version = $2::varchar
                 ON CONFLICT (user_id, mapping_version) DO UPDATE SET
                     economy           = EXCLUDED.economy,
                     economy_count     = EXCLUDED.economy_count,
@@ -162,13 +166,15 @@ export default (db) => {
                        (COALESCE(r.distinct_question_count, 0) >= p.question_count) AS completed
                   FROM balance_game_packs p
                   LEFT JOIN (
-                      SELECT pack_id,
-                             COUNT(*)::int AS response_count,
-                             COUNT(DISTINCT question_id)::int AS distinct_question_count,
-                             MAX(created_at) AS last_responded_at
-                        FROM balance_game_responses
-                       WHERE user_id = $1 AND mapping_version = $2
-                       GROUP BY pack_id
+                      -- ⚠️ 활성 문항의 응답만 (2026-08-16 문항 교체 — 옛 응답을 세면 16/20 인데 '완료' 로 보인다)
+                      SELECT r.pack_id,
+                             COUNT(DISTINCT r.question_id)::int AS response_count,
+                             COUNT(DISTINCT r.question_id)::int AS distinct_question_count,
+                             MAX(r.created_at) AS last_responded_at
+                        FROM balance_game_responses r
+                        JOIN balance_game_questions q ON q.id = r.question_id AND q.is_active = TRUE
+                       WHERE r.user_id = $1 AND r.mapping_version = $2
+                       GROUP BY r.pack_id
                   ) r ON r.pack_id = p.id
                  WHERE p.is_active = TRUE
                  ORDER BY p.is_general DESC, p.display_order ASC, p.created_at ASC

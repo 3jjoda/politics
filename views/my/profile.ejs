@@ -9,11 +9,7 @@
   const genderLabel   = user.gender === 'male' ? '남성'
                       : user.gender === 'female' ? '여성'
                       : user.gender === 'other'  ? '기타' : '—';
-  const ageLabel      = user.age_group ? user.age_group.replace('s', '대') : '—';
-  const econ = axisScore ? Number(axisScore.economy ?? 0) : 0;
-  const soci = axisScore ? Number(axisScore.social ?? 0) : 0;
-  const sec  = axisScore ? Number(axisScore.security ?? 0) : 0;
-  const inst = axisScore ? Number(axisScore.institution ?? 0) : 0;
+  const ageLabel      = user.age_group === '10s' ? '14~19세' : user.age_group === '60s' ? '60대 이상' : user.age_group ? user.age_group.replace('s', '대') : '—';
 %>
 
 <style>
@@ -178,159 +174,106 @@
   .pf-nick-msg.ok    { color: var(--green); }
   .pf-nick-msg.error { color: var(--red); }
 
-  /* ====== 2. 성향 카드 ====== */
-  .ax-card {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 28px;
-    align-items: center;
-  }
-  .ax-diamond-wrap {
-    width: 220px;
-    height: 220px;
-    margin: 0 auto;
-    position: relative;
-  }
-  .ax-svg { width: 100%; height: 100%; overflow: visible; }
-  .ax-grid    { fill: none; stroke: var(--border); stroke-width: 0.5; }
-  .ax-axis    { stroke: var(--border2); stroke-width: 1; }
-  .ax-fill    { fill: rgba(184,116,12,0.18); stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; }
-  .ax-dot     { fill: var(--accent); }
-  .ax-label   {
-    fill: var(--sub2); font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; text-anchor: middle;
-  }
-  .ax-label.bottom { dominant-baseline: hanging; }
+  /* ====== 2. 성향 카드 — invite/reveal 과 같은 파샬(_result_axes) · 같은 .bg-* 규칙 (2026-08-16)
+        🔴 구 |값| 다이아몬드로 되돌리지 말 것 — 시장 −0.5 와 개입 +0.5 가 같은 모양이었다 (사이트 전체에서 버린 도형) ====== */
+  .ax-card { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 28px; align-items: start; }
+  .ax-side { display: flex; flex-direction: column; gap: 10px; }
+  .ax-side .ax-cta { width: 100%; justify-content: center; margin: 0; }
+  .ax-side-note { font-size: 12px; color: var(--sub2); line-height: 1.6; word-break: keep-all; margin: 2px 0 0; }
+  .ax-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .ax-tag { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--bg3); color: var(--sub); }
+  .ax-tag.done { background: rgba(15,157,110,0.10); color: var(--green); border: 1px solid var(--green); font-weight: 700; }
+  .ax-tag.part { background: #FAF6EB; color: var(--accent2); border: 1px solid var(--accent); font-weight: 700; }
+  .bg-res-kicker { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent2); letter-spacing: .08em; margin-bottom: 8px; }
+  .bg-res-headline { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 26px; line-height: 1.3; color: var(--text); margin: 0 0 6px; word-break: keep-all; border-left: 4px solid var(--accent); padding-left: 14px; }
+  .bg-res-desc { font-size: 14px; color: var(--sub); line-height: 1.7; margin: 0 0 4px; padding-left: 18px; word-break: keep-all; }
+  .bg-res-desc .bg-res-line { color: var(--text); font-weight: 600; }
+  .bg-res-types { color: var(--accent2); font-weight: 600; text-decoration: none; white-space: nowrap; margin-left: 4px; }
+  .bg-res-types:hover { text-decoration: underline; }
+  .bg-res-sub { font-size: 13px; color: var(--sub2); margin: 0 0 22px; padding-left: 18px; }
+  .bg-ax { display: flex; flex-direction: column; gap: 16px; }
+  .bg-ax-row { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .bg-ax-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .bg-ax-name { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 15px; color: var(--text); }
+  .bg-ax-name small { font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 12px; color: var(--sub2); margin-left: 8px; }
+  .bg-ax-phrase { font-size: 12.5px; font-weight: 700; color: var(--accent2); white-space: nowrap; }
+  .bg-ax-phrase.is-mid { color: var(--sub); font-weight: 500; }
+  .bg-ax-track { position: relative; height: 8px; border-radius: 4px; background: var(--border); margin: 2px 8px; }
+  .bg-ax-track::before { content: ''; position: absolute; left: 50%; top: -4px; width: 2px; height: 16px; background: var(--border2); transform: translateX(-1px); }
+  .bg-ax-band { position: absolute; top: 0; height: 100%; background: rgba(184,116,12,0.28); border-radius: 4px; }
+  .bg-ax-dot { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); transform: translate(-50%, -50%); box-shadow: 0 0 0 3px var(--bg2); }
+  .bg-ax-ends { display: flex; justify-content: space-between; font-size: 12px; color: var(--sub); }
 
-  .ax-info { min-width: 0; }
-  .ax-meta {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--sub2);
-    margin-bottom: 10px;
-    letter-spacing: 0.06em;
-  }
-  .ax-axes-list {
-    display: grid;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-  .ax-axes-list .row {
-    display: grid;
-    grid-template-columns: 90px 1fr 60px;
-    gap: 10px;
-    font-size: 13px;
-    align-items: center;
-  }
-  .ax-axes-list .lab  { color: var(--sub); }
-  .ax-axes-list .bar  {
-    height: 6px;
-    background: var(--bg3);
-    border-radius: 3px;
-    position: relative;
-    overflow: hidden;
-  }
-  .ax-axes-list .bar > i {
-    position: absolute;
-    top: 0; bottom: 0;
-    background: var(--accent);
-    border-radius: 3px;
-  }
-  .ax-axes-list .val  {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    color: var(--accent);
-    text-align: right;
-    font-size: 13px;
-  }
-  .ax-cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 9px 16px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-  }
+  .ax-cta { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; background: var(--accent); color: #fff; border-radius: 8px; font-size: 13.5px; font-weight: 700; text-decoration: none; transition: background .15s; }
   .ax-cta:hover { background: var(--accent2); }
-  .ax-cta.secondary {
-    background: transparent;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-    margin-left: 8px;
-  }
+  .ax-cta.secondary { background: var(--bg2); color: var(--accent2); border: 1px solid var(--accent); }
   .ax-cta.secondary:hover { background: #FAF6EB; }
 
-  .ax-empty {
-    text-align: center;
-    padding: 20px;
-    color: var(--sub);
-  }
-  .ax-empty .ax-cta { margin-top: 14px; }
+  /* 미완료 — 진행 상태를 숫자로 (16/20 처럼). 빈 상자만 두면 "왜 카드가 없지" 가 된다 */
+  .ax-empty { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 6px 4px; }
+  .ax-empty-title { font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 18px; color: var(--text); margin: 0 0 6px; }
+  .ax-empty p { margin: 0; color: var(--sub); font-size: 13.5px; line-height: 1.7; word-break: keep-all; }
+  .ax-progress { height: 8px; border-radius: 4px; background: var(--bg3); overflow: hidden; margin: 10px 0 6px; max-width: 360px; }
+  .ax-progress > i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+  .ax-progress-txt { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
 
-  /* ====== 3. 풀이 이력 ====== */
-  .hist-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .hist-row {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 14px;
-    padding: 14px 18px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    align-items: center;
-  }
+  /* ====== 3. 게임팩 — 행 전체가 링크. 상태별로 버튼 라벨이 다르다 (시작 / 이어서 / 다시) ====== */
+  .hist-list { display: flex; flex-direction: column; gap: 8px; }
+  .hist-row { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 14px 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; align-items: center; text-decoration: none; color: inherit; transition: border-color .15s, background .15s; }
+  .hist-row:hover { border-color: var(--accent); background: var(--bg2); }
   .hist-row.completed { border-left: 3px solid var(--green); }
   .hist-row.partial   { border-left: 3px solid var(--accent); }
-  .hist-row.unstarted { opacity: 0.65; }
-  .hist-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: 3px;
-  }
-  .hist-title .general-tag {
-    display: inline-block;
-    background: rgba(184,116,12,0.12);
-    color: var(--accent);
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 3px;
-    margin-left: 6px;
-    vertical-align: middle;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .hist-meta {
-    font-size: 11px;
-    color: var(--sub2);
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .hist-counts {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--sub);
-    text-align: right;
-    line-height: 1.5;
-  }
+  .hist-title { font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .hist-title .general-tag { display: inline-block; background: rgba(184,116,12,0.12); color: var(--accent2); font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; font-family: 'JetBrains Mono', monospace; }
+  .hist-desc { font-size: 12.5px; color: var(--sub); line-height: 1.55; word-break: keep-all; margin-bottom: 4px; }
+  .hist-meta { font-size: 11px; color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
+  .hist-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .hist-bar { width: 120px; height: 6px; border-radius: 3px; background: var(--bg3); overflow: hidden; }
+  .hist-bar > i { display: block; height: 100%; background: var(--accent); }
+  .hist-row.completed .hist-bar > i { background: var(--green); }
+  .hist-counts { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sub); }
   .hist-counts strong { color: var(--text); font-weight: 700; }
-  .hist-status-pill {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 9px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .hist-status-pill.completed { background: rgba(15,157,110,0.10); color: var(--green); border: 1px solid var(--green); }
-  .hist-status-pill.partial   { background: #FAF6EB;                color: var(--accent); border: 1px solid var(--accent); }
-  .hist-status-pill.unstarted { background: var(--bg3);              color: var(--sub2); border: 1px solid var(--border); }
+  .hist-go { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .hist-go.start    { background: var(--accent); color: #fff; }
+  .hist-go.resume   { background: #FAF6EB; color: var(--accent2); border: 1px solid var(--accent); }
+  .hist-go.redo     { background: var(--bg2); color: var(--sub); border: 1px solid var(--border2); }
+  .hist-note { font-size: 12px; color: var(--sub2); line-height: 1.6; margin: 10px 0 0; word-break: keep-all; }
+
+  .pf-demo-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .pf-demo-form select { padding: 6px 8px; border: 1px solid var(--border2); border-radius: 6px; font-size: 13px; background: var(--bg2); color: var(--text); font-family: inherit; }
+  .pf-demo-form[hidden] { display: none; }
+
+  /* ====== 내 활동 ====== */
+  .act-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .act-count { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; text-align: left; cursor: pointer; font-family: inherit; transition: border-color .15s, background .15s; }
+  .act-count:hover { border-color: var(--accent); }
+  .act-count[aria-selected="true"] { border-color: var(--accent); background: #FAF6EB; box-shadow: inset 0 0 0 1px var(--accent); }
+  .act-count[aria-selected="true"] b { color: var(--accent2); }
+  .pagination-inline { display: flex; justify-content: center; gap: 4px; margin-top: 14px; }
+  .pagination-inline:empty { display: none; }
+  .pagination-inline .pg { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg2); color: var(--sub); font-size: 13px; cursor: pointer; font-family: 'JetBrains Mono', monospace; }
+  .pagination-inline .pg.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .pagination-inline .pg:disabled { opacity: 0.3; cursor: not-allowed; }
+  .act-list.is-loading { opacity: .5; pointer-events: none; }
+  .act-count b { display: block; font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.1; }
+  .act-count span { font-size: 11.5px; color: var(--sub2); }
+  .act-list { display: flex; flex-direction: column; gap: 6px; }
+  .act-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; text-decoration: none; color: inherit; }
+  .act-row:hover { border-color: var(--accent); }
+  .act-kind { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent2); background: rgba(184,116,12,0.10); border-radius: 4px; padding: 3px 7px; text-align: center; white-space: nowrap; }
+  .act-kind.vote-agree, .act-kind.vote-disagree { background: var(--bg3); color: var(--sub); }
+  .act-title { font-size: 13.5px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .act-detail { font-size: 12px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .act-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); white-space: nowrap; }
+  .act-note { font-size: 12px; color: var(--sub2); margin: 10px 0 0; line-height: 1.6; word-break: keep-all; }
+  .act-empty { color: var(--sub); font-size: 13.5px; padding: 6px 4px; }
+  .act-empty a { color: var(--accent2); font-weight: 600; text-decoration: none; }
+
+  /* ====== 계정 관리 ====== */
+  .acct-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--border); }
+  .acct-btn { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; background: var(--bg2); color: var(--sub); border: 1px solid var(--border2); cursor: pointer; font-family: inherit; }
+  .acct-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  .acct-btn.danger:hover { border-color: var(--red); color: var(--red); }
 
   /* ====== 4. 분석 요청 요약 ====== */
   .req-summary-row {
@@ -409,11 +352,18 @@
     .my-section { padding: 20px 18px; }
     .pf-row { grid-template-columns: 64px 1fr; gap: 16px; }
     .pf-avatar { width: 64px; height: 64px; }
-    .ax-card { grid-template-columns: 1fr; }
-    .ax-diamond-wrap { width: 200px; height: 200px; }
-    .hist-row { grid-template-columns: 1fr auto; gap: 10px; padding: 12px 14px; }
-    .hist-counts { display: none; }
+    .ax-card { grid-template-columns: 1fr; gap: 18px; }
+    .bg-res-headline { font-size: 22px; }
+    .bg-ax-phrase { white-space: normal; text-align: right; }
+    .ax-empty { grid-template-columns: 1fr; }
+    .ax-empty .ax-cta { width: 100%; }
+    .hist-row { grid-template-columns: 1fr; gap: 10px; padding: 12px 14px; }
+    .hist-right { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; }
+    .hist-bar { display: none; }
     .req-summary-row { grid-template-columns: 1fr; gap: 8px; }
+    .act-counts { grid-template-columns: repeat(2, 1fr); }
+    .act-row { grid-template-columns: 62px minmax(0, 1fr); }
+    .act-time { display: none; }
   }
 </style>
 
@@ -460,147 +410,164 @@
             <div class="pf-value muted"><%= user.email || '—' %></div>
           </div>
           <div class="pf-field">
-            <div class="pf-label">성별</div>
-            <div class="pf-value muted"><%= genderLabel %></div>
-          </div>
-          <div class="pf-field">
-            <div class="pf-label">연령대</div>
-            <div class="pf-value muted"><%= ageLabel %></div>
+            <div class="pf-label">성별 · 연령대 <button type="button" class="pf-nick-edit-btn" id="pf-demo-edit">변경</button></div>
+            <div class="pf-value muted" id="pf-demo-text"><%= genderLabel %> · <%= ageLabel %></div>
+            <%# 통계용 값이라 본인이 고칠 수 있어야 한다 (2026-08-16). 선택지는 auth/setup.ejs 와 같아야 한다 — 14세 미만 항목 없음 %>
+            <form class="pf-demo-form" id="pf-demo-form" hidden>
+              <select id="pf-demo-gender" aria-label="성별">
+                <option value="male"   <%= user.gender === 'male'   ? 'selected' : '' %>>남성</option>
+                <option value="female" <%= user.gender === 'female' ? 'selected' : '' %>>여성</option>
+                <option value="other"  <%= user.gender === 'other'  ? 'selected' : '' %>>기타</option>
+              </select>
+              <select id="pf-demo-age" aria-label="연령대">
+                <% [['10s','14~19세'],['20s','20대'],['30s','30대'],['40s','40대'],['50s','50대'],['60s','60대 이상']].forEach(([v,l]) => { %>
+                  <option value="<%= v %>" <%= user.age_group === v ? 'selected' : '' %>><%= l %></option>
+                <% }); %>
+              </select>
+              <button type="submit" class="pf-nick-save">저장</button>
+              <button type="button" class="pf-nick-cancel" id="pf-demo-cancel">취소</button>
+              <div class="pf-nick-msg" id="pf-demo-msg"></div>
+            </form>
           </div>
           <div class="pf-field">
             <div class="pf-label">가입일</div>
             <div class="pf-value muted"><%= fmtDateOnly(user.created_at) %></div>
           </div>
         </div>
+        <div class="acct-row">
+          <a href="/auth/logout" class="acct-btn" data-no-loader>로그아웃</a>
+          <button type="button" class="acct-btn danger pb-withdraw-trigger">회원 탈퇴</button>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ============ 2. 성향 카드 ============ -->
+  <!-- ============ 2. 성향 카드 — invite/reveal 과 같은 파샬 ============ -->
+  <%
+    const META = (locals.AXIS && AXIS.AXIS_META) || {};
+    const generalPack = packHistory.find(p => p.is_general) || null;
+    const gAnswered = generalPack ? generalPack.response_count : 0;
+    const gTotal    = generalPack ? generalPack.question_count : 20;
+    const gStarted  = gAnswered > 0;
+    const respondUrl = generalPack ? `/balance-game/respond?pack=${generalPack.id}` : '/balance-game';
+  %>
   <section class="my-section">
     <div class="my-section-head">
       <h2 class="my-section-title"><span class="icon">📊</span>내 성향 카드</h2>
       <% if (completed) { %>
-        <a href="/balance-game/reveal" class="my-section-link">전체 카드 보기 →</a>
+        <a href="/balance-game/reveal" class="my-section-link">카드 페이지 →</a>
       <% } %>
     </div>
     <% if (completed && axisScore) { %>
       <div class="ax-card">
-        <div class="ax-diamond-wrap">
-          <%
-            // reveal.ejs 와 동일 매핑:
-            //   위=안보(security), 우=경제(economy), 아래=제도(institution), 왼=사회(social)
-            // 거리는 Math.abs() — 강도만 외곽으로, 부호(찬/반)는 수치 텍스트로 표시
-            const cx = 110, cy = 110, R = 80;
-            const clampVis = (v) => Math.max(0, Math.min(1, Math.abs(Number(v) || 0)));
-            const aE  = clampVis(econ);
-            const aS  = clampVis(soci);
-            const aSe = clampVis(sec);
-            const aI  = clampVis(inst);
-            const ptTop    = { x: cx,              y: cy - R * aSe }; // 위 — security
-            const ptRight  = { x: cx + R * aE,     y: cy };           // 우 — economy
-            const ptBottom = { x: cx,              y: cy + R * aI };  // 아래 — institution
-            const ptLeft   = { x: cx - R * aS,     y: cy };           // 왼 — social
-            const fillPts  = [ptTop, ptRight, ptBottom, ptLeft]
-                              .map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-          %>
-          <svg class="ax-svg" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
-            <% [0.25, 0.50, 0.75, 1.00].forEach(scale => {
-                 const r = R * scale;
-            %>
-              <polygon class="ax-grid" points="<%= cx %>,<%= cy - r %> <%= cx + r %>,<%= cy %> <%= cx %>,<%= cy + r %> <%= cx - r %>,<%= cy %>"/>
-            <% }); %>
-            <line class="ax-axis" x1="<%= cx %>" y1="<%= cy - R %>" x2="<%= cx %>" y2="<%= cy + R %>"/>
-            <line class="ax-axis" x1="<%= cx - R %>" y1="<%= cy %>" x2="<%= cx + R %>" y2="<%= cy %>"/>
-
-            <polygon class="ax-fill" points="<%= fillPts %>"/>
-            <% [ptTop, ptRight, ptBottom, ptLeft].forEach(p => { %>
-              <circle class="ax-dot" cx="<%= p.x.toFixed(1) %>" cy="<%= p.y.toFixed(1) %>" r="3.5"/>
-            <% }); %>
-
-            <text class="ax-label"        x="<%= cx %>"          y="<%= cy - R - 6 %>">안보</text>
-            <text class="ax-label bottom" x="<%= cx %>"          y="<%= cy + R + 6 %>">제도</text>
-            <text class="ax-label"        x="<%= cx + R + 14 %>" y="<%= cy + 4 %>">경제</text>
-            <text class="ax-label"        x="<%= cx - R - 14 %>" y="<%= cy + 4 %>">사회</text>
-          </svg>
-        </div>
-        <div class="ax-info">
-          <div class="ax-meta">📊 mapping <%= mappingVersion %> · <%= fmtDateOnly(axisScore.computed_at) %> 분석 · <%= axisScore.total_responses %>개 응답 누적</div>
-          <div class="ax-axes-list">
-            <% [
-              { key: 'economy',     val: econ, lab: axes.economy.label },
-              { key: 'social',      val: soci, lab: axes.social.label },
-              { key: 'security',    val: sec,  lab: axes.security.label },
-              { key: 'institution', val: inst, lab: axes.institution.label }
-            ].forEach(a => {
-              const pct = Math.min(100, Math.abs(a.val) * 100);
-              const isLeft = a.val < 0;
-            %>
-              <div class="row">
-                <span class="lab"><%= a.lab %></span>
-                <span class="bar">
-                  <i style="<%= isLeft ? `right:50%; width:${pct/2}%;` : `left:50%; width:${pct/2}%;` %>"></i>
-                </span>
-                <span class="val"><%= a.val.toFixed(2) %></span>
-              </div>
-            <% }); %>
+        <div>
+          <div class="ax-tags">
+            <span class="ax-tag done">✓ 진단 완료</span>
+            <span class="ax-tag"><%= fmtDateOnly(axisScore.computed_at) %></span>
+            <span class="ax-tag">응답 <%= axisScore.total_responses %></span>
           </div>
-          <div>
-            <a href="/balance-game/compare" class="ax-cta">📊 의원과 비교</a>
-            <a href="/balance-game/share" class="ax-cta secondary">🖼 결과 이미지</a>
-            <a href="/balance-game/types" class="ax-cta secondary">유형 9종</a>
-          </div>
+          <%- include('../balance/_result_axes', { axisScore, META }) %>
         </div>
+        <aside class="ax-side">
+          <a href="/balance-game/share" class="ax-cta">결과 이미지로 공유 →</a>
+          <a href="/politician?sort=match-desc" class="ax-cta secondary">가까운 의원 보기</a>
+          <a href="/balance-game/compare" class="ax-cta secondary">의원과 비교</a>
+          <a href="<%= respondUrl %>" class="ax-cta secondary">다시 풀기</a>
+          <p class="ax-side-note">공유 카드에는 좌표와 가까운 의원 3명만 담기고, 닉네임 등 개인정보는 들어가지 않습니다.
+            <a href="/balance-game/types" style="color:var(--accent2);text-decoration:none;font-weight:600">유형 9종 →</a></p>
+        </aside>
       </div>
     <% } else { %>
       <div class="ax-empty">
-        <p>아직 성향 진단을 완료하지 않으셨어요.</p>
-        <p style="font-size:13px;color:var(--sub2);margin-top:6px">
-          종합팩 20문항을 풀면 4축 좌표 카드가 생성됩니다.
-        </p>
-        <a href="/balance-game" class="ax-cta">🎯 진단 시작하기</a>
+        <div>
+          <p class="ax-empty-title"><%= gStarted ? '풀다 만 진단이 있어요' : '아직 성향 진단을 하지 않았어요' %></p>
+          <% if (gStarted) { %>
+            <p>종합팩 <%= gTotal %>문항 중 <strong><%= gAnswered %>문항</strong>에 답했습니다. 남은 문항을 마치면 카드가 만들어집니다.
+              <% if (gAnswered >= 16) { %>(문항이 일부 바뀌어 다시 열린 것일 수 있어요 — 새 문항만 이어서 풀면 됩니다.)<% } %></p>
+            <div class="ax-progress"><i style="width:<%= Math.round(gAnswered / gTotal * 100) %>%"></i></div>
+            <div class="ax-progress-txt"><%= gAnswered %> / <%= gTotal %></div>
+          <% } else { %>
+            <p>종합팩 <%= gTotal %>문항(약 5분)을 풀면 네 축 좌표와 유형, 좌표가 가까운 의원이 나옵니다.</p>
+          <% } %>
+        </div>
+        <a href="<%= respondUrl %>" class="ax-cta"><%= gStarted ? '이어서 풀기 →' : '진단 시작하기 →' %></a>
       </div>
     <% } %>
   </section>
 
-  <!-- ============ 3. 풀이 이력 ============ -->
+  <!-- ============ 3. 게임팩 — 행을 누르면 바로 그 팩으로 ============ -->
   <section class="my-section">
     <div class="my-section-head">
-      <h2 class="my-section-title"><span class="icon">🎮</span>풀이 이력</h2>
+      <h2 class="my-section-title"><span class="icon">🎮</span>게임팩</h2>
       <a href="/balance-game" class="my-section-link">성향 진단 →</a>
     </div>
     <div class="hist-list">
       <% packHistory.forEach(p => {
-           const status = (p.response_count >= p.question_count && p.question_count > 0) ? 'completed'
-                       : p.response_count > 0 ? 'partial' : 'unstarted';
-           const statusLabel = status === 'completed' ? '✓ 완료'
-                             : status === 'partial'   ? '⏳ 부분 풀이'
-                             : '미시작';
+           const total = p.question_count || 0;
+           const done  = Math.min(p.response_count, total);
+           const status = (total > 0 && done >= total) ? 'completed' : done > 0 ? 'partial' : 'unstarted';
+           const go = status === 'completed' ? { cls: 'redo',   txt: '다시 풀기' }
+                    : status === 'partial'   ? { cls: 'resume', txt: '이어서 풀기' }
+                    :                          { cls: 'start',  txt: '시작하기' };
       %>
-        <div class="hist-row <%= status %>">
+        <a class="hist-row <%= status %>" href="/balance-game/respond?pack=<%= p.id %>">
           <div>
             <div class="hist-title">
               <%= p.title %>
-              <% if (p.is_general) { %><span class="general-tag">종합</span><% } %>
+              <% if (p.is_general) { %><span class="general-tag">종합 · 의원 매칭 기준</span><% } %>
             </div>
+            <% if (p.description) { %><div class="hist-desc"><%= p.description %></div><% } %>
             <div class="hist-meta">
-              <% if (p.last_responded_at) { %>
-                마지막 응답 <%= fmtDateTime(p.last_responded_at) %>
-              <% } else { %>
-                아직 풀지 않음
-              <% } %>
+              <% if (p.last_responded_at) { %>마지막 응답 <%= fmtDateTime(p.last_responded_at) %><% } else { %>아직 풀지 않음<% } %>
             </div>
           </div>
-          <div class="hist-counts">
-            <strong><%= p.response_count %></strong> / <%= p.question_count %>문항
+          <div class="hist-right">
+            <span class="hist-go <%= go.cls %>"><%= go.txt %> →</span>
+            <div class="hist-bar"><i style="width:<%= total ? Math.round(done / total * 100) : 0 %>%"></i></div>
+            <div class="hist-counts"><strong><%= done %></strong> / <%= total %>문항</div>
           </div>
-          <span class="hist-status-pill <%= status %>"><%= statusLabel %></span>
-        </div>
+        </a>
       <% }); %>
       <% if (packHistory.length === 0) { %>
-        <div class="ax-empty">아직 활성화된 게임팩이 없습니다.</div>
+        <div class="ax-empty"><p>아직 활성화된 게임팩이 없습니다.</p></div>
       <% } %>
     </div>
+    <p class="hist-note">종합팩이 의원 매칭의 기준입니다. 주제팩은 같은 네 축을 더 깊이 묻는 것으로, 풀수록 내 좌표에 반영됩니다.</p>
+  </section>
+
+  <!-- ============ 내 활동 — 카드(종류)를 고르면 아래 목록, 페이징. 본인에게만 보인다 ============ -->
+  <%
+    const ac = activity && activity.counts;
+    const actKind = (activity && activity.kind) || 'comment';
+    const actPage = activity && activity.page;
+    const ACT_CARDS = [['comment', 'comments', '댓글'], ['vote', 'votes', '법안 찬반'], ['rating', 'ratings', '의원 별점'], ['post', 'posts', '게시글']];
+    const actTotal = ac ? ACT_CARDS.reduce((n, [, k]) => n + (ac[k] || 0), 0) : 0;
+  %>
+  <section class="my-section" id="my-activity">
+    <div class="my-section-head">
+      <h2 class="my-section-title"><span class="icon">✍️</span>내 활동</h2>
+    </div>
+    <% if (ac) { %>
+      <div class="act-counts" role="tablist" aria-label="활동 종류">
+        <% ACT_CARDS.forEach(([kind, key, label]) => { %>
+          <button type="button" class="act-count" role="tab" data-kind="<%= kind %>" aria-selected="<%= kind === actKind ? 'true' : 'false' %>">
+            <b><%= ac[key] %></b><span><%= label %></span>
+          </button>
+        <% }); %>
+      </div>
+    <% } %>
+    <% if (!actTotal) { %>
+      <p class="act-empty">아직 남긴 활동이 없어요. <a href="/bill">법안에 찬반을 남기거나</a> <a href="/politician">의원에게 별점을</a> 주면 여기에 쌓입니다.</p>
+    <% } else { %>
+      <div class="act-list" id="act-list" aria-live="polite">
+        <% (actPage ? actPage.items : []).forEach(it => { %>
+          <%- include('_activity_row', { it }) %>
+        <% }); %>
+        <% if (actPage && !actPage.items.length) { %><p class="act-empty">이 종류의 활동이 없어요.</p><% } %>
+      </div>
+      <div class="pagination-inline" id="act-pager"></div>
+      <p class="act-note" id="act-note"><%= actPage ? `${actPage.total}건 · ${activity.per}건씩` : '' %> · 행을 누르면 그 글로 이동합니다. 이 기록은 본인에게만 보이며, 다른 사람의 활동 기록은 만들지 않습니다.</p>
+    <% } %>
   </section>
 
   <!-- ============ 4. 분석 요청 ============ -->
@@ -713,5 +680,77 @@
     if (e.key === 'Enter')  { e.preventDefault(); save(); }
     if (e.key === 'Escape') { e.preventDefault(); stopEdit(); }
   });
+
+  // ── 내 활동: 카드(종류) 탭 + 페이징 (GET /my/activity JSON) ──
+  const actList = document.getElementById('act-list'), actPager = document.getElementById('act-pager'), actNote = document.getElementById('act-note');
+  const actTabs = [...document.querySelectorAll('.act-count[data-kind]')];
+  if (actList && actTabs.length) {
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const KIND = { comment: '댓글', vote: '찬반', rating: '별점', post: '게시글' };
+    const SUB_C = { politician: '의원', bill: '법안', post: '게시글', briefing: '브리핑' };
+    const hrefOf = (it) => it.kind === 'comment'
+        ? ({ politician: '/politician/', bill: '/bill/', post: '/community/', briefing: '/briefing/' }[it.sub] || '/') + encodeURIComponent(it.target_id) + '#comments'
+        : it.kind === 'vote' ? '/bill/' + encodeURIComponent(it.target_id)
+        : it.kind === 'rating' ? '/politician/' + encodeURIComponent(it.target_id)
+        : '/community/' + encodeURIComponent(it.target_id);
+    const subOf = (it) => it.kind === 'vote' ? (it.sub === 'agree' ? '찬성' : '반대') : it.kind === 'rating' ? '★ ' + it.sub : it.kind === 'comment' ? (SUB_C[it.sub] || '') : '';
+    const row = (it) => `<a class="act-row" href="${hrefOf(it)}"><span class="act-kind ${it.kind === 'vote' ? 'vote-' + esc(it.sub) : ''}">${KIND[it.kind]}${subOf(it) ? ' · ' + esc(subOf(it)) : ''}</span><span><div class="act-title">${esc(it.title || '(삭제되었거나 찾을 수 없음)')}</div>${it.detail ? '<div class="act-detail">' + esc(it.detail) + '</div>' : ''}</span><span class="act-time">${esc(it.created_at)}</span></a>`;
+    // 공용 페이저와 같은 모양 (의원 상세 renderPager) — « ← 1..7 → »
+    const drawPager = (cur, pages, onGo) => {
+      actPager.innerHTML = '';
+      if (pages <= 1) return;
+      const mk = (label, p, o = {}) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pg' + (o.active ? ' active' : ''); b.textContent = label; b.disabled = !!o.disabled; if (o.title) b.title = o.title; b.onclick = () => onGo(p); actPager.appendChild(b); };
+      const first = cur === 1, last = cur === pages;
+      mk('«', 1, { disabled: first, title: '첫 페이지' }); mk('←', Math.max(1, cur - 1), { disabled: first });
+      const start = Math.max(1, cur - 3), end = Math.min(pages, start + 6);
+      for (let p = start; p <= end; p++) mk(String(p), p, { active: p === cur });
+      mk('→', Math.min(pages, cur + 1), { disabled: last }); mk('»', pages, { disabled: last, title: '마지막 페이지 (' + pages + ')' });
+    };
+    let cur = { kind: '<%= actKind %>', page: 1 };
+    const state = { pages: <%= actPage ? actPage.pages : 1 %> };
+    const load = async (kind, page) => {
+      actList.classList.add('is-loading');
+      try {
+        const res = await fetch(`/my/activity?kind=${encodeURIComponent(kind)}&page=${page}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const d = await res.json();
+        cur = { kind: d.kind, page: d.page }; state.pages = d.pages;
+        actList.innerHTML = d.items.length ? d.items.map(row).join('') : '<p class="act-empty">이 종류의 활동이 없어요.</p>';
+        actNote.textContent = `${d.total}건 · ${d.per}건씩 · 행을 누르면 그 글로 이동합니다. 이 기록은 본인에게만 보이며, 다른 사람의 활동 기록은 만들지 않습니다.`;
+        drawPager(d.page, d.pages, (p) => load(cur.kind, p));
+        actTabs.forEach(t => t.setAttribute('aria-selected', t.dataset.kind === d.kind ? 'true' : 'false'));
+        if (page > 1 || kind !== cur.kind) actList.scrollIntoView({ block: 'nearest' });
+      } catch (err) {
+        actList.innerHTML = `<p class="act-empty">불러오지 못했습니다 (${esc(err.message)}). <a href="#" onclick="location.reload();return false;">새로고침</a></p>`;
+      } finally { actList.classList.remove('is-loading'); }
+    };
+    actTabs.forEach(t => t.addEventListener('click', () => { if (t.dataset.kind !== cur.kind) load(t.dataset.kind, 1); }));
+    drawPager(1, state.pages, (p) => load(cur.kind, p));   // 첫 페이지는 SSR — 요청 0회
+  }
+
+  // ── 성별·연령대 변경 (PUT /api/auth/profile) ──
+  const dEdit = document.getElementById('pf-demo-edit'), dForm = document.getElementById('pf-demo-form'),
+        dText = document.getElementById('pf-demo-text'), dCancel = document.getElementById('pf-demo-cancel'),
+        dMsg = document.getElementById('pf-demo-msg'), dG = document.getElementById('pf-demo-gender'), dA = document.getElementById('pf-demo-age');
+  if (dEdit && dForm) {
+    const LABEL_G = { male: '남성', female: '여성', other: '기타' };
+    const LABEL_A = { '10s': '14~19세', '20s': '20대', '30s': '30대', '40s': '40대', '50s': '50대', '60s': '60대 이상' };
+    dEdit.addEventListener('click', () => { dForm.hidden = false; dEdit.hidden = true; dMsg.textContent = ''; });
+    dCancel.addEventListener('click', () => { dForm.hidden = true; dEdit.hidden = false; });
+    dForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      dMsg.className = 'pf-nick-msg'; dMsg.textContent = '저장 중...';
+      try {
+        const res = await fetch('/api/auth/profile', { method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ gender: dG.value, ageGroup: dA.value }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { dMsg.className = 'pf-nick-msg error'; dMsg.textContent = data.error || `오류 (HTTP ${res.status})`; return; }
+        dText.textContent = `${LABEL_G[data.gender] || data.gender} · ${LABEL_A[data.ageGroup] || data.ageGroup}`;
+        dMsg.className = 'pf-nick-msg ok'; dMsg.textContent = '저장되었습니다.';
+        setTimeout(() => { dForm.hidden = true; dEdit.hidden = false; }, 700);
+      } catch (err) { dMsg.className = 'pf-nick-msg error'; dMsg.textContent = '네트워크 오류: ' + err.message; }
+    });
+  }
 })();
 </script>

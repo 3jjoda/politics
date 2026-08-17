@@ -42,5 +42,20 @@ export default (db) => ({
     updateNickname: async (userId, nickname) => {
         const { rows } = await db.query(queries.updateNickname, [userId, nickname]);
         return rows[0] || null;
+    },
+    /* 내 활동 — 총계 / 종류별 한 페이지 (마이페이지 전용) */
+    getActivityCounts: async (userId) => {
+        const { rows } = await db.query(queries.getActivityCounts, [userId]);
+        return rows[0] || { comments: 0, votes: 0, ratings: 0, posts: 0 };
+    },
+    getActivityPage: async (userId, kind, page = 1, per = 10) => {
+        const offset = (page - 1) * per;
+        const { rows } = await db.query(queries.getActivityPage, [userId, kind, per, offset]);
+        const total = rows[0] ? rows[0].total : 0;
+        return { total, page, per, pages: Math.max(1, Math.ceil(total / per)), items: rows.map(({ total: _t, ...r }) => r) };
+    },
+    updateProfile: async (userId, gender, ageGroup) => {
+        const { rows } = await db.query(queries.updateProfile, [userId, gender, ageGroup]);
+        return rows[0] || null;
     }
 });

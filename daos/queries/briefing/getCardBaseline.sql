@@ -14,7 +14,9 @@
    반환 한 행:
      base_days   기준 구간 평일 수 (30 미만이면 서비스 시작 직후 — 화면은 10일 미만이면 비교를 안 낸다)
      base_avg    평일 평균 발의 건수
-     days_above  기준 구간에서 이날보다 발의가 많았던 날 수 → 순위 = days_above + 1 */
+     days_above  기준 구간에서 이날보다 발의가 많았던 날 수 → 순위 = days_above + 1
+     week_cnt    이번 주(월~카드 날짜) 누적 발의 · week_days 그중 발의가 있었던 날 수
+                 → 평범한 날(배수·순위가 정보가 안 될 때)의 대체 축. "1.0배 · 14번째" 는 정보량 0 이라는 지적 */
 WITH days AS (
     SELECT d::date AS d
       FROM generate_series($1::date - 60, $1::date - 3, '1 day') d
@@ -27,9 +29,14 @@ WITH days AS (
      GROUP BY days.d
 ), today AS (
     SELECT COUNT(*)::int AS cnt FROM bills WHERE propose_dt = $1::date
+), week AS (
+    SELECT COUNT(*)::int AS cnt, COUNT(DISTINCT propose_dt)::int AS days
+      FROM bills WHERE propose_dt BETWEEN date_trunc('week', $1::date)::date AND $1::date
 )
 SELECT COUNT(*)::int                                   AS base_days
      , ROUND(AVG(cnt.cnt)::numeric, 1)                 AS base_avg
      , COUNT(*) FILTER (WHERE cnt.cnt > today.cnt)::int AS days_above
-  FROM cnt, today
- GROUP BY today.cnt
+     , week.cnt                                         AS week_cnt
+     , week.days                                        AS week_days
+  FROM cnt, today, week
+ GROUP BY today.cnt, week.cnt, week.days

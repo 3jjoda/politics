@@ -90,6 +90,9 @@
   .vote-box.disagree .vote-count { color: var(--red); }
   .vote-box.abstain  .vote-count { color: var(--accent); }
   .vote-box.absent   .vote-count { color: var(--sub); }
+  .vote-box .vote-pct { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .vote-box .vote-pct small { font-family: 'Noto Sans KR', sans-serif; font-weight: 400; font-size: 10.5px; color: var(--sub2); }
+  .vote-box[data-empty] .vote-pct { color: var(--sub2); }
   .vote-box .vote-hint {
     display: block;
     margin-top: 6px;
@@ -2304,19 +2307,26 @@
       <h3 class="pb-part-h">본회의 표결 결과</h3>
     </div>
     <% if (hasVotes) { %>
+      <%# 비중 (2026-08-16) — 분모는 의원 상세 `.vote-tally` 와 같은 규칙: 찬성·반대·기권은 **참여분**(찬+반+기권), 불참은 **전체**.
+          넷을 하나의 분모로 두면 "더해도 100%가 안 되는데?" 가 되고, 불참을 참여분에 넣으면 찬성률이 출석률과 섞인다 %>
+      <% const vTotal = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent;
+         const vPart  = voteCounts.agree + voteCounts.disagree + voteCounts.abstain;
+         const pct = (n, d) => d > 0 ? (n / d * 100).toFixed(1) + '%' : '—'; %>
       <div class="vote-dashboard">
         <% ['agree','disagree','abstain','absent'].forEach(b => {
              const labels = { agree:'찬성', disagree:'반대', abstain:'기권', absent:'불참' };
              const c = voteCounts[b];
+             const p = b === 'absent' ? pct(c, vTotal) : pct(c, vPart);
         %>
           <button type="button" class="vote-box <%= b %>" data-bucket="<%= b %>"<% if (!c) { %> data-empty aria-disabled="true"<% } %>>
             <strong><%= labels[b] %></strong>
             <span class="vote-count"><%= nf(c) %></span>
+            <span class="vote-pct"><%= p %><small><%= b === 'absent' ? ' / 전체' : ' / 참여' %></small></span>
             <span class="vote-hint">명단 보기</span>
           </button>
         <% }); %>
       </div>
-      <div class="pb-part-foot">각 박스를 누르면 표결 의원 명단이 열립니다.</div>
+      <div class="pb-part-foot">찬성·반대·기권 비중은 표결에 참여한 <%= nf(vPart) %>명 기준, 불참은 전체 <%= nf(vTotal) %>명 기준입니다. 각 박스를 누르면 표결 의원 명단이 열립니다.</div>
     <% } else { %>
       <div class="pb-part-empty">본회의 표결 데이터가 아직 수집되지 않았습니다.</div>
     <% } %>

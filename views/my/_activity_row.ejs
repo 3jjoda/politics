@@ -1,0 +1,11 @@
+<%
+  /* _activity_row.ejs — 내 활동 한 행 (SSR 첫 페이지용). JS 의 row() 와 **같은 마크업**이어야 한다 — 다르면 2페이지부터 모양이 갈린다 */
+  const _KIND = { comment: '댓글', vote: '찬반', rating: '별점', post: '게시글' };
+  const _SUB_C = { politician: '의원', bill: '법안', post: '게시글', briefing: '브리핑' };
+  const _href = it.kind === 'comment'
+      ? ({ politician: '/politician/', bill: '/bill/', post: '/community/', briefing: '/briefing/' }[it.sub] || '/') + encodeURIComponent(it.target_id) + '#comments'
+      : it.kind === 'vote' ? '/bill/' + encodeURIComponent(it.target_id)
+      : it.kind === 'rating' ? '/politician/' + encodeURIComponent(it.target_id)
+      : '/community/' + encodeURIComponent(it.target_id);
+  const _sub = it.kind === 'vote' ? (it.sub === 'agree' ? '찬성' : '반대') : it.kind === 'rating' ? `★ ${it.sub}` : it.kind === 'comment' ? (_SUB_C[it.sub] || '') : '';
+%><a class="act-row" href="<%= _href %>"><span class="act-kind <%= it.kind === 'vote' ? 'vote-' + it.sub : '' %>"><%= _KIND[it.kind] %><%= _sub ? ' · ' + _sub : '' %></span><span><div class="act-title"><%= it.title || '(삭제되었거나 찾을 수 없음)' %></div><% if (it.detail) { %><div class="act-detail"><%= it.detail %></div><% } %></span><span class="act-time"><%= it.created_at %></span></a>

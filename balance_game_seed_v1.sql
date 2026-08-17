@@ -101,6 +101,8 @@ ON CONFLICT (id) DO UPDATE SET
   updated_at = NOW();
 
 -- 사회·문화 축 (전통 -, 자율 +)
+-- 🔴 2026-08-16: q6·q7·q8·q10 은 비활성, q21~q24 로 교체됐다 (ddl/migrations/2026-08-16-balance-social-questions-v2.sql).
+--    이 시드를 다시 돌리면 ON CONFLICT 가 is_active=TRUE 로 되살린다 — 돌린 뒤 반드시 그 마이그레이션을 다시 실행할 것.
 INSERT INTO balance_game_questions
   (id, pack_id, axis, prompt, option_a_text, option_a_score, option_b_text, option_b_score, display_order, is_active, mapping_version)
 VALUES
