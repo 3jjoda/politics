@@ -145,6 +145,53 @@ function buildNarration(p, slides) {
     });
 }
 
+/* 유튜브 쇼츠 「흐름 하나」 원고 — 하루 한 영상 = 주제 묶음(thread) 하나. (genBriefingVideo.js 기본 포맷, 2026-08-17)
+   왜: 브리핑 7장을 통째로 읽는 영상(위 buildNarration)은 날짜·집계로 시작하고 주제가 5번 바뀌어 쇼츠에서 안 본다.
+   첫 문장이 곧 내용이어야 한다 → 첫 장은 그 흐름의 what 으로 시작하고, 날짜·집계는 뒤로.
+   고르는 기준: bill_count 최대 (같으면 앞). 묶음이 없는 카드(폴백·활동 없음)는 null — 그날은 영상을 만들지 않는다.
+   ⚠️ 문장은 전부 템플릿 + 카드에 이미 실린 AI 문장(theme·what)만 쓴다 — 새 AI 호출 없음. 정당·인물 평가 없음 */
+function buildShort(p, slides) {
+    const threads = slides.filter((s) => s.kind === 'thread');
+    if (!threads.length) return null;
+    const pick = threads.reduce((a, b) => (Number(b.t.bill_count || 0) > Number(a.t.bill_count || 0) ? b : a), threads[0]);
+    const t = pick.t;
+    const st = p.stats || {};
+    const [, m, d] = String(p.briefing_date || '').split('-').map(Number);
+    const dateKo = (m && d) ? `${m}월 ${d}일` : String(p.briefing_date || '');
+    const count = Number(t.bill_count || (t.bill_ids || []).length || pick.bills.length || 0);
+    const shortName = (n) => String(n).replace(/\s*(일부|전부)?개정법률안$|\s*법률안$/, '').replace(/\(.*?\)$/, '').trim();
+
+    // 훅 — what 을 문장 그대로 앞세운다. 어미에 따라 잇는 말을 고른다
+    let what = String(t.what || '').replace(/\s+/g, ' ').trim().replace(/\.$/, '');
+    let hookSay;
+    if (/(려는 것|하려는 것)$/.test(what)) hookSay = `${what.replace(/것$/, '')}법안이 ${dateKo} 국회에 나왔습니다.`;
+    else if (/(려 한다|하고자 한다)$/.test(what)) hookSay = `${what.replace(/(려 한다|하고자 한다)$/, '려는')} 법안이 ${dateKo} 국회에 나왔습니다.`;
+    else hookSay = `${what}. 이런 법안이 ${dateKo} 국회에 나왔습니다.`;
+
+    const names = pick.bills.map((b) => shortName(b.name));
+    const uniq = [...new Set(names)];
+    const listSay = uniq.slice(0, 3).join(', ') + (uniq.length > 3 ? ` 등` : '');
+    const billsSay = `${t.theme}. ${listSay}. ${uniq.length > 1 || count > 1 ? `이렇게 ${count}건입니다.` : '한 건입니다.'}`;
+
+    const proposed = Number(st.proposed || 0);
+    const contextSay = proposed
+        ? `이날 국회에 올라온 법안은 모두 ${proposed}건. 그중 ${count}건이 이 주제로 묶였습니다.`
+        : '';
+
+    return {
+        theme: t.theme, what: t.what, count, dateKo, date: p.briefing_date,
+        bills: pick.bills,                                   // { name, by } — 정당 없음
+        proposed, otherThreads: threads.length - 1,
+        title: `${t.theme} — ${dateKo} 국회에 나온 법안 ${count}건`.slice(0, 95),
+        scenes: [
+            { kind: 'hook',    say: hookSay },
+            { kind: 'bills',   say: billsSay },
+            ...(contextSay ? [{ kind: 'context', say: contextSay }] : []),
+            { kind: 'outro',   say: '법안 원문과 발의한 의원의 기록은 당말사에서. 당 말고 사람.' },
+        ],
+    };
+}
+
 export default (db) => {
     const briefingService = BriefingService(db);
     const controller = {};
@@ -333,8 +380,9 @@ export default (db) => {
                     short: strip(buildThreadsChain(post, { mode: 'short', baseUrl: site })),
                     full:  strip(buildThreadsChain(post, { mode: 'full',  baseUrl: site })),
                 },
-                video: {   // 유튜브 쇼츠 — batch/genBriefingVideo.js 가 읽는다 (슬라이드별 TTS 원고)
-                    narration: buildNarration(post, slides),
+                video: {   // 유튜브 쇼츠 — batch/genBriefingVideo.js 가 읽는다
+                    short: buildShort(post, slides),         // 「흐름 하나」 포맷 (기본). 묶음 없으면 null → 그날은 영상 없음
+                    narration: buildNarration(post, slides), // 「전체 7장」 포맷 (--format full, 슬라이드별 TTS 원고)
                     title: `${post.briefing_date} 국회 브리핑 — ${post.headline || ''}`.slice(0, 95),
                 },
                 instagram: {

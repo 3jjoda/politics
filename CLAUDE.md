@@ -1643,15 +1643,23 @@ npm run insta -- --date 2026-08-10
 - 실측: 카드 8건 · 피드 50장 + 스토리 8장 전부 규격 통과, 경고 0
 
 ##### 유튜브 쇼츠 — `batch/genBriefingVideo.js` (`npm run video`, 2026-08-17)
-인스타 카드 PNG 를 **슬라이드쇼 + 나레이션(TTS) + 자막**으로 이어 붙인 1080×1920 MP4. "매일 뜨는 채널" 이 목적이지 조회수형이 아니다.
-운영 시작 순서: ① 일간 브리핑 쇼츠(이것) → ② 성향 퀴즈 쇼츠 → ③ 유형 9종 소개 (사용자 결정 2026-08-17).
+1080×1920 MP4 + 제목/설명/SRT. 운영 시작 순서: ① 일간 브리핑 쇼츠(이것) → ② 성향 퀴즈 쇼츠 → ③ 유형 9종 소개 (사용자 결정 2026-08-17).
 
 ```
-GET /api/briefing/export → video: { narration[], title }   ← 나레이션은 BriefingController.buildNarration 이 만든다 (슬라이드 1:1)
+GET /api/briefing/export → video: { short, narration[], title }
+   short     ← BriefingController.buildShort  「흐름 하나」 (기본 포맷) — 묶음 없으면 null
+   narration ← BriefingController.buildNarration 「카드 7장」 (--format full)
 batch/genBriefingVideo.js  → out/video/<날짜>/short.mp4 · title.txt · description.txt · narration.txt · sub.srt
 utils/headlessShot.js      ← 헤드리스 캡처 공용 (genInstaCards 도 이걸 쓴다)
 ```
-- 흐름: PNG 없으면 `genInstaCards` 먼저 → 슬라이드마다 `say -v Yuna`(맥) 로 wav → 자막 컷(문장 → 26자 → 8자 미만 조각은 이웃에 붙임, 길이는 글자 수 비례)을
+- 🔴 **기본은 「흐름 하나」 포맷이다** (2026-08-17 같은 날 뒤집음). 첫 판(카드 7장 통독, 59초)은 "목소리가 AI 같고 이걸 볼까" 는 피드백 —
+  날짜·집계로 시작하고 주제가 5번 바뀌어 쇼츠 문법과 정반대였다. 지금은 **하루 한 영상 = 주제 묶음(thread) 하나**(bill_count 최대):
+  `훅(what 문장 그대로 → "이런 법안이 8월 14일 국회에 나왔습니다") → 관련 법안 N건(한 줄씩 드러남) → 그날 맥락(발의 29건 중 3건) → CTA` 4장면 · 실측 **32.7초**.
+  프레임은 카드 PNG 가 아니라 **HTML 로 직접 그린다**(`sceneHtml`, 카드와 같은 서체·골드 단색·정당 없음). 컷마다 내용을 조금씩 더 드러낸다.
+  묶음이 없는 날(폴백·활동 없음)은 **영상을 만들지 않는다** — "볼 만한 날만" 이 매일 올리는 것보다 낫다. 문장은 전부 템플릿 + 카드에 이미 실린 theme·what (새 AI 호출 0)
+- 🔴 **TTS 기본은 edge-tts** (`ko-KR-SunHiNeural`, `+8%`, 무료·키 없음, `pip3 install edge-tts` — CLI 가 PATH 에 없어도 `python3 -m edge_tts` 로 돈다).
+  맥 `say`(Yuna) 는 `--tts say` 로만 — 2010년대 음성이라 "너무 AI 같다". edge 출력은 앞뒤 무음을 잘라(`silenceremove`) 컷 타이밍을 맞춘다
+- 흐름(full 포맷): PNG 없으면 `genInstaCards` 먼저 → 슬라이드마다 TTS → 자막 컷(문장 → 26자 → 8자 미만 조각은 이웃에 붙임, 길이는 글자 수 비례)을
   **HTML 로 그려 헤드리스 크롬으로 프레임 캡처**(카드 상단 150px + 하단 자막 상자) → ffmpeg concat + apad 오디오 → mux
 - 🔴 **자막을 ffmpeg 로 굽지 않는다** — brew ffmpeg 9 에 libass·drawtext 가 없고, 크롬으로 그리면 카드와 같은 서체·디자인을 우리가 통제한다.
   ffmpeg 9 는 `-vsync` 가 없다 (`-fps_mode vfr`), 그리고 `-r` 과 같이 쓰면 모순 에러

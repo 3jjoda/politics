@@ -8,6 +8,9 @@
 
 ## 2026-08-17 (1) — 유튜브 쇼츠 파이프라인 `batch/genBriefingVideo.js` (`npm run video`)
 
+**2차 (같은 날)** — 「흐름 하나」 포맷을 기본으로: 하루 한 영상 = 주제 묶음 하나(훅 what → 관련 법안 → 그날 맥락 → CTA, HTML 프레임 직접 렌더, 32.7초),
+묶음 없는 날은 안 만든다. TTS 기본을 edge-tts(SunHi)로 (`say` 는 "너무 AI 같다"). 카드 7장 통독 판은 `--format full` 로 남김.
+
 브리핑 인스타 카드 PNG → 슬라이드쇼 + `say`(Yuna) 나레이션 + 헤드리스 크롬으로 그린 자막 → 1080×1920 MP4 + 제목/설명/SRT.
 나레이션은 `/api/briefing/export` 의 `video.narration`(`BriefingController.buildNarration`, 슬라이드 1:1). 실측 08-14 7장 **59.0초**.
 - ffmpeg 9 대응(`-fps_mode vfr`, 자막은 ffmpeg 가 아니라 크롬 프레임) · 맥 크롬 미종료 → `utils/headlessShot.js`(파일 안정 후 kill, genInstaCards 도 공용)
