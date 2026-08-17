@@ -19,6 +19,13 @@ const { rows: mem } = await pool.query(`
          d.dissent_rate::float8 dissent, cp.gap::float8 gap
     FROM politicians p
     LEFT JOIN (SELECT mona_cd, COUNT(*) FILTER (WHERE vote_result='불참')::float8/COUNT(*) absent_rate FROM bill_votes GROUP BY 1) v ON v.mona_cd=p.mona_cd
+    /* 🔴 여기는 'v1' 이 맞다 — POL_MAPPING_VERSION(v2) 으로 바꾸지 말 것.
+       v1 = 파일럿 **이전** 기준선이고, 아래 "파일럿 이전 기준선 v1, 같은 축" 지표가
+       "새 매핑이 기존과 얼마나 다른가" 를 잰다.
+       v2 는 mapBillAxisPilot.js 의 syncV2 가 이 파일럿을 그대로 미러링한 결과라,
+       v2 와 비교하면 파일럿을 파일럿과 대조하는 **순환**이 되어 r=1 근처만 나오고 검증이 무의미해진다.
+       ⚠️ politician_axis_score 의 v1 행(294)을 지우면 그 지표가 에러 없이 NaN 으로만 바뀐다 — 남겨둘 것.
+       ⚠️ 이 주석은 SQL 템플릿 리터럴 안이다 — 역따옴표 문자를 쓰면 문자열이 그 자리에서 끊긴다 (실제로 두 번 깨뜨렸다). */
     LEFT JOIN politician_axis_score s ON s.mona_cd=p.mona_cd AND s.mapping_version='v1'
     LEFT JOIN politician_dissent d ON d.mona_cd=p.mona_cd
     LEFT JOIN politician_cross_party_vote cp ON cp.mona_cd=p.mona_cd
@@ -50,7 +57,8 @@ for(const ax of AXES){
     rows.push({party:p, n:idx.length, has:g.length, dropRate:((1-g.length/idx.length)*100).toFixed(0)+'%', mean:gmn.toFixed(2), sd:sd(g).toFixed(3), min:g.length?Math.min(...g).toFixed(2):'-', max:g.length?Math.max(...g).toFixed(2):'-'}); }
   console.table(rows);
   console.log(`  η²(정당) ${(ssb/sst*100).toFixed(1)}% · r(공동발의 총건수) ${pearson(f,mem.map(m=>+m.co_total)).toFixed(2)} · r(불참률) ${pearson(f,mem.map(m=>m.absent_rate)).toFixed(2)} · r(축당 서명수) ${pearson(f,ns).toFixed(2)} · r(당론이탈) ${pearson(f,mem.map(m=>m.dissent)).toFixed(2)} · r(교차격차) ${pearson(f,mem.map(m=>m.gap)).toFixed(2)}`);
-  console.log(`  r(기존 v1 같은 축) ${pearson(f,mem.map(m=>m[{economy:'e0',social:'s0',security:'sec0',institution:'i0'}[ax]])).toFixed(2)}`);
+  // 'v1' = 파일럿 이전 기준선 (위 조인 주석 참조). 현행 프로덕션은 v2 지만 그건 이 파일럿의 미러라 비교 대상이 아니다
+  console.log(`  r(파일럿 이전 기준선 v1, 같은 축) ${pearson(f,mem.map(m=>m[{economy:'e0',social:'s0',security:'sec0',institution:'i0'}[ax]])).toFixed(2)}`);
   const ord=mem.map((m,i)=>({m,v:f[i],n:ns[i]})).filter(x=>Number.isFinite(x.v)).sort((a,b)=>a.v-b.v);
   const fmt=x=>`${x.m.name}(${x.m.party.slice(0,3)}·${x.n}건) ${x.v.toFixed(2)}`;
   console.log('  −극:', ord.slice(0,6).map(fmt).join(' · '));
