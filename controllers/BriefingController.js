@@ -218,7 +218,8 @@ function buildShort(p, slides, person) {
             { kind: 'hook',    say: hookSay },
             { kind: 'bills',   say: billsSay },
             ...(personSay ? [{ kind: 'person', say: personSay }] : []),
-            ...(contextSay ? [{ kind: 'context', say: contextSay }] : []),
+            // 맥락 장면(발의 N건 중 이 주제 M건)은 사람 장면이 있으면 뺀다 — 50초 → 44초 (사용자 결정 2026-08-17). 사람이 없는 날만 대신 넣는다
+            ...(!personSay && contextSay ? [{ kind: 'context', say: contextSay }] : []),
             { kind: 'outro',   say: person ? '당신 지역구 의원은 어떻게 일하고 있는지, 당말사에서. 당 말고 사람.' : '법안 원문과 발의한 의원의 기록은 당말사에서. 당 말고 사람.' },
         ],
     };
