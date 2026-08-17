@@ -55,4 +55,8 @@ export default (db) => ({
     getStatsTopTargets: (days, kind, limit) => db.query(queries.getStatsTopTargets, [days, kind, limit]).then((r) => r.rows),
     getStatsUsers:      (days)             => db.query(queries.getStatsUsers, [days]).then((r) => r.rows[0]),
     getStatsUserList:   (days, limit)      => db.query(queries.getStatsUserList, [days, limit]).then((r) => r.rows),
+
+    /* ── 운영 일정 (/admin/schedule) — 읽기 전용 ── */
+    getScheduleSignals: () => db.query(queries.getScheduleSignals).then((r) => r.rows[0] || {}),
+    getScheduleBatches: () => db.query(queries.getScheduleBatches).then((r) => r.rows),
 });

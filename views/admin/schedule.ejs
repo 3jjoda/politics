@@ -1,0 +1,129 @@
+<%
+  // 관리자 운영 일정 — 정기·조건부 작업이 "언제 했고 언제 해야 하나" 를 한 화면에 (2026-08-16)
+  // 🔴 데이터는 각 작업이 스스로 남긴 기록에서 읽는다 (AdminController.getSchedulePage). 일정 테이블 없음.
+  //    외부 알림이 아니라 관리자가 들어와서 보는 화면 — 크론 체인이 죽은 것도 여기서 드러난다.
+  const ST = { ok: ['정상', 'ok'], soon: ['임박', 'soon'], overdue: ['지연·확인', 'overdue'], unknown: ['기록 없음', 'unknown'], nolog: ['기록 안 남김 · ②로 확인', 'unknown'] };
+  const badge = (s) => { const [l, c] = ST[s] || ST.unknown; return `<span class="sc-badge is-${c}">${l}</span>`; };
+%>
+<style>
+  .ad-wrap { max-width: 1100px; margin: 0 auto; padding: calc(var(--nav-h) + 28px) 24px 80px; }
+  .ad-head h1 { font-size: 26px; font-weight: 800; margin: 0 0 8px; }
+  .ad-desc { font-size: 13.5px; color: var(--sub); line-height: 1.7; margin: 0 0 14px; word-break: keep-all; }
+  .ad-desc strong { color: var(--text); }
+  .ad-sec { margin-bottom: 30px; min-width: 0; }
+  .ad-h { font-size: 16px; font-weight: 700; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .st-range { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 22px; }
+  .st-range a { font-size: 12.5px; color: var(--sub); text-decoration: none; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; }
+  .st-range a.is-on { color: var(--accent2); border-color: var(--accent); background: #FAF6EB; font-weight: 700; }
+
+  .sc-alert { border: 1px solid var(--red); background: rgba(208,58,58,0.06); border-radius: 10px; padding: 12px 16px; font-size: 13.5px; color: var(--text); margin-bottom: 20px; line-height: 1.7; }
+  .sc-alert b { color: var(--red); }
+
+  .sc-list { display: flex; flex-direction: column; gap: 12px; }
+  .sc-row { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 18px; }
+  .sc-row.is-overdue { border-color: var(--red); }
+  .sc-row.is-soon { border-color: var(--accent); }
+  .sc-title { font-size: 15.5px; font-weight: 800; color: var(--text); margin: 0 0 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .sc-cad { font-size: 12px; color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
+  .sc-note { font-size: 13px; color: var(--sub); margin: 8px 0 0; line-height: 1.6; word-break: keep-all; }
+  .sc-check { font-size: 12.5px; color: var(--sub); margin: 8px 0 0; line-height: 1.6; word-break: keep-all; padding-left: 10px; border-left: 3px solid var(--border2); }
+  .sc-how { margin: 10px 0 0; }
+  .sc-how code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; margin-top: 4px; overflow-x: auto; white-space: pre; color: var(--text); }
+  .sc-side { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-content: start; font-size: 13px; }
+  .sc-side dt { color: var(--sub2); font-size: 11.5px; font-family: 'JetBrains Mono', monospace; padding-top: 2px; }
+  .sc-side dd { margin: 0; color: var(--text); font-weight: 600; }
+  .sc-side dd small { font-weight: 400; color: var(--sub2); }
+  .sc-badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .sc-badge.is-ok { background: rgba(15,157,110,0.10); color: var(--green); border: 1px solid var(--green); }
+  .sc-badge.is-soon { background: #FAF6EB; color: var(--accent2); border: 1px solid var(--accent); }
+  .sc-badge.is-overdue { background: rgba(208,58,58,0.08); color: var(--red); border: 1px solid var(--red); }
+  .sc-badge.is-unknown { background: var(--bg3); color: var(--sub2); border: 1px solid var(--border2); }
+  .sc-link { font-size: 12.5px; color: var(--accent2); text-decoration: none; font-weight: 600; }
+
+  .sc-table-wrap { overflow-x: auto; }
+  .sc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .sc-table th, .sc-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  .sc-table th { font-size: 11px; color: var(--sub2); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+  .sc-table td.mono { font-family: 'JetBrains Mono', monospace; color: var(--sub); }
+  .sc-table td.err { white-space: normal; max-width: 420px; color: var(--red); font-size: 12px; }
+  .sc-foot { font-size: 12px; color: var(--sub2); line-height: 1.7; margin-top: 12px; word-break: keep-all; }
+
+  @media (max-width: 768px) {
+    .ad-wrap { padding: calc(var(--nav-h) + 20px) 16px 60px; }
+    .sc-row { grid-template-columns: 1fr; gap: 12px; padding: 14px 16px; }
+  }
+</style>
+
+<div class="ad-wrap">
+  <header class="ad-head">
+    <h1>운영 일정</h1>
+    <p class="ad-desc">
+      정기·조건부 작업이 <strong>언제 했고 언제 해야 하는지</strong>. 각 작업이 스스로 남기는 기록에서 읽습니다 — 따로 적어두는 일정표가 아닙니다.
+      크론이 도는 것은 여기서 상태만 보고, <strong>로컬에서 손으로 도는 것</strong>(축 매핑)은 명령을 그대로 복사해 쓰면 됩니다. 오늘 <%= today %>.
+    </p>
+    <nav class="st-range">
+      <a href="/admin/schedule" class="is-on">운영 일정</a>
+      <a href="/admin/stats">방문 통계</a>
+      <a href="/admin/titles">직위 관리</a>
+    </nav>
+  </header>
+
+  <% if (chainAlert.length) { %>
+    <div class="sc-alert">
+      <b>배치 체인에 문제가 있습니다</b> — <%= chainAlert.map(r => r.name).join(' · ') %>.
+      아래 표에서 마지막 오류를 보고, Railway 크론 로그를 확인하세요. 실패한 배치 뒤의 배치는 그날 안 돌았을 수 있습니다 (체인은 `&&` 로 이어져 있다).
+    </div>
+  <% } %>
+
+  <section class="ad-sec">
+    <h2 class="ad-h">작업</h2>
+    <div class="sc-list">
+      <% rows.forEach(r => { %>
+        <article class="sc-row is-<%= r.status %>">
+          <div>
+            <h3 class="sc-title"><%= r.title %> <%- badge(r.status) %></h3>
+            <div class="sc-cad"><%= r.cadence %></div>
+            <% if (r.note) { %><p class="sc-note"><%= r.note %></p><% } %>
+            <% if (r.check) { %><p class="sc-check">확인할 것 — <%= r.check %></p><% } %>
+            <% if (r.howto && r.howto.length) { %>
+              <div class="sc-how">
+                <% r.howto.forEach(h => { %><code><%= h %></code><% }); %>
+              </div>
+            <% } %>
+            <% if (r.link) { %><p style="margin:10px 0 0"><a class="sc-link" href="<%= r.link %>">바로 가기 →</a></p><% } %>
+          </div>
+          <dl class="sc-side">
+            <dt>마지막</dt><dd><%= r.last || '—' %></dd>
+            <dt>다음</dt><dd><%= r.next || '—' %><% if (r.next && r.status !== 'unknown') { const k = Math.round((new Date(r.next) - new Date(today)) / 86400000); %> <small>(<%= k < 0 ? `${-k}일 지남` : k === 0 ? '오늘' : `${k}일 뒤` %>)</small><% } %></dd>
+          </dl>
+        </article>
+      <% }); %>
+    </div>
+  </section>
+
+  <section class="ad-sec">
+    <h2 class="ad-h">일일 배치 체인 <span class="sc-cad">매일 04:00 KST · Railway 크론 · 순서대로 <code style="font-size:11px">&amp;&amp;</code></span></h2>
+    <div class="sc-table-wrap">
+      <table class="sc-table">
+        <thead><tr><th>#</th><th>배치</th><th>상태</th><th>마지막 성공</th><th>마지막 실패</th><th>오류</th></tr></thead>
+        <tbody>
+          <% batchRows.forEach((b, i) => { %>
+            <tr>
+              <td class="mono"><%= i + 1 %></td>
+              <td><strong><%= b.name %></strong></td>
+              <td><%- badge(b.status) %><% if (b.stuck > 0) { %> <span class="sc-badge is-overdue">running 방치 <%= b.stuck %></span><% } %></td>
+              <td class="mono"><%= b.last_success || '—' %></td>
+              <td class="mono"><%= b.last_failed || '—' %></td>
+              <td class="err"><%= b.latest_status === 'failed' && b.last_error ? b.last_error : '' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <p class="sc-foot">
+      `batch_runs` 기준. 이틀 넘게 성공 기록이 없거나 최근 실행이 실패면 빨갛게 표시합니다.
+      `running` 이 2시간 넘게 남아 있으면 워치독이 죽였거나 컨테이너가 멈춘 것 — Railway 에서 그 배포를 확인하세요.
+      <strong>syncPoliticians 가 실패하면 그날 체인 전체가 안 돕니다</strong> (맨 앞이라).
+    </p>
+  </section>
+</div>

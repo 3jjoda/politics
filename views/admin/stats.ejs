@@ -21,6 +21,7 @@
       <% daysOptions.forEach((d) => { %>
         <a href="/admin/stats?days=<%= d %>" class="<%= d === days ? 'is-on' : '' %>">최근 <%= d %>일</a>
       <% }); %>
+      <a href="/admin/schedule" class="st-range-other">운영 일정 →</a>
       <a href="/admin/titles" class="st-range-other">직위 관리 →</a>
     </nav>
   </header>

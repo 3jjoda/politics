@@ -21,6 +21,7 @@ export default (db) => {
     router.post('/titles/:id/delete', admin.deleteTitle);
 
     router.get('/stats', admin.getStatsPage);
+    router.get('/schedule', admin.getSchedulePage);   // 운영 일정 (정기·조건부 작업 현황)
 
     return router;
 };

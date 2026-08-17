@@ -579,6 +579,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/auth/welcome` | `auth/welcome.ejs` | 가입 직후 환영 페이지 (1회 노출, [지금 풀기]/[둘러보기]) |
 | `/admin/titles` | `admin/titles.ejs` | **관리자 — 의원 직위 관리** (`requireAdmin`). 수동 직위 CRUD + 재확인 상태 |
 | `/admin/stats` | `admin/stats.ejs` | **관리자 — 방문 통계** (`requireAdmin`). `?days=7|30|90`. 아래 "방문 통계" 참조 |
+| `/admin/schedule` | `admin/schedule.ejs` | **관리자 — 운영 일정** (2026-08-16). 정기·조건부 작업이 언제 했고 언제 해야 하는지: 축 매핑 분기 갱신(마지막 `bill_axis_mapping` v2 `updated_at` + 91일 · 명령 3줄 · 확인 항목) · 의원 좌표 재계산(`computed_at`) · 유형 분포 점검(완료자 50명 트리거) · 직위 재확인(`review_after`) · 브리핑(마지막 카드 날짜) + **일일 배치 체인 표**(`batch_runs` 별 마지막 성공/실패·오류, 실패·2일 이상 정체는 빨강, 상단 경고). 🔴 **일정 테이블을 만들지 않았다** — 각 작업이 스스로 남기는 기록에서 읽고 주기는 `AdminController.getSchedulePage` 의 행 정의에 적는다. 정기 작업을 추가하면 거기 행 하나. ⚠️ `calcPoliticianAxis`·`calcGroupAxisAvg` 는 `batch_runs` 를 안 남겨 표에서 `기록 안 남김` — 좌표는 ② 행으로 본다. 쿼리 `getScheduleSignals.sql`·`getScheduleBatches.sql` |
 | `/about` | `about.ejs` | 사이트 소개 |
 
 ### 🔴 불참 처리는 **바꾸지 못한다** — 5가지 안 전부 실측 실패 (2026-08-16)
