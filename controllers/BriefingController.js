@@ -104,6 +104,47 @@ function buildSlides(p, ctx = {}) {
     return slides;
 }
 
+/* 슬라이드별 나레이션 — 유튜브 쇼츠(genBriefingVideo.js)의 TTS 원고. 화면 글자를 그대로 읽지 않고 **말로 들었을 때 자연스러운 문장**으로.
+   ⚠️ 숫자는 슬라이드와 같은 산출값만 쓴다 (AI 에게서 받지 않는다). 정당·인물 평가 없음 — 카드와 같은 원칙 */
+function buildNarration(p, slides) {
+    const st = p.stats || {};
+    const date = p.briefing_date || '';
+    const [y, m, d] = date.split('-').map(Number);
+    const dateKo = (m && d) ? `${m}월 ${d}일` : date;
+    return slides.map((s) => {
+        switch (s.kind) {
+            case 'cover':
+                return `${dateKo} 국회 브리핑. ${p.headline || ''}.`;
+            case 'stats': {
+                const parts = s.nums.map((n) => {
+                    if (n.l === '발의') return `이날 법안 ${nf(n.v)}건이 발의됐습니다. ${n.s}.`;
+                    if (n.l === '법안 1건당 공동발의') return `법안 한 건에 평균 ${n.v}명이 이름을 올렸습니다.`;
+                    if (n.l === '대표발의 의원 1명당') return '';   // 60초 상한 — 화면에만
+                    if (n.l === '본회의 처리') return `본회의에서는 ${nf(n.v)}건이 처리됐습니다. ${n.s}.`;
+                    return `${n.l} ${n.v}${n.u}.`;
+                });
+                return parts.filter(Boolean).join(' ');
+            }
+            case 'thread': {
+                // 법안 이름·발의자는 화면에 있으니 읽지 않는다 — 쇼츠 60초 상한. 주제 + 한 줄 + 건수만
+                const cnt = Number(s.t.bill_count || (s.t.bill_ids || []).length || 0);
+                // what 은 첫 문장만 (두 문장짜리가 있다)
+                const what = String(s.t.what || '').split(/(?<=[.다])\s+/)[0];
+                return `${s.of > 1 ? `${s.idx}. ` : ''}${s.t.theme}. ${what}${cnt ? ` 관련 법안 ${cnt}건.` : ''}`;
+            }
+            case 'laws': {
+                // 읽을 땐 `일부개정법률안`·`법률안` 꼬리를 뗀다 (귀로는 정보가 아니라 길이다 — 60초 상한)
+                const top = (s.laws || []).slice(0, 2).map((l) => `${String(l.bill_name).replace(/\s*(일부|전부)?개정법률안$|\s*법률안$/, '')} ${nf(l.cnt)}건`);
+                return `같은 법률에 안이 몰렸습니다. ${top.join(', ')}. 서로 다른 의원이 같은 법을 각자 고치려 한 것입니다.`;
+            }
+            case 'outro':
+                return '자세한 내용은 당말사에서. 당 말고 사람.';
+            default:
+                return '';
+        }
+    });
+}
+
 export default (db) => {
     const briefingService = BriefingService(db);
     const controller = {};
@@ -291,6 +332,10 @@ export default (db) => {
                     limit: THREADS_LIMIT,
                     short: strip(buildThreadsChain(post, { mode: 'short', baseUrl: site })),
                     full:  strip(buildThreadsChain(post, { mode: 'full',  baseUrl: site })),
+                },
+                video: {   // 유튜브 쇼츠 — batch/genBriefingVideo.js 가 읽는다 (슬라이드별 TTS 원고)
+                    narration: buildNarration(post, slides),
+                    title: `${post.briefing_date} 국회 브리핑 — ${post.headline || ''}`.slice(0, 95),
                 },
                 instagram: {
                     caption: buildCaption(post),

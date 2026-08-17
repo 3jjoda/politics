@@ -6,6 +6,13 @@
 
 ---
 
+## 2026-08-17 (1) — 유튜브 쇼츠 파이프라인 `batch/genBriefingVideo.js` (`npm run video`)
+
+브리핑 인스타 카드 PNG → 슬라이드쇼 + `say`(Yuna) 나레이션 + 헤드리스 크롬으로 그린 자막 → 1080×1920 MP4 + 제목/설명/SRT.
+나레이션은 `/api/briefing/export` 의 `video.narration`(`BriefingController.buildNarration`, 슬라이드 1:1). 실측 08-14 7장 **59.0초**.
+- ffmpeg 9 대응(`-fps_mode vfr`, 자막은 ffmpeg 가 아니라 크롬 프레임) · 맥 크롬 미종료 → `utils/headlessShot.js`(파일 안정 후 kill, genInstaCards 도 공용)
+- 자막 컷: 8자 미만 조각 이웃에 병합 · 컷 길이 글자 수 비례. 업로드는 수동. 다음: 성향 퀴즈 쇼츠 · 유형 9종 소개 · API 업로드
+
 ## 2026-08-16 (18) — 성향 진단 눈금 보정 · 사회 문항 교체 · 의도 문구 · 마이페이지 재구성 · 표결 비중
 
 **의도를 화면에** — `/balance-game` 「이 진단은 무엇이고, 무엇이 아닌가」 카드 · `/about` 문제 제기 문단 + 한계 항목.

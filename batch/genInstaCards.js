@@ -29,6 +29,7 @@ import { execFileSync } from 'node:child_process';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
 import { buildCaption } from '../utils/instaCaption.js';   // 캡션은 카드 페이지와 단일 소스
+import { findBrowser, shoot as shootAsync } from '../utils/headlessShot.js';   // 헤드리스 캡처 공용 (맥 크롬 미종료 대응)
 
 const W = 1080;
 const H = 1350;          // 피드 캐러셀 (4:5)
@@ -43,23 +44,6 @@ const arg = (name, dflt = null) => {
 const BASE = (arg('base') || process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const OUT_ROOT = arg('out') || path.resolve('out/insta');
 
-/* ── 브라우저 찾기 ──
-   Edge 는 윈도우 11 에 기본 탑재라 사실상 항상 걸린다 (크로미움 기반이라 인자가 같다). */
-function findBrowser() {
-    const LA = process.env.LOCALAPPDATA || '';
-    const candidates = [
-        process.env.CHROME_PATH,
-        'C:/Program Files/Google/Chrome/Application/chrome.exe',
-        'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-        LA && path.join(LA, 'Google/Chrome/Application/chrome.exe'),
-        'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-        'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
-        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-        '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser',
-    ].filter(Boolean);
-    return candidates.find((p) => { try { return fs.statSync(p).isFile(); } catch { return false; } }) || null;
-}
-
 /* PNG 헤더에서 실제 픽셀 크기를 읽는다.
    ⚠️ 크기 검증을 반드시 할 것 — 배율(devicePixelRatio) 이 끼면 2160×2700 이 나오는데
       인스타가 알아서 줄여주기 때문에 **눈으로는 멀쩡해 보인다.** 조용히 어긋나는 종류의 실패다. */
@@ -69,22 +53,7 @@ function pngSize(file) {
     return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
 }
 
-function shoot(browser, url, outFile, height = H) {
-    execFileSync(browser, [
-        '--headless=new',
-        '--disable-gpu',
-        '--hide-scrollbars',
-        // 1 로 고정하지 않으면 고DPI 장비에서 2배 크기로 찍힌다
-        '--force-device-scale-factor=1',
-        `--window-size=${W},${height}`,
-        // 웹폰트가 로드되기 전에 찍히는 걸 막는다 (가상 시계를 돌려 로드를 끝낸 뒤 캡처)
-        '--virtual-time-budget=6000',
-        // 사용자가 크롬을 켜둔 상태여도 프로필 충돌이 없게 별도 프로필
-        `--user-data-dir=${path.join(os.tmpdir(), 'dangmalsa-shot')}`,
-        `--screenshot=${outFile}`,
-        url,
-    ], { stdio: 'pipe', timeout: 60000 });
-}
+const shoot = (browser, url, outFile, height = H) => shootAsync(browser, url, outFile, { width: W, height });
 
 async function main() {
     const browser = findBrowser();
@@ -148,14 +117,14 @@ async function main() {
 
         for (let n = 1; n <= count; n++) {
             const file = path.join(dir, `${String(n).padStart(2, '0')}.png`);
-            shoot(browser, `${cardUrl}?slide=${n}`, file);
+            await shoot(browser, `${cardUrl}?slide=${n}`, file);
             check(file, `${n}/${count}`, H);
         }
 
         // 스토리 1장 — 인스타에서 **탭 한 번에 사이트로 가는 유일한 통로**가 스토리 링크 스티커다.
         // 피드 게시물은 프로필 → 링크로 2단계라 이탈이 크다.
         const storyFile = path.join(dir, 'story.png');
-        shoot(browser, `${cardUrl}?story=1`, storyFile, STORY_H);
+        await shoot(browser, `${cardUrl}?story=1`, storyFile, STORY_H);
         check(storyFile, 'story', STORY_H);
 
         const capFile = path.join(dir, 'caption.txt');

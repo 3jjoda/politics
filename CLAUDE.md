@@ -1642,6 +1642,28 @@ npm run insta -- --date 2026-08-10
     **올리기 전 마지막 줄만 눈으로 보고 손대는 게 맞다** — 휴리스틱이 못 잡는 유일한 부분이다
 - 실측: 카드 8건 · 피드 50장 + 스토리 8장 전부 규격 통과, 경고 0
 
+##### 유튜브 쇼츠 — `batch/genBriefingVideo.js` (`npm run video`, 2026-08-17)
+인스타 카드 PNG 를 **슬라이드쇼 + 나레이션(TTS) + 자막**으로 이어 붙인 1080×1920 MP4. "매일 뜨는 채널" 이 목적이지 조회수형이 아니다.
+운영 시작 순서: ① 일간 브리핑 쇼츠(이것) → ② 성향 퀴즈 쇼츠 → ③ 유형 9종 소개 (사용자 결정 2026-08-17).
+
+```
+GET /api/briefing/export → video: { narration[], title }   ← 나레이션은 BriefingController.buildNarration 이 만든다 (슬라이드 1:1)
+batch/genBriefingVideo.js  → out/video/<날짜>/short.mp4 · title.txt · description.txt · narration.txt · sub.srt
+utils/headlessShot.js      ← 헤드리스 캡처 공용 (genInstaCards 도 이걸 쓴다)
+```
+- 흐름: PNG 없으면 `genInstaCards` 먼저 → 슬라이드마다 `say -v Yuna`(맥) 로 wav → 자막 컷(문장 → 26자 → 8자 미만 조각은 이웃에 붙임, 길이는 글자 수 비례)을
+  **HTML 로 그려 헤드리스 크롬으로 프레임 캡처**(카드 상단 150px + 하단 자막 상자) → ffmpeg concat + apad 오디오 → mux
+- 🔴 **자막을 ffmpeg 로 굽지 않는다** — brew ffmpeg 9 에 libass·drawtext 가 없고, 크롬으로 그리면 카드와 같은 서체·디자인을 우리가 통제한다.
+  ffmpeg 9 는 `-vsync` 가 없다 (`-fps_mode vfr`), 그리고 `-r` 과 같이 쓰면 모순 에러
+- 🔴 **60초 상한** — 실측 08-14 7장 **59.0초** (`--rate 205`, TAIL 0.45, MIN_SLIDE 3.0). 넘으면 로그 경고.
+  줄일 곳은 배치가 아니라 **나레이션 문장**(`buildNarration`) — 흐름은 `N. 주제. what 첫 문장. 관련 법안 N건.`, 몰린 법률은 `일부개정법률안` 꼬리를 떼고 읽는다,
+  마무리는 `자세한 내용은 당말사에서. 당 말고 사람.` 두 문장. 대표발의자 이름은 읽지 않는다 (귀로는 정보가 아니라 길이)
+- 🔴 **맥 크롬은 `--screenshot` 을 다 찍고도 프로세스가 안 끝난다** (`--timeout` 도 무효, execFileSync 60초 ETIMEDOUT). PNG 는 1~2초 안에 나온다.
+  → `utils/headlessShot.js` 가 spawn 후 **파일 크기가 600ms 안정되면 SIGKILL**. 윈도우 Edge 는 알아서 끝나지만 같은 경로로 무해.
+  ⚠️ `genInstaCards.shoot` 도 이제 async 다 — 호출부에 `await` 가 있어야 순서가 지켜진다
+- 설명란은 브리핑 링크 · 성향 진단 · 의원 목록 3링크 + AI 고지 (`description.txt`) — 쇼츠에서 사이트로 가는 길은 설명란뿐이다
+- 업로드는 **일단 수동** (유튜브 스튜디오 드래그 + title/description 붙여넣기). API 업로드는 다음 단계. 로컬 전용 — 크론에 넣지 않는다
+
 ##### 스토리 `?story=1` — 1080×1920 (2026-08-14)
 🔴 **인스타에서 탭 한 번에 사이트로 가는 유일한 통로가 스토리 링크 스티커다.**
 피드 게시물은 `프로필 방문 → 링크 클릭` 2단계라 이탈이 크고, **캡션의 URL 은 클릭이 안 된다.**
@@ -2913,6 +2935,7 @@ PC/모바일 동일 패턴으로 통일.
 | `refreshDissent.js` | DB 집계 | `politician_dissent` MV 갱신 (`REFRESH ... CONCURRENTLY`). "숫자로 본 국회"의 소신 표결이 이걸 읽는다. **syncPoliticians·syncVotes 다음에 실행** |
 | `genBriefing.js` | 그날 법안 전건 + Claude Haiku 4.5 | 브리핑 카드 생성 (v2 프롬프트, 주제 묶음). 하루 1콜 · `--date` `--limit` `--force` `--dry-run`. `START_DATE`(2026-08-13) 이후 · 주말 제외 · 활동 없는 평일은 `model='none'` 카드. **체인 맨 뒤** — 그날 법안·요약이 다 들어온 뒤 읽는다 |
 | `genInstaCards.js` | 헤드리스 브라우저 | **인스타 캐러셀 PNG + 캡션** 생성 (`npm run insta`). `--id` `--date` `--out` `--base`. **로컬 전용** — 크론 체인에 넣지 않는다 |
+| `genBriefingVideo.js` | 헤드리스 브라우저 + `say` + ffmpeg | **유튜브 쇼츠 MP4** (`npm run video`). 카드 PNG 슬라이드쇼 + TTS 나레이션 + 자막, 60초 상한. `--date` `--rate` `--voice` `--tts edge`. **로컬 전용** — 위 「유튜브 쇼츠」 참조 |
 
 ### 배치 실행 순서 (2026-07-29 정리)
 > ⚠️ 실행 전 `node -v` 확인 — **Node 22** (`.nvmrc` 22.20.0). Node 18 이면 undici 7 이 전역 `File` 부재로 즉사 (`ReferenceError: File is not defined`)
