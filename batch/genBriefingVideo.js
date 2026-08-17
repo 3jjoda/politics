@@ -134,6 +134,18 @@ html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden;background:${BG};c
 .bar i{display:block;height:100%;background:#B8740C;border-radius:19px}
 .foot{font-size:36px;color:#1A1D24;font-weight:700}
 .foot b{color:#8F5800}
+.pp{display:flex;gap:40px;align-items:center;margin-bottom:56px}
+.pp img{width:220px;height:220px;border-radius:50%;object-fit:cover;object-position:top;border:5px solid #B8740C;background:#EFEDE4}
+.pp .ini{width:220px;height:220px;border-radius:50%;background:#EFEDE4;border:5px solid #B8740C;display:flex;align-items:center;justify-content:center;font-size:80px;font-weight:800;color:#8F5800}
+.pp .who .k{font:700 28px/1 "JetBrains Mono",monospace;color:#8F5800;letter-spacing:.12em;margin-bottom:16px}
+.pp .who .n{font-family:"Noto Serif KR",serif;font-weight:900;font-size:84px;line-height:1.1}
+.pp .who .d{font-size:34px;color:#4B5362;margin-top:12px;font-weight:500}
+.st{display:flex;align-items:baseline;justify-content:space-between;gap:20px;padding:26px 0;border-top:2px solid #E2DFD4;opacity:.12}
+.st.on{opacity:1}.st:last-child{border-bottom:2px solid #E2DFD4}
+.st .l{font-size:34px;color:#374151;font-weight:600;flex:1}
+.st .v{font:700 54px/1 "JetBrains Mono",monospace;color:#1A1D24;letter-spacing:-.02em;white-space:nowrap}
+.st .v small{font-family:"Noto Sans KR",sans-serif;font-size:28px;color:#5F6674;font-weight:500;margin-left:14px;letter-spacing:0}
+.st .v b{color:#8F5800}
 .outro{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 90px 200px}
 .outro .nm2{font-family:"Noto Serif KR",serif;font-weight:900;font-size:96px;margin:36px 0 10px}
 .outro .tg{font-size:44px;color:#4B5362;font-weight:500}.outro .tg b{color:#8F5800;font-weight:800}
@@ -154,11 +166,22 @@ html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden;background:${BG};c
         const shown = Math.min(S.bills.length, Math.max(1, Math.round((cut + 1) / cuts * S.bills.length)));
         const rows = S.bills.map((b, i) => `<div class="row${i < shown ? ' on' : ''}"><div class="no">${i + 1}</div><div><div class="nm">${esc(shortName(b.name))}</div><div class="by">대표발의 ${esc(b.by || '')}</div></div></div>`).join('');
         body = `<div class="body"><h2 class="h2">관련 법안 <b>${S.count}건</b></h2><div class="lede">${esc(S.theme)}</div>${rows}</div>`;
+    } else if (sc.kind === 'person') {
+        const P = S.person;
+        const stats = [];
+        if (P.propose != null) stats.push({ l: '대표발의', v: `<b>${P.propose}</b><small>건 · 의원 중앙값 ${P.medPropose ?? '—'}건</small>` });
+        if (P.voteTotal) stats.push({ l: '본회의 표결 참여', v: `<b>${P.voteRate}%</b><small>${P.voteTotal}건 중 ${P.voteAttended}건</small>` });
+        if (P.ownRate != null && P.otherRate != null) stats.push({ l: '자기 당 · 상대 당 법안 찬성', v: `<b>${P.ownRate}%</b> · ${P.otherRate}%<small>격차 ${P.gap}%p · 중앙값 ${P.gapMedian ?? '—'}</small>` });
+        if (P.cmtRate != null) stats.push({ l: `${esc(P.cmtName)} 회의 참여율`, v: `<b>${P.cmtRate}%</b><small>평균 ${P.cmtAvg ?? '—'}%</small>` });
+        const shown = Math.min(stats.length, Math.max(1, Math.round((cut + 1) / cuts * (stats.length + 1)) - 1));
+        const face = P.photo ? `<img src="${esc(P.photo)}" alt="">` : `<div class="ini">${esc([...P.name][0] || '')}</div>`;
+        const rows = stats.map((r, i) => `<div class="st${i < shown ? ' on' : ''}"><div class="l">${r.l}</div><div class="v">${r.v}</div></div>`).join('');
+        body = `<div class="body"><div class="pp">${face}<div class="who"><div class="k">${esc(P.lead || '이 법안을 대표발의한')} 사람</div><div class="n">${esc(P.name)}</div><div class="d">${esc([P.district, P.reele].filter(Boolean).join(' · '))}${P.active ? '' : ' · 퇴임'}</div></div></div>${rows}</div>`;
     } else if (sc.kind === 'context') {
         const pct = Math.max(2, Math.min(100, S.count / Math.max(1, S.proposed) * 100));
         body = `<div class="body"><div class="kick">${esc(S.dateKo)} 하루 동안</div><div class="big">${S.proposed}<small>건</small></div><div class="lbl">국회에 발의된 법안</div><div class="bar"><i style="width:${cut > 0 ? pct.toFixed(1) : 0}%"></i></div><div class="foot">그중 <b>${S.count}건</b>이 「${esc(S.theme)}」</div></div>`;
     } else if (sc.kind === 'outro') {
-        body = `<div class="outro">${mark(150)}<div class="nm2">당말사</div><div class="tg">당 말고 <b>사람</b></div><div class="url">dangmalsa.kr</div><div class="desc">법안 원문 · 발의한 의원 · 표결 기록을<br>당 이름 없이 사람 이름으로 봅니다</div><div class="ai">주제와 설명 문장은 AI 가 법안 원문을 읽고 정리한 것으로 사실과 다를 수 있습니다.<br>숫자는 국회 공개 데이터 집계값 · 출처 열린국회정보</div></div>`;
+        body = `<div class="outro">${mark(150)}<div class="nm2">당말사</div><div class="tg">당 말고 <b>사람</b></div><div class="url">dangmalsa.kr</div><div class="desc">우리 지역구 의원은 어떻게 일하고 있는지<br>발의 · 표결 · 발언 기록을 사람 이름으로 봅니다</div><div class="ai">주제와 설명 문장은 AI 가 법안 원문을 읽고 정리한 것으로 사실과 다를 수 있습니다.<br>숫자는 국회 공개 데이터 집계값 · 출처 열린국회정보</div></div>`;
         return `<!doctype html><meta charset="utf-8">${css}${body}${sub}`;
     }
     return `<!doctype html><meta charset="utf-8">${css}${top}${body}${sub}`;

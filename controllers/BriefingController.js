@@ -3,6 +3,7 @@
 // 1단계: 데이터만. AI 호출 0회.
 
 import BriefingService from '../services/BriefingService.js';
+import PoliticianService from '../services/PoliticianService.js';
 import { buildThreadsChain, THREADS_LIMIT, siteUrl } from '../utils/threadsPost.js';
 import { buildCaption } from '../utils/instaCaption.js';
 import { nf, pct } from '../utils/xrayFormat.js';
@@ -83,7 +84,7 @@ function buildSlides(p, ctx = {}) {
             // ⚠️ 대표발의자를 반드시 같이 실을 것 — 법안의 87%가 동명이라 이름만 늘어놓으면
             //    같은 줄이 두 번 찍힌 것처럼 보인다 (실제로 "소득세법 일부개정법률안" 이 2줄 나왔다)
             bills: (t.bill_ids || []).filter((id) => tb[id]).slice(0, THREAD_BILLS)
-                .map((id) => ({ name: tb[id].bill_name, by: tb[id].proposer_name })),
+                .map((id) => ({ name: tb[id].bill_name, by: tb[id].proposer_name, mona: tb[id].mona_cd })),
         });
     });
 
@@ -150,10 +151,23 @@ function buildNarration(p, slides) {
    첫 문장이 곧 내용이어야 한다 → 첫 장은 그 흐름의 what 으로 시작하고, 날짜·집계는 뒤로.
    고르는 기준: bill_count 최대 (같으면 앞). 묶음이 없는 카드(폴백·활동 없음)는 null — 그날은 영상을 만들지 않는다.
    ⚠️ 문장은 전부 템플릿 + 카드에 이미 실린 AI 문장(theme·what)만 쓴다 — 새 AI 호출 없음. 정당·인물 평가 없음 */
-function buildShort(p, slides) {
+export function pickShortThread(slides) {
     const threads = slides.filter((s) => s.kind === 'thread');
     if (!threads.length) return null;
-    const pick = threads.reduce((a, b) => (Number(b.t.bill_count || 0) > Number(a.t.bill_count || 0) ? b : a), threads[0]);
+    return threads.reduce((a, b) => (Number(b.t.bill_count || 0) > Number(a.t.bill_count || 0) ? b : a), threads[0]);
+}
+/* 그 흐름의 대표발의자 한 명 — 묶인 법안 중 가장 많이 낸 사람(같으면 앞). 🔴 편집이 아니라 데이터가 고른다 */
+export function pickShortPerson(pick) {
+    const cnt = new Map();
+    for (const b of pick.bills) if (b.mona) cnt.set(b.mona, (cnt.get(b.mona) || 0) + 1);
+    let best = null;
+    for (const [m, c] of cnt) if (!best || c > best.c) best = { mona: m, c };
+    return best ? best.mona : null;
+}
+function buildShort(p, slides, person) {
+    const threads = slides.filter((s) => s.kind === 'thread');
+    if (!threads.length) return null;
+    const pick = pickShortThread(slides);
     const t = pick.t;
     const st = p.stats || {};
     const [, m, d] = String(p.briefing_date || '').split('-').map(Number);
@@ -175,25 +189,81 @@ function buildShort(p, slides) {
 
     const proposed = Number(st.proposed || 0);
     const contextSay = proposed
-        ? `이날 국회에 올라온 법안은 모두 ${proposed}건. 그중 ${count}건이 이 주제로 묶였습니다.`
+        ? `이날 발의된 법안 ${proposed}건 중, 이 주제가 ${count}건.`
         : '';
 
+    /* 사람 장면 — "이 법안 낸 사람은 이렇게 일합니다" (2026-08-17 A안). 뉴스는 당과 대표만 비추고 지역구 의원 300명은 안 보인다 —
+       당말사만 답할 수 있는 건 법안이 아니라 **사람**이라, 영상의 킥은 여기다. 숫자 + 중앙값만, 평가어 없음, 정당 없음(공유 카드와 같은 규칙) */
+    let personSay = '';
+    if (person) {
+        const bits = [];
+        const mine = pick.bills.filter((b) => b.mona === person.mona).length;
+        const lead = pick.bills.length > 1 && mine < pick.bills.length ? `이 중 ${mine}건을 대표발의한` : '이 법안을 대표발의한';
+        person.lead = lead;
+        bits.push(`${lead} ${person.name} 의원${person.district ? `, ${person.district}` : ''}.`);
+        // 60초 상한 — 숫자는 화면이 다 보여주므로 말은 핵심만 (실측: 다 읽으면 사람 장면만 20초)
+        if (person.propose != null) bits.push(`대표발의 ${nf(person.propose)}건${person.medPropose != null ? `, 중앙값 ${nf(person.medPropose)}건` : ''}.`);
+        if (person.voteRate != null) bits.push(`본회의 표결 참여 ${person.voteRate}%.`);
+        if (person.ownRate != null && person.otherRate != null) bits.push(`자기 당 법안 찬성 ${person.ownRate}%, 상대 당 ${person.otherRate}%.`);
+        if (person.cmtRate != null) bits.push(`상임위 회의 참여 ${person.cmtRate}%${person.cmtAvg != null ? `, 평균 ${person.cmtAvg}` : ''}.`);
+        personSay = bits.join(' ');
+    }
     return {
         theme: t.theme, what: t.what, count, dateKo, date: p.briefing_date,
         bills: pick.bills,                                   // { name, by } — 정당 없음
         proposed, otherThreads: threads.length - 1,
+        person,
         title: `${t.theme} — ${dateKo} 국회에 나온 법안 ${count}건`.slice(0, 95),
         scenes: [
             { kind: 'hook',    say: hookSay },
             { kind: 'bills',   say: billsSay },
+            ...(personSay ? [{ kind: 'person', say: personSay }] : []),
             ...(contextSay ? [{ kind: 'context', say: contextSay }] : []),
-            { kind: 'outro',   say: '법안 원문과 발의한 의원의 기록은 당말사에서. 당 말고 사람.' },
+            { kind: 'outro',   say: person ? '당신 지역구 의원은 어떻게 일하고 있는지, 당말사에서. 당 말고 사람.' : '법안 원문과 발의한 의원의 기록은 당말사에서. 당 말고 사람.' },
         ],
     };
 }
 
+/* 사람 장면 재료 — 의원 상세와 같은 서비스 메서드를 재사용한다 (숫자가 사이트와 다르면 안 된다). 실패하면 null → 장면 없음 */
+async function loadShortPerson(politicianService, monaCd) {
+    if (!monaCd) return null;
+    try {
+        const [rows, voteSummary, cpv, kpi, speeches] = await Promise.all([
+            politicianService.getDetail(monaCd),
+            politicianService.getVoteSummaryByMonaCd(monaCd),
+            politicianService.getCrossPartyVoteByMonaCd(monaCd),
+            politicianService.getKpiPercentiles(monaCd),
+            politicianService.getSpeechesByMonaCd(monaCd),
+        ]);
+        const d = Array.isArray(rows) ? rows[0] : rows;
+        if (!d) return null;
+        const vs = voteSummary || {};
+        const voteTotal = Number(vs.total_cnt || 0);
+        const attended = voteTotal - Number(vs.absent_cnt || 0);
+        // 상임위 참여율 — 평균과 겨룰 수 있는 행 중 분모가 가장 큰 것 하나
+        const rate = (speeches?.rates?.items || []).filter((r) => r.showRate && !r.offDuty && r.rate != null)
+            .sort((a, b) => b.denom - a.denom)[0] || null;
+        return {
+            mona: monaCd, name: d.name, district: d.electoral_district || '', reele: d.reele_gbn_nm || '',
+            photo: d.photo_url || '', active: d.active_yn !== false,
+            propose: Number(d.propose_cnt || 0), medPropose: kpi?.median?.propose ?? null,
+            voteTotal, voteAttended: attended,
+            voteRate: voteTotal ? Math.round(attended / voteTotal * 1000) / 10 : null,
+            ownRate: cpv?.own_rate != null ? Number(cpv.own_rate) : null,
+            otherRate: cpv?.other_rate != null ? Number(cpv.other_rate) : null,
+            gap: cpv?.gap != null ? Number(cpv.gap) : null, gapMedian: cpv?.cohort_median != null ? Number(cpv.cohort_median) : null,
+            cmtName: rate ? rate.deptNm : null, cmtRate: rate ? Math.round(rate.rate) : null,
+            cmtAvg: rate && speeches?.rates?.cohortAvg != null ? Math.round(speeches.rates.cohortAvg) : null,
+        };
+    } catch (err) {
+        logger.error(`쇼츠 사람 장면 재료 실패 (${monaCd}): ${err.message}`);
+        return null;
+    }
+}
+
 export default (db) => {
     const briefingService = BriefingService(db);
+    const politicianService = PoliticianService(db);
     const controller = {};
 
     /* 피드 — AI 카드가 시간순으로 쌓인다. 상단에 이번 주 요약 스트립. */
@@ -365,6 +435,8 @@ export default (db) => {
             const site = siteUrl();
             const slides = buildSlides(post, await briefingService.getCardContext(post));
             const base = `${site}/briefing/${post.id}`;
+            const pickT = pickShortThread(slides);
+            const person = pickT ? await loadShortPerson(politicianService, pickShortPerson(pickT)) : null;
             const strip = (arr) => arr.map((p) => ({ n: p.n, role: p.role, text: p.text, len: p.len }));
             res.set('Cache-Control', 'no-store');
             res.json({
@@ -381,7 +453,7 @@ export default (db) => {
                     full:  strip(buildThreadsChain(post, { mode: 'full',  baseUrl: site })),
                 },
                 video: {   // 유튜브 쇼츠 — batch/genBriefingVideo.js 가 읽는다
-                    short: buildShort(post, slides),         // 「흐름 하나」 포맷 (기본). 묶음 없으면 null → 그날은 영상 없음
+                    short: buildShort(post, slides, person),         // 「흐름 하나」 포맷 (기본). 묶음 없으면 null → 그날은 영상 없음
                     narration: buildNarration(post, slides), // 「전체 7장」 포맷 (--format full, 슬라이드별 TTS 원고)
                     title: `${post.briefing_date} 국회 브리핑 — ${post.headline || ''}`.slice(0, 95),
                 },

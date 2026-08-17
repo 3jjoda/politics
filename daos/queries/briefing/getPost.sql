@@ -36,7 +36,7 @@ SELECT bp.id
         대표 법안 5건과 겹칠 수 있으나 별도로 받는다 — threads 는 그 5건 밖도 지목한다. */
      , COALESCE(
          (SELECT json_object_agg(b.bill_id,
-                   json_build_object('bill_name', b.bill_name, 'proposer_name', b.proposer_name))
+                   json_build_object('bill_name', b.bill_name, 'proposer_name', b.proposer_name, 'mona_cd', b.mona_cd))
             FROM bills b
            WHERE b.bill_id IN (
                  SELECT jsonb_array_elements_text(t->'bill_ids')
