@@ -1,5 +1,5 @@
 # 3jjoda 프로젝트 — Claude Code 컨텍스트
-> 마지막 업데이트: 2026-08-15
+> 마지막 업데이트: 2026-08-16
 > 이 파일은 **현재 코드 상태**만 담습니다.
 > 비전·로드맵: [ROADMAP.md](./ROADMAP.md)
 > 작업 이력: [CHANGELOG.md](./CHANGELOG.md)
@@ -1297,7 +1297,7 @@ daos/queries/admin/getStats*.sql       ← 읽기 5종 / views/admin/stats.ejs
 
 - **Zone 7 — 챕터 디바이더** (`.ba-chapter`): 분석 끝 ↔ 참여 시작 사이 풀폭 브레이크. 상단 1px 보더 + 메인 헤딩 세리프 900 / 36px "이제 당신이 답할 차례입니다" + 서브 15px `#6B7280` "법안에 찬반을 표시하고, 다른 국민들의 의견을 읽어보세요"
 - **Zone 8 — 국민 찬반** (`#citizen-vote-section .pb-part`): cv-bar 12px / 차콜+골드. CTA 두 버튼 동일 무게 흰 배경. 위치(좌/우) 로만 입장 구분 — 이모지 제거
-- **Zone 9 — 본회의 표결** (`#part-floor-vote`): 데이터 없을 때 italic `#9B9486` empty state. 있을 때 4-박스 vote-dashboard 톤만 통일 (정당색은 객관 데이터라 그대로)
+- **Zone 9 — 본회의 표결** (`#part-floor-vote`): 데이터 없을 때 italic `#9B9486` empty state. 있을 때 4-박스 vote-dashboard 톤만 통일 (정당색은 객관 데이터라 그대로). **2026-08-16 비중 추가** — 찬성·반대·기권은 **참여분**(찬+반+기권), 불참은 **전체** 기준 (의원 상세 `.vote-tally` 와 같은 규칙, 각주에 두 분모를 숫자로 씀). 국민 찬반(`PB.mountCitizenVote`) 범례에도 % (총 0명이면 안 씀)
 - ~~**Zone 10 — 발의자**~~: **2026-04-27 폐기** — 발의자는 메타데이터의 일부라 Zone 1 헤더 컴팩트 스택으로 통합됨. 참여 영역에서 분리
 - **Zone 11 — 댓글** (`#part-comments`): 정렬 토글 알약 → 텍스트 underline. 카드 흰 배경 / `#E8E5DC` / radius 10. 닉네임 700, 본문 14/1.7. 좋아요 활성 골드
 
