@@ -226,7 +226,7 @@ function buildShort(p, slides, person) {
 }
 
 /* 사람 장면 재료 — 의원 상세와 같은 서비스 메서드를 재사용한다 (숫자가 사이트와 다르면 안 된다). 실패하면 null → 장면 없음 */
-async function loadShortPerson(politicianService, monaCd) {
+export async function loadShortPerson(politicianService, monaCd) {
     if (!monaCd) return null;
     try {
         const [rows, voteSummary, cpv, kpi, speeches] = await Promise.all([
