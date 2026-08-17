@@ -28,24 +28,83 @@ export function edgeCmd() {
     }
     return null;
 }
+const EDGE_PY = `
+import asyncio, edge_tts, json, sys
+text, voice, rate, out = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+async def m():
+    c = edge_tts.Communicate(text, voice, rate=rate, boundary="WordBoundary")
+    ws = []
+    with open(out, "wb") as f:
+        async for ch in c.stream():
+            if ch["type"] == "audio": f.write(ch["data"])
+            elif ch["type"] == "WordBoundary": ws.append({"t": ch["offset"] / 1e7, "d": ch["duration"] / 1e7, "w": ch["text"]})
+    print(json.dumps(ws))
+asyncio.run(m())
+`;
+/* 문장 → wav. 반환: 단어 시각 [{t,d,w}] (edge 만 — 자막 컷을 말과 맞추는 데 쓴다. say 는 [] )
+   🔴 앞 무음은 자르지 않는다 — 단어 시각이 원본 기준이라 앞을 자르면 전부 어긋난다. 뒤 무음만 자른다 */
 export function tts(text, outWav) {
     const t = String(text || '').replace(/\s+/g, ' ').trim();
-    if (!t) { sh('ffmpeg', ['-y', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', '1', outWav]); return; }
+    if (!t) { silence(1, outWav); return []; }
     if (ttsConfig.engine === 'say') {
         const aiff = outWav.replace(/\.wav$/, '.aiff');
         sh('say', ['-v', ttsConfig.voice, '-r', String(ttsConfig.rate), '-o', aiff, t]);
         sh('ffmpeg', ['-y', '-i', aiff, '-ar', '44100', '-ac', '1', outWav]);
         fs.unlinkSync(aiff);
-    } else {
-        const mp3 = outWav.replace(/\.wav$/, '.mp3');
-        const [cmd, ...pre] = edgeCmd();
-        sh(cmd, [...pre, '--voice', ttsConfig.voice, `--rate=${ttsConfig.rate}`, '--text', t, '--write-media', mp3]);
-        // 앞뒤 무음을 잘라 컷 타이밍이 말과 맞게 (edge-tts 는 앞에 0.1~0.3초 여백을 붙인다)
-        sh('ffmpeg', ['-y', '-i', mp3, '-af', 'silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.05,areverse', '-ar', '44100', '-ac', '1', outWav]);
-        fs.unlinkSync(mp3);
+        return [];
     }
+    const mp3 = outWav.replace(/\.wav$/, '.mp3');
+    const [cmd, ...pre] = edgeCmd();
+    let words = [];
+    if (pre.length) {   // python 모듈 경로 — 단어 시각까지 받는다
+        const out = sh(cmd, ['-c', EDGE_PY, t, ttsConfig.voice, ttsConfig.rate, mp3]);
+        try { words = JSON.parse(out.trim().split('\n').pop()); } catch { words = []; }
+    } else {
+        sh(cmd, ['--voice', ttsConfig.voice, `--rate=${ttsConfig.rate}`, '--text', t, '--write-media', mp3]);
+    }
+    sh('ffmpeg', ['-y', '-i', mp3, '-af', 'areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.08,areverse', '-ar', '44100', '-ac', '1', outWav]);
+    fs.unlinkSync(mp3);
+    return words;
 }
 
+/* 자막 줄 → 컷 시작 시각. 단어 시각이 있으면 각 줄의 첫 단어 시각, 없으면 글자 수 비례 근사.
+   줄은 toSubLines(text) 로 만든 것이라 text 안에서 순서대로 찾을 수 있다 */
+export function cutTimes(text, lines, words, total) {
+    const n = lines.length;
+    if (!n) return [];
+    const approx = () => {
+        const wts = lines.map((l) => Math.max(4, [...l].length)), wsum = wts.reduce((a, b) => a + b, 0);
+        const out = []; let acc = 0;
+        for (const w of wts) { out.push(acc); acc += total * w / wsum; }
+        return out;
+    };
+    if (!words || !words.length) return approx();
+    const flat = String(text).replace(/\s+/g, ' ').trim();
+    // 단어 → 문자 위치
+    let pos = 0; const wpos = [];
+    for (const w of words) {
+        const i = flat.indexOf(w.w, pos);
+        if (i < 0) { wpos.push(null); continue; }
+        wpos.push(i); pos = i + w.w.length;
+    }
+    // 줄 → 문자 위치 (순서대로)
+    let lp = 0; const starts = [];
+    for (const l of lines) {
+        const key = l.replace(/\s+/g, ' ').trim();
+        const i = flat.indexOf(key, lp);
+        starts.push(i < 0 ? null : i); if (i >= 0) lp = i + key.length;
+    }
+    if (starts.some((v) => v == null)) return approx();
+    const out = starts.map((cs, li) => {
+        if (li === 0) return 0;
+        // 이 줄의 첫 문자 이상에서 시작하는 첫 단어
+        for (let k = 0; k < words.length; k++) if (wpos[k] != null && wpos[k] >= cs) return Math.max(0, words[k].t - 0.05);
+        return null;
+    });
+    if (out.some((v) => v == null)) return approx();
+    for (let i = 1; i < out.length; i++) if (out[i] <= out[i - 1]) out[i] = out[i - 1] + 0.3;   // 단조 증가 보장
+    return out;
+}
 
 /* 무음 wav (초) — 카운트다운 같은 말 없는 장면용 */
 export function silence(sec, outWav) {
@@ -88,13 +147,48 @@ export function toSubLines(text) {
 }
 
 
-/* 프레임 목록 + 장면 오디오 목록 → mp4. frames: [{png,dur}] · wavs: [{wav,dur}] */
-export function assemble(work, frames, wavs, out) {
-    const vlist = path.join(work, 'v.txt');
-    fs.writeFileSync(vlist, frames.map((f) => `file '${f.png}'\nduration ${f.dur.toFixed(3)}`).join('\n') + `\nfile '${frames[frames.length - 1].png}'\n`, 'utf8');
+/* 프레임 목록 + 장면 오디오 목록 → mp4.
+   frames: [{png,dur} | {seq:[png…],fps,dur}] · wavs: [{wav,dur}]
+   - 정지 프레임은 **아주 느린 줌**(30fps, 최대 +5%)으로 살아 있게 하고, 컷 사이는 **0.25초 디졸브**(xfade) — "뚝뚝 끊기는" 느낌 제거
+   - seq(연속 프레임 = 카운트다운 애니메이션)는 fps 그대로 30fps 로 올린다
+   - 각 조각을 T 만큼 늘리고 T 만큼 겹치므로 총 길이는 Σdur 그대로 → 오디오와 어긋나지 않는다 */
+export const XFADE = 0.25;
+export function assemble(work, frames, wavs, out, { xfade = XFADE, zoom = true } = {}) {
+    const segs = [];
+    frames.forEach((f, i) => {
+        const seg = path.join(work, `seg${i}.mp4`);
+        const len = f.dur + xfade;
+        if (f.seq) {
+            const list = path.join(work, `seq${i}.txt`);
+            const per = 1 / f.fps;
+            fs.writeFileSync(list, f.seq.map((p) => `file '${p}'\nduration ${per.toFixed(4)}`).join('\n') + `\nfile '${f.seq[f.seq.length - 1]}'\n`, 'utf8');
+            sh('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', list, '-vf', `fps=30,tpad=stop_mode=clone:stop_duration=${xfade + 0.5},trim=duration=${len.toFixed(3)},setpts=PTS-STARTPTS`,
+                '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', seg]);
+        } else {
+            const nfr = Math.max(1, Math.round(len * 30));
+            const vf = zoom
+                ? `scale=2160:3840,zoompan=z='min(1+0.00035*on,1.05)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${nfr}:s=${W}x${H}:fps=30,trim=duration=${len.toFixed(3)},setpts=PTS-STARTPTS`
+                : `fps=30,trim=duration=${len.toFixed(3)},setpts=PTS-STARTPTS`;
+            sh('ffmpeg', ['-y', '-loop', '1', '-framerate', '30', '-t', (len + 0.2).toFixed(3), '-i', f.png, '-vf', vf,
+                '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '18', seg]);
+        }
+        segs.push({ seg, dur: f.dur });
+    });
+    // xfade 체인
     const vmp4 = path.join(work, 'v.mp4');
-    sh('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', vlist, '-fps_mode', 'vfr', '-pix_fmt', 'yuv420p',
-        '-c:v', 'libx264', '-crf', '20', '-tune', 'stillimage', vmp4]);
+    if (segs.length === 1) fs.copyFileSync(segs[0].seg, vmp4);
+    else {
+        const inputs = segs.flatMap((s) => ['-i', s.seg]);
+        let fc = '', prev = '[0:v]', off = 0;
+        for (let i = 1; i < segs.length; i++) {
+            off += segs[i - 1].dur;
+            const outl = i === segs.length - 1 ? '[v]' : `[x${i}]`;
+            fc += `${prev}[${i}:v]xfade=transition=fade:duration=${xfade}:offset=${off.toFixed(3)}${outl};`;
+            prev = outl;
+        }
+        sh('ffmpeg', ['-y', ...inputs, '-filter_complex', fc.replace(/;$/, ''), '-map', '[v]', '-pix_fmt', 'yuv420p', '-c:v', 'libx264', '-preset', 'medium', '-crf', '19', vmp4]);
+    }
+    // 오디오: 장면 wav 를 각 길이로 패딩 후 concat
     const apads = [];
     wavs.forEach((w, i) => {
         const p2 = path.join(work, `a${i + 1}.wav`);
@@ -107,6 +201,20 @@ export function assemble(work, frames, wavs, out) {
     sh('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', alist, '-c', 'copy', awav]);
     sh('ffmpeg', ['-y', '-i', vmp4, '-i', awav, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart', out]);
     return out;
+}
+
+/* 카운트다운 링 HTML — 3초 동안 링이 줄고 숫자 3→2→1. progress 0..1 로 한 프레임 */
+export function countdownHtml(baseCss, topHtml, questionHtml, progress, seconds = 3) {
+    const left = seconds * (1 - progress);
+    const digit = Math.max(1, Math.ceil(left - 1e-6));
+    const frac = digit - left;                       // 0→1 안에서 이 숫자가 지나간 비율
+    const R = 160, C = 2 * Math.PI * R;
+    const dash = C * (1 - progress);
+    const pop = 1 + 0.12 * Math.max(0, 1 - frac * 5); // 숫자 바뀐 직후 살짝 커졌다 줄어듦
+    return `<!doctype html><meta charset="utf-8">${baseCss}<style>
+.ring{position:absolute;left:50%;top:1000px;width:360px;height:360px;margin-left:-180px}
+.cnt{position:absolute;left:0;right:0;top:1000px;height:360px;text-align:center;font:700 230px/360px "JetBrains Mono",monospace;color:#B8740C;transform:scale(${pop.toFixed(3)})}
+</style>${topHtml}${questionHtml}<div class="ring"><svg width="360" height="360" viewBox="0 0 360 360"><circle cx="180" cy="180" r="${R}" fill="none" stroke="#E2DFD4" stroke-width="16"/><circle cx="180" cy="180" r="${R}" fill="none" stroke="#B8740C" stroke-width="16" stroke-linecap="round" transform="rotate(-90 180 180)" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C - dash).toFixed(1)}"/></svg></div><div class="cnt">${digit}</div>`;
 }
 
 /* 공통 CSS — 브랜드 서체(구글 폰트)·색. 장면 HTML 이 앞에 붙인다 */

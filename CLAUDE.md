@@ -1693,6 +1693,14 @@ utils/headlessShot.js      ← 헤드리스 캡처 공용 (genInstaCards 도 이
   🔴 **누구를 다루나가 곧 편집이라 기본은 무작위**(현직 · 표결 코호트 · 국무위원·의장단 제외). `--name`/`--mona` 로 지정할 땐 그 이유가 밖에 있어야 한다 (지역 요청 등).
   재료는 `BriefingController.loadShortPerson`(의원 상세와 같은 서비스) 재사용. 보기는 `mkOpts`/`pctOpts` — **정답은 실제값 그대로**, 나머지는 중앙값·반대쪽을 반올림. 산출물 `out/video/quiz/person-<mona>/`
 - 편 추가 = `EPISODES` 에 `{ title, data(pool), scenes(d), desc(d) }` 하나. 후보: 「법안 4건 중 3건은 아직 심사 중」 · 「의원 절반은 5번 중 1번 자리에 없다」 · 「가결률 3%」
+- 🔴 **영상 퀄 규칙 (2026-08-18, "싱크가 안 맞고 뚝뚝 끊긴다" 피드백)** — 세 가지가 `shortsKit` 에 들어 있다. 새 포맷도 이 경로를 탈 것:
+  ① **자막 컷은 단어 시각으로 자른다** — edge-tts python API 의 `WordBoundary` 를 받아(`tts()` 가 `[{t,d,w}]` 반환) 줄의 첫 단어 발화 시각에 컷을 바꾼다 (`cutTimes`).
+     글자 수 비례 근사는 폴백(say)뿐. 🔴 그래서 **앞 무음을 자르지 않는다** — 단어 시각이 원본 기준이라 앞을 자르면 전부 어긋난다 (뒤만 자른다)
+  ② **카운트다운은 진짜 애니메이션** — 링이 3초 동안 줄고 숫자 3→2→1 이 살짝 튀는 프레임을 10fps 로 30장 캡처(`countdownHtml`), 초마다 째깍.
+     ⚠️ SVG 원호 회전은 CSS `transform` 이 아니라 **`transform="rotate(-90 180 180)"` 속성**으로 — 헤드리스 크롬에서 CSS 회전은 원점이 어긋나 링이 이중으로 보였다
+  ③ **컷 사이 0.25초 디졸브(xfade) + 정지 프레임에 아주 느린 줌(최대 +5%)** — `assemble()` 이 조각마다 mp4 를 만들고 xfade 체인으로 잇는다.
+     조각을 T 만큼 늘리고 T 만큼 겹치므로 총 길이 = Σdur 그대로 (오디오와 안 어긋남). 파일이 1MB → 7MB 로 커진다 (움직임이 생겨서) — 정상
+  실측: 사람 퀴즈 51초 · 렌더 ~5분 (카운트다운 30장 × 2)
 - 공용 부품은 **`utils/shortsKit.js`** (TTS edge/say · 자막 컷 · SRT · 프레임 캡처 · ffmpeg 조립 · 브랜드 CSS) — genBriefingVideo 도 이걸 쓴다. TTS 기본 음성은 남성 `ko-KR-InJoonNeural`
 
 ##### 스토리 `?story=1` — 1080×1920 (2026-08-14)

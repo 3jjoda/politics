@@ -19,7 +19,7 @@ import logger from '../utils/logger.js';
 import { findBrowser } from '../utils/headlessShot.js';
 import PoliticianService from '../services/PoliticianService.js';
 import { loadShortPerson } from '../controllers/BriefingController.js';
-import { W, H, sh, has, esc, probeDuration, ttsConfig, edgeCmd, tts, silence, tick, shootFrame, ts, toSubLines, assemble, FONT_LINK, BASE_CSS, mark, subHtml } from '../utils/shortsKit.js';
+import { W, H, sh, has, esc, probeDuration, ttsConfig, edgeCmd, tts, silence, tick, shootFrame, ts, toSubLines, cutTimes, assemble, countdownHtml, FONT_LINK, BASE_CSS, mark, subHtml } from '../utils/shortsKit.js';
 
 const arg = (name, dflt = null) => {
     const i = process.argv.indexOf(`--${name}`);
@@ -29,6 +29,7 @@ const EP = arg('ep') || 'own-vs-other';
 const OUT_ROOT = arg('out') || path.resolve('out/video/quiz');
 Object.assign(ttsConfig, { engine: arg('tts') || 'edge', voice: arg('voice') || 'ko-KR-InJoonNeural', rate: arg('rate') || '+8%' });
 const TAIL = 0.5, MIN_SCENE = 2.6;
+const COUNT_SEC = 3, COUNT_FPS = 10;   // 카운트다운 3초 · 10fps 로 링 애니메이션 프레임을 찍는다 (30장 · 장당 ~2초 캡처)
 const nf = (n) => Number(n).toLocaleString('ko-KR');
 const MONA = arg('mona'), NAME = arg('name');
 
@@ -256,36 +257,47 @@ async function main() {
     fs.rmSync(work, { recursive: true, force: true });
     fs.mkdirSync(work, { recursive: true });
 
-    // 카운트다운은 3 장면(3·2·1)으로 펼친다 — 각 1초, 째깍
-    const scenes = [];
-    for (const sc of ep.scenes(d)) {
-        if (sc.kind === 'count') {
-            const q = ep.scenes(d).find((x) => x.kind === 'q' && x.no === sc.no);
-            for (const n of [3, 2, 1]) scenes.push({ ...sc, q: q.q, n, fixed: 1.0 });
-        } else scenes.push(sc);
-    }
-
+    const allScenes = ep.scenes(d);
     const frames = [], wavs = [], srt = [], narr = [];
     let t0 = 0, si = 1, fi = 0;
-    for (const sc of scenes) {
-        const wav = path.join(work, `s${++fi}.wav`);
-        let dur, segs;
-        if (sc.fixed) { tick(sc.fixed, wav); dur = sc.fixed; segs = ['']; }
-        else { tts(sc.say, wav); dur = Math.max(MIN_SCENE, probeDuration(wav) + TAIL); segs = toSubLines(sc.say); if (!segs.length) segs = ['']; narr.push(sc.say); }
+    for (const sc of allScenes) {
+        fi++;
+        if (sc.kind === 'count') {
+            // 링 애니메이션 — COUNT_SEC 초를 COUNT_FPS 로 쪼개 프레임마다 캡처, 초마다 째깍
+            const q = allScenes.find((x) => x.kind === 'q' && x.no === sc.no);
+            const qHtml = `<div class="body" style="justify-content:flex-start;padding-top:40px"><div class="qno">Q${sc.no}</div><h1 class="q" style="font-size:64px;margin-bottom:0">${q.q}</h1></div>`;
+            const n = COUNT_SEC * COUNT_FPS, seq = [];
+            for (let k = 0; k < n; k++) {
+                const html = path.join(work, `f${fi}_${k}.html`), png = path.join(work, `f${fi}_${k}.png`);
+                fs.writeFileSync(html, countdownHtml(CSS, top, qHtml, k / n, COUNT_SEC), 'utf8');
+                await shootFrame(browser, html, png, 900);
+                seq.push(png);
+            }
+            frames.push({ seq, fps: COUNT_FPS, dur: COUNT_SEC });
+            for (let k = 0; k < COUNT_SEC; k++) { const wav = path.join(work, `s${fi}_${k}.wav`); tick(1, wav); wavs.push({ wav, dur: 1 }); }
+            t0 += COUNT_SEC;
+            logger.info(`  count  ${COUNT_SEC}.0s · ${n}프레임`);
+            continue;
+        }
+        const wav = path.join(work, `s${fi}.wav`);
+        const words = tts(sc.say, wav);
+        const audio = probeDuration(wav);
+        const dur = Math.max(MIN_SCENE, audio + TAIL);
+        const segs = toSubLines(sc.say); if (!segs.length) segs.push('');
+        narr.push(sc.say);
         wavs.push({ wav, dur });
-        const wts = segs.map((l) => Math.max(4, [...l].length)), wsum = wts.reduce((a, b) => a + b, 0);
-        let tt = t0;
+        const starts = cutTimes(sc.say, segs, words, audio);
         for (let i = 0; i < segs.length; i++) {
-            const line = segs[i], each = dur * wts[i] / wsum;
+            const line = segs[i];
+            const each = (i + 1 < segs.length ? starts[i + 1] : dur) - starts[i];
             const html = path.join(work, `f${fi}_${i}.html`), png = path.join(work, `f${fi}_${i}.png`);
             fs.writeFileSync(html, sceneHtml(sc, i, segs.length, line), 'utf8');
             await shootFrame(browser, html, png, 3500);
             frames.push({ png, dur: each });
-            if (line) srt.push(`${si++}\n${ts(tt)} --> ${ts(tt + each - 0.05)}\n${line}\n`);
-            tt += each;
+            if (line) srt.push(`${si++}\n${ts(t0 + starts[i])} --> ${ts(t0 + starts[i] + each - 0.05)}\n${line}\n`);
         }
         t0 += dur;
-        logger.info(`  ${sc.kind.padEnd(6)} ${dur.toFixed(1)}s · ${segs.length}컷  ${(sc.say || `count ${sc.n}`).slice(0, 44)}`);
+        logger.info(`  ${sc.kind.padEnd(6)} ${dur.toFixed(1)}s · ${segs.length}컷${words.length ? ' · 단어싱크' : ''}  ${sc.say.slice(0, 44)}`);
     }
     const out = assemble(work, frames, wavs, path.join(dir, 'short.mp4'));
     fs.writeFileSync(path.join(dir, 'sub.srt'), srt.join('\n'), 'utf8');

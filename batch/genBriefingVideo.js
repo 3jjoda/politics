@@ -32,7 +32,7 @@ import os from 'node:os';
 import path from 'node:path';
 import logger from '../utils/logger.js';
 import { findBrowser } from '../utils/headlessShot.js';
-import { W, H, BG, sh, has, esc, probeDuration, ttsConfig, edgeCmd, tts, shootFrame, ts, toSubLines, assemble, FONT_LINK, mark, subHtml } from '../utils/shortsKit.js';
+import { W, H, BG, sh, has, esc, probeDuration, ttsConfig, edgeCmd, tts, shootFrame, ts, toSubLines, cutTimes, assemble, FONT_LINK, mark, subHtml } from '../utils/shortsKit.js';
 
 const arg = (name, dflt = null) => {
     const i = process.argv.indexOf(`--${name}`);
@@ -200,32 +200,30 @@ async function main() {
         logger.info(`        "${ex.headline}"`);
     }
 
-    // 3) 장면별: TTS → 길이 → 자막 줄 → 줄마다 프레임 렌더
-    //    자막은 나레이션을 문장 단위로 쪼개 구간을 글자 수 비례로 나눈다 (TTS 가 단어별 타이밍을 안 주므로 근사)
+    // 3) 장면별: TTS(단어 시각) → 자막 줄 → 줄마다 프레임 렌더. 컷 시작은 그 줄 첫 단어가 실제로 발화되는 시각 (edge 만 · say 는 글자 수 근사)
     const frames = [];      // { png, dur }
     const wavs = [];        // 장면별 (wav, dur)
     let t0 = 0; const srt = []; let si = 1; let fi = 0;
     for (let n = 1; n <= units.length; n++) {
         const u = units[n - 1];
         const wav = path.join(work, `s${n}.wav`);
-        tts(u.say, wav);
-        const dur = Math.max(MIN_SLIDE, probeDuration(wav) + TAIL);
+        const words = tts(u.say, wav);
+        const audio = probeDuration(wav);
+        const dur = Math.max(MIN_SLIDE, audio + TAIL);
         wavs.push({ wav, dur });
         const lines = toSubLines(u.say);
         const segs = lines.length ? lines : [''];
-        const wts = segs.map((l) => Math.max(4, [...l].length)), wsum = wts.reduce((a, b) => a + b, 0);
-        let tt = t0;
+        const starts = cutTimes(u.say, segs, words, audio);
         for (let i = 0; i < segs.length; i++) {
-            const line = segs[i], each = dur * wts[i] / wsum;
+            const line = segs[i], each = (i + 1 < segs.length ? starts[i + 1] : dur) - starts[i];
             const html = path.join(work, `f${++fi}.html`), fpng = path.join(work, `f${fi}.png`);
             fs.writeFileSync(html, u.render(i, segs.length, line), 'utf8');
             await shootFrame(browser, html, fpng, u.budget);
             frames.push({ png: fpng, dur: each });
-            if (line) srt.push(`${si++}\n${ts(tt)} --> ${ts(tt + each - 0.05)}\n${line}\n`);
-            tt += each;
+            if (line) srt.push(`${si++}\n${ts(t0 + starts[i])} --> ${ts(t0 + starts[i] + each - 0.05)}\n${line}\n`);
         }
         t0 += dur;
-        logger.info(`  ${n}/${units.length} ${u.kind.padEnd(7)} ${dur.toFixed(1)}s · ${segs.length}컷  ${u.say.slice(0, 40)}${u.say.length > 40 ? '…' : ''}`);
+        logger.info(`  ${n}/${units.length} ${u.kind.padEnd(7)} ${dur.toFixed(1)}s · ${segs.length}컷${words.length ? ' · 단어싱크' : ''}  ${u.say.slice(0, 40)}${u.say.length > 40 ? '…' : ''}`);
     }
     fs.writeFileSync(path.join(dir, 'sub.srt'), srt.join('\n'), 'utf8');
 
