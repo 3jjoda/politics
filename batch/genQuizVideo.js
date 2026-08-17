@@ -32,6 +32,8 @@ const TAIL = 0.5, MIN_SCENE = 2.6;
 const COUNT_SEC = 3, COUNT_FPS = 10;   // 카운트다운 3초 · 10fps 로 링 애니메이션 프레임을 찍는다 (30장 · 장당 ~2초 캡처)
 const nf = (n) => Number(n).toLocaleString('ko-KR');
 const MONA = arg('mona'), NAME = arg('name');
+const USED_FILE = path.join(OUT_ROOT, 'person-used.txt');   // 무작위 사람 퀴즈에서 이미 만든 사람 (하루 하나 자동 실행용)
+const DAILY_DIR = arg('daily');   // 지정하면 완성본을 <daily>/<YYYY-MM-DD>-person-<이름>.mp4 로 복사 (+ .txt)
 
 /* 보기 3개 만들기 — 실제값 + 중앙값(가까우면 대신 절반) + 반대쪽 하나. 오름차순, 정답 인덱스 반환.
    숫자는 보기 좋게 반올림하되 **정답은 실제값 그대로** 둔다 (보기가 정답을 배신하면 안 된다) */
@@ -124,13 +126,18 @@ const EPISODES = {
                 mona = rows[0].mona_cd;
             }
             if (!mona) {
-                const { rows } = await pool.query(`
+                // 이미 만든 사람은 제외 (out/video/quiz/person-used.txt — 한 줄에 mona_cd). 전원 소진되면 처음부터 다시
+                const used = fs.existsSync(USED_FILE) ? fs.readFileSync(USED_FILE, 'utf8').split('\n').map((l) => l.trim().split(/\s+/)[0]).filter(Boolean) : [];
+                const pick = async (excl) => (await pool.query(`
                     SELECT p.mona_cd FROM politicians p
                       JOIN politician_cross_party_vote c ON c.mona_cd = p.mona_cd AND c.in_cohort
                      WHERE p.active_yn
+                       AND NOT (p.mona_cd = ANY($1::text[]))
                        AND NOT EXISTS (SELECT 1 FROM politician_titles t WHERE t.mona_cd = p.mona_cd AND t.category IN ('국무위원','의장단'))
-                     ORDER BY random() LIMIT 1`);
-                mona = rows[0].mona_cd;
+                     ORDER BY random() LIMIT 1`, [excl])).rows[0];
+                let row = await pick(used);
+                if (!row) { logger.info(`[quiz] ${used.length}명 전원 소진 → 처음부터 다시`); fs.writeFileSync(USED_FILE, '', 'utf8'); row = await pick([]); }
+                mona = row.mona_cd;
             }
             const P = await loadShortPerson(svc, mona);
             if (!P) throw new Error(`의원 재료 없음: ${mona}`);
@@ -301,6 +308,16 @@ async function main() {
     fs.writeFileSync(path.join(dir, 'description.txt'), ep.desc(d), 'utf8');
     fs.writeFileSync(path.join(dir, 'narration.txt'), narr.map((n, i) => `[${i + 1}] ${n}`).join('\n'), 'utf8');
     logger.info(`[quiz] 완료 → ${out}  (${t0.toFixed(1)}초 · ${Math.round(fs.statSync(out).size / 1024)}KB)`);
+    if (EP === 'person' && !MONA && !NAME) fs.appendFileSync(USED_FILE, `${d.mona} ${d.name} ${new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date())}\n`, 'utf8');
+    if (DAILY_DIR) {
+        // 날짜는 KST 로 (프로세스 타임존 안 탐)
+        const today = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
+        fs.mkdirSync(DAILY_DIR, { recursive: true });
+        const stem = path.join(DAILY_DIR, `${today}-${EP}${d.name ? '-' + d.name : ''}`);
+        fs.copyFileSync(out, `${stem}.mp4`);
+        fs.writeFileSync(`${stem}.txt`, `${ep.titleOf ? ep.titleOf(d) : ep.title}\n\n${ep.desc(d)}\n`, 'utf8');
+        logger.info(`[quiz] 오늘 것 → ${stem}.mp4 / .txt (제목+설명)`);
+    }
     if (t0 > 60) logger.warn(`[quiz] ⚠ ${t0.toFixed(0)}초 — 60초 초과`);
 }
 

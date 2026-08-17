@@ -1692,6 +1692,11 @@ utils/headlessShot.js      ← 헤드리스 캡처 공용 (genInstaCards 도 이
   `Q1 대표발의 몇 건? (보기: 실제·중앙값·반대쪽) → 3·2·1 → N건, 중앙값 56 → Q2 본회의 표결 참여 %? → 3·2·1 → 실제, 중앙값 → 자기 당 vs 상대 당 찬성 → "N 의원의 기록 전부, 당신 지역구 의원도"`. 실측 48~49초.
   🔴 **누구를 다루나가 곧 편집이라 기본은 무작위**(현직 · 표결 코호트 · 국무위원·의장단 제외). `--name`/`--mona` 로 지정할 땐 그 이유가 밖에 있어야 한다 (지역 요청 등).
   재료는 `BriefingController.loadShortPerson`(의원 상세와 같은 서비스) 재사용. 보기는 `mkOpts`/`pctOpts` — **정답은 실제값 그대로**, 나머지는 중앙값·반대쪽을 반올림. 산출물 `out/video/quiz/person-<mona>/`
+- **하루 한 편 자동 (2026-08-18)** — `scripts/install-daily-quiz.sh [시각=8]` 이 **launchd**(`kr.dangmalsa.daily-quiz`)를 등록해 매일 08:00 에
+  `scripts/daily-quiz.sh` → `genQuizVideo --ep person --daily out/video/daily` 를 돌린다 (서버 불필요 — DB 직결). 산출 `out/video/daily/<날짜>-person-<이름>.mp4` + `.txt`(제목·설명), 로그 `log.txt`.
+  🔴 **맥 로컬 자동화다** (크롬·ffmpeg·edge-tts 가 여기 있다). Railway 크론에 넣지 말 것. 맥이 자고 있으면 launchd 가 깨어난 뒤 실행한다 (cron 과 다른 점).
+  무작위 선정은 `out/video/quiz/person-used.txt` 의 사람을 제외하고, 전원 소진되면 처음부터. 업로드는 여전히 수동 (스튜디오 드래그 + .txt 붙여넣기).
+  해제/즉시 실행 명령은 install 스크립트 상단 주석
 - 편 추가 = `EPISODES` 에 `{ title, data(pool), scenes(d), desc(d) }` 하나. 후보: 「법안 4건 중 3건은 아직 심사 중」 · 「의원 절반은 5번 중 1번 자리에 없다」 · 「가결률 3%」
 - 🔴 **영상 퀄 규칙 (2026-08-18, "싱크가 안 맞고 뚝뚝 끊긴다" 피드백)** — 세 가지가 `shortsKit` 에 들어 있다. 새 포맷도 이 경로를 탈 것:
   ① **자막 컷은 단어 시각으로 자른다** — edge-tts python API 의 `WordBoundary` 를 받아(`tts()` 가 `[{t,d,w}]` 반환) 줄의 첫 단어 발화 시각에 컷을 바꾼다 (`cutTimes`).
