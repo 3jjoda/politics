@@ -39,10 +39,8 @@
   .sc-btn.stack small { font-size: 11px; font-weight: 500; opacity: .85; }
   .sc-status { min-height: 1.4em; font-size: 12.5px; color: var(--sub); text-align: center; word-break: keep-all; }
 
-  .sc-note { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; font-size: 13px; color: var(--sub); line-height: 1.75; word-break: keep-all; }
+  .sc-note { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin: 0; font-size: 13px; color: var(--sub); line-height: 1.75; word-break: keep-all; }
   .sc-note strong { color: var(--text); }
-  .sc-note ol { margin: 6px 0 0; padding-left: 18px; }
-  .sc-note li + li { margin-top: 4px; }
   .sc-note .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent2); }
   .sc-foot { margin-top: 24px; padding: 14px 18px; background: var(--bg3); border: 1px dashed var(--border2); border-radius: 10px; font-size: 12.5px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
   .sc-links { margin-top: 18px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; }
@@ -93,14 +91,14 @@
       <button type="button" class="sc-btn secondary" id="sc-copy">클립보드에 복사</button>
       <div class="sc-status" id="sc-status" aria-live="polite">카드를 그리는 중…</div>
 
-      <div class="sc-note">
-        <strong>스토리에 올릴 때</strong>
-        <ol>
-          <li>이미지를 저장하고 인스타 스토리에 올립니다</li>
-          <li>스티커 → <strong>링크</strong> 를 카드 아래 빈 자리에 놓습니다:<br><span class="mono"><%= share.siteHost %>/balance-game</span></li>
-          <li>스티커를 탭해 색을 흰색으로 바꾸면 카드와 어울립니다</li>
-        </ol>
-      </div>
+      <%# 🔴 카드 이미지에 이미 URL 이 그려진다(shareCard.js) — 따라서 "저장 → 업로드" 같은 절차 설명은 사족이다.
+          남길 가치가 있는 건 **링크 스티커** 하나뿐이다: 인스타에서 탭 한 번에 들어오는 유일한 경로이고,
+          카드에 URL 이 찍혀 있어도 손으로 타이핑해야 하기 때문.
+          ⚠️ 문구는 **보는 사람 이익**으로 쓴다 — "링크를 붙이세요" 는 사용자에게 우리 마케팅을 시키는 말로 읽힌다 %>
+      <p class="sc-note">
+        스토리에 올릴 때 링크 스티커에 <span class="mono"><%= share.siteHost %>/balance-game</span> 을 붙이면
+        보는 사람이 바로 눌러 볼 수 있어요.
+      </p>
     </aside>
   </div>
 
