@@ -1,3 +1,11 @@
+<%
+  /* 로그인 후 돌아갈 곳. 🔴 세션에 미리 저장하지 않는다 — 로그인 페이지를 보기만 해도
+     세션 행이 생겨 크롤러가 링크를 따라오면 폭증한다 (AuthController.renderLogin 주석 참조).
+     여기서 provider 링크의 쿼리로 넘기고, 세션 쓰기는 /auth/google?next= 진입 시에만 한다.
+     ⚠️ 오픈 리다이렉트 방지 — 사이트 내부 경로(`/…`)만 통과시킨다 (`//호스트` 는 외부다). */
+  const _n = String(locals.nextParam || '');
+  const nextQ = /^\/(?!\/)/.test(_n) ? ('?next=' + encodeURIComponent(_n)) : '';
+%>
 <style>
   .auth-wrap {
     min-height: calc(100vh - 60px);
@@ -154,7 +162,7 @@
     <% } %>
 
     <% if (providers.google) { %>
-      <a href="/auth/google" class="auth-btn google">
+      <a href="/auth/google<%= nextQ %>" class="auth-btn google">
         <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
           <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
           <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
@@ -168,7 +176,7 @@
     <% } %>
 
     <% if (providers.kakao) { %>
-      <a href="/auth/kakao" class="auth-btn kakao">
+      <a href="/auth/kakao<%= nextQ %>" class="auth-btn kakao">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path fill="currentColor" d="M12 3C6.48 3 2 6.48 2 10.8c0 2.82 1.86 5.28 4.62 6.6-.18.66-.66 2.46-.78 2.88 0 0-.03.24.12.33.15.09.33 0 .33 0 .42-.06 2.85-1.86 3.9-2.55.6.09 1.23.12 1.8.12 5.52 0 10-3.48 10-7.8S17.52 3 12 3z"/>
         </svg>

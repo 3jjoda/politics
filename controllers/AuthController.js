@@ -19,11 +19,18 @@ export default (db) => {
         /* 로그인 페이지 */
         renderLogin: (req, res) => {
             if (req.user) return res.redirect('/');
-            if (req.query.next) req.session.authNext = String(req.query.next);
+            /* 🔴 여기서 세션에 쓰지 않는다 (2026-08-18). 로그인 페이지를 **보기만 해도** 세션이
+               초기화돼 `saveUninitialized:false` 가 무력해지고 요청마다 DB 행이 하나씩 생겼다.
+               법안 상세마다 `/auth/login?next=/bill/…` 링크가 있어 **크롤러가 그걸 따라가면 폭증한다** —
+               실측 익명 세션 8,599건 중 8,553건(99.5%)이 법안 상세 next, 08-14 크롤러 사건 당일에만 4,805건.
+               → `next` 는 아래 provider 링크의 쿼리로 넘기고, 세션 쓰기는 실제로 OAuth 를 시작하는
+                 `/auth/google?next=` · `/auth/kakao?next=`(routes/AuthRoutes.js)에서만 한다. */
+            const nextParam = req.query.next ? String(req.query.next) : '';
             res.render('auth/login', {
                 pageTitle: '로그인',
                 pageStyles: null,
                 currentUrl: '/auth/login',
+                nextParam,
                 providers: { google: GOOGLE_ENABLED, kakao: KAKAO_ENABLED },
                 error: req.query.error || null
             });
