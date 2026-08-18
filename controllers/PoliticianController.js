@@ -34,6 +34,7 @@ export default (db) => {
                 pageTitle: '정치인',
                 pageStyles: 'politician/politician',
                 currentUrl: '/politician',
+                pageDesc: '22대 국회의원 전원의 발의·표결·발언 기록. 정당·위원회·지역구로 찾고, 당론 이탈 정도와 나와의 성향 일치로 정렬해 봅니다',
                 politicians,
                 partyCounts,
                 committeeCounts,
@@ -93,10 +94,25 @@ export default (db) => {
                 politicianService.getMatchContext(res.locals.userAxis, monaCd)
             ]);
 
+            /* 페이지 고유 description (2026-08-19 AdSense 대응 — 전 페이지 동일 문구 금지).
+               ⚠️ 정당명은 넣는다 — 의원 목록·필터에서 이미 쓰는 사실 정보 (정당색 금지와 다른 문제) */
+            const vs = voteSummary || {};
+            const vsTot = Number(vs.total_cnt) || 0, vsAbs = Number(vs.absent_cnt) || 0;   // COUNT 는 bigint 라 문자열로 온다
+            const attend = vsTot > 0 ? Math.round((vsTot - vsAbs) / vsTot * 100) : null;
+            const pageDesc = [
+                `${politician.name} 의원`,
+                politician.party_name,
+                politician.electoral_district,
+                politician.reele_gbn_nm,
+                billCounts ? `대표발의 ${billCounts.rep}건 · 공동발의 ${billCounts.co}건` : null,
+                attend !== null ? `본회의 표결 참여 ${attend}%` : null,
+            ].filter(Boolean).join(' · ') + ' — 발의·표결·발언 기록으로 보는 22대 국회의원 활동';
+
             res.render('politician/politician_detail', {
                 pageTitle: politician.name,
                 pageStyles: 'politician/politician_detail',
                 currentUrl: `/politician/${monaCd}`,
+                pageDesc,
                 politician,
                 billCounts,
                 votes,

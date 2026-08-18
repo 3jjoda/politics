@@ -280,6 +280,7 @@ export default (db) => {
                 pageTitle: feed.page > 1 ? `브리핑 ${feed.page}페이지` : '브리핑',
                 pageStyles: null,
                 currentUrl: '/briefing',
+                pageDesc: '국회에 그날 어떤 법안이 올라왔는지 매일 한 장으로 정리한 브리핑. 발의·처리 집계와 여러 법안을 관통하는 주제를 하루 단위로 기록합니다',
                 feed,
                 b: data,
                 nf, pct
@@ -311,7 +312,10 @@ export default (db) => {
             res.render('briefing/post', {
                 pageTitle: post.headline,
                 pageStyles: null,
-                currentUrl: '/briefing',
+                /* 🔴 '/briefing' 으로 두면 안 된다 (2026-08-19 수정) — layout 의 canonical 이 currentUrl 을 쓰므로
+                   모든 카드가 "정본은 /briefing" 이라고 선언해 검색엔진이 전부 중복으로 접었다.
+                   nav 활성은 layout 이 indexOf 로 본다 */
+                currentUrl: `/briefing/${post.id}`,
                 // 카톡·X 미리보기 — 카드마다 내용이 다르므로 반드시 넘긴다
                 ogTitle: `${post.headline} · 당말사`,
                 ogDesc: post.body.slice(0, 140),

@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-08-19 (1) — AdSense 「가치가 별로 없는 콘텐츠」 반려 대응
+
+봇 눈에 "국회 원문 복제 페이지 18,000장" 이었다 (사이트맵 98%가 법안 상세 · 전 페이지 description 동일 · 브리핑 카드 canonical 이 전부 `/briefing`).
+- 사이트맵 법안 → **AI 분석 있는 것만** (`utils/sitemap.js`, 19,089 → 465 URL)
+- 분석 없는 법안 상세 **`noindex, follow`** (`BillController` → `layout.ejs`)
+- **페이지별 `pageDesc`** (layout `pageDesc || ogDesc || 기본값`) — 법안·의원 상세는 데이터로 조립, 목록·정적 10페이지는 한 문장씩
+- 브리핑 상세 `currentUrl` 을 `/briefing/:id` 로 (canonical 정상화), nav 활성 `indexOf`
+- 재검토는 2주 이상 뒤에. 상세는 CLAUDE.md 「AdSense 반려 원인과 대응」
+
 ## 2026-08-17 (1) — 유튜브 쇼츠 파이프라인 `batch/genBriefingVideo.js` (`npm run video`)
 
 **2차 (같은 날)** — 「흐름 하나」 포맷을 기본으로: 하루 한 영상 = 주제 묶음 하나(훅 what → 관련 법안 → 그날 맥락 → CTA, HTML 프레임 직접 렌더, 32.7초),

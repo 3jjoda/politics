@@ -101,6 +101,7 @@ export default (db) => {
                 pageTitle: '법안',
                 pageStyles: 'bill/bill',
                 currentUrl: '/bill',
+                pageDesc: '22대 국회 법안을 처리 상태·소관 위원회·대표발의 정당으로 찾아봅니다. 발의부터 본회의 의결까지의 경과와 AI 쉬운 말 분석',
                 bills,
                 statusCounts,
                 topicCounts,
@@ -176,10 +177,27 @@ export default (db) => {
             // 공동대표 인원 수 — proposer_yn=true 인 발의자가 2명 이상이면 공동대표
             const coRepCount = coProposers.filter(cp => cp.proposer_yn).length;
 
+            /* 색인·설명 (2026-08-19 AdSense 반려 대응)
+               - AI 분석이 없는 법안(전체의 99%)은 본문이 국회 원문 그대로라 사이트 고유 텍스트가 없다 →
+                 noindex (사이트맵에서도 뺐다 — utils/sitemap.js). 분석 있는 법안만 색인 대상
+               - description 은 분석이 있으면 AI 한 줄 요약, 없으면 메타 조합 (전 페이지 동일 문구 금지) */
+            const hasAnalysis = !!analysis;
+            const descParts = [
+                bill.proposer_name ? `${bill.proposer_name} 의원 대표발의` : null,
+                bill.propose_dt ? `${String(bill.propose_dt).slice(0, 10)} 발의` : null,
+                bill.committee || null,
+                bill.proc_result_name || '계류 중'
+            ].filter(Boolean);
+            const pageDesc = hasAnalysis && analysis.summary
+                ? `${analysis.summary} — ${bill.bill_name}`
+                : `${bill.bill_name} · ${descParts.join(' · ')}`;
+
             res.render('bill/bill_detail', {
                 pageTitle: bill.bill_name,
                 pageStyles: 'bill/bill_detail',
                 currentUrl: `/bill/${billId}`,
+                pageDesc,
+                noindex: !hasAnalysis,
                 bill,
                 coProposers,
                 coRepCount,

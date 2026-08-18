@@ -8,9 +8,17 @@
     <title><%= locals.pageTitle ? locals.pageTitle + ' · 당말사 — 당 말고 사람' : '당말사 — 당 말고 사람' %></title>
 
     <!-- Primary Meta -->
-    <meta name="description" content="당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다">
+    <%# description 은 페이지가 pageDesc 를 넘기면 그걸, 없으면 ogDesc, 그것도 없으면 브랜드 기본값.
+        2026-08-19 AdSense "가치가 별로 없는 콘텐츠" 반려 대응 — 19,000 페이지가 같은 설명을 달고 있어
+        템플릿 양산 사이트로 읽혔다. 상세 페이지 컨트롤러는 페이지 고유 문장을 넘길 것 %>
+    <meta name="description" content="<%= locals.pageDesc || locals.ogDesc || '당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다' %>">
     <meta name="keywords" content="정치, 국회, 법안, 의원, 투표, 공약, 22대 국회, 정치 데이터">
     <meta name="theme-color" content="#B8740C">
+    <%# noindex — 컨트롤러가 noindex: true 를 넘긴 페이지만. 사이트 고유 텍스트가 없는 법안 상세(원문만 있는 18,000장)가 대상.
+        색인에서 빼되 링크는 따라가게 (follow) — 의원·브리핑으로 가는 내부 링크가 끊기면 안 된다 %>
+    <% if (locals.noindex) { %>
+    <meta name="robots" content="noindex, follow">
+    <% } %>
     <%# 검색엔진 소유 확인 — env NAVER_SITE_VERIFICATION / GOOGLE_SITE_VERIFICATION 이 있을 때만 (app.js) %>
     <% if (locals.naverSiteVerification) { %>
     <meta name="naver-site-verification" content="<%= naverSiteVerification %>">
@@ -131,7 +139,7 @@
       <ul class="pb-nav-links">
         <li><a href="/" class="<%= (locals.currentUrl === '/') ? 'active' : '' %>">홈</a></li>
         <%# 브리핑은 "지금 무슨 일이 있나" 진입점이라 홈 바로 다음에 둔다 %>
-        <li><a href="/briefing" class="<%= (locals.currentUrl === '/briefing') ? 'active' : '' %>">브리핑</a></li>
+        <li><a href="/briefing" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/briefing') === 0) ? 'active' : '' %>">브리핑</a></li>
         <li><a href="/politician" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/politician') === 0) ? 'active' : '' %>">의원</a></li>
         <li><a href="/bill" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/bill') === 0) ? 'active' : '' %>">법안</a></li>
         <li><a href="/xray" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/xray') === 0) ? 'active' : '' %>">차트</a></li>

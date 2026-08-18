@@ -36,13 +36,18 @@ const STATIC_PATHS = [
    하루 밀린다 (프로젝트 공통 규칙). DB 기본 타임존이 KST 라 조회는 명시 변환하지 않는다. */
 const SOURCES = [
     {
+        /* 🔴 AI 분석이 있는 법안만 (2026-08-19). 전건(18,741)을 싣던 것을 좁혔다.
+           AdSense 가 "가치가 별로 없는 콘텐츠" 로 반려 — 사이트맵의 98% 가 법안 상세인데 그 본문은
+           국회 원문(bills.summary) 그대로라 검색엔진 입장에선 assembly.go.kr 를 복제한 얇은 페이지 수만 장이었다.
+           분석 없는 법안 상세는 컨트롤러가 noindex 를 건다 (BillController.getDetailPage). 두 곳은 같은 조건이어야 한다 */
         key: 'bills',
         prefix: '/bill/',
         changefreq: 'monthly',
         priority: '0.7',
-        sql: `SELECT bill_id AS slug, TO_CHAR(updated_at, 'YYYY-MM-DD') AS lastmod
-                FROM bills
-               ORDER BY propose_dt DESC NULLS LAST`,
+        sql: `SELECT b.bill_id AS slug, TO_CHAR(GREATEST(b.updated_at, a.updated_at), 'YYYY-MM-DD') AS lastmod
+                FROM bills b
+                JOIN bill_ai_analysis a ON a.bill_id = b.bill_id
+               ORDER BY b.propose_dt DESC NULLS LAST`,
     },
     {
         key: 'politicians',

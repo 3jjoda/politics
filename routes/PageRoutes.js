@@ -41,7 +41,8 @@ export default (db) => {
             res.render('about', {
                 pageTitle: '사이트 소개',
                 pageStyles: 'about',
-                currentUrl: '/about'
+                currentUrl: '/about',
+                pageDesc: '당말사는 소속 정당이 아니라 의원 한 사람의 발의·표결·발언 기록으로 국회를 보는 사이트입니다. 데이터 출처와 한계, 중립성을 지키는 방법을 밝힙니다'
             });
         } catch (error) {
             next(error);
@@ -54,7 +55,8 @@ export default (db) => {
             res.render('glossary', {
                 pageTitle: '용어 설명',
                 pageStyles: null,
-                currentUrl: '/glossary'
+                currentUrl: '/glossary',
+                pageDesc: '원안가결·수정가결·대안반영폐기, 대표발의와 공동발의, 기권과 불참의 차이 — 국회 데이터를 읽는 데 필요한 용어를 쉬운 말로 설명합니다'
             });
         } catch (error) {
             next(error);
