@@ -4,6 +4,8 @@
 SELECT v.target_id
      , SUM(v.views)::int   AS views
      , SUM(v.uniques)::int AS uniques
+     , SUM(v.views - v.member_views)::int     AS guest_views
+     , SUM(v.uniques - v.member_uniques)::int AS guest_uniques
      , CASE $2
          WHEN 'politician_detail' THEN (SELECT p.name || ' · ' || COALESCE(p.party_name, '') FROM politicians p WHERE p.mona_cd = v.target_id)
          WHEN 'bill_detail'       THEN (SELECT b.bill_name FROM bills b WHERE b.bill_id = v.target_id)
@@ -12,5 +14,5 @@ SELECT v.target_id
   FROM page_views_daily v
  WHERE v.page_kind = $2 AND v.view_date >= CURRENT_DATE - ($1::int - 1)
  GROUP BY v.target_id
- ORDER BY views DESC, uniques DESC
+ ORDER BY guest_views DESC, views DESC, uniques DESC
  LIMIT $3::int;

@@ -16,6 +16,7 @@
 //    ⚠️ 이 쿠키는 개인정보처리방침 6항(쿠키)에 적혀 있다 — 이름·기간을 바꾸면 거기도 같이.
 
 import crypto from 'crypto';
+import { isAdminUser } from './auth.js';
 import logger from '../utils/logger.js';
 
 export const FLUSH_MS = 60_000;
@@ -33,8 +34,10 @@ export const PAGE_KINDS = [
     { kind: 'bill',              label: '법안 목록',   re: /^\/bill\/?$/ },
     { kind: 'xray_chart',        label: '차트 만들기', re: /^\/xray\/chart\/?$/ },
     { kind: 'xray',              label: '숫자로 본 국회', re: /^\/xray\/?$/ },
-    { kind: 'balance',           label: '성향 진단',   re: /^\/balance-game(\/|$)/ },
-    { kind: 'community',         label: '커뮤니티',    re: /^\/community(\/|$)/ },
+    /* ⚠️ 목록형 규칙에 **캡처 그룹을 쓰지 말 것** — 구분자를 잡아 target_id 가 '/' 가 된다.
+       그러면 같은 종류가 target '' 와 '/' 두 행으로 갈린다 (실측 balance 11 + 14). 비캡처 (?:…) 로 */
+    { kind: 'balance',           label: '성향 진단',   re: /^\/balance-game(?:\/|$)/ },
+    { kind: 'community',         label: '커뮤니티',    re: /^\/community(?:\/|$)/ },
     { kind: 'glossary',          label: '용어 설명',   re: /^\/glossary\/?$/ },
     { kind: 'about',             label: '소개',        re: /^\/about\/?$/ },
     { kind: 'other',             label: '기타',        re: /./ },
@@ -89,13 +92,19 @@ function rollDay(today) {
     state.users = new Map();
 }
 
-function bump(kind, target, vid) {
+/* ⚠️ 회원 뷰를 **같은 행에 별도 컬럼**으로 센다 (views 는 전체 그대로).
+      비회원 = views - member_views. 자세한 이유는 ddl/migrations/2026-08-18-page-views-member-split.sql */
+function bump(kind, target, vid, isMember) {
     const key = `${kind}|${target}`;
     let e = state.pages.get(key);
-    if (!e) { e = { views: 0, uniques: 0 }; state.pages.set(key, e); }
+    if (!e) { e = { views: 0, uniques: 0, mViews: 0, mUniques: 0 }; state.pages.set(key, e); }
     e.views += 1;
+    if (isMember) e.mViews += 1;
     const sk = `${key}|${vid}`;
     if (!state.seen.has(sk)) { state.seen.add(sk); e.uniques += 1; }
+    // ⚠️ 유니크는 로그인 상태별로 따로 센다 — 같은 사람이 하루에 두 상태로 보면 양쪽에 1씩 잡힌다 (근사값)
+    const mk = `${key}|${vid}|m`;
+    if (isMember && !state.seen.has(mk)) { state.seen.add(mk); e.mUniques += 1; }
 }
 
 export async function flushPageViews(db) {
@@ -112,16 +121,18 @@ export async function flushPageViews(db) {
             const params = [];
             rows.forEach(([key, e], i) => {
                 const [kind, target] = key.split('|');
-                const b = i * 4;
-                values.push(`($1::date, $${b + 2}, $${b + 3}, $${b + 4}::int, $${b + 5}::int)`);
-                params.push(kind, target, e.views, e.uniques);
+                const b = i * 6;
+                values.push(`($1::date, $${b + 2}, $${b + 3}, $${b + 4}::int, $${b + 5}::int, $${b + 6}::int, $${b + 7}::int)`);
+                params.push(kind, target, e.views, e.uniques, e.mViews, e.mUniques);
             });
             await db.query(`
-                INSERT INTO page_views_daily (view_date, page_kind, target_id, views, uniques)
+                INSERT INTO page_views_daily (view_date, page_kind, target_id, views, uniques, member_views, member_uniques)
                 VALUES ${values.join(',')}
                 ON CONFLICT (view_date, page_kind, target_id)
                 DO UPDATE SET views = page_views_daily.views + EXCLUDED.views,
-                              uniques = page_views_daily.uniques + EXCLUDED.uniques`,
+                              uniques = page_views_daily.uniques + EXCLUDED.uniques,
+                              member_views = page_views_daily.member_views + EXCLUDED.member_views,
+                              member_uniques = page_views_daily.member_uniques + EXCLUDED.member_uniques`,
                 [day, ...params]);
         }
         if (users.size) {
@@ -163,6 +174,12 @@ export function pageViews(db) {
         if (!(req.get('accept') || '').includes('text/html')) return next();
         if (BOT_UA.test(req.get('user-agent') || '')) return next();
 
+        /* 🔴 관리자는 아예 세지 않는다. 운영 초기엔 **본인 브라우징이 통계를 지배한다** —
+           실측 2026-08-16 전체 192뷰 중 관리자 1명이 131뷰(68%)였다.
+           제외해야 회원 지표도 "진짜 사용자" 를 가리킨다.
+           ⚠️ 관리자가 로그아웃 상태로 보면 비회원으로 잡힌다 — 이건 막을 수 없다 (쿠키만으로는 사람을 모른다) */
+        if (isAdminUser(req.user)) return next();
+
         const page = classify(path);
         if (!page) return next();
 
@@ -175,14 +192,15 @@ export function pageViews(db) {
             });
         }
         const userId = req.user?.user_id;
+        const isMember = Boolean(userId);
 
         res.on('finish', () => {
             if (res.statusCode !== 200) return;
             if (!String(res.get('content-type') || '').includes('text/html')) return;
             try {
                 rollDay(kstToday());
-                bump('site', '', vid);
-                bump(page.kind, page.target, vid);
+                bump('site', '', vid, isMember);
+                bump(page.kind, page.target, vid, isMember);
                 if (userId) state.users.set(userId, (state.users.get(userId) || 0) + 1);
             } catch (e) {
                 logger.error(`[pageViews] 집계 실패: ${e.message}`);

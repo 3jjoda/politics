@@ -85,7 +85,15 @@ export default (db) => {
                 days, daysOptions: DAYS_OPTIONS,
                 daily, byKind, topPol, topBill, topBrief, users, userList,
                 kindLabel: KIND_LABEL,
-                totals: { views: sum('views'), uniques: sum('uniques') },
+                /* 비회원이 이 화면의 주인공이다 — 운영 초기엔 회원(대부분 본인·테스트 계정)이 전체를 지배한다.
+                   관리자는 middlewares/pageViews.js 에서 아예 집계 제외되지만, 테스트용 일반 계정은 남는다. */
+                totals: {
+                    views: sum('views'), uniques: sum('uniques'),
+                    guestViews: sum('guest_views'), guestUniques: sum('guest_uniques'),
+                    memberViews: sum('member_views'), memberUniques: sum('member_uniques'),
+                },
+                // ⚠️ 이 날짜 이전 행은 회원/비회원 구분 없이 쌓였다 (전부 비회원으로 잡힌다). 화면이 각주로 밝힌다
+                memberSplitFrom: '2026-08-18',
                 today: daily[daily.length - 1] || null,
                 yesterday: daily[daily.length - 2] || null,
             });

@@ -5,7 +5,7 @@ WITH days AS (
     SELECT (CURRENT_DATE - (n || ' days')::interval)::date AS d
       FROM generate_series($1::int - 1, 0, -1) AS n
 ), pv AS (
-    SELECT view_date, views, uniques
+    SELECT view_date, views, uniques, member_views, member_uniques
       FROM page_views_daily
      WHERE page_kind = 'site' AND view_date >= CURRENT_DATE - ($1::int - 1)
 ), uv AS (
@@ -19,6 +19,12 @@ SELECT TO_CHAR(days.d, 'YYYY-MM-DD') AS d
      , EXTRACT(ISODOW FROM days.d)::int >= 6 AS is_weekend
      , COALESCE(pv.views, 0)   AS views
      , COALESCE(pv.uniques, 0) AS uniques
+     /* 비회원 = 전체 − 회원. 그래프의 주인공이다 — 운영 초기엔 회원(대부분 본인·테스트)이 전체를 지배한다.
+        ⚠️ 2026-08-18 이전 행은 member_* 가 0 이라 그 구간 비회원은 과대계상된다 (화면이 각주로 밝힌다) */
+     , COALESCE(pv.views - pv.member_views, 0)     AS guest_views
+     , COALESCE(pv.uniques - pv.member_uniques, 0) AS guest_uniques
+     , COALESCE(pv.member_views, 0)                AS member_views
+     , COALESCE(pv.member_uniques, 0)              AS member_uniques
      , COALESCE(uv.users, 0)   AS users
   FROM days
   LEFT JOIN pv ON pv.view_date = days.d
