@@ -92,8 +92,6 @@ export default (db) => {
                     guestViews: sum('guest_views'), guestUniques: sum('guest_uniques'),
                     memberViews: sum('member_views'), memberUniques: sum('member_uniques'),
                 },
-                // ⚠️ 이 날짜 이전 행은 회원/비회원 구분 없이 쌓였다 (전부 비회원으로 잡힌다). 화면이 각주로 밝힌다
-                memberSplitFrom: '2026-08-18',
                 today: daily[daily.length - 1] || null,
                 yesterday: daily[daily.length - 2] || null,
             });
