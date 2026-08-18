@@ -235,17 +235,20 @@
     fillEl.style.width = (answeredCount / QUESTIONS.length * 100).toFixed(1) + '%';
 
     optionsEl.innerHTML = '';
+    /* 🔴 id 는 서버에 저장되는 **답변 값**이다 (balance_game_responses.answer = 'A'|'B'|'C').
+       화면 라벨만 1·2·3 으로 바꾼다 — 하단 키보드 안내가 1·2·3 이라 버튼에 A·B·C 를 찍으면 서로 안 맞는다.
+       ⚠️ id 를 숫자로 바꾸면 기존 응답과 API 검증이 전부 깨진다. */
     const opts = [
-      { id: 'A', text: q.option_a_text },
-      { id: 'B', text: q.option_b_text },
-      { id: 'C', text: '잘 모르겠다 / 관심 없음' }
+      { id: 'A', label: '1', text: q.option_a_text },
+      { id: 'B', label: '2', text: q.option_b_text },
+      { id: 'C', label: '3', text: '잘 모르겠다 / 관심 없음' }
     ];
     opts.forEach(opt => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'bg-option' + (opt.id === 'C' ? ' skip' : '');
       btn.dataset.optionId = opt.id;
-      btn.innerHTML = '<span class="key">' + opt.id + '</span><span class="text">' + escapeHtml(opt.text) + '</span>';
+      btn.innerHTML = '<span class="key">' + opt.label + '</span><span class="text">' + escapeHtml(opt.text) + '</span>';
       btn.addEventListener('click', () => choose(opt.id));
       optionsEl.appendChild(btn);
     });

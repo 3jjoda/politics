@@ -23,6 +23,14 @@
 <style>
   .bg-coll-wrap { max-width: 980px; margin: 0 auto; padding: 36px 24px 80px; }
 
+  /* 진행 중 — 문항 교체로 완료가 풀린 사람. 남은 문항을 눈에 보이게 한다 */
+  .bg-prog { margin: 18px 0 22px; }
+  .bg-prog-top { display: flex; align-items: baseline; gap: 8px; font-size: 13.5px; color: var(--sub); margin-bottom: 8px; }
+  .bg-prog-top b { font-family: "JetBrains Mono", monospace; font-size: 17px; color: var(--accent2); font-weight: 700; }
+  .bg-prog-bar { height: 10px; border-radius: 6px; background: var(--bg3); overflow: hidden; }
+  .bg-prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #D4A442); border-radius: 6px; }
+  .bg-hero-note { font-size: 13px; line-height: 1.7; color: var(--sub2); margin: 14px 0 0; word-break: keep-all; }
+
   /* ── 히어로 카드 (미완료 / 완료 공용 껍데기) ── */
   .bg-hero {
     background: var(--bg2);
@@ -145,18 +153,34 @@
   <%# ── 미완료: 무엇을 얻는지 → 시작 ── %>
   <article class="bg-hero">
     <div class="bg-hero-tags">
-      <span class="bg-tag bg-tag-start">여기서 시작</span>
+      <% if (progress) { %><span class="bg-tag bg-tag-start">이어서 풀기</span><% } else { %><span class="bg-tag bg-tag-start">여기서 시작</span><% } %>
       <% if (generalPack) { %><span class="bg-tag bg-tag-meta"><%= generalPack.active_question_count %>문항</span><% } %>
       <span class="bg-tag bg-tag-meta">약 5분</span>
       <span class="bg-tag bg-tag-meta">로그인 필요</span>
     </div>
-    <h2 class="bg-hero-title">당신과 가장 가까운<br>국회의원은 누구일까요?</h2>
-    <p class="bg-hero-desc">
-      정당 이름이 아니라 <strong>위치</strong>로 봅니다. 의원의 좌표는 소속 정당이 아니라 그 의원이
-      <strong>공동발의로 이름을 올린 법안</strong>에서 만들었습니다. 한 문항씩 저장되니 중간에 나가도 이어서 풀 수 있어요.
-    </p>
+    <% if (progress) { %>
+      <%# 🔴 이유를 반드시 밝힌다 — 다 풀었다고 기억하는 사람에게 진행률만 보이면 오작동으로 읽힌다.
+          문항 교체로 완료가 풀린 상태다 (BalanceGameController.getInvitePage 주석 참조) %>
+      <h2 class="bg-hero-title">답변이 <%= progress.left %>개 남았습니다</h2>
+      <p class="bg-hero-desc">
+        <strong>문항이 일부 바뀌어서</strong> 새 문항 <%= progress.left %>개가 더 필요합니다.
+        이미 답한 <%= progress.answered %>개는 그대로 저장돼 있어요.
+      </p>
+      <div class="bg-prog">
+        <div class="bg-prog-top"><b><%= progress.answered %></b> / <%= progress.total %>문항</div>
+        <div class="bg-prog-bar">
+          <div class="bg-prog-fill" style="width: <%= (progress.answered / progress.total * 100).toFixed(1) %>%"></div>
+        </div>
+      </div>
+    <% } else { %>
+      <h2 class="bg-hero-title">당신과 가장 가까운<br>국회의원은 누구일까요?</h2>
+      <p class="bg-hero-desc">
+        정당 이름이 아니라 <strong>위치</strong>로 봅니다. 의원의 좌표는 소속 정당이 아니라 그 의원이
+        <strong>공동발의로 이름을 올린 법안</strong>에서 만들었습니다. 한 문항씩 저장되니 중간에 나가도 이어서 풀 수 있어요.
+      </p>
+    <% } %>
     <% if (generalPack) { %>
-      <a href="/balance-game/respond?pack=<%= generalPack.id %>" class="bg-cta">진단 시작하기 →</a>
+      <a href="/balance-game/respond?pack=<%= generalPack.id %>" class="bg-cta"><%= progress ? "이어서 풀기 →" : "진단 시작하기 →" %></a>
     <% } %>
     <p class="bg-hero-foot">결과는 비공개입니다. 통계에는 성별·연령대만 익명으로 쓰입니다. 결과는 <a href="/balance-game/types" style="color:var(--accent2);font-weight:600;text-decoration:none">유형 9종</a> 중 하나로 나오고, 어느 유형도 치켜세우거나 깎지 않습니다.</p>
   </article>

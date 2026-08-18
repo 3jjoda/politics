@@ -22,11 +22,23 @@ export default (db) => {
     controller.getInvitePage = wrapWithContext(async function getInvitePage(req, res, next) {
         try {
             const userId = req.session?.userId || null;
-            const [packs, axisScore] = await Promise.all([
+            const [packs, axisScore, history] = await Promise.all([
                 svc.listPacks(),
-                userId ? svc.getUserAxisScore(userId) : Promise.resolve(null)
+                userId ? svc.getUserAxisScore(userId) : Promise.resolve(null),
+                userId ? svc.listUserPackHistory(userId) : Promise.resolve([])
             ]);
             const completed = svc.isCompleted(axisScore);
+
+            /* 🔴 "진행 중" — 응답은 있는데 완료가 아닌 상태. **문항을 교체하면 대량으로 생긴다.**
+               완료 판정이 활성 문항 기준이라(BalanceGameDao.recomputeUserAxisScore 주석 참조),
+               옛 문항을 푼 사람은 응답이 남아 있어도 미완료로 떨어진다 (실측: 6명 전원 16/20).
+               이때 화면이 "진단 시작하기" 만 보여주면 **한 번도 안 푼 사람과 구분이 안 돼**
+               "나 분명히 했는데?" 가 된다. 남은 문항 수를 알려주고 이어서 풀게 한다. */
+            const gh = history.find((h) => h.is_general) || null;
+            const progress = (!completed && gh && gh.response_count > 0)
+                ? { answered: gh.response_count, total: gh.question_count,
+                    left: Math.max(0, gh.question_count - gh.response_count) }
+                : null;
             res.render('balance/invite', {
                 pageTitle: '성향 진단',
                 pageStyles: 'balance/invite',
@@ -34,6 +46,7 @@ export default (db) => {
                 axes: AXES,
                 packs,
                 completed,
+                progress,
                 axisScore,
                 mappingVersion: MAPPING_VERSION
             });
