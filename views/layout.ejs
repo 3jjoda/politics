@@ -31,12 +31,15 @@
     <link rel="canonical" href="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.currentUrl || '/') %>">
 
     <!-- Favicon / App Icons -->
-    <%# 정적 파일은 전부 asset() 을 거칠 것 — 배포마다 ?v= 가 바뀌어 캐시가 갈린다 (app.js 참조) %>
-    <link rel="icon" type="image/svg+xml" href="<%= asset('/assets/imgs/favicon-32.svg') %>">
-    <link rel="icon" type="image/png" sizes="32x32" href="<%= asset('/assets/imgs/favicon-32.svg') %>">
-    <link rel="icon" type="image/png" sizes="16x16" href="<%= asset('/assets/imgs/favicon-16.svg') %>">
-    <link rel="shortcut icon" href="<%= asset('/assets/imgs/favicon.ico') %>">
-    <link rel="apple-touch-icon" sizes="180x180" href="<%= asset('/assets/imgs/apple-touch-180.png') %>">
+    <%# 🔴 파비콘 링크에는 asset() 을 쓰지 않는다 (2026-08-19). 다른 정적 파일과 반대 규칙이다.
+        구글은 검색결과 아이콘을 **URL 단위로 캐시**하고 "파비콘 URL 은 안정적일 것" 을 요구하는데,
+        ?v=<커밋> 은 배포마다 바뀌어 매번 새 URL 이 된다 → 아이콘 갱신이 계속 미뤄진다.
+        내용을 바꿀 일이 생기면 쿼리가 아니라 **파일명**을 바꿀 것.
+        ⚠️ 구 버전은 .svg 를 type="image/png" 로 선언한 줄이 둘 있었다 (거짓 MIME). 되살리지 말 것 —
+           svg 하나면 모든 크기를 덮고, 레거시·구글용 16/32/48 은 루트 favicon.ico 가 담고 있다 %>
+    <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="icon" type="image/svg+xml" href="/assets/imgs/favicon-32.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/imgs/apple-touch-180.png">
     <link rel="manifest" href="<%= asset('/manifest.json') %>">
 
     <!-- Open Graph -->

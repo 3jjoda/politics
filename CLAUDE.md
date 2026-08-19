@@ -3558,6 +3558,11 @@ CSS `gap` 이 곧 시각 간격이 되고, 가운데 정렬 시 잉크가 실제
 
 - `app.js` — `ASSET_VER` = `RAILWAY_GIT_COMMIT_SHA` 앞 8자 (로컬은 기동 시각 base36)
 - **정적 링크는 반드시 `asset()` 헬퍼를 거칠 것** — `<%= asset('/styles/main.css') %>`
+  - 🔴 **예외: 파비콘·앱 아이콘 링크는 `asset()` 을 쓰지 않는다** (2026-08-19). 구글은 검색결과 아이콘을 **URL 단위로 캐시**하고 파비콘 URL 이 안정적일 것을 요구하는데,
+    `?v=<커밋>` 은 배포마다 새 URL 이 되어 아이콘 갱신이 계속 미뤄진다. 내용을 바꿀 땐 쿼리가 아니라 **파일명**을 바꿀 것.
+    현재 head 는 `/favicon.ico`(48 포함 3크기) + `favicon-32.svg` + `apple-touch-180.png` 셋뿐이다 —
+    구 버전에 있던 `.svg` 를 `type="image/png"` 로 선언한 두 줄(거짓 MIME)은 제거했다. 되살리지 말 것
+  - ⚠️ 구글 검색결과 아이콘은 **구글 크롤 주기로만** 갱신된다 (수 주). 파일을 고쳐도 즉시 안 바뀌며, 홈 색인 재요청이 유일한 재촉 수단이다
   - 적용 대상: CSS(main + pageStyles) / JS / 브랜드 SVG / 파비콘 5종 / manifest / og:image·twitter:image / spinner
 - JS 가 동적 생성하는 `<img>` 는 `window.__ASSET_VER__` 를 읽는 `PB.asset()` 사용
 - 새 정적 참조를 추가할 때 `?v=` 를 빠뜨리면 배포 후 stale 자산이 노출된다
