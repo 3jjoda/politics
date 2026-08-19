@@ -22,10 +22,14 @@ export const UNMEASURED_REASON = '안보·외교 쟁점은 법률이 아니라 �
 export const MATCH_DENOM = 1.5;
 export const MIN_SIGNATURES = 5;   // 축당 이 미만이면 그 축 좌표를 내지 않는다 (calcPoliticianAxis · 분할-반 검증과 동일)
 
-// 안보축을 왜 못 재는지 — 숫자로 말한다. 2026-08-16 전 코퍼스 분류(`bill_axis_mapping_pilot`, 18,590건) 실측값.
-// ⚠️ 매핑을 재분류하면 같이 갱신할 것 (파일럿 테이블이 지워지면 이 상수만 남는다)
+// 안보축을 왜 못 재는지 — 숫자로 말한다. `bill_axis_mapping_pilot`(18,590건) 실측값, 2026-08-19 재측정.
+// 🔴 이 값은 주석이 아니라 **화면에 그대로 출력된다** (`_profile_vs.ejs` 안보 행) — 재분류하면 반드시 같이 갱신할 것.
+//   2026-08-16 저녁 `--reclassify social,institution` 이 사회·제도 일부를 안보로 옮겼는데 이 상수를 안 올려
+//   화면·홍보글이 사흘간 옛 값(312 · 자주 59 · 동맹 253)을 말했다. 재측정 쿼리:
+//     SELECT agree_score, COUNT(*) FROM bill_axis_mapping_pilot WHERE axis='security' GROUP BY 1;  -- +1=자주 / -1=동맹
+// ⚠️ 숫자가 늘어도 결론은 그대로다 — `자주` 는 전체 분류의 0.39% 라 여전히 축을 만들 수 없다.
 export const UNMEASURED_STATS = {
-    security: { classified: 18590, mapped: 312, scarceDir: '자주', scarceN: 59, otherDir: '동맹', otherN: 253 },
+    security: { classified: 18590, mapped: 340, scarceDir: '자주', scarceN: 72, otherDir: '동맹', otherN: 268 },
 };
 
 // 🔴 양끝 라벨은 **긴 형(Lx/Rx)이 기본**이다. 짧은 형(L/R)은 폭이 없는 곳(홈 카드·범례)에서만 쓰고,
