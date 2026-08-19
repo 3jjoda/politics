@@ -17,6 +17,7 @@ import expressLayouts from 'express-ejs-layouts';
 import { avatarHtml } from './utils/avatar.js';
 import { fmtDate, fmtDateTime, timeAgo } from './utils/datetime.js';
 import { summaryPreview, stripSummaryHeading } from './utils/billSummary.js';
+import { linkify } from './utils/linkify.js';
 import { GAP_BANDS, gapBandOf, gapBandRange, GAP_AXIS_LABEL, GAP_AXIS_DESC } from './utils/gapBands.js';
 import { sitemapHandler } from './utils/sitemap.js';
 import { axisDistance, similarityPct, politicianAxisOf } from './utils/balanceDistance.js';
@@ -180,6 +181,7 @@ app.locals.timeAgo = timeAgo;          // 3시간 전 (7일 초과 시 날짜)
 // 법안 원문(bills.summary) 표시 — 선두 "제안이유 및 주요내용" 머리말을 벗긴다.
 // 안 벗기면 모든 카드가 같은 첫 줄로 시작해 동명 법안 구분이 다시 불가능해진다.
 app.locals.summaryPreview = summaryPreview;              // 카드용 (머리말 제거 + 한 줄로 접기)
+app.locals.linkify = linkify;                            // 게시글 본문 URL → 링크 (이스케이프 후 URL 만 앵커, utils/linkify.js)
 app.locals.stripSummaryHeading = stripSummaryHeading;    // 상세용 (머리말만 제거, 줄바꿈 보존)
 // 자당·타당 격차 구간 — 🔴 의원 **목록 필터**와 **상세 눈금**이 같은 값을 써야 한다.
 // 어긋나면 상세는 "뚜렷한 편" 인데 목록 필터엔 안 잡히는 상황이 생긴다 (utils/gapBands.js 주석 참조).

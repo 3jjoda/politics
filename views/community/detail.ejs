@@ -151,6 +151,9 @@
     white-space: pre-wrap;
     word-wrap: break-word;
   }
+  /* 본문 링크 — 사이트 링크 색은 골드 (파랑은 정당색이라 금지) */
+  .post-body a { color: var(--accent2); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+  .post-body a:hover { color: var(--accent); }
 
   /* 푸터 (좋아요) */
   .post-footer {
@@ -261,7 +264,8 @@
     <% } %>
 
     <!-- 본문 -->
-    <section class="post-body"><%= post.content %></section>
+    <%# 본문은 HTML 금지 — linkify 가 이스케이프한 뒤 URL 만 링크로 (utils/linkify.js) %>
+    <section class="post-body"><%- linkify(post.content) %></section>
 
     <!-- 푸터 -->
     <section class="post-footer">
