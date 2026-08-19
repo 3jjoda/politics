@@ -158,7 +158,7 @@ export function buildThreadsChain(post, opts = {}) {
             // ⚠️ 법안의 87%가 동명이라 대표발의자를 반드시 붙인다.
             //    정당은 넣지 않는다 — 이름이 늘어서는 순간 대비 구도가 된다
             .map((id) => `· ${tb[id].bill_name}${tb[id].proposer_name ? ` (${tb[id].proposer_name})` : ''}`);
-        const head = `${t.theme} — ${t.bill_count}건`;
+        const head = `${t.theme} · ${t.bill_count}건`;
         const withBills = [head, '', t.what, ...(bills.length ? ['', ...bills] : [])].join('\n');
 
         if (charLen(withBills) <= LIMIT) {

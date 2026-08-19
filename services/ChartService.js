@@ -108,7 +108,7 @@ export default (db) => {
             // 사용자가 만든 차트가 그대로 공유되므로 이게 없으면 오독의 근거가 된다.
             const notes = [src.note, dim.note, measure.note].filter(Boolean);
             if (dropped > 0) notes.push(`값을 낼 수 없는 그룹 ${dropped}개는 제외했습니다 (해당 조건의 데이터가 없거나 처리 전).`);
-            if (smallSamples > 0) notes.push(`표본이 ${SMALL_SAMPLE}건 미만인 그룹 ${smallSamples}개가 있습니다 — 값이 크게 흔들립니다.`);
+            if (smallSamples > 0) notes.push(`표본이 ${SMALL_SAMPLE}건 미만인 그룹 ${smallSamples}개가 있습니다. 값이 크게 흔들립니다.`);
             if (rows.length >= 60) notes.push('상위 60개 그룹만 표시됩니다. 필터로 범위를 좁히면 전체를 볼 수 있습니다.');
 
             return { rows: usable, max, total, notes, src, dim, measure };

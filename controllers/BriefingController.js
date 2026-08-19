@@ -213,7 +213,7 @@ function buildShort(p, slides, person) {
         bills: pick.bills,                                   // { name, by } — 정당 없음
         proposed, otherThreads: threads.length - 1,
         person,
-        title: `${t.theme} — ${dateKo} 국회에 나온 법안 ${count}건`.slice(0, 95),
+        title: `${t.theme} · ${dateKo} 국회에 나온 법안 ${count}건`.slice(0, 95),
         scenes: [
             { kind: 'hook',    say: hookSay },
             { kind: 'bills',   say: billsSay },
@@ -460,7 +460,7 @@ export default (db) => {
                 video: {   // 유튜브 쇼츠 — batch/genBriefingVideo.js 가 읽는다
                     short: buildShort(post, slides, person),         // 「흐름 하나」 포맷 (기본). 묶음 없으면 null → 그날은 영상 없음
                     narration: buildNarration(post, slides), // 「전체 7장」 포맷 (--format full, 슬라이드별 TTS 원고)
-                    title: `${post.briefing_date} 국회 브리핑 — ${post.headline || ''}`.slice(0, 95),
+                    title: `${post.briefing_date} 국회 브리핑 · ${post.headline || ''}`.slice(0, 95),
                 },
                 instagram: {
                     caption: buildCaption(post),

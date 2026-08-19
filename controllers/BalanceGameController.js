@@ -256,7 +256,7 @@ export default (db) => {
                 pageTitle: '성향 유형 9종',
                 pageStyles: null,
                 currentUrl: '/balance-game/types',
-                pageDesc: '자유 개척자·포용 개혁가·자립 원칙가·질서 설계자와 온건형, 균형 조율자 — 경제×사회 좌표로 나뉘는 정치 성향 유형 9종의 뜻과 판정 기준',
+                pageDesc: '자유 개척자·포용 개혁가·자립 원칙가·질서 설계자와 온건형, 균형 조율자. 경제×사회 좌표로 나뉘는 정치 성향 유형 9종의 뜻과 판정 기준',
                 types: TYPE_LIST,
                 thresholds: { center: D_CENTER, strong: D_STRONG, axisMid: AXIS_MID },
                 my,

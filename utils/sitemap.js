@@ -1,4 +1,5 @@
 import logger from './logger.js';
+import { GUIDE_ARTICLES } from './guideArticles.js';
 
 /* sitemap.xml — 크롤러에게 "실제로 색인할 URL" 목록을 명시적으로 준다.
 
@@ -25,10 +26,14 @@ const STATIC_PATHS = [
     ['/xray',         'weekly',  '0.7'],
     ['/community',    'daily',   '0.6'],
     ['/balance-game', 'monthly', '0.6'],
-    ['/glossary',     'monthly', '0.4'],
+    ['/balance-game/types', 'monthly', '0.5'],
+    ['/guide/glossary', 'monthly', '0.5'],   // 구 /glossary 는 301
     ['/about',        'monthly', '0.3'],
     ['/privacy',      'yearly',  '0.1'],
     ['/terms',        'yearly',  '0.1'],
+    /* 「읽는 법」 — 사람이 쓴 해설 글. 목록은 guideArticles.js 가 단일 소스 (2026-08-19) */
+    ['/guide',        'monthly', '0.7'],
+    ...GUIDE_ARTICLES.map((a) => [`/guide/${a.slug}`, 'monthly', '0.7']),
 ];
 
 /* 상세 페이지 소스.

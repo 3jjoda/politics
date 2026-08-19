@@ -2163,7 +2163,7 @@
             <div class="profile-kpi-val kpi-blue"><%= nf(proposeCnt) %></div>
             <span class="profile-kpi-frac">대표로 낸 법안</span>
           </div>
-          <div class="profile-kpi-label">법안 발의 <span class="pb-help" data-help-href="/glossary#rep-proposer" title="대표발의 설명">?</span></div>
+          <div class="profile-kpi-label">법안 발의 <span class="pb-help" data-help-href="/guide/glossary#rep-proposer" title="대표발의 설명">?</span></div>
           <%- kpiRankBar(rank && rank.propose, rank && rank.cohortCnt) %>
           <div class="profile-kpi-sub"><% if (med && med.propose != null) { %><span class="is-med">의원 중앙값 <%= nf(Math.round(med.propose)) %>건</span><% } else { %>대표발의한 법안<% } %></div>
         </div>
@@ -2179,7 +2179,7 @@
             <div class="profile-kpi-val kpi-blue"><%= nf(coProposeCnt) %></div>
             <span class="profile-kpi-frac">이름을 올린 법안</span>
           </div>
-          <div class="profile-kpi-label">공동발의 <span class="pb-help" data-help-href="/glossary#rep-proposer" title="다른 의원의 발의에 이름을 올린 건수">?</span></div>
+          <div class="profile-kpi-label">공동발의 <span class="pb-help" data-help-href="/guide/glossary#rep-proposer" title="다른 의원의 발의에 이름을 올린 건수">?</span></div>
           <%- kpiRankBar(rank && rank.copropose, rank && rank.cohortCnt) %>
           <%# ⚠️ 해석 한계는 KPI 행 아래 주의 문구가 담당한다 —
               공동발의 수는 "이름을 얼마나 걸었는지" 지 중요도·기여도가 아니다 %>
@@ -2210,7 +2210,7 @@
               <% } %>
             <% } %>
           </div>
-          <div class="profile-kpi-label">표결 참여율 <span class="pb-help" data-help-href="/glossary#vote-absent" title="(찬성+반대+기권) / 전체 표결">?</span></div>
+          <div class="profile-kpi-label">표결 참여율 <span class="pb-help" data-help-href="/guide/glossary#vote-absent" title="(찬성+반대+기권) / 전체 표결">?</span></div>
           <%- kpiRankBar(rank && rank.vote, rank && rank.cohortVote) %>
           <% if (vsTotal === 0) { %>
             <div class="profile-kpi-sub">표결 데이터 수집 전</div>
@@ -2227,7 +2227,7 @@
               <span class="profile-kpi-frac" title="대표발의한 <%= nf(proposeCnt) %>건 중 본회의를 통과한 것이 <%= nf(passedCnt) %>건"><%= nf(proposeCnt) %>건 중 <%= nf(passedCnt) %>건 가결</span>
             <% } %>
           </div>
-          <div class="profile-kpi-label">가결율 <span class="pb-help" data-help-href="/glossary#original" title="가결 법안 수 / 대표발의 법안 수">?</span></div>
+          <div class="profile-kpi-label">가결율 <span class="pb-help" data-help-href="/guide/glossary#original" title="가결 법안 수 / 대표발의 법안 수">?</span></div>
           <%# 🔴 가결율에는 백분위를 붙이지 않는다 — 되살리지 말 것.
               실측: 가결 0건이 94명(32%)이라 셋 중 하나가 통째로 최하위로 묶이고,
               같은 "가결 1건" 인데 백분위가 32~93 으로 흩어진다 (많이 낸 사람이 벌을 받는다).
@@ -2253,7 +2253,7 @@
           <% if (med && med.leadShare != null) { %>
             <br>
             공동발의 카드의 <strong>대표 비중</strong>(대표+공동 전체 중 대표발의가 차지하는 비율)은
-            의원 중앙값이 <strong><%= med.leadShare.toFixed(1) %>%</strong>입니다 — 공동발의가 훨씬 많은 것이 일반적입니다.
+            의원 중앙값이 <strong><%= med.leadShare.toFixed(1) %>%</strong>입니다. 공동발의가 훨씬 많은 것이 일반적입니다.
           <% } %>
           공동발의 수는 <strong>이름을 얼마나 걸었는지</strong>일 뿐 기여도·중요도와 다릅니다.
         </p>
@@ -2301,7 +2301,7 @@
           <% if ((topics || []).length) { %>
             <div class="pr-foot">
               <p class="pf-legend">
-                <strong>어떤 분야에 냈나</strong>의 위아래 막대는 <strong>같은 눈금(0~100%)</strong>입니다 —
+                <strong>어떤 분야에 냈나</strong>의 위아래 막대는 <strong>같은 눈금(0~100%)</strong>입니다.
                 <strong>본인</strong>은 이 의원 대표발의 중 그 위원회의 비중,
                 <strong>평균</strong>은 전체 의원 대표발의에서 그 위원회가 차지하는 비중.
                 <strong>×N</strong> 은 두 막대의 길이 비입니다.
@@ -2430,11 +2430,11 @@
                         <% if (r.showRate && speeches.rates.mixedStart && !r.startExact) { %><em class="sp-rate-thin">(시작일 추정)</em><% } %>
                         <% if (!r.showRate) { %>
                           <%# 아예 숨기지 않고 이유를 쓴다 — 안 쓰면 "왜 이 위원회만 %가 없지" 가 된다 %>
-                          <em class="sp-rate-thin">— 회의 <%= speeches.rates.minDenom %>번이 쌓이기 전이라 비율은 표시하지 않습니다</em>
+                          <em class="sp-rate-thin">회의 <%= speeches.rates.minDenom %>번이 쌓이기 전이라 비율은 표시하지 않습니다</em>
                         <% } else if (r.offDuty) { %>
                           <%# 🔴 값을 숨기지 않고 이유를 적는다. 상임위 활동이 줄어드는 게 당연한 자리라
                               평균과 나란히 두면 그대로 오해가 된다 (실측 평균 37.2% vs 전체 49.7%) %>
-                          <em class="sp-rate-thin">— <%= r.offDutyNote %>이라 평균과 비교하지 않습니다</em>
+                          <em class="sp-rate-thin"><%= r.offDutyNote %>이라 평균과 비교하지 않습니다</em>
                         <% } %>
                       </span>
                     </div>
@@ -2447,7 +2447,7 @@
               <ul class="sp-caveat sp-caveat-tight">
                 <%# 이력이 쌓여 전부 정확해지면 이 줄은 저절로 사라진다 — 그게 이력을 넣은 이유다 %>
                 <% if (speeches.rates.hasApprox) { %>
-                  <li>배정일 기록이 없는 기간은 <strong>그 위원회에서 처음 발언한 날</strong>을 소속 시작으로 봅니다 — 그 전에 조용히 앉아 있던 기간은 분모에 없어, 실제보다 <strong>후한 값</strong>입니다.</li>
+                  <li>배정일 기록이 없는 기간은 <strong>그 위원회에서 처음 발언한 날</strong>을 소속 시작으로 봅니다. 그 전에 조용히 앉아 있던 기간은 분모에 없어, 실제보다 <strong>후한 값</strong>입니다.</li>
                 <% } %>
                 <li>분모는 <strong>상임위 회의</strong>만입니다. 국정감사·본회의는 회의 제목에 위원회명이 없어 빠집니다.</li>
               </ul>
@@ -2514,7 +2514,7 @@
             <ul class="sp-caveat">
               <li>위원회마다 회의 빈도가 달라 <strong>의원 간 건수 비교로는 쓸 수 없습니다.</strong></li>
               <li>위원장석 발언은 회의 진행·안건 호명이라 질의와 성격이 다릅니다.</li>
-              <li>영상 길이는 표시하지 않습니다 — 한 클립에 질의와 답변이 함께 녹화돼 있어 <strong>개인 발언시간이 아니기</strong> 때문입니다.</li>
+              <li>영상 길이는 표시하지 않습니다. 한 클립에 질의와 답변이 함께 녹화돼 있어 <strong>개인 발언시간이 아니기</strong> 때문입니다.</li>
               <li>국회 영상회의록에 발언자로 기록된 건만 집계합니다 (정부측 답변·외부 참고인 발언은 제외).</li>
             </ul>
           </div>

@@ -483,7 +483,7 @@
           <p class="ax-empty-title"><%= gStarted ? '풀다 만 진단이 있어요' : '아직 성향 진단을 하지 않았어요' %></p>
           <% if (gStarted) { %>
             <p>종합팩 <%= gTotal %>문항 중 <strong><%= gAnswered %>문항</strong>에 답했습니다. 남은 문항을 마치면 카드가 만들어집니다.
-              <% if (gAnswered >= 16) { %>(문항이 일부 바뀌어 다시 열린 것일 수 있어요 — 새 문항만 이어서 풀면 됩니다.)<% } %></p>
+              <% if (gAnswered >= 16) { %>(문항이 일부 바뀌어 다시 열린 것일 수 있어요. 새 문항만 이어서 풀면 됩니다.)<% } %></p>
             <div class="ax-progress"><i style="width:<%= Math.round(gAnswered / gTotal * 100) %>%"></i></div>
             <div class="ax-progress-txt"><%= gAnswered %> / <%= gTotal %></div>
           <% } else { %>

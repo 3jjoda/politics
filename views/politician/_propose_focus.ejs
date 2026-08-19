@@ -54,19 +54,19 @@
             위원회명은 전부 `위원회` 로 끝나 받침이 없으므로 `가`·`도` 로 고정해도 안전하다 %>
         <% if (!_focus) { %>
           대표발의 <strong><%= nf(Number(_top.own_total)) %>건</strong>이
-          여러 위원회에 <strong>고르게</strong> 걸쳐 있습니다 —
+          여러 위원회에 <strong>고르게</strong> 걸쳐 있습니다.
           가장 두드러진 <strong><%= _peak.topic_name %></strong>도 의원 평균의
           <strong><%= _lift.toFixed(1) %>배</strong>에 그칩니다.
         <% } else if (_same) { %>
           대표발의 <strong><%= nf(Number(_top.own_total)) %>건</strong> 중
-          <strong><%= _peak.topic_name %></strong>가 가장 많습니다 —
+          <strong><%= _peak.topic_name %></strong>가 가장 많습니다.
           <%= nf(Number(_peak.cnt)) %>건으로 의원 평균의
           <strong class="pf-em"><%= _lift.toFixed(1) %>배</strong>입니다.
         <% } else { %>
           <%# 건수 1위와 특화 1위가 다른 경우 — **둘 다 말해야** 결론이 목록과 어긋나지 않는다 %>
           대표발의 <strong><%= nf(Number(_top.own_total)) %>건</strong> 중
           <strong><%= _top.topic_name %></strong>가 가장 많지만(<%= nf(Number(_top.cnt)) %>건),
-          의원 평균 대비로는 <strong><%= _peak.topic_name %></strong>가 가장 두드러집니다 —
+          의원 평균 대비로는 <strong><%= _peak.topic_name %></strong>가 가장 두드러집니다.
           <%= nf(Number(_peak.cnt)) %>건으로 평균의
           <strong class="pf-em"><%= _lift.toFixed(1) %>배</strong>입니다.
         <% } %>

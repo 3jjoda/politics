@@ -85,7 +85,7 @@ export const DIMENSIONS = [
     },
     {
         id: 'member', label: '의원',
-        note: '표결 수가 많은 의원 순으로 잘립니다 — 전체 의원이 다 나오지 않습니다.',
+        note: '표결 수가 많은 의원 순으로 잘립니다. 전체 의원이 다 나오지 않습니다.',
         per: { votes: { sql: `p.name`, joins: ['politicians'] } },
     },
     {
@@ -103,7 +103,7 @@ export const DIMENSIONS = [
     },
     {
         id: 'ai_category', label: 'AI 주제',
-        note: 'AI 분석이 끝난 법안만 집계됩니다 — 전체의 일부입니다.',
+        note: 'AI 분석이 끝난 법안만 집계됩니다. 전체의 일부입니다.',
         per: {
             bills: { sql: `a.category_main`, joins: ['analysis'] },
             votes: { sql: `a.category_main`, joins: ['analysis'] },

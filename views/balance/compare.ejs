@@ -145,7 +145,7 @@
   <%# ── ① 축별 위치 ── %>
   <section class="cp-card">
     <div class="cp-card-head">
-      <h2 class="cp-card-title">축별 위치 — 나와 의원 전체</h2>
+      <h2 class="cp-card-title">축별 위치: 나와 의원 전체</h2>
       <div class="cp-legend">
         <span><i class="cp-lg-me"></i>나</span>
         <% if (sp) { %><span><i class="cp-lg-avg"></i>의원 평균</span><% } %>
@@ -233,7 +233,7 @@
       <% }); %>
     </div>
     <p class="cp-locked" style="margin-top:0">
-      순위는 세 축 거리의 순서입니다. AI 1차 매핑이라 <b>가까운 몇 명 사이의 차이는 크지 않습니다</b> — 이름보다 축별 위치를 보세요.
+      순위는 세 축 거리의 순서입니다. AI 1차 매핑이라 <b>가까운 몇 명 사이의 차이는 크지 않습니다</b>. 이름보다 축별 위치를 보세요.
       막대의 띠는 나와 그 의원 사이의 거리입니다.
     </p>
   <% } else { %>
@@ -249,7 +249,7 @@
        const mE = META.economy, mS = META.social; %>
     <section class="cp-card">
       <div class="cp-card-head">
-        <h2 class="cp-card-title">전체 분포 속 나 — 경제 × 사회·문화</h2>
+        <h2 class="cp-card-title">전체 분포 속 나 (경제 × 사회·문화)</h2>
         <div class="cp-legend"><span><i class="cp-lg-me"></i>나</span><span><i style="width:10px;height:10px;border-radius:50%;background:rgba(75,83,98,0.4);display:inline-block"></i>의원 한 명</span></div>
       </div>
       <div class="cp-scatter">
@@ -276,7 +276,7 @@
           <% } %>
         </svg>
         <div class="cp-scatter-side">
-          <b>점 하나가 의원 한 명</b> — 좌표 있는 <%= total %>명 전원을 이름·정당 없이 뿌렸습니다. 두 덩어리로 갈리는 게 보이는데, 색을 입히지 않은 건
+          <b>점 하나가 의원 한 명</b>입니다. 좌표 있는 <%= total %>명 전원을 이름·정당 없이 뿌렸습니다. 두 덩어리로 갈리는 게 보이는데, 색을 입히지 않은 건
           그것이 곧 정당 지도가 되기 때문입니다.
           <div class="lg">
             <span><i style="background:var(--accent)"></i>①②③ 좌표가 가장 가까운 의원</span>
@@ -293,13 +293,13 @@
   <%# ── ③ 다른 응답자와 비교 (잠금/열림) ── %>
   <% if (!overallOpen) { %>
     <div class="cp-locked">
-      <b>다른 응답자와의 비교</b>는 응답자 <%= OVERALL_THRESHOLD %>명이 모이면 열립니다 — 지금 <b><%= overallCount %>명</b>.
+      <b>다른 응답자와의 비교</b>는 응답자 <%= OVERALL_THRESHOLD %>명이 모이면 열립니다. 지금은 <b><%= overallCount %>명</b>입니다.
       열리면 위 막대에 응답자 평균 마커가 함께 표시됩니다. 성별·연령대가 같은 그룹 평균도 그룹당 <%= OVERALL_THRESHOLD %>명부터 보입니다.
     </div>
   <% } else if (!groupOpen) { %>
     <div class="cp-locked">응답자 <b><%= overallCount %>명</b> 평균을 위 막대에 표시했습니다. 성별·연령대가 같은 그룹 평균은 그 그룹이 <%= OVERALL_THRESHOLD %>명이 되면 표시됩니다 (지금 <%= groupCount %>명).</div>
   <% } else { %>
-    <div class="cp-locked">응답자 <b><%= overallCount %>명</b> 평균을 위 막대에 표시했습니다. 같은 그룹 <b><%= groupCount %>명</b><%= groupTier === 'low' ? ' — 200명 미만이라 아직 흔들립니다' : '' %>.</div>
+    <div class="cp-locked">응답자 <b><%= overallCount %>명</b> 평균을 위 막대에 표시했습니다. 같은 그룹 <b><%= groupCount %>명</b><%= groupTier === 'low' ? ', 200명 미만이라 아직 흔들립니다' : '' %>.</div>
   <% } %>
 
   <div class="cp-actions">

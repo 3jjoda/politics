@@ -1,0 +1,37 @@
+<%# /guide/:slug — 글 껍데기. 본문은 articles/<slug>.ejs 를 include (컨트롤러가 article·facts·prev·next 를 넘긴다) %>
+<div class="gd-wrap">
+  <article class="gd-article">
+    <p class="gd-kicker"><a href="/guide">읽는 법</a> · <%= String(index + 1).padStart(2, '0') %></p>
+    <h1 class="gd-title"><%= article.title %></h1>
+    <p class="gd-sub"><%= article.sub %></p>
+    <p class="gd-meta">읽기 약 <%= article.minutes %>분 · 숫자는 국회 공공데이터를 매일 집계한 값이며 글 안의 "약" 은 그 이유입니다</p>
+
+    <div class="gd-body">
+      <%- include('articles/' + article.slug, { facts: locals.facts || null }) %>
+    </div>
+
+    <% if (article.related && article.related.length) { %>
+    <div class="gd-related">
+      <h3>이 글과 이어지는 화면</h3>
+      <ul>
+        <% article.related.forEach((r) => { %>
+          <li><a href="<%= r.href %>"><%= r.label %></a></li>
+        <% }) %>
+      </ul>
+    </div>
+    <% } %>
+
+    <nav class="gd-nav" aria-label="이전·다음 글">
+      <% if (prev) { %>
+        <a href="/guide/<%= prev.slug %>"><small>← 이전</small><b><%= prev.title %></b></a>
+      <% } else { %>
+        <a class="is-empty" aria-hidden="true"></a>
+      <% } %>
+      <% if (next) { %>
+        <a class="is-next" href="/guide/<%= next.slug %>"><small>다음 →</small><b><%= next.title %></b></a>
+      <% } else { %>
+        <a class="is-next" href="/guide/glossary"><small>다음 →</small><b>용어 설명</b></a>
+      <% } %>
+    </nav>
+  </article>
+</div>

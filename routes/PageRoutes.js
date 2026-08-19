@@ -10,6 +10,9 @@ import XrayController from '../controllers/XrayController.js';
 import BriefingController from '../controllers/BriefingController.js';
 import ChartController from '../controllers/ChartController.js';
 import { requireLogin } from '../middlewares/auth.js';
+import { GUIDE_ARTICLES, guideBySlug, guideNeighbors } from '../utils/guideArticles.js';
+import BillService from '../services/BillService.js';
+import logger from '../utils/logger.js';
 
 export default (db) => {
     const router = express.Router();
@@ -21,6 +24,7 @@ export default (db) => {
     const xrayController = XrayController(db);
     const briefingController = BriefingController(db);
     const chartController = ChartController(db);
+    const billService = BillService(db);   // /guide 1편의 살아 있는 숫자(getHomeFacts, 10분 캐시)
 
     // 메인 페이지
     router.get('/', initController.getHomePage);
@@ -49,14 +53,63 @@ export default (db) => {
         }
     });
 
-    // 용어 설명 페이지
-    router.get('/glossary', async (req, res, next) => {
+    // 용어 설명 — 2026-08-19 부터 「읽는 법」 아래 (/guide/glossary). 구 /glossary 는 301 (앵커 #id 는 브라우저가 유지한다)
+    router.get('/glossary', (req, res) => res.redirect(301, '/guide/glossary'));
+    router.get('/guide/glossary', async (req, res, next) => {
         try {
             res.render('glossary', {
-                pageTitle: '용어 설명',
-                pageStyles: null,
-                currentUrl: '/glossary',
-                pageDesc: '원안가결·수정가결·대안반영폐기, 대표발의와 공동발의, 기권과 불참의 차이 — 국회 데이터를 읽는 데 필요한 용어를 쉬운 말로 설명합니다'
+                pageTitle: '용어 설명 · 읽는 법',
+                pageStyles: 'guide',   // 상단 탭(.gd-tabs) 스타일
+                articleCount: GUIDE_ARTICLES.length,
+                currentUrl: '/guide/glossary',
+                pageDesc: '원안가결·수정가결·대안반영폐기, 대표발의와 공동발의, 기권과 불참의 차이. 국회 데이터를 읽는 데 필요한 용어를 쉬운 말로 설명합니다'
+            });
+        } catch (error) {
+            next(error);
+        }
+    });
+
+    // 「읽는 법」 — 사람이 쓴 해설 글 (2026-08-19). 목록·메타는 utils/guideArticles.js 단일 소스, 본문은 views/guide/articles/<slug>.ejs
+    router.get('/guide', async (req, res, next) => {
+        try {
+            res.render('guide/index', {
+                pageTitle: '읽는 법',
+                pageStyles: 'guide',
+                currentUrl: '/guide',
+                pageDesc: '본회의 반대표는 왜 1%도 안 되는지, 발의 건수는 왜 순위가 아닌지, 성향 좌표는 무엇으로 만들었는지. 당말사의 숫자를 읽는 법을 글 다섯 편으로 정리했습니다',
+                articles: GUIDE_ARTICLES
+            });
+        } catch (error) {
+            next(error);
+        }
+    });
+    router.get('/guide/:slug', async (req, res, next) => {
+        try {
+            const article = guideBySlug(req.params.slug);
+            if (!article) {
+                return res.status(404).render('error_pages/404', {
+                    pageTitle: '찾을 수 없음', pageStyles: 'error', currentUrl: '/guide',
+                    message: '해당 글을 찾을 수 없습니다.'
+                });
+            }
+            /* 살아 있는 숫자는 실패해도 글은 나간다 — 본문이 "약" 으로 폴백한다 */
+            const facts = await billService.getHomeFacts().catch((err) => {
+                logger.warn(`guide: getHomeFacts 실패 — ${err.message}`);
+                return null;
+            });
+            const { prev, next: nextArticle } = guideNeighbors(article.slug);
+            res.render('guide/article', {
+                pageTitle: `${article.title} · 읽는 법`,
+                pageStyles: 'guide',
+                currentUrl: `/guide/${article.slug}`,
+                pageDesc: article.desc,
+                ogTitle: `${article.title} · 당말사`,
+                ogDesc: article.desc,
+                article,
+                index: GUIDE_ARTICLES.indexOf(article),
+                facts,
+                prev,
+                next: nextArticle
             });
         } catch (error) {
             next(error);

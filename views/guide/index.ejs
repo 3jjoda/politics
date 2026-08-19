@@ -1,0 +1,46 @@
+<%# /guide — 「읽는 법」 목차. 글 목록은 utils/guideArticles.js 단일 소스 %>
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <div>
+      <h1 class="pb-page-title">읽는 법</h1>
+      <p class="pb-page-desc">
+        이 사이트의 숫자는 상식으로 읽히지 않습니다. 반대표는 왜 1%도 안 되는지, 발의 건수는 왜 순위가 아닌지,<br>
+        지표 각주에 흩어져 있던 "이 숫자를 어떻게 읽어야 하나" 를 글 한 편씩으로 모았습니다.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="gd-wrap gd-wrap-wide">
+  <%# 상단 탭 — 용어 설명이 아래에 있다는 걸 스크롤 없이 알게 (사용자 요청 2026-08-19). 하단 용어 카드 섹션은 이 탭이 대체했다 %>
+  <%- include('_tabs', { active: 'articles', articleCount: articles.length }) %>
+  <p class="gd-lede">
+    순서대로 읽으면 법안의 운명(1·2편) → 의원의 활동(3·4편) → 성향 좌표(5편)로 이어집니다.
+    각 글 끝에는 <strong>그 글이 말하지 않는 것</strong>을 따로 적어 두었습니다. 숫자보다 그 한계가 먼저 읽혀야 하는 사이트라서요.
+  </p>
+
+  <ol class="gd-list">
+    <% articles.forEach((a, i) => { %>
+      <li>
+        <a class="gd-card" href="/guide/<%= a.slug %>">
+          <div class="gd-card-no"><%= String(i + 1).padStart(2, '0') %></div>
+          <div>
+            <h2 class="gd-card-title"><%= a.title %></h2>
+            <p class="gd-card-sub"><%= a.sub %></p>
+            <p class="gd-card-desc"><%= a.desc %></p>
+            <div class="gd-card-meta">읽기 약 <%= a.minutes %>분</div>
+          </div>
+        </a>
+      </li>
+    <% }) %>
+  </ol>
+
+  <div class="gd-related">
+    <h3>같이 보기</h3>
+    <ul>
+      <li><a href="/guide/glossary">용어 설명</a></li>
+      <li><a href="/about">사이트 소개 · 데이터 출처와 한계</a></li>
+      <li><a href="/xray">숫자로 본 국회</a></li>
+    </ul>
+  </div>
+</div>

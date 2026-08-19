@@ -22,7 +22,7 @@ export default (db) => {
                 pageTitle: '숫자로 본 국회',
                 pageStyles: null,
                 currentUrl: '/xray',
-                pageDesc: '본회의 표결 합의 분포, 당론 이탈, 불참률, 법안 생존율, 의원 성향 스펙트럼 — 22대 국회를 지표 12종으로 봅니다. 축·지표를 골라 직접 차트를 만들 수도 있습니다',
+                pageDesc: '본회의 표결 합의 분포, 당론 이탈, 불참률, 법안 생존율, 의원 성향 스펙트럼. 22대 국회를 지표 12종으로 봅니다. 축·지표를 골라 직접 차트를 만들 수도 있습니다',
                 groups: XRAY_GROUPED
             });
         } catch (error) {

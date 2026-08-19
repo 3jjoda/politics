@@ -231,7 +231,7 @@
           </span>
           <span class="my-rating-hint" data-my-hint>
             ${!isLoggedIn() ? '로그인 후 평가할 수 있습니다'
-              : my ? `현재 ${my}점 — 다시 클릭하면 변경됩니다`
+              : my ? `현재 ${my}점. 다시 클릭하면 변경됩니다`
               : '별을 눌러 1~5점을 남겨보세요'}
           </span>
         </div>
@@ -996,7 +996,7 @@
 
   /* ===================================================================
      pb-help 용어 설명 링크 — <a> 중첩 방지용 <span> + 클릭 위임
-     대상: <span class="pb-help" data-help-href="/glossary#...">?</span>
+     대상: <span class="pb-help" data-help-href="/guide/glossary#...">?</span>
   =================================================================== */
   document.addEventListener('click', (e) => {
     const help = e.target.closest('.pb-help[data-help-href]');

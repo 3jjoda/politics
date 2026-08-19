@@ -112,7 +112,7 @@ export default (db) => {
             if (!(await dao.politicianExists(data.monaCd))) return back(res, { err: '존재하지 않는 의원입니다.' });
             await dao.create(data);
             logger.info(`[admin] 직위 추가: ${data.monaCd} · ${data.category} · ${data.title} (by ${req.user?.email})`);
-            return back(res, { ok: `추가했습니다 — ${data.title}` });
+            return back(res, { ok: `추가했습니다: ${data.title}` });
         } catch (e) {
             // UNIQUE (mona_cd, title) 위반이 가장 흔하다
             const msg = e.code === '23505' ? '이미 같은 의원에게 같은 직위가 등록돼 있습니다.' : e.message;
@@ -131,7 +131,7 @@ export default (db) => {
             const n = await dao.update(id, data);
             if (!n) return back(res, { err: '대상을 찾을 수 없습니다.' });
             logger.info(`[admin] 직위 수정 #${id}: ${data.title} (by ${req.user?.email})`);
-            return back(res, { ok: `저장했습니다 — ${data.title}` });
+            return back(res, { ok: `저장했습니다: ${data.title}` });
         } catch (e) {
             const msg = e.code === '23505' ? '이미 같은 의원에게 같은 직위가 등록돼 있습니다.' : e.message;
             logger.error(`[admin] 직위 수정 실패: ${e.message}`);
@@ -209,7 +209,7 @@ export default (db) => {
                 last: null, next: sig.titles_next, status: tDue > 0 ? 'overdue' : tSoon > 0 ? 'soon' : 'ok',
                 note: `기한 지난 것 ${tDue}건 · 30일 안 ${tSoon}건`,
                 howto: ['/admin/titles 에서 확인·수정 (SQL 불필요)'],
-                check: '의장단·원내대표·당대표·장관 — 바뀐 뒤 안 지우면 두 명으로 보인다',
+                check: '의장단·원내대표·당대표·장관. 바뀐 뒤 안 지우면 두 명으로 보인다',
                 link: '/admin/titles',
             });
             // ⑤ 브리핑 (매일, 원천 1~2일 지연)

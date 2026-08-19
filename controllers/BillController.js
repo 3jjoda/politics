@@ -189,7 +189,7 @@ export default (db) => {
                 bill.proc_result_name || '계류 중'
             ].filter(Boolean);
             const pageDesc = hasAnalysis && analysis.summary
-                ? `${analysis.summary} — ${bill.bill_name}`
+                ? `${analysis.summary} · ${bill.bill_name}`
                 : `${bill.bill_name} · ${descParts.join(' · ')}`;
 
             res.render('bill/bill_detail', {

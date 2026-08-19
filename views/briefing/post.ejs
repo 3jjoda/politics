@@ -270,7 +270,7 @@
     const url = location.href;
     const title = document.querySelector('.bp-head')?.textContent.trim() || '당말사 브리핑';
     if (navigator.share) {
-      try { await navigator.share({ title, text: title + ' — 당말사', url }); } catch {}
+      try { await navigator.share({ title, text: title + ' · 당말사', url }); } catch {}
       return;
     }
     try {

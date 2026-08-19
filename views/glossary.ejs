@@ -1,333 +1,311 @@
+<%#
+  용어 설명 — 「읽는 법」의 두 번째 탭 (/guide/glossary). 2026-08-19 확장.
+
+  🔴 항목 id 는 화면 도움말(.pb-help data-help-href)·해설 글·about 이 링크한다. 기존 id 를 바꾸지 말 것:
+     sec-bill-result / sec-proposer / sec-vote-result / sec-general,
+     original · modified · alt-dropped · mod-dropped · withdrawn · pending · rejected · dropped,
+     rep-proposer · co-proposer, vote-for · vote-against · vote-abstain · vote-absent, plenary · committee · quorum
+  🔴 badge 가 있는 항목은 사이트 배지와 같은 색을 쓴다 (처리 결과·표결 결과 = 객관 데이터). 그 외 용어는 배지 없이 이름만.
+  ⚠️ 숫자를 박지 말 것 — "약"·"안팎". 정확한 값은 각 페이지가 매일 집계한다.
+%>
 <%
-  const terms = [
+  const SECTIONS = [
     {
-      id: 'original',
-      badge: 'pb-badge-passed',
-      label: '원안가결',
-      desc: '발의된 내용 그대로 본회의 표결을 통과한 법안.',
-      note: '본회의에서 수정 없이 원래 법안 형태로 통과된 경우.'
+      id: 'sec-bill-result', label: '법안 처리 결과',
+      lede: '법안 목록·상세의 상태 배지에 그대로 쓰는 값입니다. 국회가 붙이는 이름이라 바꾸지 않았습니다.',
+      items: [
+        { id: 'original',    badge: 'pb-badge-passed',    label: '원안가결',
+          desc: '발의된 내용 그대로 본회의 표결을 통과한 법안.',
+          note: '본회의에서 수정 없이 원래 법안 형태로 통과된 경우.' },
+        { id: 'modified',    badge: 'pb-badge-passed',    label: '수정가결',
+          desc: '법안 내용 중 일부를 수정한 뒤 본회의 표결을 통과한 법안.',
+          note: '위원회 심사 또는 본회의 과정에서 수정 의결된 경우.' },
+        { id: 'alt-dropped', badge: 'pb-badge-alt',       label: '대안반영폐기',
+          desc: '해당 법안의 내용이 유사한 다른 법안(대안)에 흡수·통합되어 원안이 폐기된 경우.',
+          note: '비슷한 주제의 여러 법안이 있을 때 위원회가 하나의 대안으로 합치고, 원안들은 절차상 폐기 처리됩니다. 내용 자체가 사라지는 것은 아니지만, 얼마나 반영됐는지는 데이터에 남지 않습니다. 본회의 표결은 원안이 아니라 대안에 붙습니다.' },
+        { id: 'mod-dropped', badge: 'pb-badge-alt',       label: '수정안반영폐기',
+          desc: '제출된 수정안이 별도 법안으로 처리되면서 원안이 폐기된 경우.',
+          note: '대안반영폐기와 유사한 개념.' },
+        { id: 'withdrawn',   badge: 'pb-badge-withdrawn', label: '철회',
+          desc: '발의자가 스스로 거둔 법안.',
+          note: '본회의 표결 전, 발의자 본인이 의안을 거둬들인 경우. 본회의를 거치지 않으므로 처리 경과의 마지막 점이 "본회의"가 아니라 "철회"로 표시됩니다.' },
+        { id: 'pending',     badge: 'pb-badge-pending',   label: '계류',
+          desc: '아직 심사가 진행 중인 법안. 22대 국회 법안의 4분의 3 가까이가 이 상태입니다.',
+          note: '발의 후 위원회 심사, 법사위 심사, 본회의 상정 중 어느 단계에서든 최종 처리가 끝나지 않은 상태. 목록의 "+N일"은 발의일부터 오늘까지의 계류 일수입니다.' },
+        { id: 'rejected',    badge: 'pb-badge-rejected',  label: '부결',
+          desc: '본회의 표결에서 반대가 많아 통과되지 못한 법안. 매우 드뭅니다.',
+          note: '찬성보다 반대·기권이 많았거나 정족수 미달 등으로 통과되지 못한 경우. 본회의까지 온 법안은 대부분 가결되므로 부결은 몇 건 수준입니다.' },
+        { id: 'dropped',     badge: 'pb-badge-rejected',  label: '폐기',
+          desc: '임기 만료, 절차상 문제 등으로 더 이상 심사되지 않는 법안.',
+          note: '22대 국회 임기 내 처리되지 않은 법안은 임기 만료와 함께 자동 폐기됩니다.' },
+      ],
     },
     {
-      id: 'modified',
-      badge: 'pb-badge-passed',
-      label: '수정가결',
-      desc: '법안 내용 중 일부를 수정한 뒤 본회의 표결을 통과한 법안.',
-      note: '위원회 심사 또는 본회의 과정에서 수정 의결된 경우.'
+      id: 'sec-process', label: '법안이 가는 길',
+      lede: '법안 상세 위쪽 「처리 경과」 한 줄의 각 점입니다. 어디까지 왔고 어디를 건너뛰었는지를 여기서 읽습니다.',
+      items: [
+        { id: 'propose',      label: '발의',
+          desc: '의원이 법안을 제출하는 것. 대표발의 의원과 함께 이름을 올린 공동발의 의원 10명 이상이 필요합니다.',
+          note: '정부가 내는 법안(정부 제출)과 위원회가 만드는 대안(위원장 발의)도 있습니다. 이 사이트의 발의 통계는 의원 발의를 기준으로 합니다.' },
+        { id: 'referral',     label: '소관위원회 회부',
+          desc: '법안 내용에 따라 담당 상임위원회로 넘기는 것.',
+          note: '회부 전까지 법안의 소관위원회는 비어 있습니다. "미지정"이 아니라 아직 회부되지 않았다는 뜻입니다.' },
+        { id: 'presentation', label: '상정',
+          desc: '위원회(또는 본회의)가 그 법안을 정식 안건으로 올리는 것.',
+          note: '회부됐다고 바로 심사되는 것은 아닙니다. 상정되지 않은 채 계류되는 법안이 많습니다.' },
+        { id: 'subcommittee', label: '소위원회',
+          desc: '상임위원회 안에서 법안을 조문 단위로 실제 심사하는 작은 회의체. 법안심사소위 등.',
+          note: '여러 법안을 하나의 대안으로 합치는 작업이 주로 여기서 이루어집니다.' },
+        { id: 'alternative',  label: '대안 (위원장 대안)',
+          desc: '같은 법률을 고치려는 여러 법안을 위원회가 하나로 합쳐 만든 법안. 위원장 이름으로 발의됩니다.',
+          note: '대안이 통과되면 원안들은 "대안반영폐기"가 됩니다. 대안에는 대표발의 의원이 따로 없어, 이 사이트의 자당·타당 판정에서는 제외됩니다.' },
+        { id: 'judiciary',    label: '법제사법위원회 (체계·자구 심사)',
+          desc: '다른 위원회를 통과한 법안이 본회의에 오르기 전 거치는 심사. 다른 법률과 충돌하지 않는지(체계), 문구가 맞는지(자구)를 봅니다.',
+          note: '처리 경과에서 이 점이 점선·취소선이면 그 단계를 거치지 않았다는 뜻입니다 (대안으로 흡수된 원안 등).' },
+        { id: 'plenary',      label: '본회의',
+          desc: '국회의원 전원이 참여하는 국회의 최고 의결 기관. 법안은 위원회 심사를 거친 뒤 본회의에서 최종 표결됩니다.',
+          note: '여기까지 온 법안은 대부분 가결됩니다. 법안이 걸러지는 곳은 본회의가 아니라 위원회입니다 (해설 1편).' },
+        { id: 'quorum',       label: '정족수',
+          desc: '의결이 유효하려면 필요한 최소 출석·찬성 인원 수.',
+          note: '일반 법안은 재적의원 과반수 출석, 출석의원 과반수 찬성으로 가결됩니다.' },
+        { id: 'proc-days',    label: '처리 소요일',
+          desc: '발의일부터 최종 처리일까지의 날수. 「차트 만들기」의 지표 중 하나입니다.',
+          note: '처리가 끝난 법안만 셀 수 있어서 계류 중인 다수는 빠집니다. 그래서 실제보다 짧게 나오는 쪽으로 치우친 값입니다.' },
+      ],
     },
     {
-      id: 'alt-dropped',
-      badge: 'pb-badge-alt',
-      label: '대안반영폐기',
-      desc: '해당 법안의 내용이 유사한 다른 법안(대안)에 흡수·통합되어 원안이 폐기된 경우.',
-      note: '비슷한 주제의 여러 법안이 있을 때, 하나의 통합 법안으로 병합되며 원안들은 절차상 폐기 처리됩니다. 내용 자체가 사라지는 것은 아닙니다.'
+      id: 'sec-proposer', label: '발의자 구분',
+      lede: '의원 상세의 「법안 발의」와 「공동발의」가 다른 숫자인 이유입니다.',
+      items: [
+        { id: 'rep-proposer',  badge: 'pb-badge-category', label: '대표발의',
+          desc: '법안을 만들어 낸 의원. 내용을 정하고 이름을 걸고 제출합니다. 한 법안에 보통 1명(드물게 공동 대표).',
+          note: '의원 상세의 「법안 발의」 칸은 대표발의 건수입니다.' },
+        { id: 'co-proposer',   badge: 'pb-badge-alt',      label: '공동발의',
+          desc: '그 법안에 이름을 올려 서명한 의원. 의원 발의는 10명 이상의 이름이 필요해 동료가 이름을 보탭니다.',
+          note: '한 법안에 10명 안팎, 많으면 100명 이상. 그래서 공동발의 수백 건은 "수백 개의 법을 만들었다"가 아니라 수백 번 이름을 올렸다는 뜻입니다.' },
+        { id: 'lead-share',    label: '대표 비중',
+          desc: '대표발의 + 공동발의 전체 가운데 대표발의가 차지하는 비율.',
+          note: '혼자로는 뜻이 없어 의원 중앙값(10% 안팎)과 같이 씁니다.' },
+        { id: 'proposer-party', label: '발의 정당',
+          desc: '대표발의 의원이 속한 정당. 자당·타당 판정의 기준입니다.',
+          note: '대표발의자가 없는 위원장 대안은 정당을 특정할 수 없어 자당·타당 계산에서 뺍니다.' },
+      ],
     },
     {
-      id: 'mod-dropped',
-      badge: 'pb-badge-alt',
-      label: '수정안반영폐기',
-      desc: '제출된 수정안이 별도 법안으로 처리되면서 원안이 폐기된 경우.',
-      note: '대안반영폐기와 유사한 개념.'
+      id: 'sec-vote-result', label: '본회의 표결 결과',
+      lede: '원천이 네 값으로 구분해 줍니다. 특히 기권과 불참은 다른 것입니다.',
+      items: [
+        { id: 'vote-for',     badge: 'pb-badge-passed',   label: '찬성',
+          desc: '본회의에서 가결에 동의한 경우.' },
+        { id: 'vote-against', badge: 'pb-badge-rejected', label: '반대',
+          desc: '본회의에서 가결에 반대한 경우. 전체 표결의 1% 안팎으로 매우 드뭅니다.' },
+        { id: 'vote-abstain', badge: 'pb-badge-alt',      label: '기권',
+          desc: '표결에 참여했으나 찬성·반대 어느 쪽도 선택하지 않음.',
+          note: '"참여는 했다"는 점에서 불참과 다릅니다. 참여율 계산에 들어갑니다.' },
+        { id: 'vote-absent',  badge: 'pb-badge-alt',      label: '불참',
+          desc: '그 표결 자체에 참여하지 않음. 참여율 계산에서 제외됩니다.',
+          note: '불참 사유(공무 출장·사보임·의장 관례 등)는 원천이 주지 않아 구분하지 못합니다. 국회의장은 관례상 표결에 참여하지 않습니다.' },
+      ],
+      formula: '표결 참여율 = (찬성 + 반대 + 기권) ÷ 전체 본회의 표결 법안 수',
     },
     {
-      id: 'withdrawn',
-      badge: 'pb-badge-withdrawn',
-      label: '철회',
-      desc: '발의자가 스스로 취소한 법안.',
-      note: '본회의 표결 전, 발의자 본인이 의안을 거둬들인 경우.'
+      id: 'sec-metrics', label: '이 사이트가 만든 지표',
+      lede: '원천에는 없고 당말사가 집계해 붙인 값들입니다. 하나같이 조건이 붙어 있어 조건을 떼면 뜻이 달라집니다.',
+      items: [
+        { id: 'gap',        label: '자당·타당 찬성률 격차 (%p)',
+          desc: '자기 정당이 대표발의한 법안 찬성률에서 다른 정당이 대표발의한 법안 찬성률을 뺀 값. "당을 보고 찍나, 법안을 보고 찍나"를 재는 지표입니다.',
+          note: '불참은 분모에서 뺍니다. 자당·타당 각각 50건 이상 표결한 의원만 순위를 매깁니다. 다수당·소수당은 의사일정 구조가 달라 정당끼리 비교하면 안 됩니다 (해설 4편).' },
+        { id: 'dissent',    label: '당론 이탈률',
+          desc: '같은 표결에서 소속 정당 의원 다수와 다른 쪽으로 찍은 비율.',
+          note: '격차가 "상대 정당 법안을 어떻게 대했나"라면 이탈은 "내 정당 안에서 혼자 다른 쪽이었나"입니다.' },
+        { id: 'absent-rate', label: '불참률',
+          desc: '표결 전체 중 불참한 비율. 홈·차트의 "중앙값"은 의원별 불참률의 중앙값입니다.',
+          note: '전체 표결 중 불참 비율(더 높게 나옵니다)과 다른 숫자입니다. 표결 100건 이상 의원만 셉니다.' },
+        { id: 'percentile', label: '백분위 · 중앙값',
+          desc: '백분위는 같은 조건의 의원 중 어디쯤인지(상위 N%), 중앙값은 그 지표에서 "보통 의원"의 값입니다.',
+          note: '백분위 코호트에서 국무위원 겸직·임기 중 합류 의원을 뺍니다. 가결율에는 백분위를 붙이지 않습니다 (계류가 4분의 3이라 순위가 서지 않습니다).' },
+        { id: 'lift',       label: '특화 분야 (평균 대비 배수)',
+          desc: '의원 상세 「대표발의 특화 분야」. 이 의원의 대표발의 중 그 위원회 비중을 전체 의원의 같은 비중으로 나눈 값.',
+          note: '위원회마다 법안 총량이 달라 건수로 세우면 누구나 큰 위원회가 1위로 나옵니다. 그래서 배수로 봅니다.' },
+        { id: 'cmt-rate',   label: '상임위 회의 참여율',
+          desc: '소속 상임위 회의 가운데 발언 기록이 있는 회의의 비율.',
+          note: '배정일 기록이 없는 기간은 첫 발언일을 소속 시작으로 봐서 실제보다 후한 값입니다. 회의 11번이 쌓이기 전엔 비율을 내지 않습니다.' },
+        { id: 'seat-kind',  label: '질의석 · 위원장석',
+          desc: '회의 발언 기록의 구분. 질의석은 위원·간사·의원으로 발언한 것, 위원장석은 사회를 보며 발언한 것.',
+          note: '위원장은 안건 호명 때문에 발언이 구조적으로 많아 둘을 합치지 않습니다. 장관 등 정부측 답변은 집계에서 뺍니다.' },
+        { id: 'axis',       label: '성향 좌표 (경제 · 사회문화 · 정치제도)',
+          desc: '의원이 공동발의로 이름을 올린 법안의 방향을 축별로 평균 낸 값. 안보 축은 입법 기록으로 잴 수 없어 만들지 않습니다.',
+          note: '축당 서명 5건 미만이면 그 축은 비워 둡니다. 0으로 채우면 "중도"로 읽혀 거짓이 됩니다 (해설 5편).' },
+        { id: 'match',      label: '일치도 · 순위',
+          desc: '성향 진단 결과와 의원 좌표의 거리를 순위로 세운 것. "N명 중 M위"가 주인공이고 %는 보조입니다.',
+          note: '%는 임의의 보정값에 기대는 근사치라 크게 읽지 않습니다. 순위는 거리의 순서라 그 보정과 무관합니다.' },
+        { id: 'cohort',     label: '비교 대상 (코호트)',
+          desc: '백분위·평균을 낼 때 함께 세는 의원 집합. 국무위원 겸직, 의장단, 임기 중 합류, 표결 기록 부족은 지표에 따라 뺍니다.',
+          note: '값을 숨기는 게 아니라 순위만 안 매기고 이유를 씁니다. 장관을 겸직하면 의정활동이 줄어드는 게 당연한데 순위를 붙이면 전원이 하위권이 되기 때문입니다.' },
+      ],
     },
     {
-      id: 'pending',
-      badge: 'pb-badge-pending',
-      label: '계류',
-      desc: '아직 심사가 진행 중인 법안.',
-      note: '발의 후 위원회 심사, 법사위 심사, 본회의 상정 중 어느 단계에서든 최종 처리가 끝나지 않은 상태.'
+      id: 'sec-general', label: '의원 · 국회 일반',
+      lede: '의원 상세와 목록의 배지·칩에 나오는 말들입니다.',
+      items: [
+        { id: 'committee',   label: '상임위원회',
+          desc: '특정 분야를 전담하는 국회 안의 위원회. 법안은 관련 상임위원회에서 먼저 심사를 받습니다.',
+          note: '예: 보건복지위원회, 국방위원회. 위원회는 배정되는 자리라 소속이 전부 본인 선택은 아닙니다.' },
+        { id: 'special-cmt', label: '특별위원회',
+          desc: '특정 사안을 위해 한시적으로 만드는 위원회. 의원 상세의 위원회 칩에서 점선으로 표시합니다.',
+          note: '국정조사특별위원회처럼 이름이 매우 긴 경우가 있습니다.' },
+        { id: 'chair-role',  label: '위원장 · 간사 · 위원',
+          desc: '위원회 안의 직위. 위원장은 회의를 주재하고, 간사는 교섭단체별 조율을 맡습니다.',
+          note: '이 셋은 국회 원구성으로 정해져 자동 수집됩니다. 원내대표·당대표 같은 당직은 국회 데이터가 아니라 따로 관리합니다.' },
+        { id: 'minister',    label: '국무위원 겸직',
+          desc: '장관 등 정부 직을 맡고 있는 현직 의원.',
+          note: '상임위 활동과 발의·표결이 구조적으로 줄어들어 백분위·평균 비교에서 뺍니다. 값은 그대로 보여줍니다.' },
+        { id: 'speaker',     label: '의장단',
+          desc: '국회의장과 부의장.',
+          note: '국회의장은 관례상 본회의 표결에 참여하지 않아 표결 참여율 비교에서 뺍니다.' },
+        { id: 'caucus',      label: '교섭단체',
+          desc: '의원 20명 이상이 모여 국회 운영을 협의하는 단위. 대개 정당 단위입니다.',
+          note: '원내대표는 교섭단체의 대표입니다.' },
+        { id: 'terms',       label: '선수 (초선 · 재선 · 3선…)',
+          desc: '국회의원으로 당선된 횟수.',
+          note: '의원 목록의 필터 항목입니다.' },
+        { id: 'district',    label: '지역구 · 비례대표',
+          desc: '지역구는 특정 지역에서 선출된 의원, 비례대표는 정당 득표율에 따라 배분된 의원.',
+          note: '의원 상세의 지역구 자리에 "비례대표"라고 적힌 경우가 후자입니다.' },
+        { id: 'retired',     label: '퇴임',
+          desc: '한때 현직이었으나 지금은 현직 의원 명단에 없는 의원. 목록에 무채색 배지로 표시합니다.',
+          note: '사유(사직·당선무효·지방선거 출마 등)는 원천이 주지 않아 화면에 쓰지 않습니다.' },
+        { id: 'audit',       label: '국정감사',
+          desc: '국회가 매년 정부 기관을 감사하는 절차. 회의 발언 기록의 상당수가 여기서 나옵니다.',
+          note: '상임위 참여율의 분모는 상임위 회의만이라 국정감사·본회의 발언은 들어가지 않습니다.' },
+        { id: 'assembly22',  label: '22대 국회',
+          desc: '2024년 5월 30일 임기를 시작한 국회. 이 사이트의 모든 데이터는 22대 기준입니다.',
+          note: '임기는 4년. 임기 안에 처리되지 않은 법안은 임기 만료로 폐기됩니다.' },
+      ],
     },
-    {
-      id: 'rejected',
-      badge: 'pb-badge-rejected',
-      label: '부결',
-      desc: '본회의 표결에서 반대가 많아 통과되지 못한 법안.',
-      note: '찬성보다 반대/기권이 많았거나 정족수 미달 등으로 통과되지 못한 경우.'
-    },
-    {
-      id: 'dropped',
-      badge: 'pb-badge-rejected',
-      label: '폐기',
-      desc: '임기 만료, 철회, 절차상 문제 등으로 더 이상 심사되지 않는 법안.',
-      note: '22대 국회 임기 내 처리되지 않은 법안은 임기 만료와 함께 자동 폐기됩니다.'
-    }
   ];
-
-  const roles = [
-    { id: 'rep-proposer', label: '대표발의', desc: '법안을 최초로 발의한 의원. 한 법안에 1명.' },
-    { id: 'co-proposer',  label: '공동발의', desc: '대표발의자와 함께 이름을 올린 의원. 최소 10명 이상 필요.' }
-  ];
-
-  const votes = [
-    { id: 'vote-for',     label: '찬성',  desc: '본회의에서 가결에 동의한 경우.' },
-    { id: 'vote-against', label: '반대',  desc: '본회의에서 가결에 반대한 경우.' },
-    { id: 'vote-abstain', label: '기권',  desc: '표결에 참여했으나 찬성·반대 어느 쪽도 선택하지 않음.' },
-    { id: 'vote-absent',  label: '불참',  desc: '표결 자체에 참여하지 않음. 참여율 계산에서 제외.' }
-  ];
-
-  const generals = [
-    {
-      id: 'plenary',
-      label: '본회의',
-      desc: '국회의원 전원이 참여하는 국회의 최고 의결 기관.',
-      note: '법안은 위원회 심사를 거친 뒤 본회의에 상정되어 최종 표결이 이루어집니다.'
-    },
-    {
-      id: 'committee',
-      label: '상임위원회',
-      desc: '특정 분야를 전담하는 국회 내 소규모 위원회.',
-      note: '법안은 관련 상임위원회에서 먼저 심사를 받습니다. 예: 보건복지위원회, 국방위원회 등.'
-    },
-    {
-      id: 'quorum',
-      label: '정족수',
-      desc: '의결이 유효하려면 필요한 최소 출석·찬성 인원 수.',
-      note: '일반 법안은 재적의원 과반수 출석, 출석의원 과반수 찬성으로 가결됩니다.'
-    }
-  ];
-
-  const toc = [
-    { id: 'sec-bill-result', label: '법안 처리 결과' },
-    { id: 'sec-proposer',    label: '발의자 구분' },
-    { id: 'sec-vote-result', label: '본회의 표결 결과' },
-    { id: 'sec-general',     label: '주요 용어' }
-  ];
-
-  const participationFormula = '표결 참여율 = (찬성 + 반대 + 기권) ÷ 전체 본회의 표결 법안 수';
 %>
 
 <style>
-  .gl-wrap {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 36px 24px 80px;
-  }
+  .gl-wrap { max-width: 960px; margin: 0 auto; padding: 36px 24px 80px; }
 
-  .gl-section {
-    margin-bottom: 52px;
-  }
+  .gl-section { margin-bottom: 52px; scroll-margin-top: calc(var(--nav-h) + 20px); }   /* 🔴 --nav-h 반응형. 하드코딩 금지 */
   .gl-section h2 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--accent);
-    margin-bottom: 18px;
+    font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 22px; line-height: 1.4;
+    color: var(--text); margin: 0 0 6px; padding-left: 12px; border-left: 3px solid var(--accent);
   }
-  .gl-section h2 span {
-    font-family: 'Noto Sans KR', sans-serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: 0;
-    text-transform: none;
-    margin-left: 10px;
-  }
+  .gl-section h2 small { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--accent2); margin-right: 8px; }
+  .gl-lede { font-size: 14px; color: var(--sub); line-height: 1.7; margin: 0 0 16px 15px; }
 
-  .gl-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
+  .gl-list { display: flex; flex-direction: column; gap: 12px; }
   .gl-item {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 22px 24px;
-    transition: border-color 0.2s;
-    scroll-margin-top: 76px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px;
+    transition: border-color 0.2s; scroll-margin-top: calc(var(--nav-h) + 16px);
   }
-  .gl-item:target {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-15);
-  }
-  .gl-item-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
-  }
-  .gl-item-label {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .gl-item-desc {
-    font-size: 15px;
-    color: var(--text);
-    line-height: 1.75;
-    margin-bottom: 8px;
-  }
-  .gl-item-note {
-    font-size: 14px;
-    color: var(--sub);
-    line-height: 1.75;
-  }
+  .gl-item:target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-15); }
+  .gl-item-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .gl-item-label { font-size: 16px; font-weight: 700; color: var(--text); }
+  .gl-item-desc { font-size: 15px; color: var(--text); line-height: 1.75; margin-bottom: 6px; }
+  .gl-item-note { font-size: 14px; color: var(--sub); line-height: 1.75; }
 
   .gl-formula {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    color: var(--text);
-    margin-top: 14px;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px;
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text); margin-top: 14px;
   }
 
   /* 목차 */
-  .gl-toc {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin-bottom: 44px;
-    box-shadow: var(--shadow-sm);
-  }
-  .gl-toc-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--sub2);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 14px;
-  }
-  .gl-toc-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
+  .gl-toc { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin-bottom: 40px; box-shadow: var(--shadow-sm); scroll-margin-top: calc(var(--nav-h) + 16px); }
+  .gl-toc-title { font-size: 12.5px; font-weight: 800; color: var(--sub2); margin-bottom: 12px; }
+  .gl-toc-list { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
   .gl-toc-list a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text);
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 14px; font-weight: 500;
+    color: var(--text); background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; transition: all 0.15s; text-decoration: none;
   }
-  .gl-toc-list a:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-10);
-  }
-  .gl-toc-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--sub2);
-  }
+  .gl-toc-list a:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-10); }
+  .gl-toc-num { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
   .gl-toc-list a:hover .gl-toc-num { color: var(--accent); }
+  .gl-toc-count { font-size: 12px; color: var(--sub2); }
 
-  /* 섹션 앵커 스크롤 오프셋 */
-  .gl-section {
-    scroll-margin-top: 80px;
+  /* 목차로 돌아가기 — 섹션 6개라 한 번 내려가면 목차가 멀다. 스크롤이 목차를 지나면 나타난다 */
+  .gl-top {
+    position: fixed; right: 20px; bottom: max(20px, env(safe-area-inset-bottom, 20px)); z-index: 60;
+    display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px;
+    background: var(--bg2); color: var(--text); border: 1px solid var(--border2); border-radius: 999px;
+    font-size: 13px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.12); cursor: pointer;
+    opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .18s, transform .18s;
   }
+  .gl-top.is-on { opacity: 1; transform: none; pointer-events: auto; }
+  .gl-top:hover { border-color: var(--accent); color: var(--accent2); }
+  .gl-top svg { width: 14px; height: 14px; }
+  @media (max-width: 640px) { .gl-top { right: 14px; padding: 9px 12px; font-size: 12.5px; } }
 </style>
 
 <div class="pb-page-header">
   <div class="pb-page-header-inner">
     <div>
-      <h1 class="pb-page-title">용어 설명</h1>
+      <%# 「읽는 법」의 두 번째 탭. 페이지 제목은 섹션 이름(읽는 법)으로 두어 /guide 와 같은 자리로 읽히게 — 탭이 어느 층인지 말한다 %>
+      <h1 class="pb-page-title">읽는 법</h1>
       <p class="pb-page-desc">
         당말사는 국회 공공데이터의 원래 용어를 그대로 사용합니다.<br>
-        익숙하지 않은 법안 처리 결과·발의 구분·표결 결과를 여기서 찾아보세요.
+        익숙하지 않은 처리 결과·절차·표결 결과와, 이 사이트가 만든 지표의 뜻을 여기서 찾아보세요.
       </p>
     </div>
   </div>
 </div>
 
 <div class="gl-wrap">
-  <!-- 목차 -->
-  <nav class="gl-toc" aria-label="목차">
-    <div class="gl-toc-title">목차</div>
+  <%- include('guide/_tabs', { active: 'glossary' }) %>
+
+  <nav class="gl-toc" id="gl-toc" aria-label="목차">
+    <div class="gl-toc-title">목차 · <%= SECTIONS.reduce((s, x) => s + x.items.length, 0) %>개 용어</div>
     <ul class="gl-toc-list">
-      <% toc.forEach((t, i) => { %>
-        <li>
-          <a href="#<%= t.id %>">
-            <span class="gl-toc-num"><%= String(i + 1).padStart(2, '0') %></span>
-            <%= t.label %>
-          </a>
-        </li>
+      <% SECTIONS.forEach((s, i) => { %>
+        <li><a href="#<%= s.id %>"><span class="gl-toc-num"><%= String(i + 1).padStart(2, '0') %></span><%= s.label %> <span class="gl-toc-count"><%= s.items.length %></span></a></li>
       <% }); %>
     </ul>
   </nav>
 
-  <!-- 법안 처리 결과 -->
-  <section class="gl-section" id="sec-bill-result">
-    <h2><span>법안 처리 결과</span></h2>
+  <% SECTIONS.forEach((s, i) => { %>
+  <section class="gl-section" id="<%= s.id %>">
+    <h2><small><%= String(i + 1).padStart(2, '0') %></small><%= s.label %></h2>
+    <% if (s.lede) { %><p class="gl-lede"><%= s.lede %></p><% } %>
     <div class="gl-list">
-      <% terms.forEach(t => { %>
+      <% s.items.forEach(t => { %>
         <div class="gl-item" id="<%= t.id %>">
           <div class="gl-item-header">
-            <span class="pb-badge <%= t.badge %>"><%= t.label %></span>
+            <% if (t.badge) { %><span class="pb-badge <%= t.badge %>"><%= t.label %></span>
+            <% } else { %><span class="gl-item-label"><%= t.label %></span><% } %>
           </div>
           <div class="gl-item-desc"><%= t.desc %></div>
-          <div class="gl-item-note"><%= t.note %></div>
+          <% if (t.note) { %><div class="gl-item-note"><%= t.note %></div><% } %>
         </div>
       <% }); %>
     </div>
+    <% if (s.formula) { %><div class="gl-formula"><%= s.formula %></div><% } %>
   </section>
-
-  <!-- 발의자 구분 -->
-  <section class="gl-section" id="sec-proposer">
-    <h2><span>발의자 구분</span></h2>
-    <div class="gl-list">
-      <% roles.forEach(r => { %>
-        <div class="gl-item" id="<%= r.id %>">
-          <div class="gl-item-header">
-            <span class="pb-badge <%= r.id === 'rep-proposer' ? 'pb-badge-category' : 'pb-badge-alt' %>"><%= r.label %></span>
-          </div>
-          <div class="gl-item-desc"><%= r.desc %></div>
-        </div>
-      <% }); %>
-    </div>
-  </section>
-
-  <!-- 표결 결과 -->
-  <section class="gl-section" id="sec-vote-result">
-    <h2><span>본회의 표결 결과</span></h2>
-    <div class="gl-list">
-      <% votes.forEach(v => { %>
-        <div class="gl-item" id="<%= v.id %>">
-          <div class="gl-item-header">
-            <span class="pb-badge <%= v.id === 'vote-for' ? 'pb-badge-passed' : v.id === 'vote-against' ? 'pb-badge-rejected' : 'pb-badge-alt' %>"><%= v.label %></span>
-          </div>
-          <div class="gl-item-desc"><%= v.desc %></div>
-        </div>
-      <% }); %>
-    </div>
-
-    <div class="gl-formula">
-      <%= participationFormula %>
-    </div>
-  </section>
-
-  <!-- 주요 용어 -->
-  <section class="gl-section" id="sec-general">
-    <h2><span>주요 용어</span></h2>
-    <div class="gl-list">
-      <% generals.forEach(g => { %>
-        <div class="gl-item" id="<%= g.id %>">
-          <div class="gl-item-header">
-            <span class="pb-badge pb-badge-alt"><%= g.label %></span>
-          </div>
-          <div class="gl-item-desc"><%= g.desc %></div>
-          <div class="gl-item-note"><%= g.note %></div>
-        </div>
-      <% }); %>
-    </div>
-  </section>
+  <% }); %>
 </div>
+
+<a class="gl-top" id="gl-top" href="#gl-toc" aria-label="목차로 돌아가기" data-no-loader>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  목차
+</a>
+<script>
+  (function () {
+    var btn = document.getElementById('gl-top'), toc = document.getElementById('gl-toc');
+    if (!btn || !toc) return;
+    /* 목차가 화면 위로 지나갔을 때만 보인다. rAF 없이 동기 — 배경 탭에서 콜백이 안 도는 함정 회피 */
+    function tick() {
+      var r = toc.getBoundingClientRect();
+      btn.classList.toggle('is-on', r.bottom < 0);
+    }
+    window.addEventListener('scroll', tick, { passive: true });
+    window.addEventListener('resize', tick);
+    tick();
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      toc.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', location.pathname);   /* :target 강조·해시 잔재 정리 */
+    });
+  })();
+</script>

@@ -7,13 +7,13 @@
   <% if (as) { %>
     <p class="xr-desc" style="margin-bottom:16px">
       본회의 표결에서 불참으로 기록된 비율입니다. 의원 <strong><%= nf(as.total) %>명</strong>의
-      중앙값이 <strong><%= as.median_pct %>%</strong> — 대략 <strong>다섯 번 중 한 번</strong>은 표결에 빠집니다.
+      중앙값이 <strong><%= as.median_pct %>%</strong>. 대략 <strong>다섯 번 중 한 번</strong>은 표결에 빠집니다.
       아래는 그중 비율이 높은 15명입니다.
     </p>
     <div class="xr-stats" style="margin-bottom:20px">
-      <div class="xr-stat"><div class="v"><%= as.median_pct %>%</div><div class="l">불참률 중앙값 — 절반은 이보다 낮습니다</div></div>
-      <div class="xr-stat"><div class="v"><%= nf(as.low_cnt) %><small style="font-size:16px">명</small></div><div class="l">불참 10% 미만 — 거의 빠지지 않음</div></div>
-      <div class="xr-stat"><div class="v"><em><%= nf(as.high_cnt) %></em><small style="font-size:16px">명</small></div><div class="l">불참 40% 이상 — 사유는 구분되지 않습니다</div></div>
+      <div class="xr-stat"><div class="v"><%= as.median_pct %>%</div><div class="l">불참률 중앙값 · 절반은 이보다 낮습니다</div></div>
+      <div class="xr-stat"><div class="v"><%= nf(as.low_cnt) %><small style="font-size:16px">명</small></div><div class="l">불참 10% 미만 · 거의 빠지지 않음</div></div>
+      <div class="xr-stat"><div class="v"><em><%= nf(as.high_cnt) %></em><small style="font-size:16px">명</small></div><div class="l">불참 40% 이상 · 사유는 구분되지 않습니다</div></div>
     </div>
   <% } %>
   <% const abMax = Math.max(0.001, ...ab.map(r => r.absent_cnt / r.total_cnt)); %>
@@ -28,7 +28,7 @@
       </a>
     <% }) %>
   </div>
-  <div class="xr-note">표결 기록 100회 이상 현직 의원만. 불참 사유(공무 출장·사보임·청가 등)는 API가 제공하지 않아 구분하지 못합니다 — 높은 수치가 곧 태만을 뜻하지는 않습니다.</div>
+  <div class="xr-note">표결 기록 100회 이상 현직 의원만. 불참 사유(공무 출장·사보임·청가 등)는 API가 제공하지 않아 구분하지 못합니다. 높은 수치가 곧 태만을 뜻하지는 않습니다.</div>
 <% } else { %>
   <div class="xr-empty">표결 데이터가 부족합니다.</div>
 <% } %>

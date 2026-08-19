@@ -11,9 +11,9 @@
       아래는 그중 비율이 높은 15명입니다.
     </p>
     <div class="xr-stats" style="margin-bottom:20px">
-      <div class="xr-stat"><div class="v"><%= ds.median_pct %>%</div><div class="l">이탈률 중앙값 — 절반은 이보다 낮습니다</div></div>
+      <div class="xr-stat"><div class="v"><%= ds.median_pct %>%</div><div class="l">이탈률 중앙값 · 절반은 이보다 낮습니다</div></div>
       <div class="xr-stat"><div class="v"><%= nf(ds.never_cnt) %><small style="font-size:16px">명</small></div><div class="l">한 번도 이탈하지 않음 (<%= nf(ds.total) %>명 중)</div></div>
-      <div class="xr-stat"><div class="v"><em><%= ds.max_pct %>%</em></div><div class="l">가장 높은 이탈률 — 이게 최대치입니다</div></div>
+      <div class="xr-stat"><div class="v"><em><%= ds.max_pct %>%</em></div><div class="l">가장 높은 이탈률 · 이게 최대치입니다</div></div>
     </div>
   <% } %>
   <% const drMax = Math.max(0.001, ...dr.map(r => r.dissent_cnt / r.votes_cnt)); %>

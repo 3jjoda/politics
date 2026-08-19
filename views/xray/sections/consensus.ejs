@@ -3,8 +3,8 @@
 <% if (cs.total > 0) { %>
   <div class="xr-stats">
     <div class="xr-stat"><div class="v"><%= nf(cs.total) %></div><div class="l">본회의 표결 법안 (표결 30인 이상)</div></div>
-    <div class="xr-stat"><div class="v"><em><%= cs.nearUnanimousPct %>%</em></div><div class="l">찬성률 90% 이상 — 사실상 합의 처리</div></div>
-    <div class="xr-stat"><div class="v"><%= cs.contestedPct %>%</div><div class="l">찬성률 70% 미만 — 실제로 맞붙은 표결</div></div>
+    <div class="xr-stat"><div class="v"><em><%= cs.nearUnanimousPct %>%</em></div><div class="l">찬성률 90% 이상 · 사실상 합의 처리</div></div>
+    <div class="xr-stat"><div class="v"><%= cs.contestedPct %>%</div><div class="l">찬성률 70% 미만 · 실제로 맞붙은 표결</div></div>
   </div>
   <%
     const maxBin = Math.max(1, ...cs.bins.map(b => b.cnt));

@@ -15,6 +15,12 @@
 - 브리핑 상세 `currentUrl` 을 `/briefing/:id` 로 (canonical 정상화), nav 활성 `indexOf`
 - 재검토는 2주 이상 뒤에. 상세는 CLAUDE.md 「AdSense 반려 원인과 대응」
 
+**2차 (같은 날)** — **「읽는 법」 `/guide` 5편** (사람이 쓴 해설: 반대표 1% · 법안의 길 · 발의 건수 · 자당/타당 격차 · 성향 좌표).
+`utils/guideArticles.js` 단일 소스 + `views/guide/*` + `public/styles/guide.css`. 1편은 `getHomeFacts` 살아 있는 숫자, 4편은 `GAP_BANDS`.
+사이트맵 자동 포함(+`/balance-game/types`).
+**4차 (같은 날)** — 화면 문장의 **em dash `—` 전부 제거** (173곳: 뷰·컨트롤러 description·공유 텍스트·차트 각주). 문장은 끊거나 `,`/`:`, `제목 — 부제` 는 ` · `. 브랜드 타이틀 `당말사 · 당 말고 사람` (A안). "값 없음" 기호 `—` 는 유지. 렌더 검증: 주요 20페이지 + xray 12섹션 가시 텍스트에 `—` 0.
+**3차 (같은 날)** — nav `용어` → **`읽는 법`**, 용어 설명을 그 아래로 (`/glossary` → `/guide/glossary` 301). 목차 하단에 용어 4분류 카드, 5편 다음 → 용어 설명. 도움말·404·about 링크 전부 새 주소.
+
 ## 2026-08-17 (1) — 유튜브 쇼츠 파이프라인 `batch/genBriefingVideo.js` (`npm run video`)
 
 **2차 (같은 날)** — 「흐름 하나」 포맷을 기본으로: 하루 한 영상 = 주제 묶음 하나(훅 what → 관련 법안 → 그날 맥락 → CTA, HTML 프레임 직접 렌더, 32.7초),

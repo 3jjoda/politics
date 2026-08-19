@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <%# 타이틀 조립은 여기서만. 컨트롤러의 pageTitle 은 "페이지 이름"만 넘기고 브랜드·태그라인은 붙이지 말 것.
         홈처럼 pageTitle 이 없으면 브랜드+태그라인 단독 → "당말사 — 당 말고 사람" %>
-    <title><%= locals.pageTitle ? locals.pageTitle + ' · 당말사 — 당 말고 사람' : '당말사 — 당 말고 사람' %></title>
+    <title><%= locals.pageTitle ? locals.pageTitle + ' · 당말사 · 당 말고 사람' : '당말사 · 당 말고 사람' %></title>
 
     <!-- Primary Meta -->
     <%# description 은 페이지가 pageDesc 를 넘기면 그걸, 없으면 ogDesc, 그것도 없으면 브랜드 기본값.
@@ -44,7 +44,7 @@
         카톡·X 등에 링크를 붙였을 때 뜨는 미리보기라, 커스텀 차트처럼 "무엇을 공유하는지" 가
         페이지마다 다른 경우엔 반드시 넘겨야 한다. %>
     <meta property="og:type" content="website">
-    <meta property="og:title" content="<%= locals.ogTitle || '당말사 — 당 말고 사람' %>">
+    <meta property="og:title" content="<%= locals.ogTitle || '당말사 · 당 말고 사람' %>">
     <meta property="og:description" content="<%= locals.ogDesc || '당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다' %>">
     <meta property="og:url" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + (locals.ogPath || locals.currentUrl || '/') %>">
     <meta property="og:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + asset('/assets/imgs/og-image.png') %>">
@@ -55,7 +55,7 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="<%= locals.ogTitle || '당말사 — 당 말고 사람' %>">
+    <meta name="twitter:title" content="<%= locals.ogTitle || '당말사 · 당 말고 사람' %>">
     <meta name="twitter:description" content="<%= locals.ogDesc || '당 말고 사람. 소속 정당이 아니라, 그 사람이 무엇을 했는지로 봅니다' %>">
     <meta name="twitter:image" content="<%= (process.env.BASE_URL || 'http://localhost:3000') + asset('/assets/imgs/og-image.png') %>">
 
@@ -84,7 +84,7 @@
 <nav class="pb-nav">
     <div class="pb-nav-top">
       <div class="pb-nav-top-inner">
-        <a href="/" class="pb-logo" aria-label="당말사 — 당 말고 사람">
+        <a href="/" class="pb-logo" aria-label="당말사 · 당 말고 사람">
             <span class="pb-logo-brand">
                 <img src="<%= asset('/assets/imgs/mark-only.svg') %>" alt="" aria-hidden="true" class="pb-logo-mark">
                 <img src="<%= asset('/assets/imgs/wordmark-nav.svg') %>" alt="" aria-hidden="true" class="pb-logo-wordmark">
@@ -145,7 +145,7 @@
         <li><a href="/xray" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/xray') === 0) ? 'active' : '' %>">차트</a></li>
         <li><a href="/balance-game" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/balance-game') === 0) ? 'active' : '' %>">성향 진단</a></li>
         <li><a href="/community" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/community') === 0) ? 'active' : '' %>">커뮤니티</a></li>
-        <li><a href="/glossary" class="<%= (locals.currentUrl === '/glossary') ? 'active' : '' %>">용어</a></li>
+        <li><a href="/guide" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/guide') === 0) ? 'active' : '' %>">읽는 법</a></li>
         <li><a href="/about" class="<%= (locals.currentUrl === '/about') ? 'active' : '' %>">소개</a></li>
       </ul>
     </div>
@@ -191,7 +191,7 @@
         <li><a href="/xray">차트</a></li>
         <li><a href="/balance-game">성향 진단</a></li>
         <li><a href="/community">커뮤니티</a></li>
-        <li><a href="/glossary">용어</a></li>
+        <li><a href="/guide">읽는 법</a></li>
         <li><a href="/about">소개</a></li>
     </ul>
     <% if (locals.dataFreshness) { %>
@@ -238,7 +238,8 @@
         </div>
         <ul class="pb-footer-links">
             <li><a href="/about">소개</a></li>
-            <li><a href="/glossary">용어</a></li>
+            <li><a href="/guide">읽는 법</a></li>
+            <li><a href="/guide/glossary">용어</a></li>
             <li><a href="https://open.assembly.go.kr" target="_blank" rel="noopener">데이터 출처</a></li>
             <li><a href="/community">피드백</a></li>
             <li><a href="/terms">이용약관</a></li>

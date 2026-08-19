@@ -8,9 +8,9 @@
   </p>
   <div class="xr-stats">
     <div class="xr-stat"><div class="v"><%= nf(gd.total) %></div><div class="l">집계 대상 의원 (자·타당 각 50표 이상)</div></div>
-    <div class="xr-stat"><div class="v"><em><%= gd.median %></em><small style="font-size:16px">%p</small></div><div class="l">격차 중앙값 — 절반은 이보다 작습니다</div></div>
-    <div class="xr-stat"><div class="v"><%= gd.neutralPct %>%</div><div class="l">격차 2%p 미만 — 발의 정당을 거의 안 가림 (<%= nf(gd.neutralCnt) %>명)</div></div>
-    <div class="xr-stat"><div class="v"><%= gd.partisanPct %>%</div><div class="l">격차 10%p 이상 — 당 성향이 뚜렷 (<%= nf(gd.partisanCnt) %>명)</div></div>
+    <div class="xr-stat"><div class="v"><em><%= gd.median %></em><small style="font-size:16px">%p</small></div><div class="l">격차 중앙값 · 절반은 이보다 작습니다</div></div>
+    <div class="xr-stat"><div class="v"><%= gd.neutralPct %>%</div><div class="l">격차 2%p 미만 · 발의 정당을 거의 안 가림 (<%= nf(gd.neutralCnt) %>명)</div></div>
+    <div class="xr-stat"><div class="v"><%= gd.partisanPct %>%</div><div class="l">격차 10%p 이상 · 당 성향이 뚜렷 (<%= nf(gd.partisanCnt) %>명)</div></div>
   </div>
   <%
     const gMax = Math.max(1, ...gd.bins.map(b => b.cnt));
@@ -67,7 +67,7 @@
   <div class="xr-note">
     집계: 불참 제외, 대표발의자 기준. 자당·타당 각 50표 이상인 의원만 (<%= nf(gd.total) %>명). 실측 범위 <%= gd.gapMin %> ~ <%= gd.gapMax %>%p, 사분위 <%= gd.q1 %> / <%= gd.median %> / <%= gd.q3 %>.
     <br>
-    <strong>해석 주의</strong> — 정당별 평균 차이를 그대로 "어느 당이 더 당파적" 으로 읽으면 안 됩니다. 다수당은 자기 당 법안이 무난히 통과되는 의사일정 구조라 격차가 낮게 나오는 경향이 있습니다. 격차는 성향의 <em>한 단면</em>일 뿐입니다.
+    <strong>해석 주의</strong>: 정당별 평균 차이를 그대로 "어느 당이 더 당파적" 으로 읽으면 안 됩니다. 다수당은 자기 당 법안이 무난히 통과되는 의사일정 구조라 격차가 낮게 나오는 경향이 있습니다. 격차는 성향의 <em>한 단면</em>일 뿐입니다.
   </div>
 <% } else { %>
   <div class="xr-empty">집계 가능한 표결 데이터가 부족합니다.</div>

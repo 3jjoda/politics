@@ -736,7 +736,7 @@
     mk('실험 D · 미리 만든 PNG, 지연 0 (현재 방식)', () => { if (!readyBlob) { say('아직 준비 안 됨'); return; } const f = new File([readyBlob], 'card.png', { type: 'image/png' }); navigator.share({ files: [f], title: '당말사' }).then(() => say('D 완료')).catch(e => say('D 실패 ' + e.name)); });
     mk('실험 E · 링크만 (브리핑과 같은 방식)', () => { navigator.share({ title: '당말사', url: `https://${D.siteHost}/balance-game` }).then(() => say('E 완료')).catch(e => say('E 실패 ' + e.name)); });
     (shareBtn ? shareBtn.parentNode : document.body).insertBefore(box, shareBtn ? shareBtn.nextSibling : null);
-    say('debug 모드 — 폴드 펼친 상태에서 A~E 눌러보고 어느 게 정상인지 알려주세요');
+    say('debug 모드: 폴드 펼친 상태에서 A~E 눌러보고 어느 게 정상인지 알려주세요');
   }
 
   // ── 카카오톡으로 보내기 — 이미지 카드 + 링크 버튼이 **한 메시지**로 간다 (시스템 시트는 이미지만 가고 링크가 안 실린다) ──

@@ -16,7 +16,7 @@
     </div>
   <% }) %>
   <div class="xr-note" style="border-top:none;padding-top:8px;margin-top:4px">
-    처리 완료 중 대안반영폐기 <%= nf(fn.alt_reflected) %>건 — 폐기로 분류되지만 내용은 대안에 흡수된 "사실상 반영". 부결·폐기·철회는 <%= nf(fn.rejected) %>건.
+    처리 완료 중 대안반영폐기 <%= nf(fn.alt_reflected) %>건. 폐기로 분류되지만 내용은 대안에 흡수된 "사실상 반영". 부결·폐기·철회는 <%= nf(fn.rejected) %>건.
   </div>
   <% const cr = x.committeeRate || []; %>
   <% if (cr.length >= 6) { %>

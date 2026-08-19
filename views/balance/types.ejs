@@ -93,7 +93,7 @@
   <div class="ty-grid">
     <%# ── 유형 지도 ── %>
     <div class="ty-map">
-      <svg viewBox="0 0 <%= S %> <%= S %>" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="유형 지도 — 사분면 4개와 거리 링">
+      <svg viewBox="0 0 <%= S %> <%= S %>" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="유형 지도 · 사분면 4개와 거리 링">
         <% quads.forEach(q => { const on = my && my.key === q.key; %>
           <rect class="q <%= on ? 'on' : '' %>" x="<%= q.x ? C : C - R %>" y="<%= q.y ? C : C - R %>" width="<%= R %>" height="<%= R %>" rx="0"/>
         <% }); %>
@@ -145,19 +145,19 @@
       <% } %>
       <div class="ty-rule">
         <div class="ty-rule-h"><span class="z">ZONE 0 · 중심</span><span class="n"><%= mid.name %></span></div>
-        <p><code>d &lt; <%= T.center %></code> — 사분면을 따지지 않고 단일 유형으로 봅니다.</p>
+        <p><code>d &lt; <%= T.center %></code>: 사분면을 따지지 않고 단일 유형으로 봅니다.</p>
       </div>
       <div class="ty-rule">
         <div class="ty-rule-h"><span class="z">ZONE 1 · 온건</span><span class="n">온건한 [사분면명]</span></div>
-        <p><code><%= T.center %> ≤ d &lt; <%= T.strong %></code> — 방향은 있지만 강도가 낮은 구간입니다.</p>
+        <p><code><%= T.center %> ≤ d &lt; <%= T.strong %></code>: 방향은 있지만 강도가 낮은 구간입니다.</p>
       </div>
       <div class="ty-rule">
         <div class="ty-rule-h"><span class="z">ZONE 2 · 뚜렷</span><span class="n">[사분면명]</span></div>
-        <p><code>d ≥ <%= T.strong %></code> — 수식어 없이 이름만 씁니다. 짧은 쪽이 기본값입니다.</p>
+        <p><code>d ≥ <%= T.strong %></code>: 수식어 없이 이름만 씁니다. 짧은 쪽이 기본값입니다.</p>
       </div>
       <div class="ty-rule is-guard">
         <div class="ty-rule-h"><span class="z">안전장치</span><span class="n">한 축이 가운데면 온건</span></div>
-        <p>이름은 두 축의 <em>부호</em>로 정해집니다. 그래서 거리가 커도 <strong>한 축이 |값| &lt; <%= T.axisMid %></strong> 이면 온건으로 내립니다 —
+        <p>이름은 두 축의 <em>부호</em>로 정해집니다. 그래서 거리가 커도 <strong>한 축이 |값| &lt; <%= T.axisMid %></strong> 이면 온건으로 내립니다.
           경제 +0.05·사회 +0.9인 사람을 "개입·자율" 이라고 부르면 개입은 거짓이 되기 때문입니다.</p>
       </div>
     </div>

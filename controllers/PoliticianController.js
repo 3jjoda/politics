@@ -106,7 +106,7 @@ export default (db) => {
                 politician.reele_gbn_nm,
                 billCounts ? `대표발의 ${billCounts.rep}건 · 공동발의 ${billCounts.co}건` : null,
                 attend !== null ? `본회의 표결 참여 ${attend}%` : null,
-            ].filter(Boolean).join(' · ') + ' — 발의·표결·발언 기록으로 보는 22대 국회의원 활동';
+            ].filter(Boolean).join(' · ') + '. 발의·표결·발언 기록으로 보는 22대 국회의원 활동';
 
             res.render('politician/politician_detail', {
                 pageTitle: politician.name,

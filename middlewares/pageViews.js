@@ -38,7 +38,8 @@ export const PAGE_KINDS = [
        그러면 같은 종류가 target '' 와 '/' 두 행으로 갈린다 (실측 balance 11 + 14). 비캡처 (?:…) 로 */
     { kind: 'balance',           label: '성향 진단',   re: /^\/balance-game(?:\/|$)/ },
     { kind: 'community',         label: '커뮤니티',    re: /^\/community(?:\/|$)/ },
-    { kind: 'glossary',          label: '용어 설명',   re: /^\/glossary\/?$/ },
+    { kind: 'glossary',          label: '용어 설명',   re: /^\/guide\/glossary\/?$/ },
+    { kind: 'guide',             label: '읽는 법',     re: /^\/guide(?:\/|$)/ },   // 목차 + 글 (glossary 는 위에서 먼저 잡힌다)
     { kind: 'about',             label: '소개',        re: /^\/about\/?$/ },
     { kind: 'other',             label: '기타',        re: /./ },
 ];

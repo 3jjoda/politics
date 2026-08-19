@@ -37,7 +37,7 @@ export function buildCaption(p) {
     const threads = Array.isArray(p.threads) ? p.threads : [];
     if (threads.length) {
         L.push('', '이날의 흐름');
-        threads.forEach((t) => L.push(`· ${t.theme} (${t.bill_count}건) — ${t.what}`));
+        threads.forEach((t) => L.push(`· ${t.theme} (${t.bill_count}건): ${t.what}`));
     }
 
     // ④ 프로필 링크 유도 + 소개와 같은 문장 (계정 전체가 같은 말을 반복해야 정체성이 된다)

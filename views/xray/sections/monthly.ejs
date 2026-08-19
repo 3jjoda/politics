@@ -5,9 +5,9 @@
 <% if (mo.months && mo.months.length > 0) { %>
   <div class="xr-stats">
     <div class="xr-stat"><div class="v"><%= nf(mo.avg) %></div><div class="l">월평균 대표발의 건수</div></div>
-    <div class="xr-stat"><div class="v"><%= mo.avgPerPerson %></div><div class="l">의원 1인당 월평균 — 총량 변화가 인원 때문인지 개인 활동량 때문인지 구분</div></div>
+    <div class="xr-stat"><div class="v"><%= mo.avgPerPerson %></div><div class="l">의원 1인당 월평균 · 총량 변화가 인원 때문인지 개인 활동량 때문인지 구분</div></div>
     <div class="xr-stat"><div class="v"><em><%= mo.totalProcessedPct %>%</em></div><div class="l">전체 <%= nf(mo.total) %>건 중 처리 완료 (가결·부결·폐기·철회)</div></div>
-    <div class="xr-stat"><div class="v"><%= mo.recentProcessedPct %>%</div><div class="l">최근 <%= mo.recentMonths %>개월 발의분의 처리 완료 — 대부분 아직 심사 중</div></div>
+    <div class="xr-stat"><div class="v"><%= mo.recentProcessedPct %>%</div><div class="l">최근 <%= mo.recentMonths %>개월 발의분의 처리 완료 · 대부분 아직 심사 중</div></div>
   </div>
 
   <%
@@ -83,7 +83,7 @@
     <strong>오른쪽으로 갈수록 처리 완료 선이 내려가는 것은 국회가 일을 덜 해서가 아닙니다.</strong>
     법안 심사에는 시간이 걸리므로 최근에 발의된 법안일수록 아직 결론이 안 났을 뿐입니다
     (최근 <%= mo.recentMonths %>개월 발의분의 처리 완료는 <%= mo.recentProcessedPct %>%). 발의량이 많다고 일을 잘한 것도,
-    적다고 게으른 것도 아닙니다 — 이 지표는 <em>양</em>과 <em>속도</em>의 구조를 보여줄 뿐입니다.
+    적다고 게으른 것도 아닙니다. 이 지표는 <em>양</em>과 <em>속도</em>의 구조를 보여줄 뿐입니다.
   </div>
 <% } else { %>
   <div class="xr-empty">발의 데이터가 없습니다.</div>

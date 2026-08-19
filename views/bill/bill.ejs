@@ -1142,7 +1142,7 @@
                 <% if (b.committee) { %><span class="pb-badge pb-badge-category"><%= b.committee %></span><% } %>
                 <span class="pb-badge <%= resultClass(b.proc_result_name) %>">
                   <%= b.proc_result_name || '계류' %>
-                  <span class="pb-help" data-help-href="/glossary#<%= termAnchor %>" title="용어 설명">?</span>
+                  <span class="pb-help" data-help-href="/guide/glossary#<%= termAnchor %>" title="용어 설명">?</span>
                 </span>
                 <% if (isPending && d > 0) { %>
                   <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color: <%= elapsedColor %>">

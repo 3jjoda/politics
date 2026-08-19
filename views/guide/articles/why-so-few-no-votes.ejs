@@ -1,0 +1,72 @@
+<%# 1편 — 본회의 반대표는 왜 1%도 안 될까. facts = getHomeFacts (없으면 "약" 으로 서술) %>
+<%
+  const f = facts || {};
+  const nf = (n) => (n == null ? '—' : Number(n).toLocaleString('ko-KR'));
+  const pendingRate = f.pending_rate != null ? f.pending_rate : null;
+  const opposeRate  = f.oppose_rate  != null ? f.oppose_rate  : null;
+  const absentMed   = f.absent_median != null ? f.absent_median : null;
+%>
+
+<p>
+  국회 본회의 표결 결과를 처음 보면 이상한 점이 하나 있습니다. <strong>반대표가 거의 없습니다.</strong>
+  법안 수백 건의 표결을 다 합쳐도 반대는 <%= opposeRate != null ? opposeRate + '%' : '1% 미만' %>.
+  찬성이 97% 를 넘는 게 보통이고, 찬성 280 대 반대 1 같은 결과가 줄줄이 이어집니다.
+</p>
+<p>
+  그런데 다른 숫자 하나를 옆에 두면 그림이 뒤집힙니다. 22대 국회에 발의된 법안 가운데
+  <strong><%= pendingRate != null ? pendingRate + '%' : '4건 중 3건 가까이' %> 가 아직 처리되지 않았고</strong>,
+  실제로 가결된 것은 3% 안팎입니다. 반대표는 거의 없는데 법안 대부분은 통과되지 않는다. 두 문장이 동시에 참입니다.
+</p>
+
+<div class="gd-facts">
+  <div class="gd-fact">
+    <div class="gd-fact-num"><%= pendingRate != null ? pendingRate : '≈76' %><small>%</small></div>
+    <div class="gd-fact-label">발의된 법안 중 아직 처리되지 않은 비율</div>
+    <% if (f.bill_total) { %><div class="gd-fact-note"><%= nf(f.bill_total) %>건 중 <%= nf(f.bill_pending) %>건 · 가결 <%= nf(f.bill_passed) %>건</div><% } %>
+  </div>
+  <div class="gd-fact">
+    <div class="gd-fact-num"><%= opposeRate != null ? opposeRate : '<1' %><small>%</small></div>
+    <div class="gd-fact-label">본회의 표결 전체에서 반대표 비율</div>
+    <% if (f.vote_total) { %><div class="gd-fact-note"><%= nf(f.vote_total) %>표 중 반대 <%= nf(f.vote_oppose) %>표</div><% } %>
+  </div>
+  <div class="gd-fact">
+    <div class="gd-fact-num"><%= absentMed != null ? absentMed : '≈21' %><small>%</small></div>
+    <div class="gd-fact-label">의원별 본회의 불참률의 중앙값</div>
+    <% if (f.absent_cohort) { %><div class="gd-fact-note">표결 100건 이상 의원 <%= nf(f.absent_cohort) %>명 기준</div><% } %>
+  </div>
+</div>
+
+<h2>걸러지는 곳은 본회의가 아니다</h2>
+<p>
+  답은 <em>어디서 걸러지느냐</em>에 있습니다. 법안은 발의된 뒤 소관 상임위원회에 회부되고, 위원회가 심사해서 본회의에 올릴지 정합니다.
+  법제사법위원회의 체계·자구 심사를 한 번 더 거치기도 합니다. 이 과정에서 대부분의 법안은 <strong>본회의에 도달하지 못합니다</strong>.
+  심사가 시작되지 않은 채 계류되거나, 비슷한 법안들과 묶여 하나의 대안으로 흡수되면서 원안은 폐기됩니다(대안반영폐기).
+</p>
+<p>
+  그래서 본회의 표결에 오르는 법안은 이미 여러 단계를 통과한, 여야가 어느 정도 합의한 안건입니다.
+  반대표가 적은 것은 국회가 무엇이든 찬성해서가 아니라, <strong>본회의가 최종 관문이지 심사의 자리가 아니기 때문</strong>입니다.
+  걸러지는 일은 그보다 앞, 위원회에서 일어납니다.
+</p>
+
+<h2>그래서 이 사이트는 표결을 이렇게 다룬다</h2>
+<ul>
+  <li><strong>본회의 찬반만으로 성향을 재지 않습니다.</strong> 반대가 1% 안팎이면 300명 대부분이 같은 값을 갖게 됩니다. 의원 성향 좌표를 표결이 아니라 공동발의로 만드는 이유가 여기 있습니다 (5편).</li>
+  <li><strong>"자기 정당 법안 찬성률 99%" 를 당파성으로 읽지 않습니다.</strong> 상대 정당 법안에도 96% 안팎 찬성합니다. 차이는 몇 %p 이고, 그 몇 %p 를 어떻게 읽을지가 4편입니다.</li>
+  <li><strong>불참을 따로 봅니다.</strong> 반대가 드문 대신 22대 국회의 큰 대립은 <em>표결에 참여하지 않는 방식</em>으로 나타났습니다. 특정 안건에서 한 정당이 전원 불참하는 경우가 그렇습니다. 그래서 의원 상세의 표결 성향은 찬성·반대·기권을 참여분 기준으로, 불참은 전체 기준으로 따로 셉니다.</li>
+</ul>
+
+<h2>월별 차트를 볼 때 한 가지</h2>
+<p>
+  「숫자로 본 국회」의 월별 추이에서 최근 달일수록 처리 완료 비율이 0 에 가까워지는 것이 보입니다.
+  국회가 갈수록 일을 안 한다는 뜻이 아닙니다. <strong>최근에 발의된 법안은 아직 심사 중일 뿐</strong>입니다.
+  처리에는 평균 몇 달이 걸리므로 진행 중인 달은 흐리게 표시하고 평균 계산에서 뺍니다. 가결률만 그리면 이 착시가 그대로 남습니다.
+</p>
+
+<div class="gd-caveat">
+  <h3>이 글이 말하지 않는 것</h3>
+  <ul>
+    <li>위원회 안에서 <em>어떤 법안이 왜</em> 걸러지는지는 이 데이터로 알 수 없습니다. 위원회 표결은 개인별로 공개되지 않고, 이 사이트가 갖고 있는 것은 처리 단계별 날짜와 결과뿐입니다.</li>
+    <li>"반대가 적다 = 국회가 합의를 잘한다" 도, "= 거수기다" 도 아닙니다. 본회의라는 자리의 구조를 설명하는 것이지 평가가 아닙니다.</li>
+    <li>불참률 중앙값은 <strong>의원별 비율의 중앙값</strong>입니다. 전체 표결 중 불참 비율(더 높게 나옵니다)과 다른 숫자이고, 둘을 섞으면 안 됩니다.</li>
+  </ul>
+</div>

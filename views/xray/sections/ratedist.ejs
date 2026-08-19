@@ -11,7 +11,7 @@
   <p class="xr-desc" style="margin-bottom:20px">
     <strong>점 하나가 의원 한 명</strong>입니다. 위 줄은 <strong>자기 당이 낸 법안</strong>에,
     아래 줄은 <strong>다른 당이 낸 법안</strong>에 찬성한 비율입니다.
-    오른쪽으로 갈수록 많이 찬성한 것 — <strong>두 줄이 얼마나 퍼져 있는지</strong>를 비교해 보세요.
+    오른쪽으로 갈수록 많이 찬성한 것입니다. <strong>두 줄이 얼마나 퍼져 있는지</strong>를 비교해 보세요.
   </p>
 
   <%
@@ -74,11 +74,11 @@
   <div class="xr-stats" style="margin-top:18px">
     <div class="xr-stat">
       <div class="v"><%= rd.ownSpread %><small style="font-size:16px">%p</small></div>
-      <div class="l">자기 당 법안 — 퍼진 폭 (<%= rd.own.min %>~<%= rd.own.max %>%)</div>
+      <div class="l">자기 당 법안 · 퍼진 폭 (<%= rd.own.min %>~<%= rd.own.max %>%)</div>
     </div>
     <div class="xr-stat">
       <div class="v"><em><%= rd.otherSpread %></em><small style="font-size:16px">%p</small></div>
-      <div class="l">다른 당 법안 — 퍼진 폭 (<%= rd.other.min %>~<%= rd.other.max %>%)</div>
+      <div class="l">다른 당 법안 · 퍼진 폭 (<%= rd.other.min %>~<%= rd.other.max %>%)</div>
     </div>
     <div class="xr-stat">
       <div class="v"><%= rd.own.over99Pct %>%</div>
@@ -95,7 +95,7 @@
     <p><strong>이 숫자를 읽을 때</strong></p>
     <ul>
       <li><strong>본회의에 올라온 법안은 이미 걸러진 것입니다.</strong> 위원회·법사위를 거치며 대체로 합의된 안건이라
-          찬성률이 구조적으로 높습니다 — 표결 <%= nf(rd.floorBills) %>건의 평균 찬성률이 <%= rd.floorAvgFor %>%이고,
+          찬성률이 구조적으로 높습니다. 표결 <%= nf(rd.floorBills) %>건의 평균 찬성률이 <%= rd.floorAvgFor %>%이고,
           전체 표결에서 반대는 <%= rd.opposePct %>%뿐입니다.
           따라서 이 그림은 <em>당파성의 크기</em>가 아니라 <em>본회의가 어떻게 굴러가는지</em>에 더 가깝습니다.</li>
       <li><strong>낮은 타당 찬성률이 곧 편협함은 아닙니다.</strong> 반대·기권은 법안 내용에 대한 판단일 수 있고,

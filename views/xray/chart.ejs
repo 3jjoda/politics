@@ -446,7 +446,7 @@
   share?.addEventListener('click', async () => {
     if (navigator.share) {
       try {
-        await navigator.share({ title, text: title + ' — 당말사', url });
+        await navigator.share({ title, text: title + ' · 당말사', url });
         return;
       } catch { /* 사용자가 취소한 경우 — 폴백을 열지 않는다 */ return; }
     }

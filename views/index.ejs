@@ -310,6 +310,7 @@
         <span class="sep">·</span><a href="/politician">의원 309명</a>
         <span class="sep">·</span><a href="/bill">법안</a>
         <span class="sep">·</span><a href="/xray">숫자로 본 국회</a>
+        <span class="sep">·</span><a href="/guide">읽는 법</a>
       </div>
       <% if (_lead) { %>
         <a class="hero-brief" href="/briefing/<%= _lead.id %>">
@@ -347,7 +348,7 @@
                 <div class="spot-row">
                   <span class="spot-ax"><b><%= AM[k].name %></b><small><%= AM[k].short %></small></span>
                   <span class="spot-end"><span class="lx"><%= AM[k].Lx %></span><span class="ls"><%= AM[k].L %></span></span>
-                  <span class="spot-track" title="<%= AM[k].name %> — 왼쪽 <%= AM[k].Lx %> ↔ 오른쪽 <%= AM[k].Rx %> · 의원 <%= (v >= 0 ? '+' : '') + v.toFixed(2) %><%= showAvg ? ' · ' + m.party_name + ' 평균 ' + (pv >= 0 ? '+' : '') + pv.toFixed(2) : '' %>">
+                  <span class="spot-track" title="<%= AM[k].name %> · 왼쪽 <%= AM[k].Lx %> ↔ 오른쪽 <%= AM[k].Rx %> · 의원 <%= (v >= 0 ? '+' : '') + v.toFixed(2) %><%= showAvg ? ' · ' + m.party_name + ' 평균 ' + (pv >= 0 ? '+' : '') + pv.toFixed(2) : '' %>">
                     <i class="spot-mid"></i>
                     <% if (showAvg) { %><i class="spot-tick" style="left:<%= pct(pv) %>%"></i><% } %>
                     <i class="spot-dot" style="left:<%= pct(v) %>%"></i>

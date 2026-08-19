@@ -8,7 +8,7 @@
     <strong>가로축은 대표발의 건수, 세로축은 그중 통과된 비율</strong>입니다. 점 하나가 의원 한 명.
     <% if (ps) { %>
       발의 상위 <%= ps.topN %>명과 가결률 상위 <%= ps.topN %>명이 겹치는 사람은
-      <strong><%= ps.overlap %>명</strong> — <strong>많이 내는 것과 통과시키는 것은 다른 일입니다.</strong>
+      <strong><%= ps.overlap %>명</strong>입니다. <strong>많이 내는 것과 통과시키는 것은 다른 일입니다.</strong>
     <% } %>
   </p>
   <%
@@ -46,7 +46,7 @@
     </svg>
   </div>
   <p class="xr-svg-hint">← 그래프를 옆으로 밀어서 볼 수 있습니다</p>
-  <div class="xr-note">현직 의원, 대표발의 5건 이상 (<%= nf(ppData.length) %>명). 가결률 = (원안가결+수정가결) ÷ 대표발의. 대안반영폐기는 가결로 세지 않음 — 실제 기여보다 보수적인 수치. 점 위에 마우스를 올리면 상세가 보입니다.</div>
+  <div class="xr-note">현직 의원, 대표발의 5건 이상 (<%= nf(ppData.length) %>명). 가결률 = (원안가결+수정가결) ÷ 대표발의. 대안반영폐기는 가결로 세지 않아 실제 기여보다 보수적인 수치. 점 위에 마우스를 올리면 상세가 보입니다.</div>
 <% } else { %>
   <div class="xr-empty">발의 데이터가 부족합니다.</div>
 <% } %>

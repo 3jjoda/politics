@@ -1,0 +1,6 @@
+<%# 「읽는 법」 상단 탭 — 해설 5편 / 용어 설명. index.ejs · glossary.ejs 가 include (active: 'articles' | 'glossary').
+    링크 방식이라 JS 없이 동작하고 각 탭이 자기 URL 을 가진다 (사이트맵·공유 링크 유지). guide.css 의 .gd-tabs %>
+<nav class="gd-tabs" aria-label="읽는 법 구성">
+  <a href="/guide" class="<%= active === 'articles' ? 'is-active' : '' %>" <%= active === 'articles' ? 'aria-current="page"' : '' %>>해설 <small><%= locals.articleCount || 5 %>편</small></a>
+  <a href="/guide/glossary" class="<%= active === 'glossary' ? 'is-active' : '' %>" <%= active === 'glossary' ? 'aria-current="page"' : '' %>>용어 설명</a>
+</nav>
