@@ -1,6 +1,8 @@
 import PostService from '../services/PostService.js';
 import BillService from '../services/BillService.js';
 import logger from '../utils/logger.js';
+import { isAdminUser } from '../middlewares/auth.js';
+import { POST_TYPES, allowedPostTypes, resolvePostType, postTypeOf } from '../utils/postTypes.js';
 
 export default (db) => {
     const postService = PostService(db);
@@ -30,14 +32,27 @@ export default (db) => {
                 const pageSize = 20;
                 const page = Math.max(1, parseInt(req.query.page) || 1);
                 const offset = (page - 1) * pageSize;
-                const rows = await postService.list({ limit: pageSize, offset });
+                /* 유형 탭 — 모르는 값은 전체로 접는다 (URL 을 손으로 고쳐도 안전) */
+                const typeRaw = req.query.type ? String(req.query.type) : '';
+                const type = postTypeOf(typeRaw) ? typeRaw : null;
+                const [rows, counts] = await Promise.all([
+                    postService.list({ limit: pageSize, offset, postType: type }),
+                    postService.countByType(),
+                ]);
                 const totalCount = rows.length > 0 ? parseInt(rows[0].total_count) : 0;
                 const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+                const countMap = Object.fromEntries(counts.map((r) => [r.post_type, Number(r.cnt)]));
+                const allCount = counts.reduce((s, r) => s + Number(r.cnt), 0);
                 res.render('community/list', {
-                    pageTitle: '커뮤니티',
+                    pageTitle: type ? `${postTypeOf(type).label} · 커뮤니티` : '커뮤니티',
                     pageStyles: null,
                     currentUrl: '/community',
+                    pageDesc: '당말사 커뮤니티. 공지·잡담·법안 이야기·질문·건의를 나눕니다',
                     posts: rows,
+                    postTypes: POST_TYPES,
+                    activeType: type,
+                    typeCounts: countMap,
+                    allCount,
                     pagination: { page, pageSize, totalCount, totalPages }
                 });
             } catch (err) { next(err); }
@@ -45,13 +60,18 @@ export default (db) => {
 
         /* GET /community/write — 작성 페이지 */
         writePage: (req, res) => {
+            const isAdmin = isAdminUser(req.user);
+            /* ?type=bill 처럼 목록 탭에서 들어오면 그 유형을 미리 고른다 (권한 밖 값은 기본값) */
+            const preset = resolvePostType(req.query.type, isAdmin) || 'free';
             res.render('community/write', {
                 pageTitle: '글쓰기 · 커뮤니티',
                 pageStyles: null,
                 currentUrl: '/community/write',
                 mode: 'create',
-                post: { title: '', content: '', linked_bill_id: null },
+                post: { title: '', content: '', linked_bill_id: null, post_type: preset, is_pinned: false },
                 attachedBill: null,
+                postTypes: allowedPostTypes(isAdmin),   // 🔴 공지는 관리자에게만 보인다. 방어는 create 의 resolvePostType
+                isAdmin,
                 error: null
             });
         },
@@ -83,7 +103,9 @@ export default (db) => {
                     pageTitle: `${post.title} · 커뮤니티`,
                     pageStyles: null,
                     currentUrl: `/community/${id}`,
-                    post
+                    pageDesc: String(post.content || '').replace(/s+/g, ' ').slice(0, 140),
+                    post,
+                    postTypeMeta: postTypeOf(post.post_type)
                 });
             } catch (err) { next(err); }
         },
@@ -105,6 +127,7 @@ export default (db) => {
                     });
                 }
                 const attachedBill = await attachedBillFromId(post.linked_bill_id);
+                const isAdmin = isAdminUser(req.user);
                 res.render('community/write', {
                     pageTitle: '글 수정 · 커뮤니티',
                     pageStyles: null,
@@ -112,6 +135,8 @@ export default (db) => {
                     mode: 'edit',
                     post,
                     attachedBill,
+                    postTypes: allowedPostTypes(isAdmin),
+                    isAdmin,
                     error: null
                 });
             } catch (err) { next(err); }
@@ -120,12 +145,18 @@ export default (db) => {
         /* POST /community — 작성 */
         create: async (req, res, next) => {
             try {
-                const { title, content, linkedBillId } = req.body || {};
+                const { title, content, linkedBillId, postType, isPinned } = req.body || {};
+                const isAdmin = isAdminUser(req.user);
+                /* 🔴 유형·권한 검증은 여기서 — 화면에서 공지를 숨기는 건 방어가 아니다 */
+                const type = resolvePostType(postType, isAdmin);
+                if (!type) return res.status(400).json({ error: '선택할 수 없는 글 유형입니다.' });
                 const result = await postService.create({
                     userId: req.session.userId,
                     title,
                     content,
-                    linkedBillId: linkedBillId || null
+                    linkedBillId: linkedBillId || null,
+                    postType: type,
+                    isPinned: isAdmin && type === 'notice' && !!isPinned   // 고정은 관리자의 공지에만
                 });
                 res.status(201).json({ ok: true, id: result.id, redirectTo: `/community/${result.id}` });
             } catch (err) {
@@ -139,13 +170,18 @@ export default (db) => {
         update: async (req, res, next) => {
             try {
                 const id = Number(req.params.id);
-                const { title, content, linkedBillId } = req.body || {};
+                const { title, content, linkedBillId, postType, isPinned } = req.body || {};
+                const isAdmin = isAdminUser(req.user);
+                const type = resolvePostType(postType, isAdmin);
+                if (!type) return res.status(400).json({ error: '선택할 수 없는 글 유형입니다.' });
                 const result = await postService.update({
                     id,
                     userId: req.session.userId,
                     title,
                     content,
-                    linkedBillId: linkedBillId || null
+                    linkedBillId: linkedBillId || null,
+                    postType: type,
+                    isPinned: isAdmin && type === 'notice' && !!isPinned
                 });
                 if (!result) return res.status(404).json({ error: 'NOT_FOUND_OR_FORBIDDEN' });
                 res.json({ ok: true, id: result.id, redirectTo: `/community/${result.id}` });

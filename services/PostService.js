@@ -18,22 +18,25 @@ export default (db) => {
     return {
         list: (params) => dao.list(params),
 
+        countByType: () => dao.countByType(),
+
         getById: (id) => dao.getById(id),
 
         incrementViews: (id) => dao.incrementViews(id),
 
-        create: async ({ userId, title, content, linkedBillId }) => {
+        /* postType 은 컨트롤러가 resolvePostType 으로 권한까지 검증해서 넘긴다 (여기선 값이 있다고 믿는다) */
+        create: async ({ userId, title, content, linkedBillId, postType, isPinned }) => {
             const v = validate({ title, content });
             if (!v.ok) { const e = new Error(v.reason); e.code = 'VALIDATION'; throw e; }
             const billId = linkedBillId ? String(linkedBillId).trim() : null;
-            return dao.insert({ userId, title: v.title, content: v.content, linkedBillId: billId || null });
+            return dao.insert({ userId, title: v.title, content: v.content, linkedBillId: billId || null, postType, isPinned: !!isPinned });
         },
 
-        update: async ({ id, userId, title, content, linkedBillId }) => {
+        update: async ({ id, userId, title, content, linkedBillId, postType, isPinned }) => {
             const v = validate({ title, content });
             if (!v.ok) { const e = new Error(v.reason); e.code = 'VALIDATION'; throw e; }
             const billId = linkedBillId ? String(linkedBillId).trim() : null;
-            return dao.update({ id, userId, title: v.title, content: v.content, linkedBillId: billId || null });
+            return dao.update({ id, userId, title: v.title, content: v.content, linkedBillId: billId || null, postType, isPinned: !!isPinned });
         },
 
         softDelete: ({ id, userId }) => dao.softDelete({ id, userId })

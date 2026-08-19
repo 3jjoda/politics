@@ -11,9 +11,11 @@
   const { page, totalPages, totalCount } = pagination;
 
   const buildHref = (p) => {
-    const q = [`page=${p}`].join('&');
-    return `/community?${q}`;
+    const q = [`page=${p}`];
+    if (locals.activeType) q.unshift(`type=${encodeURIComponent(activeType)}`);
+    return `/community?${q.join('&')}`;
   };
+  const typeMeta = (k) => (locals.postTypes || []).find((t) => t.key === k) || null;
   const pagesAround = () => {
     const maxBtns = 7;
     let start = Math.max(1, page - 3);
@@ -55,73 +57,53 @@
     pointer-events: none;
   }
 
-  .cm-list { display: flex; flex-direction: column; gap: 10px; }
-  .cm-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 26px 22px;
-    display: block;
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.15s;
-    box-shadow: var(--shadow-sm);
+  /* 유형 탭 — 서버 렌더 링크. 모르는 type 은 컨트롤러가 전체로 접는다 */
+  .cm-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border2); margin: 0 0 18px; }
+  .cm-tab {
+    display: inline-flex; align-items: baseline; gap: 6px; padding: 10px 14px 12px; margin-bottom: -1px;
+    font-size: 14.5px; font-weight: 700; color: var(--sub); text-decoration: none; border-bottom: 2px solid transparent;
   }
-  .cm-card:hover {
-    border-color: var(--border2);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow);
+  .cm-tab small { font-size: 12px; font-weight: 600; color: var(--sub2); }
+  .cm-tab:hover { color: var(--text); }
+  .cm-tab.is-active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .cm-tab.is-active small { color: var(--accent2); }
+
+  /* 🔴 보드(행) 형태 — 2026-08-19 카드에서 전환. 글에 썸네일·요약이 없어 카드는 여백만 컸다 (글 하나 110px).
+     한 행: [유형] 제목 (법안칩) [댓글] | 닉네임 · 시간 · 조회. 모바일은 두 줄 */
+  .cm-board { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .cm-row {
+    display: grid; grid-template-columns: 84px minmax(0, 1fr) 220px; align-items: center; gap: 12px;
+    padding: 13px 18px; border-top: 1px solid var(--border); text-decoration: none; color: inherit; transition: background .12s;
   }
-  .cm-card-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1.5;
-    margin-bottom: 12px;
-  }
+  .cm-row:first-child { border-top: 0; }
+  .cm-row:hover { background: var(--bg); }
+  .cm-row.is-pinned { background: var(--accent-10); }
+  .cm-row.is-pinned:hover { background: var(--accent-15); }
+  .cm-type { display: inline-flex; align-items: center; justify-content: center; padding: 3px 9px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--sub); background: var(--bg3); border: 1px solid var(--border); }
+  .cm-type.is-gold { color: var(--accent2); background: var(--bg2); border-color: var(--accent); }
+  .cm-main { min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cm-title { font-size: 15px; font-weight: 600; color: var(--text); line-height: 1.5; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .cm-row.is-pinned .cm-title { font-weight: 700; }
+  .cm-cmt { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent2); font-weight: 700; }
   .cm-bill-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin: 4px 0 10px;
-    padding: 6px 10px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    font-size: 12px;
-    color: var(--sub);
-    max-width: 100%;
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12px; color: var(--sub); max-width: 100%;
   }
-  .cm-bill-chip-ic {
-    flex-shrink: 0;
-    width: 14px; height: 14px;
-    color: var(--accent);
+  .cm-bill-chip-ic { flex-shrink: 0; width: 12px; height: 12px; color: var(--accent); }
+  .cm-bill-chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); font-weight: 500; max-width: 260px; }
+  .cm-meta { display: flex; align-items: center; justify-content: flex-end; gap: 10px; font-size: 12px; color: var(--sub2); white-space: nowrap; }
+  .cm-meta .nick { color: var(--sub); font-weight: 500; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+  .cm-meta .date, .cm-meta .views { font-family: 'JetBrains Mono', monospace; }
+  .cm-meta .views { display: inline-flex; align-items: center; gap: 4px; }
+  .cm-stat-ic { width: 13px; height: 13px; color: var(--sub2); flex-shrink: 0; }
+  @media (max-width: 720px) {
+    .cm-row { grid-template-columns: 1fr; gap: 6px; padding: 12px 14px; }
+    .cm-main { order: 1; }
+    .cm-type { justify-self: start; }
+    .cm-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .cm-meta { order: 2; justify-content: flex-start; }
+    .cm-bill-chip-name { max-width: 180px; }
   }
-  .cm-bill-chip-name {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text);
-    font-weight: 500;
-  }
-  .cm-card-meta {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    font-size: 12px;
-    color: var(--sub2);
-    flex-wrap: wrap;
-  }
-  .cm-card-meta .nick { color: var(--sub); font-weight: 500; }
-  .cm-card-meta .date { font-family: 'JetBrains Mono', monospace; }
-  .cm-card-stats {
-    display: flex;
-    gap: 12px;
-    margin-left: auto;
-    font-family: 'JetBrains Mono', monospace;
-  }
-  .cm-card-stats span { display: inline-flex; align-items: center; gap: 5px; }
-  .cm-stat-ic { width: 14px; height: 14px; color: var(--sub2); flex-shrink: 0; }
   .cm-empty {
     padding: 60px 24px;
     text-align: center;
@@ -162,10 +144,10 @@
   <div class="pb-page-header-inner">
     <div>
       <h1 class="pb-page-title">커뮤니티</h1>
-      <p class="pb-page-desc">자유롭게 의견을 나눠보세요. 총 <%= nf(totalCount) %>개의 글</p>
+      <p class="pb-page-desc">자유롭게 의견을 나눠보세요. 공지 · 잡담 · 법안 이야기 · 질문 · 건의를 나눕니다</p>
     </div>
     <% if (locals.currentUser) { %>
-      <a href="/community/write" class="cm-write-btn">
+      <a href="/community/write<%= locals.activeType ? '?type=' + activeType : '' %>" class="cm-write-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
         글쓰기
       </a>
@@ -179,39 +161,34 @@
 </div>
 
 <div class="cm-wrap">
+  <nav class="cm-tabs" aria-label="글 유형">
+    <a href="/community" class="cm-tab <%= !locals.activeType ? 'is-active' : '' %>">전체 <small><%= nf(locals.allCount || 0) %></small></a>
+    <% (locals.postTypes || []).forEach((t) => { %>
+      <a href="/community?type=<%= t.key %>" class="cm-tab <%= locals.activeType === t.key ? 'is-active' : '' %>"><%= t.label %> <small><%= nf((locals.typeCounts || {})[t.key] || 0) %></small></a>
+    <% }); %>
+  </nav>
 
   <% if (posts && posts.length > 0) { %>
-    <div class="cm-list">
-      <% posts.forEach(p => { %>
-        <a href="/community/<%= p.id %>" class="cm-card">
-          <div class="cm-card-title"><%= p.title %></div>
-          <% if (p.linked_bill_id && p.linked_bill_name) { %>
-            <div class="cm-bill-chip">
-              <svg class="cm-bill-chip-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              <span class="cm-bill-chip-name"><%= p.linked_bill_name %></span>
-              <% if (p.linked_bill_result) { %>
-                <span class="pb-badge <%= resultClass(p.linked_bill_result) %>" style="margin-left:4px"><%= p.linked_bill_result %></span>
-              <% } %>
-            </div>
-          <% } %>
-          <div class="cm-card-meta">
+    <div class="cm-board">
+      <% posts.forEach(p => { const tm = typeMeta(p.post_type); %>
+        <a href="/community/<%= p.id %>" class="cm-row <%= p.is_pinned ? 'is-pinned' : '' %>">
+          <span class="cm-type <%= tm && tm.tone === 'gold' ? 'is-gold' : '' %>"><%= tm ? tm.label : '글' %></span>
+          <span class="cm-main">
+            <span class="cm-title"><%= p.title %></span>
+            <% if (Number(p.comment_count) > 0) { %><span class="cm-cmt">[<%= nf(p.comment_count) %>]</span><% } %>
+            <% if (p.linked_bill_id && p.linked_bill_name) { %>
+              <span class="cm-bill-chip">
+                <svg class="cm-bill-chip-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span class="cm-bill-chip-name"><%= p.linked_bill_name %></span>
+                <% if (p.linked_bill_result) { %><span class="pb-badge <%= resultClass(p.linked_bill_result) %>"><%= p.linked_bill_result %></span><% } %>
+              </span>
+            <% } %>
+          </span>
+          <span class="cm-meta">
             <span class="nick"><%= p.nickname || '탈퇴한 사용자' %></span>
             <span class="date" title="<%= p.created_at %>"><%= timeAgo(p.created_at) %></span>
-            <span class="cm-card-stats">
-              <span>
-                <svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                <%= nf(p.view_count) %>
-              </span>
-              <span>
-                <svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
-                <%= nf(p.like_count) %>
-              </span>
-              <span>
-                <svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <%= nf(p.comment_count) %>
-              </span>
-            </span>
-          </div>
+            <span class="views" title="조회"><svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><%= nf(p.view_count) %></span>
+          </span>
         </a>
       <% }); %>
     </div>
@@ -245,7 +222,7 @@
     <% } %>
   <% } else { %>
     <div class="cm-empty">
-      아직 등록된 게시글이 없습니다. 첫 글의 주인공이 되어보세요.
+      <% if (locals.activeType) { %>아직 「<%= (typeMeta(activeType) || {}).label %>」 글이 없습니다.<% } else { %>아직 등록된 게시글이 없습니다. 첫 글의 주인공이 되어보세요.<% } %>
     </div>
   <% } %>
 </div>

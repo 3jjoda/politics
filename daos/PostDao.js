@@ -13,20 +13,24 @@ fs.readdirSync(queriesPath).forEach(file => {
 });
 
 export default (db) => ({
-    list: async ({ limit = 20, offset = 0 } = {}) => {
-        const { rows } = await db.query(queries.list, [limit, offset]);
+    list: async ({ limit = 20, offset = 0, postType = null } = {}) => {
+        const { rows } = await db.query(queries.list, [limit, offset, postType]);
+        return rows;
+    },
+    countByType: async () => {
+        const { rows } = await db.query(queries.countByType);
         return rows;
     },
     getById: async (id) => {
         const { rows } = await db.query(queries.getById, [id]);
         return rows[0] || null;
     },
-    insert: async ({ userId, title, content, linkedBillId = null }) => {
-        const { rows } = await db.query(queries.insert, [userId, title, content, linkedBillId]);
+    insert: async ({ userId, title, content, linkedBillId = null, postType = 'free', isPinned = false }) => {
+        const { rows } = await db.query(queries.insert, [userId, title, content, linkedBillId, postType, isPinned]);
         return rows[0];
     },
-    update: async ({ id, userId, title, content, linkedBillId = null }) => {
-        const { rows } = await db.query(queries.update, [title, content, linkedBillId, id, userId]);
+    update: async ({ id, userId, title, content, linkedBillId = null, postType = 'free', isPinned = false }) => {
+        const { rows } = await db.query(queries.update, [title, content, linkedBillId, postType, isPinned, id, userId]);
         return rows[0] || null;
     },
     softDelete: async ({ id, userId }) => {

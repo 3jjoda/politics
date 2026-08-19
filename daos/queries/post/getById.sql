@@ -3,6 +3,8 @@ SELECT p.id
      , p.title
      , p.content
      , p.user_id
+     , p.post_type
+     , p.is_pinned
      , p.linked_bill_id
      , p.view_count
      , p.is_deleted
