@@ -66,6 +66,39 @@ export const GUIDE_ARTICLES = [
             { href: '/balance-game/types', label: '성향 유형 9종' },
         ],
     },
+    {
+        slug: 'abstain-vs-absent',
+        title: '기권과 불참은 다르다',
+        sub: '표결 참여율을 읽을 때 먼저 갈라야 하는 것',
+        desc: '기권은 표결에 참여해 어느 쪽도 고르지 않은 것, 불참은 그 표결에 없었던 것. 왜 둘을 다른 분모로 세는지, 불참률이 높다고 태만이라 부르지 않는 이유, 국회의장과 장관은 왜 비교에서 빼는지.',
+        minutes: 4,
+        related: [
+            { href: '/xray#xr-absent', label: '차트 · 불참률' },
+            { href: '/guide/glossary#vote-absent', label: '용어 · 불참' },
+        ],
+    },
+    {
+        slug: 'committee-speech-rate',
+        title: '상임위는 왜 안 보였나',
+        sub: '회의 발언 기록과 참여율을 읽는 법',
+        desc: '법안이 실제로 걸러지는 곳은 위원회인데, 발의·표결 지표는 전부 본회의 기준이다. 회의 발언 기록으로 상임위를 보는 방법, 질의석과 위원장석을 나누는 이유, 참여율이 실제보다 후한 값인 이유.',
+        minutes: 5,
+        related: [
+            { href: '/politician', label: '의원 목록' },
+            { href: '/guide/glossary#cmt-rate', label: '용어 · 상임위 회의 참여율' },
+        ],
+    },
+    {
+        slug: 'how-far-to-trust-ai',
+        title: 'AI 가 쓴 브리핑과 분석, 어디까지 믿을 수 있나',
+        sub: '숫자는 AI 가 만들지 않는다, 그리고 그래도 남는 것',
+        desc: '매일 아침 브리핑과 법안 분석은 AI 가 쓴다. 숫자는 집계값만 쓰고 AI 에게서 받지 않는 이유, 정당 평가를 걸러내는 검사, 그래도 틀릴 수 있어 원문을 옆에 두는 이유. 무엇을 믿고 무엇을 의심해야 하는지.',
+        minutes: 5,
+        related: [
+            { href: '/briefing', label: '국회 브리핑' },
+            { href: '/bill?has_analysis=Y', label: 'AI 분석이 있는 법안' },
+        ],
+    },
 ];
 
 export const guideBySlug = (slug) => GUIDE_ARTICLES.find((a) => a.slug === slug) || null;

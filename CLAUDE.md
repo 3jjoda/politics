@@ -1193,7 +1193,7 @@ daos/queries/admin/getStats*.sql       ← 읽기 5종 / views/admin/stats.ejs
 | `/privacy` | `privacy.ejs` | 개인정보처리방침 (2026-07-29, AdSense 대비 광고 쿠키 조항 포함) |
 | `/terms` | `terms.ejs` | 이용약관 (AI 분석 면책·게시물 정책) |
 | `/guide/glossary` | `glossary.ejs` | 용어 설명 — **6섹션 46개 용어** (2026-08-19 확장: 법안 처리 결과 · 법안이 가는 길 · 발의자 구분 · 본회의 표결 결과 · **이 사이트가 만든 지표**(격차·이탈률·백분위·특화 배수·상임위 참여율·질의석/위원장석·성향 좌표·일치도·코호트) · 의원·국회 일반). 데이터는 뷰 상단 `SECTIONS` 배열 하나. **2026-08-19 부터 「읽는 법」 아래** — 구 `/glossary` 는 301 (앵커는 브라우저가 유지). 🔴 기존 항목 id(`sec-*`·`original`·`rep-proposer`·`vote-absent`·`quorum`…)는 `.pb-help`·해설·about 이 링크하므로 바꾸지 말 것. 앵커 오프셋은 `calc(var(--nav-h) + 16px)` (76/80px 하드코딩이 데스크톱에서 제목을 nav 뒤로 넣었었다). 우하단 **「목차 ↑」 고정 버튼**(`.gl-top`, 목차가 화면 위로 지나가면 나타남, rAF 없이 동기 scroll 리스너) |
-| `/guide` · `/guide/:slug` | `guide/index.ejs` · `guide/article.ejs` + `guide/articles/<slug>.ejs` | **「읽는 법」** (2026-08-19) — 사람이 쓴 해설 5편 + 용어 설명. 목록·메타는 `utils/guideArticles.js` 단일 소스 (라우트·사이트맵·이전/다음·description 이 이걸 읽는다). 1편은 `getHomeFacts` 살아 있는 숫자, 4편은 `GAP_BANDS` 로 구간표. **nav 의 `용어` 자리를 `읽는 법`이 이어받았다** (활성 `indexOf('/guide')`). 아래 「읽는 법」 참조 |
+| `/guide` · `/guide/:slug` | `guide/index.ejs` · `guide/article.ejs` + `guide/articles/<slug>.ejs` | **「읽는 법」** (2026-08-19) — 사람이 쓴 해설 8편 + 용어 설명. 목록·메타는 `utils/guideArticles.js` 단일 소스 (라우트·사이트맵·이전/다음·description 이 이걸 읽는다). 1편은 `getHomeFacts` 살아 있는 숫자, 4편은 `GAP_BANDS` 로 구간표. **nav 의 `용어` 자리를 `읽는 법`이 이어받았다** (활성 `indexOf('/guide')`). 아래 「읽는 법」 참조 |
 | `/auth/login` | `auth/login.ejs` | 구글/카카오 로그인 |
 | (404/403) | `error_pages/404.ejs` | 찾을 수 없음·권한 없음 공용. `{ pageTitle, pageStyles:'error', message, code?, detail? }` — `code` 생략 시 404 |
 | (500) | `error_pages/500.ejs` | 전역 에러 핸들러 전용. locals 의존 최소화 (에러 처리 중 렌더라 실패하면 안 됨) |
@@ -3280,7 +3280,7 @@ GOOGLE_SITE_VERIFICATION=
 4. 브리핑 상세 `currentUrl` 을 `/briefing/:id` 로 (canonical 정상화). nav 활성 판정은 `indexOf` 로 바꿨다
 
 - ⚠️ **분석 법안이 늘면 색인 대상도 자동으로 는다** — `syncBillAiAnalysis` 가 돌 때마다 사이트맵·noindex 가 같이 움직인다 (하드코딩 없음)
-- 5. **「읽는 법」 `/guide` 5편** — 사람이 쓴 해설 페이지 (같은 날). 아래 항목
+- 5. **「읽는 법」 `/guide` 8편** — 사람이 쓴 해설 페이지 (같은 날). 아래 항목
 
 ### 「읽는 법」 `/guide` — 사람이 쓴 해설 글 (2026-08-19)
 AdSense 반려의 다른 절반 — 사이트에 **사람이 쓴 산문 페이지가 `/about`·`/glossary` 뿐**이었다. 지표 각주에 흩어져 있던
@@ -3307,8 +3307,8 @@ public/styles/guide.css           ← .gd-*  (720px · 16px/1.85 · 세리프 �
   목차 하단에 있던 용어 4분류 카드(`.gd-gloss`)는 탭이 대체해 제거. 5편의 `다음 →` 은 용어 설명으로 이어진다.
   `pageViews` 의 `glossary` 규칙은 `guide` 규칙보다 **앞**에 있어야 한다 (뒤면 용어 페이지가 guide 로 잡힌다).
   `.pb-help` 도움말 링크(`data-help-href`)·404 페이지·about 의 `/glossary#…` 는 전부 새 주소로 바꿨다
-- 실측 2026-08-19: 5편 본문 8.7~10.2천 자 · 375px 가로 오버플로 0 · 모르는 slug 404
-- 다음 후보 (안 만든 것): 기권과 불참은 다르다 · 상임위 발언 참여율 읽는 법 · AI 브리핑·분석은 어디까지 믿을 수 있나
+- 실측 2026-08-19: 8편 본문 4.2~5.6천 자(공백 제외) · 375px 가로 오버플로 0 · 모르는 slug 404 · 렌더 가시 텍스트에 `—` 0
+- 다음 후보 (안 만든 것): 법안 분석 5-Zone 읽는 법 · 차트 만들기로 무엇을 물어볼 수 있나 · 브리핑 카드가 만들어지는 과정
 
 ---
 

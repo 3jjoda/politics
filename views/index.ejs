@@ -38,6 +38,11 @@
   .hero-links a:hover { color: var(--accent2); border-color: var(--accent2); }
   .hero-links a.is-primary { color: var(--accent2); font-weight: 800; border-bottom: 2px solid var(--accent); }
   .hero-links .sep { color: var(--border2); }
+  /* nav 와 목적지가 겹치는 링크(의원·법안·차트·읽는 법)는 데스크톱에서 숨긴다 - 바로 위 메뉴줄과 중복이다.
+     768px 이하는 .pb-nav-menu 가 통째로 display:none 이고 햄버거만 남아(main.css 반응형),
+     메뉴를 열지 않고 이동할 수 있는 유일한 수단이 여기가 된다.
+     남기는 건 CTA 하나 - 그건 이동이 아니라 행동이고 nav 라벨(성향 진단)과도 다르다 */
+  .hero-links .is-navdup { display: none; }
   /* 어제 브리핑 한 줄 — 매일 바뀌는 유일한 문장. 1면 하단 "속보" 자리 */
   .hero-brief {
     display: flex; gap: 10px; align-items: baseline; margin: 26px 0 0; padding: 12px 14px;
@@ -76,6 +81,7 @@
   @media (max-width: 768px) {
     .home-hero { padding: calc(var(--nav-h) + 24px) 16px 28px; }
     .hero-brief-s { display: none; }
+    .hero-links .is-navdup { display: inline-block; }   /* nav 가 접히는 폭 - 히어로 링크가 유일한 이동 수단이다 */
     /* 모바일 여백·폰트 스케일 */
     .pb-section { padding: 48px 12px; }
   }
@@ -307,10 +313,10 @@
         끝까지 지켜볼 수 있게 만듭니다. 정당이 아니라 <strong>한 사람의 기록</strong>으로 읽습니다.</p>
       <div class="hero-links">
         <a href="/balance-game" class="is-primary">나와 맞는 의원 찾기 →</a>
-        <span class="sep">·</span><a href="/politician">의원</a>
-        <span class="sep">·</span><a href="/bill">법안</a>
-        <span class="sep">·</span><a href="/xray">숫자로 본 국회</a>
-        <span class="sep">·</span><a href="/guide">읽는 법</a>
+        <span class="sep is-navdup">·</span><a class="is-navdup" href="/politician">의원</a>
+        <span class="sep is-navdup">·</span><a class="is-navdup" href="/bill">법안</a>
+        <span class="sep is-navdup">·</span><a class="is-navdup" href="/xray">숫자로 본 국회</a>
+        <span class="sep is-navdup">·</span><a class="is-navdup" href="/guide">읽는 법</a>
       </div>
       <% if (_lead) { %>
         <a class="hero-brief" href="/briefing/<%= _lead.id %>">
