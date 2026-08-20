@@ -97,6 +97,17 @@ export default (db) => {
             const totalCount = bills.length > 0 ? parseInt(bills[0].total_count) : 0;
             const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
+            /* 범위 밖 페이지(`?page=99999`)는 **빈 목록을 200 으로** 내놓고 있었다 (soft 404).
+               내용 없는 페이지가 색인되지 않도록 마지막 페이지로 접는다.
+               ⚠️ totalPages 는 쿼리 뒤에야 알 수 있어 여기서만 판정할 수 있다.
+               ⚠️ 빈 결과일 땐 total_count 를 못 읽어 totalPages 가 1 이 된다 — 목록 첫 장으로 떨어진다 (그래도 빈 화면보다 낫다) */
+            if (page > totalPages) {
+                const qs = new URLSearchParams({ ...req.query });
+                if (totalPages > 1) qs.set('page', String(totalPages)); else qs.delete('page');
+                const tail = qs.toString();
+                return res.redirect(301, '/bill' + (tail ? `?${tail}` : ''));
+            }
+
             res.render('bill/bill', {
                 pageTitle: '법안',
                 pageStyles: 'bill/bill',
@@ -192,8 +203,17 @@ export default (db) => {
                 ? `${analysis.summary} · ${bill.bill_name}`
                 : `${bill.bill_name} · ${descParts.join(' · ')}`;
 
+            /* 제목도 이 법안만의 것이어야 한다 (2026-08-21). bill_name 만 쓰면 동명 법안(전체의 87%,
+               조세특례제한법 일부개정법률안 788건)이 브라우저 탭·공유 미리보기·검색결과에서 구분되지 않는다.
+               ⚠️ proposer_name 은 의원(mona_cd 있음)일 수도 위원장·정부(없음)일 수도 있어 표현을 나눈다 */
+            const titleTail = [
+                bill.proposer_name ? `${bill.proposer_name}${bill.mona_cd ? ' 대표발의' : ' 제안'}` : null,
+                bill.propose_dt ? String(bill.propose_dt).slice(0, 10).replace(/-/g, '.') : null,
+            ].filter(Boolean).join(' · ');
+
             res.render('bill/bill_detail', {
-                pageTitle: bill.bill_name,
+                // 괄호로 묶는다 — 브랜드 꼬리(`· 당말사 · 당 말고 사람`)도 `·` 라 그냥 이으면 점 사슬이 된다
+                pageTitle: titleTail ? `${bill.bill_name} (${titleTail})` : bill.bill_name,
                 pageStyles: 'bill/bill_detail',
                 currentUrl: `/bill/${billId}`,
                 pageDesc,
