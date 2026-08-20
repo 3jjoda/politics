@@ -49,6 +49,12 @@ KIND_LABEL.site = '전체';
 /* 세지 않는 경로 — 세션 의존·기계용·SNS 배포용 중복 렌더 (robots.txt 의 Disallow 와 같은 목록) */
 const SKIP_PATH = /^\/(api|admin|auth|my|ads\.txt|robots\.txt|sitemap\.xml|xray\/s\/|briefing\/\d+\/(card|threads))(\/|$|\?)|\.[a-z0-9]{2,5}$/i;
 const BOT_UA = /bot|crawl|spider|slurp|fetch|curl|wget|python|java\/|httpclient|headless|phantom|lighthouse|pingdom|monitor|preview|facebookexternalhit|whatsapp|telegram|discord|scrapy|go-http|axios|node-fetch|okhttp|apache-http|libwww|dataprovider|semrush|ahrefs|mj12|dotbot|petalbot|bytespider|gptbot|claudebot|ccbot|perplexity|applebot|yandex|baidu|bingpreview|duckduck/i;
+/* 🔴 로컬·사설망 접속은 세지 않는다 — 개발하면서 연 페이지가 그대로 지표에 섞인다.
+   운영 초기엔 이게 관리자 브라우징만큼 크다 (실측: 하루 전체 뷰의 절반이 로컬 테스트였다).
+   ⚠️ 관리자 제외(isAdminUser)로는 못 막는다 — 로컬은 대개 로그아웃 상태로 열기 때문이다.
+   ⚠️ req.hostname 은 trust proxy 설정을 따라 X-Forwarded-Host 를 본다 (Railway 뒤에서도 공개 호스트가 잡힌다).
+   사설망(10./192.168./172.16~31.)까지 넣은 건 실기기 테스트를 폰에서 LAN 으로 열기 때문이다. */
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[?::1\]?|0\.0\.0\.0|[a-z0-9-]+\.local|10(\.\d{1,3}){3}|192\.168(\.\d{1,3}){2}|172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2})$/i;
 
 function kstToday() {
     // 로컬 getter 금지 (프로젝트 규칙) — Asia/Seoul 로 고정
@@ -169,6 +175,7 @@ export function pageViews(db) {
 
     return (req, res, next) => {
         if (req.method !== 'GET') return next();
+        if (LOCAL_HOST.test(req.hostname || '')) return next();   // 로컬·사설망 = 개발 중인 나. 위 LOCAL_HOST 주석 참조
         const path = req.path;
         if (SKIP_PATH.test(path)) return next();
         if (req.get('sec-fetch-dest') !== 'document') return next();          // 브라우저 탐색만
