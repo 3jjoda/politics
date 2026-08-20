@@ -369,6 +369,12 @@ export default (db) => {
                 story,
                 // 미리보기에서만 쓴다 — 배치(genInstaCards)의 caption.txt 와 같은 함수라 웹에서 미리 볼 수 있다
                 caption: (single || story) ? null : buildCaption(post),
+                /* 스토리 링크 스티커에 붙일 주소 — 🔴 홈이 아니라 **그날 브리핑**으로 바로 보낸다.
+                   스토리 카드가 그날 것이므로 홈에 떨어뜨리면 본 것을 다시 찾아야 한다 (거기서 이탈한다).
+                   프로필 바이오 링크는 홈으로 두고(캡션이 "프로필 링크에서" 로 유도), 스티커만 딥링크다.
+                   ⚠️ UTM 을 붙이지 않는다 — 방문 통계가 리퍼러를 저장하지 않아(개인정보 원칙) 보이지 않는 값이다.
+                      유입은 page_views_daily 의 briefing_detail × target_id 로 이미 그날 것만 세어진다. */
+                storyLink: (single || story) ? null : `${siteUrl()}/briefing/${Number(post.id)}`,
                 nf
             });
         } catch (error) {

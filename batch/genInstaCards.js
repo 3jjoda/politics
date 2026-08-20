@@ -29,6 +29,7 @@ import { execFileSync } from 'node:child_process';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
 import { buildCaption } from '../utils/instaCaption.js';   // 캡션은 카드 페이지와 단일 소스
+import { siteUrl } from '../utils/threadsPost.js';          // 대표 도메인 판정 단일 소스 (로컬 BASE_URL 을 걸러낸다)
 import { findBrowser, shoot as shootAsync } from '../utils/headlessShot.js';   // 헤드리스 캡처 공용 (맥 크롬 미종료 대응)
 
 const W = 1080;
@@ -130,8 +131,15 @@ async function main() {
         const capFile = path.join(dir, 'caption.txt');
         fs.writeFileSync(capFile, buildCaption(post), 'utf8');
 
+        // 🔴 스토리 링크 스티커에 넣을 주소 — 홈이 아니라 **그날 브리핑**이다.
+        //    스토리 카드가 그날 것이라 홈에 떨어뜨리면 방금 본 것을 다시 찾아야 한다 (거기서 이탈한다).
+        //    카드 미리보기 페이지의 「스토리 링크」 블록과 같은 값 (BriefingController 의 storyLink).
+        const linkFile = path.join(dir, 'link.txt');
+        fs.writeFileSync(linkFile, `${siteUrl()}/briefing/${Number(post.id)}\n`, 'utf8');
+
         logger.info(`[insta] 완료 → ${dir}`);
         logger.info('         캡션: caption.txt (그대로 복사해 붙이면 됩니다)');
+        logger.info('         링크: link.txt (스토리 링크 스티커에 넣을 주소)');
         if (bad) {
             logger.warn(`[insta] ⚠ ${bad}장이 ${W}x${H} 가 아닙니다 — 올리기 전에 확인하세요`);
             process.exitCode = 1;

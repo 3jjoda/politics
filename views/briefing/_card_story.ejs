@@ -14,7 +14,7 @@
 
     <div class="sl-body">
       <p class="sl-kicker">이날 국회에서</p>
-      <h1 class="sl-hl" style="font-size: <%= hlStory %>px"><%= p.headline %></h1>
+      <h1 class="sl-hl" style="font-size: <%= (storyThreads && storyThreads.length) ? hlStoryFlow : hlStory %>px"><%= p.headline %></h1>
       <% if (coverNums.length) { %>
         <div class="sl-cov">
           <% coverNums.forEach((n) => { %>
@@ -24,6 +24,29 @@
             </div>
           <% }); %>
         </div>
+      <% } %>
+
+      <%# 「이날의 흐름」 — 헤드라인·숫자만 있던 자리의 아래를 채운다.
+          스토리는 링크 스티커가 붙는 유일한 1탭 경로라, 여기서 "무엇이 발의됐는지" 가 구체적으로 보여야 탭한다.
+          ⚠️ 캐러셀 흐름 장과 같은 재료지만 법안 목록은 뺀다 — 축소율이 커서 못 읽는다 %>
+      <% if (storyThreads && storyThreads.length) { %>
+        <div class="st-flow">
+          <p class="st-flow-cap">이날의 흐름</p>
+          <% storyThreads.forEach((t) => { %>
+            <div class="st-item">
+              <div class="st-top">
+                <span class="st-theme"><%= t.theme %></span>
+                <% if (t.cnt) { %><span class="st-cnt"><%= t.cnt %>건</span><% } %>
+              </div>
+              <% if (t.what) { %><p class="st-what"><%= t.what %></p><% } %>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <%# 활동 없음 카드에는 붙이지 않는다 — 그날 법안이 0건인데 "법안별 발의자" 로 유도하면 거짓이 된다 %>
+      <% if (!p.isEmpty) { %>
+        <p class="st-cta">법안별 발의자와 원문 <span>· 프로필 링크 또는 아래 스티커</span></p>
       <% } %>
     </div>
 
