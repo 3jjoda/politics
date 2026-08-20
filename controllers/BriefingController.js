@@ -398,8 +398,8 @@ export default (db) => {
                 });
             }
 
-            // 모르는 값은 에러가 아니라 기본값으로 접는다 (URL 을 손으로 고쳐도 빈 화면이 안 나오게)
-            const mode = req.query.mode === 'short' ? 'short' : 'full';
+            // 모르는 값은 에러가 아니라 'full' 로 접는다 (URL 을 손으로 고쳐도 안전하게 — /xray/chart 와 같은 판단)
+            const mode = ['short', 'image'].includes(req.query.mode) ? req.query.mode : 'full';
 
             res.render('briefing/threads', {
                 pageTitle: `쓰레드 · ${post.briefing_date}`,
@@ -408,6 +408,8 @@ export default (db) => {
                 post,
                 mode,
                 chain: buildThreadsChain(post, { mode }),
+                // image 모드에서 1번에 붙일 표지 PNG. `npm run insta` 가 이 경로에 떨군다
+                coverHint: `out/insta/${post.briefing_date}/01.png`,
                 limit: THREADS_LIMIT
             });
         } catch (error) {

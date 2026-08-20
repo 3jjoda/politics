@@ -25,6 +25,9 @@
       <a class="th-mode<%= mode === 'short' ? ' is-on' : '' %>" href="?mode=short">
         짧은 버전 <b>3개</b><span>복사 3번 · <strong>링크가 1번에</strong> · 법안 목록 생략</span>
       </a>
+      <a class="th-mode<%= mode === 'image' ? ' is-on' : '' %>" href="?mode=image">
+        이미지 버전 <b>3개</b><span>1번에 <strong>표지 이미지 첨부</strong> · 헤드라인·숫자는 이미지가 · 법안 이름 포함</span>
+      </a>
     </div>
 
     <div class="th-actions">
@@ -32,6 +35,16 @@
       <a class="th-btn" href="https://www.threads.net/" target="_blank" rel="noopener noreferrer">쓰레드 열기 ↗</a>
     </div>
   </header>
+
+  <%# 🔴 image 모드는 표지 이미지 첨부가 전제다 — 안 붙이면 1번에 헤드라인이 없어 무슨 글인지 모른다 %>
+  <% if (mode === 'image') { %>
+    <p class="th-imgnote">
+      <b>1번 게시물에 표지 이미지를 첨부하세요.</b>
+      <code><%= coverHint %></code> (<code>npm run insta</code> 가 만듭니다) 또는
+      <a href="/briefing/<%= post.id %>/card?slide=1" target="_blank" rel="noopener">표지 1:1로 열기 ↗</a>.
+      이미지가 날짜·헤드라인·숫자를 이미 보여주므로 1번 텍스트에서는 뺐습니다. <b>안 붙이면 무슨 글인지 알 수 없습니다.</b>
+    </p>
+  <% } %>
 
   <ol class="th-list">
     <% chain.forEach((p) => { %>
@@ -70,6 +83,11 @@
   .th-head p { font-size: 13.5px; line-height: 1.75; color: var(--sub); margin: 0; word-break: keep-all; }
   .th-head strong { color: var(--text); font-weight: 700; }
 
+  .th-imgnote { margin: 0 0 18px; padding: 12px 14px; background: #FBF5EA; border: 1px solid #E8DCC0;
+                border-radius: 10px; font-size: 13px; line-height: 1.7; color: var(--text); word-break: keep-all; }
+  .th-imgnote code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #fff;
+                     border: 1px solid #E2DFD4; border-radius: 4px; padding: 1px 6px; }
+  .th-imgnote a { color: #8F5800; font-weight: 700; }
   .th-modes { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
   .th-mode { flex: 1 1 240px; text-decoration: none; background: var(--bg2);
              border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px;
