@@ -215,12 +215,25 @@
   .tb .sp { margin-left: auto; color: #A8A095; }
   .tb a { color: #E8B562; }
   .pv { display: flex; flex-wrap: wrap; gap: 26px; padding: 26px; }
-  .pv-item { width: 378px; }
+  .pv-item { width: 378px; scroll-margin-top: 90px; }
+  <%# 쓰레드 페이지가 `#pv-1`(표지)로 보낸다 — 어느 카드를 받으라는 건지 표시가 없으면 길을 잃는다 %>
+  .pv-item:target .pv-box { box-shadow: 0 0 0 3px #E8B562, 0 4px 18px rgba(0,0,0,.35); }
+  .pv-item:target .pv-dl { color: #26241F; background: #E8B562; border-color: #E8B562; }
   .pv-box { width: 378px; height: 472px; overflow: hidden; border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.35); }
   .pv-box.is-story { height: 672px; }   /* 1920 × 0.35 */
   .pv-box .sl { transform: scale(.35); transform-origin: top left; }
   .pv-cap { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 13px; color: #C8C2B4; }
-  .pv-cap a { margin-left: auto; color: #E8B562; text-decoration: none; border-bottom: 1px solid currentColor; }
+  .pv-cap a { color: #E8B562; text-decoration: none; border-bottom: 1px solid currentColor; }
+  /* PNG 저장 — 매일 쓰는 버튼이라 눈에 띄어야 한다 (구 방식은 F12 → 우클릭 → 노드 캡처였다) */
+  .pv-dl { margin-left: auto; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #EDE9E0;
+           background: #4A463E; border: 1px solid #6B655A; border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  .pv-dl:hover { color: #E8B562; border-color: #E8B562; }
+  .pv-dl[disabled] { opacity: .55; cursor: progress; }
+  .tb-dl { font-family: inherit; font-size: 13px; font-weight: 700; color: #26241F; background: #E8B562;
+           border: 0; border-radius: 7px; padding: 7px 16px; cursor: pointer; }
+  .tb-dl[disabled] { opacity: .6; cursor: progress; }
+  .tb-status { color: #C8C2B4; }
+  .tb-status.is-err { color: #F0A6A6; }
 
   /* 캡션 블록 (미리보기 전용) */
   .cap { max-width: 900px; margin: 6px 26px 40px; background: #FFFFFF; border: 1px solid #E2DFD4; border-radius: 12px; overflow: hidden; }
@@ -310,10 +323,11 @@
     <b><%= D %> 인스타 카드</b>
     <span>피드 <%= slides.length %>장 + 스토리 1장</span>
     <span>1080 × 1350 (4:5) · 스토리 1080 × 1920 (9:16)</span>
+    <button type="button" class="tb-dl" id="dl-all">PNG 전부 저장 (<%= slides.length + 1 %>장)</button>
+    <span class="tb-status" id="dl-status"></span>
     <span class="sp">
-      <%# 창 캡처는 화면 배율·DPI 를 타서 1080px 이 안 나온다. 노드 캡처가 항상 정확하다 %>
-      캡처: <code>1:1로 열기</code> → F12 → Elements 에서 <code>&lt;section class="sl"&gt;</code> 우클릭 →
-      <code>Capture node screenshot</code> ·
+      <%# 브라우저 저장이 막히면(구형 브라우저 등) 이 두 가지가 폴백이다 %>
+      안 되면 <code>npm run insta</code> 또는 <code>1:1로 열기</code> → F12 → <code>Capture node screenshot</code> ·
       <a href="/briefing/<%= p.id %>">← 브리핑으로</a>
     </span>
   </div>
@@ -321,7 +335,7 @@
 <% } %>
 
 <% shown.forEach((s, i) => { const no = single || (i + 1); %>
-  <% if (!one) { %><div class="pv-item"><div class="pv-box"><% } %>
+  <% if (!one) { %><div class="pv-item" id="pv-<%= no %>"><div class="pv-box"><% } %>
 
   <section class="sl <%= s.kind === 'cover' ? '' : 'is-sub' %>" data-slide="<%= no %>">
     <div class="sl-rule"></div>
@@ -459,7 +473,8 @@
     </div>
     <div class="pv-cap">
       <span><%= no %>. <%= { cover:'표지', stats:'숫자', thread:'흐름', laws:'몰린 법률', outro:'마무리' }[s.kind] %></span>
-      <a href="?slide=<%= no %>" target="_blank" rel="noopener">1:1로 열기 ↗</a>
+      <button type="button" class="pv-dl" data-name="<%= p.briefing_date %>-<%= String(no).padStart(2, '0') %>.png">PNG 저장</button>
+      <a href="?slide=<%= no %>" target="_blank" rel="noopener">1:1 ↗</a>
     </div>
     </div>
   <% } %>
@@ -473,7 +488,8 @@
     </div>
     <div class="pv-cap">
       <span>스토리 (9:16)</span>
-      <a href="?story=1" target="_blank" rel="noopener">1:1로 열기 ↗</a>
+      <button type="button" class="pv-dl" data-name="<%= p.briefing_date %>-story.png">PNG 저장</button>
+      <a href="?story=1" target="_blank" rel="noopener">1:1 ↗</a>
     </div>
   </div>
 <% } %>
@@ -522,6 +538,58 @@
           flash('직접 복사하세요');
         }
       });
+    });
+  })();
+  </script>
+
+  <%# ── PNG 저장 — 캡처 로직은 public/scripts/cardShot.js (SVG foreignObject → canvas).
+        ⚠️ 이 스크립트는 **미리보기 모드에만** 실린다. ?slide·?story 는 문서 자체가 캔버스라 버튼 하나도 들어가면 안 된다 %>
+  <script src="<%= asset('/scripts/cardShot.js') %>"></script>
+  <script>
+  (() => {
+    const status = document.getElementById('dl-status');
+    const say = (msg, err) => { status.textContent = msg || ''; status.classList.toggle('is-err', !!err); };
+    // 클론을 만들 원본은 **버튼이 속한 카드**다 (미리보기는 .pv-item 하나에 카드 하나)
+    const cardOf = (btn) => btn.closest('.pv-item').querySelector('.sl');
+
+    async function shoot(btn) {
+      const label = btn.textContent;
+      btn.disabled = true; btn.textContent = '저장 중…';
+      try {
+        await PBCard.save(cardOf(btn), btn.dataset.name);
+        say('');
+      } catch (e) {
+        console.error('[cardShot]', e);
+        say((e && e.message) || '저장에 실패했습니다', true);
+        throw e;
+      } finally { btn.disabled = false; btn.textContent = label; }
+    }
+
+    document.querySelectorAll('.pv-dl').forEach((btn) => btn.addEventListener('click', () => shoot(btn).catch(() => {})));
+
+    // 쓰레드 페이지가 `#pv-1` 로 보낸다. 브라우저의 스크롤 복원이 해시를 이겨서 엉뚱한 위치에 서는 일이 있어
+    // (같은 URL 을 다시 열면 재현) 로드 후 한 번 더 맞춘다. ⚠️ rAF 금지 — 배경 탭에서는 콜백이 안 돈다
+    const target = location.hash && document.querySelector(location.hash + '.pv-item');
+    if (target) target.scrollIntoView();
+
+    // 전부 저장 — 한 장씩 순서대로. 🔴 브라우저가 "여러 파일 다운로드" 를 한 번 물어본다 (허용해야 2장째부터 내려온다)
+    const all = document.getElementById('dl-all');
+    all.addEventListener('click', async () => {
+      const btns = [...document.querySelectorAll('.pv-dl')];
+      all.disabled = true;
+      const label = all.textContent;
+      try {
+        for (let i = 0; i < btns.length; i++) {
+          all.textContent = `저장 중… ${i + 1}/${btns.length}`;
+          say('');
+          await PBCard.save(cardOf(btns[i]), btns[i].dataset.name, { share: false });
+          await new Promise((r) => setTimeout(r, 350));   // 연속 다운로드를 브라우저가 삼키지 않게
+        }
+        say(`${btns.length}장을 저장했습니다. 다운로드 폴더를 확인하세요.`);
+      } catch (e) {
+        console.error('[cardShot]', e);
+        say((e && e.message) || '저장에 실패했습니다', true);
+      } finally { all.disabled = false; all.textContent = label; }
     });
   })();
   </script>
