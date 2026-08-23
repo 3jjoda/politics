@@ -6,6 +6,7 @@
 // ⚠️ 상임위 직위(위원장·간사·위원)는 여기서 못 고친다 — syncCommittees 가 매일 전체 교체한다.
 
 import AdminDao from '../daos/AdminDao.js';
+import IssueService from '../services/IssueService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 import { KIND_LABEL } from '../middlewares/pageViews.js';
@@ -40,6 +41,7 @@ function parseForm(body) {
 
 export default (db) => {
     const dao = AdminDao(db);
+    const issueService = IssueService(db);   // 쟁점 후보 발굴 (/admin/issue-candidates)
     const controller = {};
 
     controller.getTitlesPage = wrapWithContext(async function getTitlesPage(req, res, next) {
@@ -249,6 +251,34 @@ export default (db) => {
         } catch (err) {
             logger.error('운영 일정 렌더링 중 에러:', `${err.message}\n${err.stack}`);
             next(err);
+        }
+    });
+
+    /* 쟁점 후보 발굴 — 선정 기준(utils/issues.js)을 **실행 가능하게** 만드는 화면.
+       🔴 자동 선정은 안 된다는 게 결론이므로 이 화면은 "후보를 정해주는" 게 아니라
+          사람이 고를 때 쓰는 **재료와 검사기**다. 최종 판단·이름은 사람이 하고 이유는 `why` 에 쓴다. */
+    controller.getIssueCandidatesPage = wrapWithContext(async function getIssueCandidatesPage(req, res, next) {
+        try {
+            // ?kw=상속세,증여세 — 검사기. 없으면 후보 목록만 그린다
+            const raw = String(req.query.kw || '').trim();
+            const keywords = raw ? raw.split(',').map((k) => k.trim()).filter(Boolean).slice(0, 6) : [];
+
+            const [candidates, check] = await Promise.all([
+                issueService.getCandidates(),
+                keywords.length ? issueService.checkKeywords(keywords) : Promise.resolve(null),
+            ]);
+
+            res.render('admin/issue_candidates', {
+                pageTitle: '쟁점 후보',
+                pageStyles: null,
+                currentUrl: '/admin/issue-candidates',
+                kwRaw: raw,
+                check,
+                ...candidates,
+            });
+        } catch (error) {
+            logger.error(`쟁점 후보 화면 실패 — ${error.message}`);
+            next(error);
         }
     });
 

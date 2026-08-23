@@ -143,6 +143,8 @@
         <li><a href="/" class="<%= (locals.currentUrl === '/') ? 'active' : '' %>">홈</a></li>
         <%# 브리핑은 "지금 무슨 일이 있나" 진입점이라 홈 바로 다음에 둔다 %>
         <li><a href="/briefing" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/briefing') === 0) ? 'active' : '' %>">브리핑</a></li>
+        <%# 쟁점은 브리핑 옆 — 둘 다 "읽으러 오는 곳" 이다 (브리핑은 하루 단위, 쟁점은 사안 단위) %>
+        <li><a href="/issue" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/issue') === 0) ? 'active' : '' %>">쟁점</a></li>
         <li><a href="/politician" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/politician') === 0) ? 'active' : '' %>">의원</a></li>
         <li><a href="/bill" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/bill') === 0) ? 'active' : '' %>">법안</a></li>
         <li><a href="/xray" class="<%= (locals.currentUrl && locals.currentUrl.indexOf('/xray') === 0) ? 'active' : '' %>">차트</a></li>
@@ -189,6 +191,7 @@
     <ul>
         <li><a href="/">홈</a></li>
         <li><a href="/briefing">브리핑</a></li>
+        <li><a href="/issue">쟁점</a></li>
         <li><a href="/politician">의원</a></li>
         <li><a href="/bill">법안</a></li>
         <li><a href="/xray">차트</a></li>

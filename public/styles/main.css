@@ -1257,3 +1257,16 @@ body.pb-menu-open { overflow: hidden; }
   .pb-footer-inner { flex-direction: column; text-align: center; }
   body { font-size: 14px; }
 }
+
+/* ===== 공용 페이저 `.pagination-inline` (2026-08-23 공용화) =====
+   🔴 JS 는 `PB.renderPager` 하나다. 페이지마다 복사하지 말 것 —
+      의원 상세에서 두 탭이 각자 페이저를 갖고 있다가 모양이 갈린 적이 있고(2026-08-16),
+      쟁점 페이지가 세 번째 복사본이 될 뻔했다. 마크업은 `<div class="pagination-inline">` 하나면 된다. */
+.pagination-inline { display: flex; justify-content: center; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+.pagination-inline .pg {
+    width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--sub); font-size: 13px; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+}
+.pagination-inline .pg.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pagination-inline .pg:disabled { opacity: 0.3; cursor: not-allowed; }
