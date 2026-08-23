@@ -3,6 +3,52 @@
    ⚠️ 문장형 설명은 12px 하한 (해석 주의 문구가 가장 작고 옅으면 안 된다) */
 
 .iss-wrap { max-width: 1000px; margin: 0 auto; padding: 36px 24px 80px; }
+/* ⚠️ 공용 `.pb-page-header-inner` 는 1280px 인데 이 페이지 본문은 1000px 이라
+   **제목이 본문보다 164px 왼쪽**에 있었다 (1920px 실측: 제목 315 · 본문 479 · 목차 칩 479).
+   쟁점 목록·상세 둘 다 `.iss-wrap` 을 쓰므로 여기서 한 번에 맞춘다.
+   🔴 issue.css 는 쟁점 페이지에서만 로드되니 다른 페이지의 1280px 는 그대로다 — 공용을 고치지 말 것 */
+/* 🔴 부모의 좌우 패딩(24px)을 **0 으로 내리고** inner 가 갖게 한다.
+      둘 다 24px 이면 **좁은 화면에서 48px 로 더해져** 제목만 안쪽으로 밀린다
+      (1024px 실측: 제목 48 · 본문 31). 넓은 화면은 max-width 로 가운데 정렬돼 안 드러난다.
+   ⚠️ 세로 패딩·`border-top` 투명 트릭·그라디언트는 그대로 둔다 — 그건 full-bleed 부모여야 성립한다.
+      결과적으로 inner 가 `.iss-wrap`(max-width 1000 + padding 24)과 **글자 그대로 같은 상자**가 된다 */
+.pb-page-header { padding-left: 0; padding-right: 0; }
+.pb-page-header-inner { max-width: 1000px; padding: 0 24px; }
+
+/* ── 앵커 내비 (2026-08-24) ──
+   쟁점 상세는 섹션이 8개인데 훑을 수단이 없었다 — 법안 상세엔 sticky 인덱스,
+   의원 상세엔 `.ov-toc` 가 있는데 여기만 빠져 있었다. 칩 문법은 `.ov-toc` 와 같게 맞춘다.
+
+   🔴 `top` 은 반드시 `var(--nav-h)` 다 (데스크톱 100 · 모바일 60). 60px 하드코딩 금지 —
+      2026-08-15 에 sticky 오프셋 4곳이 전부 그렇게 박혀 데스크톱에서 상단 40px 이 nav 뒤로 들어갔다.
+   ⚠️ `hidden` 을 명시적으로 죽여둘 것 — flex 로 바꾸면 `[hidden]` 이 조용히 안 먹는다
+      (`.ba-proposers-grid` · `.bf-rest` · `.sp-mts` 에서 세 번 겪은 함정). */
+/* 🔴 **배경·보더는 바깥이 아니라 가운데 정렬된 inner 에 준다.**
+   바깥에 주면 1000px 를 넘는 화면에서 **흰 띠만 화면 끝까지 뻗어** 본문과 따로 논다
+   (실측 1920px: 띠 1910px vs 본문 1000px — 양쪽 455px 씩 넘쳤다. 2026-08-24 사용자 지적).
+   사이트의 다른 sticky 바도 같은 규칙이다 — `/bill`·`/politician` 의 `.filter-bar`·`.status-tabs` 는
+   바깥이 **투명 full-bleed** 이고 흰 배경·보더는 `-inner` 가 갖는다. 의원 상세 `.ov-toc` 도 같다.
+   ⚠️ 바깥이 투명해도 안전한 이유 — 이 페이지 콘텐츠가 `.iss-wrap` 1000px 안에만 있어서
+      inner 흰 띠(같은 1000px)가 스크롤되는 본문을 전부 덮는다. 폭을 바꾸면 이 전제부터 다시 볼 것 */
+.iss-toc { position: sticky; top: var(--nav-h); z-index: 50; }
+.iss-toc[hidden] { display: none; }
+/* ⚠️ `.iss-wrap` 과 같은 1000px·24px 라 칩이 본문과 줄이 맞는다 */
+.iss-toc-inner {
+  max-width: 1000px; margin: 0 auto; padding: 8px 24px;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+}
+.iss-toc-inner::-webkit-scrollbar { display: none; }
+/* ⚠️ 12.5px 소형 텍스트라 대비 4.5:1 이 필요하다 —
+   `--sub`(8.4) · 활성은 `--accent`(3.79 미달) 가 아니라 `--accent2`(5.4) */
+.iss-toc-link {
+  flex-shrink: 0; padding: 5px 11px; border: 1px solid var(--border); border-radius: 999px;
+  background: transparent; color: var(--sub); font-family: inherit; font-size: 12.5px; font-weight: 600;
+  white-space: nowrap; cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.iss-toc-link:hover { color: var(--text); border-color: var(--border2); }
+.iss-toc-link.is-active { color: var(--accent2); border-color: var(--accent); background: var(--accent-10); }
 
 .iss-kicker { margin: 0 0 6px; font-size: 12.5px; font-weight: 700; letter-spacing: .06em; }
 .iss-kicker a { color: var(--sub); text-decoration: none; }
@@ -141,13 +187,10 @@
 .iss-bills.is-compact a { padding: 10px 14px; }
 
 /* ── 각주 (지우지 말 것) ── */
-.iss-caveat { margin: 30px 0; padding: 20px 22px; background: var(--bg3);
-              border: 1px dashed var(--border2); border-radius: 10px; }
-.iss-caveat-h { margin: 0 0 10px; font-size: 14px; font-weight: 800; color: var(--text); }
-.iss-caveat ul { margin: 0; padding-left: 18px; }
-.iss-caveat li { margin-bottom: 8px; font-size: 12.5px; line-height: 1.8; color: var(--sub); }
-.iss-caveat li:last-child { margin-bottom: 0; }
-.iss-caveat strong { color: var(--text); font-weight: 700; }
+/* 🔴 본체는 공용 `.pb-caveat` (main.css) 로 옮겼다 — 뷰가 그 클래스를 쓴다.
+      구 `.iss-caveat` 는 li 가 12.5px 로 **이 페이지에서 가장 작은 글자**였고,
+      링크 두 개(`반대표는 왜 1%도 안 될까` · `법안 목록`)에 색이 없어 링크로 안 보였다.
+      둘 다 공용 규칙이 고친다. 여기에 다시 지역 규칙을 만들지 말 것 */
 
 /* ── 뉴스 — 각주 안 한 줄로 (섹션 하나를 줄이되 "기사를 안 고른다" 선언은 남긴다) ── */
 .iss-news-line { margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--border2);
@@ -160,6 +203,10 @@
 }
 @media (max-width: 768px) {
   .iss-wrap { padding: 28px 16px 64px; }
+  /* ⚠️ 제목·칩·본문이 **한 기준선**을 갖도록 셋 다 `.iss-wrap` 의 좌우 패딩을 따라간다.
+     하나만 빠뜨리면 그것만 어긋난다 (768px 실측: 헤더만 24px 이라 제목이 8px 안쪽에 있었다) */
+  .iss-toc-inner { padding: 7px 16px; }
+  .pb-page-header-inner { padding: 0 16px; }
   .pb-page-title.is-issue { font-size: 28px; }
   .iss-fact b { font-size: 25px; }
 }
