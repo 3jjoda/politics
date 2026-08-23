@@ -42,7 +42,10 @@ export default (db) => {
             const [codes, facts, spotlight, briefing, matches, myMember] = await Promise.all([
                 codeService.getList(),
                 billService.getHomeFacts(),
-                politicianService.getAxisSpotlight(3),
+                /* 🔴 3 → 2 (2026-08-23). 이 블록이 모바일 히어로의 **절반**(750/1,402px)을 먹는데
+                   무작위라 재방문 가치가 낮다. 2명이면 "사람마다 다르다" 는 그대로 보이고 250px 를 돌려준다.
+                   ⚠️ 1명으로 줄이지 말 것 — 비교 대상이 없으면 "정당 평균과 얼마나 다른가" 가 안 읽힌다 */
+                politicianService.getAxisSpotlight(2),
                 briefingService.getFeed(1),
                 politicianService.getTopMatches(userAxis, 3),
                 /* 내 지역구 의원 (2026-08-23). 로그인 + 등록한 사용자만.

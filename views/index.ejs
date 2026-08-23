@@ -114,15 +114,18 @@
   .mine-go { font-size: 12.5px; font-weight: 700; color: var(--accent2); white-space: nowrap; text-decoration: none; }
   .mine-go:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-  /* 미등록 — 비로그인 포함. JS 가 목록을 받아 채운 뒤 hidden 을 푼다 (JS 없으면 아예 안 보인다) */
-  .mine-pick { margin: 0 0 14px; padding: 13px 18px; background: var(--bg3);
-               border: 1px dashed var(--border2); border-radius: 10px; }
+  /* 미등록 — 비로그인 포함. JS 가 목록을 받아 채운 뒤 hidden 을 푼다 (JS 없으면 아예 안 보인다)
+     🔴 **첫 행동이라 눈에 띄어야 한다** (2026-08-23). 실측: 미등록 첫 화면(812px)에 행동 요소가 8개인데
+        장벽이 가장 낮은 `지역구 고르기` 가 487px 아래에 점선 상자로 있었다.
+        성향 진단은 로그인 + 20문항인데 완료가 3명뿐이다 — 지역구는 클릭 두 번이다. */
+  .mine-pick { margin: 0 0 14px; padding: 15px 18px; background: #FBF5EA;
+               border: 1px solid var(--accent); border-radius: 10px; }
   .mine-pick[hidden] { display: none; }
   .mine-pick-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .mine-pick-open { padding: 5px 12px; border: 1px solid var(--accent); background: var(--bg2);
-                    color: var(--accent2); border-radius: 999px; font-size: 12.5px; font-weight: 700;
+  .mine-pick-open { padding: 7px 16px; border: 1px solid var(--accent); background: var(--accent);
+                    color: #fff; border-radius: 999px; font-size: 13px; font-weight: 700;
                     cursor: pointer; font-family: inherit; }
-  .mine-pick-open:hover { background: #FBF5EA; }
+  .mine-pick-open:hover { background: var(--accent2); border-color: var(--accent2); }
   .mine-pick-sub { margin: 4px 0 0; font-size: 12.5px; color: var(--sub); line-height: 1.7; }
   .mine-pick-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
   .mine-pick-form[hidden] { display: none; }
