@@ -22,10 +22,11 @@
 %>
 
 <style>
+  /* ⚠️ 상단 여백은 `.bd-top` 이 가져갔다 (고정 nav 클리어런스 포함). 여기 다시 넣지 말 것 */
   .bd-wrap {
     max-width: 960px;
     margin: 0 auto;
-    padding: calc(var(--nav-h) + 36px) 24px 60px;
+    padding: 28px 24px 60px;
   }
   .bd-breadcrumb {
     font-family: 'JetBrains Mono', monospace;
@@ -887,7 +888,7 @@
   }
   .ba-cta-primary:hover { background: var(--ba-gold); }
 
-  /* Zone 4 인덱스는 페이지 레벨 .pb-section-index 로 이동 (참여 섹션까지 포함) */
+  /* Zone 4 인덱스는 페이지 레벨 섹션 탭 바 `.bd-toc` 로 이동 (참여 섹션까지 포함) */
 
   /* ===== 반응형 ===== */
   @media (max-width: 1240px) {
@@ -1829,168 +1830,79 @@
 
         클램프를 없애고 항상 콘텐츠 바깥에 두되, 화면 밖으로 나가는 폭에서는
         아예 숨긴다(아래 미디어쿼리). "겹치더라도 보여준다" 보다 "안 되면 숨긴다" 가 맞다 —
-        그 구간은 모바일 jumpbar 가 대체한다.
+        (2026-08-24 부로 세로 레일 자체가 사라지고 가로 탭 바 `.bd-toc` 로 대체됐다.)
 
      폭 계산: left(50%+448) + width(180) ≤ 100% → 화면 ≥ 1256px. 안전하게 1260 을 컷으로 잡음
               (1280px 실측: 인덱스 좌측 1088 vs 콘텐츠 우측 1071 → 17px 여유) */
-  .pb-section-index {
-    position: fixed;
-    top: calc(var(--nav-h) + 32px);
-    left: calc(50% + 448px);
-    width: 180px;
+  /* ===== 섹션 탭 바 `.bd-toc` (2026-08-24) =====
+     🔴 사이트의 주 sticky 메뉴와 **같은 형태**다 — `/bill`·`/politician` 의 밑줄 탭,
+        `/issue/:slug` 의 `.iss-toc` 와 같은 값(padding 14px 22px · 14px/500 · 활성 border-bottom 2px 골드).
+        구 버전은 이 페이지만 **우측 세로 레일 + 모바일 플로팅 바** 두 벌을 썼다.
+        되돌리지 말 것 — 한 사이트에 내비게이션 형태가 셋이 되어 있었다 (사용자 지적).
+     🔴 **띠는 화면 전체 폭이다.** Zone 3 마진노트(`.ba-margin-note`)가 본문 왼쪽 바깥에 있어
+        (실측 1440px 에서 150~251px, 본문은 275px 부터) 띠를 본문 폭으로 좁히면
+        스크롤할 때 그 칩이 띠 옆으로 삐져나간다. `.ba-shell` 자체가 화면 전체 폭이라 자연스럽다.
+     🔴 **그래서 `.bd-wrap` 바깥의 형제로 둔다. `100vw` 로 breakout 하지 말 것** —
+        `100vw` 는 스크롤바를 포함해서 **문서에 가로 오버플로가 생긴다** (실측 5px).
+        형제로 두면 `width: auto` 가 곧 클라이언트 폭이라 계산도 오버플로도 없다.
+     ⚠️ 탭 줄은 `.bd-wrap` 과 같은 960px·24px 라 breadcrumb·참여 카드와 좌측 기준선을 공유한다.
+        넘치면 가로 스크롤 (사이트의 다른 탭 바와 같은 처리). */
+  /* breadcrumb 줄 — 고정 nav 여백을 여기서 가져간다 (구 `.bd-wrap` 의 padding-top 역할) */
+  .bd-top { padding: calc(var(--nav-h) + 28px) 0 14px; }
+  .bd-top-inner { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+  /* 🔴 **흰 배경·보더는 바깥이 아니라 가운데 정렬된 `-inner` 에 준다** (사이트 공통 규칙).
+     바깥에 주면 흰 띠가 화면 끝까지 뻗어 본문과 따로 논다 — `/issue` 에서 같은 실수를 한 번 했다.
+     🔴 **다만 바깥은 투명이 아니라 `--bg`(페이지 배경) 로 채운다.** 이 페이지에만 있는 사정이다:
+        Zone 3 마진노트(`.ba-margin-note`)가 본문 왼쪽 **바깥**(1440px 실측 150~251px · 본문은 275px)에
+        있어서, 바깥이 투명이면 스크롤할 때 그 칩이 흰 띠 옆으로 지나간다.
+        `--bg` 로 채우면 **눈에는 페이지 배경 그대로**라 띠처럼 안 보이면서 가려주기만 한다.
+        (`/bill`·`/politician`·`/issue` 는 콘텐츠가 전부 띠 안에 들어와 투명으로 충분하다) */
+  .bd-toc {
+    position: sticky;
+    top: var(--nav-h);
     z-index: 40;
+    background: var(--bg);
     font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    max-height: calc(100vh - var(--nav-h) - 64px);
-    /* overflow-y:auto 가 x 도 clip 하므로 좌측 도트(left:-5) 잘리는 문제 회피:
-       padding-left 로 도트 영역 확보. 시각상 좌측 시작점은 그대로 보임 */
-    padding-left: 8px;
-    overflow-y: auto;
-    scrollbar-width: thin;
   }
-  .pb-section-index::-webkit-scrollbar { width: 4px; }
-  .pb-section-index::-webkit-scrollbar-thumb { background: #E8E5DC; border-radius: 2px; }
-  .pb-idx-group {
+  .bd-toc-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
     display: flex;
-    flex-direction: column;
-    gap: 0;
-    border-left: 1px solid #E8E5DC;     /* 그룹별 좌측 가이드 라인 */
-    padding-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  /* ⚠️ 10px 에 #A8A095 는 대비 2.39 — 사실상 안 보이는 수준이었다. #746C5D 는 4.80 으로 AA 통과.
-     소형·저대비 조합은 "은은함" 이 아니라 그냥 안 읽히는 것이라 색만 눌러 톤을 유지한다 */
-  .pb-idx-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    color: #746C5D;
-    text-transform: uppercase;
-    margin: 0 0 8px 22px;
-  }
-  .pb-idx-item {
-    position: relative;
-    display: flex;
+  .bd-toc-inner::-webkit-scrollbar { display: none; }
+  /* ⚠️ 활성색은 `--accent`(흰 배경 3.79 미달) 가 아니라 `--text` 다. 골드는 밑줄이 맡는다 */
+  .bd-toc-tab {
+    flex-shrink: 0;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 7px 0 7px 22px;
-    font-size: 12px;
-    color: #646E7E;      /* #6B7280 은 대비 4.47 로 AA 미달 */
+    gap: 8px;
+    padding: 14px 22px;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--sub);
+    font-size: 14px;
+    font-weight: 500;
     text-decoration: none;
-    line-height: 1.4;
-    transition: color 0.15s;
+    white-space: nowrap;
+    transition: all 0.15s;
   }
-  .pb-idx-item::before {
-    content: '';
-    position: absolute;
-    left: -5px;        /* 가이드 라인 위에 점 올라타게 */
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--bg, #F7F6F1);     /* 라인 위 점 — 라인이 점 뒤로 안 보이게 */
-    border: 1px solid #C8C0AA;
-    box-shadow: none;
-    transition: background 0.15s, box-shadow 0.15s, border-color 0.15s;
-  }
-  .pb-idx-item:hover { color: #0F1B1F; }
-  .pb-idx-item.is-active {
-    color: #0F1B1F;
-    font-weight: 700;
-  }
-  .pb-idx-item.is-active::before {
-    background: #8F5800;
-    border-color: #8F5800;
-    box-shadow: 0 0 0 4px rgba(143,88,0,0.12);
-  }
-  .pb-idx-count {
+  .bd-toc-tab:hover { color: var(--text); }
+  .bd-toc-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
+  .bd-toc-badge {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: #746C5D;      /* #A8A095 는 대비 2.39 로 크게 미달 */
+    font-size: 11px;
+    color: #746C5D;
     font-weight: 400;
   }
-  /* 1260px 미만에서 인덱스 숨김 — 이 아래로는 인덱스가 화면 밖으로 나가거나 콘텐츠를 덮는다.
-     (구 1240px 컷 + 클램프 조합이 1240~1355px 구간에서 겹침·클릭차단을 만들었다) */
-  @media (max-width: 1259px) {
-    .pb-section-index { display: none; }
-  }
-
-  /* ===== 모바일 floating jump bar — 모바일에서 항상 표시, 키보드 올라오면 숨김 ===== */
-  .pb-mobile-jumpbar {
-    position: fixed;
-    bottom: max(16px, env(safe-area-inset-bottom, 16px));    /* iOS 홈 인디케이터 영역 보호 */
-    left: 16px;
-    right: 16px;
-    height: 52px;
-    border-radius: 26px;
-    background: rgba(15,27,31,0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    z-index: 60;
-    display: none;        /* 데스크톱 기본 숨김, 모바일 미디어쿼리에서 flex */
-    align-items: center;
-    padding: 6px;
-    gap: 4px;
-    transform: translateY(0);
-    opacity: 1;
-    transition: transform 200ms ease, opacity 200ms ease;
-  }
-  .pb-mobile-jumpbar[data-visible="false"] {
-    transform: translateY(120%);
-    opacity: 0;
-    pointer-events: none;
-  }
-  /* 스크롤 중 엄지로 누르는 요소라 터치 타깃이 특히 중요하다.
-     바 높이 52 - padding 6*2 = 40px 이 실질 한계라, 탭이 그 40px 을 꽉 채우게 한다
-     (실측 30px → 40px. 44 를 만들려면 바 자체를 키워야 해서 여기까지가 상한) */
-  .pb-jb-tab {
-    flex: 1;
-    text-align: center;
-    padding: 8px 4px;
-    min-height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: 500;
-    color: rgba(255,255,255,0.65);
-    text-decoration: none;
-    border-radius: 18px;
-    transition: background 0.15s, color 0.15s;
-    line-height: 1.2;
-    font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
-  }
-  .pb-jb-tab.is-active {
-    color: #FFFFFF;
-    background: rgba(255,255,255,0.08);
-    font-weight: 700;
-  }
-  .pb-jb-up {
-    /* 바 높이 52 - padding 6*2 = 40 이 상한. 탭들과 같은 40px 로 맞춘다 (실측 36px 였음) */
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #8F5800;
-    border: none;
-    color: #FFFFFF;
-    font-size: 18px;
-    cursor: pointer;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 4px;
-  }
-  .pb-jb-up:hover { background: #A36500; }
-  /* sticky 인덱스가 숨겨지는 범위(<1260px) 전체에서 jumpbar 노출 — Fold 펼친 상태(~800px) 포함.
-     ⚠️ 위 `.pb-section-index` 숨김 breakpoint 와 **반드시 같은 값**이어야 한다.
-        어긋나면 둘 다 없는 구간(길 잃음) 또는 둘 다 있는 구간(중복)이 생긴다 */
-  @media (max-width: 1259px) {
-    .pb-mobile-jumpbar { display: flex; }
-    /* jump bar 가 컨텐츠 가리지 않도록 하단 여백 확보 (52 + 16 + 16) */
-    .bd-wrap { padding-bottom: 84px; }
+  /* ⚠️ 모바일에서도 `.bd-wrap` 은 좌우 24px 를 유지하므로 탭 줄도 24px 그대로 둔다 —
+     여기만 16px 로 내리면 탭이 본문보다 8px 왼쪽으로 밀린다 */
+  @media (max-width: 768px) {
+    .bd-top { padding: calc(var(--nav-h) + 20px) 0 10px; }
   }
 
   /* ===== Zone 8/9 카드 모바일 padding 완화 ===== */
@@ -2082,11 +1994,111 @@
   }
 </style>
 
+<% const proposeDtFmt = (bill.propose_dt || '').replace(/-/g, '.') || '—'; %>
+
+<%
+  // ===== 처리 경과 타임라인 데이터 (헤더/Zone 1 아래에 붙는다, 파샬은 _bill_timeline.ejs) =====
+  // ⚠️ 마지막 단계를 무조건 "본회의" 로 쓰면 안 된다.
+  //    API 의 PROC_DT/PROC_RESULT 는 "최종 처리" 지 본회의 의결이 아니다.
+  //    가결·부결·대안반영폐기는 본회의에서 확정되지만, **철회(161건)는 발의자가 거두는 것**이라
+  //    본회의를 거치지 않는다. 그대로 두면 "본회의 / 철회" 라는 사실과 다른 표시가 된다.
+  const FLOOR_RESULTS = ['원안가결', '수정가결', '부결', '대안반영폐기', '수정안반영폐기'];
+  const tlLastLabel = FLOOR_RESULTS.includes(bill.proc_result_name)
+    ? '본회의'
+    : (bill.proc_result_name || '본회의');
+
+  const tlSteps = [
+    { label: '발의',        date: bill.propose_dt },
+    { label: '소관위 회부', date: bill.committee_dt },
+    { label: '위원회',      date: bill.cmt_proc_dt, result: bill.cmt_proc_result },
+    { label: '법사위',      date: bill.law_proc_dt, result: bill.law_proc_result },
+    { label: tlLastLabel,   date: bill.proc_dt,     result: bill.proc_result_name },
+  ];
+  // 뒤에 날짜가 있는 빈 단계 = 거치지 않음 / 뒤에도 없으면 = 아직 도달 전
+  let tlLastDone = -1;
+  tlSteps.forEach((s, i) => { if (s.date) tlLastDone = i; });
+  tlSteps.forEach((s, i) => {
+    s.state = s.date ? 'done' : (i < tlLastDone ? 'skipped' : 'pending');
+  });
+  // 압축형이라 결과는 **마지막 완료 단계에만** 남긴다 (중간 단계 결과까지 넣으면 한 줄이 무너진다).
+  // 라벨과 같은 값이면(철회 등) 중복이라 뺀다.
+  tlSteps.forEach((s, i) => { if (i !== tlLastDone || s.result === s.label) s.result = null; });
+  const tlHasAny = tlLastDone >= 0;
+
+  // 원문 첫 줄은 99.8%가 "제안이유 및 주요내용" 머리말 — 섹션 제목이 이미 그 역할을 하므로 제거
+  const rawSummary = stripSummaryHeading(bill.summary);
+  // 접기 기준이 두 분기에서 다르다:
+  //   미분석 → 원문이 본문 역할. 길 때만 접는다 (중앙값 498자라 대부분 안 접힘)
+  //   분석 있음 → 원문이 "대조용 참고자료". 길이와 무관하게 항상 접는다
+  const RAW_COLLAPSE_LEN = 700;
+  const rawNeedsCollapse = analysis ? Boolean(rawSummary) : rawSummary.length > RAW_COLLAPSE_LEN;
+
+  /* 발의자 스택 입력 — 두 분기가 같은 데이터를 쓴다.
+     미분석 분기는 헤더에서 바로 include, 분석 분기는 숨은 홀더에 SSR 해두고
+     mountBillAnalysis 가 Zone 1 으로 옮긴다. 아래 window.__BILL_PROPOSERS__ 도 같은 배열 */
+  /* ⚠️ 섹션 탭 바가 이 값을 쓰므로 여기서 계산한다 (바가 본회의 표결 섹션보다 위에 있다) */
+  const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0;
+
+  const proposerStackData = (coProposers || []).map(cp => ({
+    mona_cd:    cp.mona_cd || null,
+    name:       cp.name    || null,
+    party_name: cp.party_name || null,
+    photo:      cp.photo_url  || null,
+    is_rep:     Boolean(cp.proposer_yn)
+  }));
+%>
+
+<%# breadcrumb 는 탭 바 **위**다 — 탭 바가 sticky 라 아래에 두면 스크롤 시 바 밑에 깔린다 %>
+<div class="bd-top">
+  <div class="bd-top-inner">
+    <div class="bd-breadcrumb"><a href="/">홈</a> / <a href="/bill">법안</a> / <%= bill.bill_no || bill.bill_id %></div>
+  </div>
+</div>
+
+<%# ── 섹션 탭 바 (2026-08-24) ──
+    🔴 사이트의 주 sticky 메뉴와 **같은 형태**다 (`/bill`·`/politician` 의 밑줄 탭).
+       구 버전은 이 페이지만 **우측 세로 레일(.pb-section-index) + 모바일 플로팅 바(.pb-mobile-jumpbar)**
+       두 벌을 썼다. 한 사이트에 내비게이션 형태가 셋이 되어 있었다 (사용자 지적).
+    🔴 **`.bd-wrap` 바깥의 형제다.** 띠가 화면 전체 폭이어야 하는데(Zone 3 마진노트가 본문 왼쪽
+       바깥에 있어 좁히면 스크롤할 때 삐져나간다) `100vw` 로 breakout 하면 스크롤바 폭만큼
+       **문서에 가로 오버플로가 생긴다.** 형제로 두면 `width: auto` 가 곧 클라이언트 폭이다.
+    🔴 breadcrumb(`.bd-top`)이 바 **위**다 — 아래에 두면 sticky 바 밑에 깔린다.
+    ⚠️ 탭 순서는 마크업이 아니라 **JS 가 실제 DOM 위치로 다시 정렬**한다
+       (`#bill-timeline` 이 분석 분기에서 Zone 1 뒤로 옮겨지기 때문) ── %>
+<nav class="bd-toc" id="bd-toc" aria-label="섹션 이동">
+  <div class="bd-toc-inner">
+    <% if (analysis) { %>
+      <a class="bd-toc-tab" href="#ba-summary"   data-idx="ba-summary">요약</a>
+      <a class="bd-toc-tab" href="#ba-changes"   data-idx="ba-changes">핵심 변화</a>
+      <% if (analysis.issues && analysis.issues.length) { %>
+        <a class="bd-toc-tab" href="#ba-analysis" data-idx="ba-analysis">분석</a>
+      <% } %>
+      <% if (analysis.judgment_questions && analysis.judgment_questions.length) { %>
+        <a class="bd-toc-tab" href="#ba-questions" data-idx="ba-questions">함께 생각</a>
+      <% } %>
+      <% if (bill.summary) { %>
+        <a class="bd-toc-tab" href="#bill-summary-raw" data-idx="bill-summary-raw">원문</a>
+      <% } %>
+    <% } else if (bill.summary) { %>
+      <a class="bd-toc-tab" href="#bill-summary-raw" data-idx="bill-summary-raw">제안이유</a>
+    <% } %>
+    <% if (tlHasAny) { %>
+      <a class="bd-toc-tab" href="#bill-timeline" data-idx="bill-timeline">처리 경과</a>
+    <% } %>
+    <a class="bd-toc-tab" href="#citizen-vote-section" data-idx="citizen-vote-section">
+      국민 찬반 <span class="bd-toc-badge" data-count-citizen>—</span>
+    </a>
+    <a class="bd-toc-tab" href="#part-floor-vote" data-idx="part-floor-vote">
+      본회의 표결 <span class="bd-toc-badge"><%= hasVotes ? nf(voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent) : '—' %></span>
+    </a>
+    <a class="bd-toc-tab" href="#part-comments" data-idx="part-comments">
+      의견 <span class="bd-toc-badge" data-count-comments>—</span>
+    </a>
+    <a class="bd-toc-tab" href="#bill-caveat" data-idx="bill-caveat">한계</a>
+  </div>
+</nav>
+
 <div class="bd-wrap">
-  <div class="bd-breadcrumb"><a href="/">홈</a> / <a href="/bill">법안</a> / <%= bill.bill_no || bill.bill_id %></div>
-
-  <% const proposeDtFmt = (bill.propose_dt || '').replace(/-/g, '.') || '—'; %>
-
   <!-- AI 분석 라벨 — 분석 있음/없음 두 분기 공통 명시 -->
   <div class="ai-analysis-label <%= analysis ? 'is-done' : 'is-pending' %>">
     <span class="label-tag">🤖 AI 분석</span>
@@ -2100,55 +2112,6 @@
     <% } %>
   </div>
 
-  <%
-    // ===== 처리 경과 타임라인 데이터 (헤더/Zone 1 아래에 붙는다, 파샬은 _bill_timeline.ejs) =====
-    // ⚠️ 마지막 단계를 무조건 "본회의" 로 쓰면 안 된다.
-    //    API 의 PROC_DT/PROC_RESULT 는 "최종 처리" 지 본회의 의결이 아니다.
-    //    가결·부결·대안반영폐기는 본회의에서 확정되지만, **철회(161건)는 발의자가 거두는 것**이라
-    //    본회의를 거치지 않는다. 그대로 두면 "본회의 / 철회" 라는 사실과 다른 표시가 된다.
-    const FLOOR_RESULTS = ['원안가결', '수정가결', '부결', '대안반영폐기', '수정안반영폐기'];
-    const tlLastLabel = FLOOR_RESULTS.includes(bill.proc_result_name)
-      ? '본회의'
-      : (bill.proc_result_name || '본회의');
-
-    const tlSteps = [
-      { label: '발의',        date: bill.propose_dt },
-      { label: '소관위 회부', date: bill.committee_dt },
-      { label: '위원회',      date: bill.cmt_proc_dt, result: bill.cmt_proc_result },
-      { label: '법사위',      date: bill.law_proc_dt, result: bill.law_proc_result },
-      { label: tlLastLabel,   date: bill.proc_dt,     result: bill.proc_result_name },
-    ];
-    // 뒤에 날짜가 있는 빈 단계 = 거치지 않음 / 뒤에도 없으면 = 아직 도달 전
-    let tlLastDone = -1;
-    tlSteps.forEach((s, i) => { if (s.date) tlLastDone = i; });
-    tlSteps.forEach((s, i) => {
-      s.state = s.date ? 'done' : (i < tlLastDone ? 'skipped' : 'pending');
-    });
-    // 압축형이라 결과는 **마지막 완료 단계에만** 남긴다 (중간 단계 결과까지 넣으면 한 줄이 무너진다).
-    // 라벨과 같은 값이면(철회 등) 중복이라 뺀다.
-    tlSteps.forEach((s, i) => { if (i !== tlLastDone || s.result === s.label) s.result = null; });
-    const tlHasAny = tlLastDone >= 0;
-
-    // 원문 첫 줄은 99.8%가 "제안이유 및 주요내용" 머리말 — 섹션 제목이 이미 그 역할을 하므로 제거
-    const rawSummary = stripSummaryHeading(bill.summary);
-    // 접기 기준이 두 분기에서 다르다:
-    //   미분석 → 원문이 본문 역할. 길 때만 접는다 (중앙값 498자라 대부분 안 접힘)
-    //   분석 있음 → 원문이 "대조용 참고자료". 길이와 무관하게 항상 접는다
-    const RAW_COLLAPSE_LEN = 700;
-    const rawNeedsCollapse = analysis ? Boolean(rawSummary) : rawSummary.length > RAW_COLLAPSE_LEN;
-
-    /* 발의자 스택 입력 — 두 분기가 같은 데이터를 쓴다.
-       미분석 분기는 헤더에서 바로 include, 분석 분기는 숨은 홀더에 SSR 해두고
-       mountBillAnalysis 가 Zone 1 으로 옮긴다. 아래 window.__BILL_PROPOSERS__ 도 같은 배열 */
-    const proposerStackData = (coProposers || []).map(cp => ({
-      mona_cd:    cp.mona_cd || null,
-      name:       cp.name    || null,
-      party_name: cp.party_name || null,
-      photo:      cp.photo_url  || null,
-      is_rep:     Boolean(cp.proposer_yn)
-    }));
-  %>
-
   <!-- AI 분석 (5-Zone) — 분석 있으면 Zone 1이 히어로, 없으면 기본 헤더 -->
   <% if (analysis) { %>
     <section class="bill-ai-analysis" id="bill-analysis"></section>
@@ -2157,7 +2120,7 @@
         hidden 이라 화면엔 안 나오고, JS 가 읽어간 뒤엔 비워진다. %>
     <div id="proposer-stack-src" hidden><%- include('_proposer_stack', { proposers: proposerStackData }) %></div>
     <%# Zone 1~5 는 JS 가 렌더하므로 EJS 에서 Zone 1 과 Zone 2 사이에 끼어들 수 없다.
-        여기 두고 mount 직후 JS 가 `.ba-z1` 뒤로 옮긴다 (모바일 jumpbar 이동과 같은 수법).
+        여기 두고 mount 직후 JS 가 `.ba-z1` 뒤로 옮긴다.
         JS 가 실패하면 이 자리에 그대로 남는다 — 위치만 덜 이상적일 뿐 정보는 보인다. %>
     <% if (tlHasAny) { %><%- include('_bill_timeline', { steps: tlSteps }) %><% } %>
 
@@ -2284,7 +2247,6 @@
     </section>
   <% } %>
 
-
   <!-- ============ Zone 7: 분석 → 참여 챕터 디바이더 ============ -->
   <div class="ba-chapter">
     <h2 class="ba-chapter-h">이제 당신이 답할 차례입니다</h2>
@@ -2301,7 +2263,6 @@
   </section>
 
   <!-- ============ Zone 9: 본회의 표결 결과 ============ -->
-  <% const hasVotes = voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent > 0; %>
   <section class="pb-part" id="part-floor-vote">
     <div class="pb-part-head">
       <h3 class="pb-part-h">본회의 표결 결과</h3>
@@ -2341,66 +2302,58 @@
     </div>
     <div id="comment-widget"></div>
   </section>
+
+  <%# ── 「이 페이지가 말하지 않는 것」 ──
+      🔴 공용 컴포넌트 `.pb-caveat` (main.css). 여기에 지역 스타일을 만들지 말 것.
+      🔴 **페이지의 맨 끝**이다 (`/guide`·`/issue` 와 같은 자리). 국민 의견 뒤에 두는 이유는
+         이 상자가 **"우리가 마지막으로 하는 말"** 이기 때문이다. 그 아래는 다른 사람들의 말이다.
+      🔴 항목은 **이 페이지의 데이터에만** 붙인다. 일반론을 늘어놓으면 읽히지 않는다.
+         숫자를 본문에 박지 않고 「읽는 법」으로 링크한다 — 배치가 매일 움직이는 값이라
+         여기 적으면 조용히 거짓이 된다 (`/guide` 1편이 살아 있는 숫자를 맡는다) ── %>
+  <section class="pb-caveat" id="bill-caveat">
+    <h2 class="pb-caveat-h">이 페이지가 말하지 않는 것</h2>
+    <ul>
+      <% if (analysis) { %>
+        <li>
+          <strong>AI 분석은 사람이 검수한 글이 아닙니다.</strong>
+          사실과 다를 수 있다는 건 위에도 적어뒀지만, 하나가 더 있습니다.
+          AI가 읽은 문서와 국회가 공개한 원문이 같은 문서라는 보장이 없습니다.
+          둘 다 국회가 낸 「제안이유 및 주요내용」이지만 받아오는 경로가 다릅니다.
+          <a href="/guide/how-far-to-trust-ai">AI가 쓴 분석, 어디까지 믿을 수 있나 →</a>
+        </li>
+      <% } %>
+      <% if (hasVotes) { %>
+        <li>
+          <strong>찬성이 많다고 이견이 없었다는 뜻은 아닙니다.</strong>
+          본회의에 오르는 안건은 위원회를 이미 통과한 것이라 반대표가 원래 드뭅니다.
+          걸러지는 곳은 본회의가 아니라 그 앞입니다.
+          <a href="/guide/why-so-few-no-votes">반대표는 왜 1%도 안 될까 →</a>
+        </li>
+      <% } %>
+      <% if (tlHasAny) { %>
+        <li>
+          <strong>처리 경과는 날짜만 압니다.</strong>
+          위원회에서 무슨 논의가 오갔는지, 왜 여기서 멈춰 있는지는 이 데이터로 알 수 없습니다.
+          위원회 표결은 개인별로 공개되지 않고, 이 사이트가 가진 것은 단계별 날짜와 결과뿐입니다.
+          <a href="/guide/how-a-bill-moves">법안 하나가 국회를 통과하기까지 →</a>
+        </li>
+      <% } %>
+      <% if (coProposers && coProposers.length) { %>
+        <li>
+          <strong>공동발의자 수는 기여도가 아닙니다.</strong>
+          법안에 이름을 올렸다는 기록일 뿐, 누가 얼마나 만들었는지는 담기지 않습니다.
+          숫자가 크다고 그만큼 중요한 법안이라는 뜻도 아닙니다.
+          <a href="/guide/proposing-is-not-contribution">건수가 말하지 않는 것 →</a>
+        </li>
+      <% } %>
+      <li>
+        <strong>국민 찬반은 여론조사가 아닙니다.</strong>
+        이 사이트에 로그인한 사람만 참여하고, 그중에서도 이 법안을 찾아 들어온 사람들이라
+        표본이 한쪽으로 치우칠 수 있습니다. 국회 밖의 여론으로 읽지 마세요.
+      </li>
+    </ul>
+  </section>
 </div>
-
-<!-- ============ Zone 6: 우측 sticky 인덱스 (페이지 레벨, 데스크톱 전용) ============ -->
-<nav class="pb-section-index" id="pb-section-index" aria-label="섹션 인덱스">
-  <% if (analysis) { %>
-    <div class="pb-idx-group">
-      <div class="pb-idx-label">AI 분석</div>
-      <a class="pb-idx-item" href="#ba-summary"   data-idx="ba-summary">요약</a>
-      <a class="pb-idx-item" href="#ba-changes"   data-idx="ba-changes">핵심 변화</a>
-      <% if (analysis.issues && analysis.issues.length) { %>
-        <a class="pb-idx-item" href="#ba-analysis" data-idx="ba-analysis">분석</a>
-      <% } %>
-      <% if (analysis.judgment_questions && analysis.judgment_questions.length) { %>
-        <a class="pb-idx-item" href="#ba-questions" data-idx="ba-questions">함께 생각</a>
-      <% } %>
-      <% if (bill.summary) { %>
-        <a class="pb-idx-item" href="#bill-summary-raw" data-idx="bill-summary-raw">원문 대조</a>
-      <% } %>
-    </div>
-  <% } else if (bill.summary) { %>
-    <%# 분석이 없는 법안은 원문 섹션이 유일한 내용 — 인덱스에 자리를 준다 %>
-    <div class="pb-idx-group">
-      <div class="pb-idx-label">법안 내용</div>
-      <a class="pb-idx-item" href="#bill-summary-raw" data-idx="bill-summary-raw">제안이유</a>
-    </div>
-  <% } %>
-  <%# 처리 경과 — 분석도 참여도 아닌 "사실 기록" 이라 별도 그룹. DOM 순서와 인덱스 순서가 일치해야
-      스크롤 활성 추적이 어긋나지 않으므로, 챕터 디바이더 앞에 있는 이 섹션이 참여보다 먼저 온다 %>
-  <% if (tlHasAny) { %>
-    <div class="pb-idx-group">
-      <div class="pb-idx-label">경과</div>
-      <a class="pb-idx-item" href="#bill-timeline" data-idx="bill-timeline">처리 경과</a>
-    </div>
-  <% } %>
-  <div class="pb-idx-group">
-    <div class="pb-idx-label">참여</div>
-    <a class="pb-idx-item" href="#citizen-vote-section" data-idx="citizen-vote-section">
-      국민 찬반 <span class="pb-idx-count" data-count-citizen>—</span>
-    </a>
-    <a class="pb-idx-item" href="#part-floor-vote" data-idx="part-floor-vote">
-      본회의 표결 <span class="pb-idx-count"><%= hasVotes ? nf(voteCounts.agree + voteCounts.disagree + voteCounts.abstain + voteCounts.absent) : '—' %></span>
-    </a>
-    <a class="pb-idx-item" href="#part-comments" data-idx="part-comments">
-      의견 <span class="pb-idx-count" data-count-comments>—</span>
-    </a>
-  </div>
-</nav>
-
-<!-- ============ 모바일 floating jump bar ============ -->
-<nav class="pb-mobile-jumpbar" id="pb-mobile-jumpbar" aria-label="빠른 이동" data-visible="false">
-  <% if (analysis) { %>
-    <a class="pb-jb-tab" href="#ba-summary"  data-idx="ba-summary">요약</a>
-    <a class="pb-jb-tab" href="#ba-analysis" data-idx="ba-analysis">분석</a>
-  <% } else if (bill.summary) { %>
-    <a class="pb-jb-tab" href="#bill-summary-raw" data-idx="bill-summary-raw">제안이유</a>
-  <% } %>
-  <a class="pb-jb-tab" href="#citizen-vote-section" data-idx="citizen-vote-section">찬반</a>
-  <a class="pb-jb-tab" href="#part-comments"     data-idx="part-comments">의견</a>
-  <button type="button" class="pb-jb-up" id="pb-jb-up" aria-label="맨 위로">↑</button>
-</nav>
 
 <!-- 표결 의원 명단 모달 -->
 <% if (hasVotes) { %>
@@ -2541,15 +2494,21 @@
   mount();
 
   /* =========================================================
-     Zone 6 — 페이지 인덱스 (sticky right) + 모바일 jumpbar
+     Zone 6 — 섹션 탭 바 `.bd-toc` (가로 sticky · 전 폭 공용)
      ========================================================= */
-  const allIdxItems = document.querySelectorAll('.pb-idx-item, .pb-jb-tab');
-  const idxTargetIds = [...new Set([...allIdxItems].map(a => a.dataset.idx).filter(Boolean))];
+  const allIdxItems = document.querySelectorAll('.bd-toc-tab');
+  /* 🔴 `let` 이다 — 아래 setupIndexObserver 가 **실제 DOM 위치로 다시 정렬**한다.
+     마크업 순서를 그대로 믿으면 안 된다: `#bill-timeline` 은 분석 분기에서 JS 가 렌더 후
+     `.ba-z1` 뒤로 옮기므로(그게 이 섹션의 제자리다) 인덱스 마크업 순서와 어긋난다. */
+  let idxTargetIds = [...new Set([...allIdxItems].map(a => a.dataset.idx).filter(Boolean))];
 
-  // 오프셋: 고정 nav-h(데스크톱 100/모바일 60) + 20 여유. CSS 변수에서 동적 읽기
+  /* 오프셋: 고정 nav + **탭 바 높이**. 탭 바가 sticky 라 그 아래로 착지해야 제목이 안 가린다.
+     ⚠️ `--nav-h` 는 반응형(데스크톱 100 · 모바일 60)이라 하드코딩 금지.
+     ⚠️ 바 높이는 실측값을 박지 말고 `offsetHeight` 로 읽는다 — 글꼴 로드 전후로 달라진다. */
+  const bdToc = document.getElementById('bd-toc');
   const getScrollOffset = () => {
     const v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 100;
-    return v + 20;
+    return v + (bdToc ? bdToc.offsetHeight : 0) + 12;
   };
 
   /* 법안 원문 전문 보기 토글 (분석 없는 분기 · 긴 원문일 때만 버튼이 렌더됨) */
@@ -2622,6 +2581,27 @@
     if (window.__BILL_ANALYSIS__ && !document.getElementById('ba-summary') && retry < 60) {
       return setTimeout(() => setupIndexObserver(retry + 1), 50);
     }
+    /* 🔴 **실제 DOM 위치로 정렬** (2026-08-24). 활성 추적이 "배열에서 마지막으로 걸린 것" 을 고르므로
+       배열이 DOM 순서가 아니면 뒤에 적힌 항목이 앞 섹션을 통째로 가린다.
+       실측(분석 있는 법안 1440x900): `bill-timeline` 이 배열 6번째 · DOM 2번째라
+       **핵심 변화·분석·함께 생각·원문 대조 4개가 도달 불가**였고, 눌러도 「처리 경과」 가 켜졌다.
+       처리 경과 혼자 스크롤 구간의 64%(2,084px)를 먹고 있었다.
+       ⚠️ 반드시 위 ba-summary 대기 **뒤**에 정렬할 것 — 그 전엔 5-Zone 과 타임라인이 아직 제자리에 없다. */
+    idxTargetIds = idxTargetIds
+      .filter(id => document.getElementById(id))
+      .sort((a, b) => (document.getElementById(a).compareDocumentPosition(document.getElementById(b))
+        & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1);
+
+    /* 🔴 **탭의 보이는 순서도 같이 맞춘다.** 세로 레일 때는 카테고리 묶음이라 순서가 조금 어긋나도
+       읽혔지만, 가로 바에서는 왼→오 순서가 곧 페이지를 읽는 순서라 어긋나면 활성 점이 튄다.
+       (`#bill-timeline` 이 분석 분기에서 Zone 1 뒤로 옮겨져 마크업 순서와 달라진다) */
+    const tocInner = bdToc && bdToc.querySelector('.bd-toc-inner');
+    if (tocInner) {
+      idxTargetIds.forEach((id) => {
+        const tab = tocInner.querySelector('[data-idx="' + id + '"]');
+        if (tab) tocInner.appendChild(tab);        // 순서대로 뒤에 붙이면 정렬된다
+      });
+    }
     if (!idxTargetIds.length) return;
     window.addEventListener('scroll', onScrollIdx, { passive: true });
     window.addEventListener('resize',  onScrollIdx, { passive: true });
@@ -2648,27 +2628,8 @@
   };
   loadCounts();
 
-  // 모바일 jumpbar — 항상 표시, input/textarea focus 시에만 숨김
-  // (visualViewport 휴리스틱은 모바일 브라우저 URL bar 자동 토글에 오작동하므로 사용 안 함)
-  const jumpbar = document.getElementById('pb-mobile-jumpbar');
-  if (jumpbar) {
-    // jumpbar 를 body 직속으로 이전 — .pb-main(position:relative; z-index:1) 의 스태킹 컨텍스트
-    // 안에 있으면 footer(z-index:1) 가 위로 올라와 가려짐. body 레벨로 빼야 z-index 60 이 진짜로 위.
-    if (jumpbar.parentNode !== document.body) document.body.appendChild(jumpbar);
-    const isInput = (el) => !!(el && el.matches && el.matches('input, textarea, [contenteditable=""], [contenteditable="true"]'));
-    const isInputFocused = () => isInput(document.activeElement);
-    const setJumpbar = (visible) => { jumpbar.dataset.visible = visible ? 'true' : 'false'; };
-    setJumpbar(true);
-    // 포커스 진입 시 input 이면 숨김. 그 외 어떤 이유로도 활성 input 이 없으면 항상 visible.
-    document.addEventListener('focusin',  () => { setJumpbar(!isInputFocused()); });
-    document.addEventListener('focusout', () => {
-      // focusout 직후 activeElement 는 잠시 body 일 수 있음 → 마이크로타스크 후 재확인
-      setTimeout(() => setJumpbar(!isInputFocused()), 0);
-    });
-    document.getElementById('pb-jb-up')?.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
+  /* (구 모바일 jumpbar 로직은 2026-08-24 제거 — 가로 탭 바 `.bd-toc` 가 전 폭을 담당한다.
+     body 로 옮기던 z-index 회피, focusin/focusout 숨김, 맨 위로 버튼이 전부 같이 사라졌다) */
 
   /* =========================================================
      본회의 표결 명단 모달

@@ -32,23 +32,36 @@
       inner 흰 띠(같은 1000px)가 스크롤되는 본문을 전부 덮는다. 폭을 바꾸면 이 전제부터 다시 볼 것 */
 .iss-toc { position: sticky; top: var(--nav-h); z-index: 50; }
 .iss-toc[hidden] { display: none; }
-/* ⚠️ `.iss-wrap` 과 같은 1000px·24px 라 칩이 본문과 줄이 맞는다 */
+/* ⚠️ `.iss-wrap` 과 같은 1000px·24px 라 탭이 본문과 줄이 맞는다.
+   ⚠️ 세로 패딩 0 · gap 0 은 `.status-tabs-inner` 를 그대로 따른 것이다 — 여백은 탭이 갖는다 */
 .iss-toc-inner {
-  max-width: 1000px; margin: 0 auto; padding: 8px 24px;
+  max-width: 1000px; margin: 0 auto; padding: 0 24px;
   background: var(--bg2); border-bottom: 1px solid var(--border);
-  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  display: flex; overflow-x: auto; scrollbar-width: none;
 }
 .iss-toc-inner::-webkit-scrollbar { display: none; }
-/* ⚠️ 12.5px 소형 텍스트라 대비 4.5:1 이 필요하다 —
-   `--sub`(8.4) · 활성은 `--accent`(3.79 미달) 가 아니라 `--accent2`(5.4) */
+/* 🔴 **밑줄 탭이다. 알약 칩으로 되돌리지 말 것** (2026-08-24 사용자 지적).
+   사이트의 주 sticky 메뉴는 전부 밑줄 탭이다 — `/bill` `.status-tab` · `/politician` `.party-tab` ·
+   `/politician/:id` `.tab-btn` (셋 다 padding 14~16px 22px · 14px/500 · 활성은 `border-bottom: 2px` 골드).
+   `.ov-toc-link` 의 알약 칩은 **탭바 아래 둘째 줄**이라 위와 구분하려고 그렇게 둔 것이고,
+   이 페이지는 탭바가 없어 이 줄이 곧 주 메뉴다. 칩으로 두면 쟁점 페이지만 혼자 다르게 보인다.
+   ⚠️ 활성색은 `--accent`(흰 배경 3.79 미달) 가 아니라 `--text` 다 — 다른 탭들과 같고, 골드는 밑줄이 맡는다 */
 .iss-toc-link {
-  flex-shrink: 0; padding: 5px 11px; border: 1px solid var(--border); border-radius: 999px;
-  background: transparent; color: var(--sub); font-family: inherit; font-size: 12.5px; font-weight: 600;
-  white-space: nowrap; cursor: pointer;
-  transition: color .15s, border-color .15s, background .15s;
+  flex-shrink: 0;
+  padding: 14px 22px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--sub);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
 }
-.iss-toc-link:hover { color: var(--text); border-color: var(--border2); }
-.iss-toc-link.is-active { color: var(--accent2); border-color: var(--accent); background: var(--accent-10); }
+.iss-toc-link:hover { color: var(--text); }
+.iss-toc-link.is-active { color: var(--text); border-bottom-color: var(--accent); }
 
 .iss-kicker { margin: 0 0 6px; font-size: 12.5px; font-weight: 700; letter-spacing: .06em; }
 .iss-kicker a { color: var(--sub); text-decoration: none; }
@@ -205,7 +218,7 @@
   .iss-wrap { padding: 28px 16px 64px; }
   /* ⚠️ 제목·칩·본문이 **한 기준선**을 갖도록 셋 다 `.iss-wrap` 의 좌우 패딩을 따라간다.
      하나만 빠뜨리면 그것만 어긋난다 (768px 실측: 헤더만 24px 이라 제목이 8px 안쪽에 있었다) */
-  .iss-toc-inner { padding: 7px 16px; }
+  .iss-toc-inner { padding: 0 16px; }
   .pb-page-header-inner { padding: 0 16px; }
   .pb-page-title.is-issue { font-size: 28px; }
   .iss-fact b { font-size: 25px; }
