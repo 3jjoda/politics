@@ -2,6 +2,7 @@ import CodeService from '../services/CodeService.js';
 import BillService from '../services/BillService.js';
 import BriefingService from '../services/BriefingService.js';
 import PoliticianService from '../services/PoliticianService.js';
+import DistrictService from '../services/DistrictService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
@@ -9,6 +10,7 @@ export default (db) => {
     const codeService = CodeService(db);
     const billService = BillService(db);
     const politicianService = PoliticianService(db);
+    const districtService = DistrictService(db);   // 내 지역구 의원 (2026-08-23)
     const briefingService = BriefingService(db);
     const controller = {};
 
@@ -37,12 +39,15 @@ export default (db) => {
             const userAxis = res.locals.userAxis || null;
             /* 2026-08-16 (2차): 히어로 결론 3숫자 → **무작위 의원 3명의 축 좌표**(정당 평균 눈금 포함)로 교체.
                  숫자 3개는 「숫자로 본 국회」 위 스트립으로 내렸고, `주목할 법안`(getTrending) 섹션은 뺐다 (서비스 메서드는 남김) */
-            const [codes, facts, spotlight, briefing, matches] = await Promise.all([
+            const [codes, facts, spotlight, briefing, matches, myMember] = await Promise.all([
                 codeService.getList(),
                 billService.getHomeFacts(),
                 politicianService.getAxisSpotlight(3),
                 briefingService.getFeed(1),
-                politicianService.getTopMatches(userAxis, 3)
+                politicianService.getTopMatches(userAxis, 3),
+                /* 내 지역구 의원 (2026-08-23). 로그인 + 등록한 사용자만.
+                   ⚠️ 실패해도 null 이라 홈은 산다 (DistrictService 가 삼킨다) */
+                districtService.getMember(req.user && req.user.district),
             ]);
 
             res.render('index', {
@@ -52,6 +57,7 @@ export default (db) => {
                 initialData: { CODES: codes },
                 facts,
                 spotlight,
+                myMember,
                 /* 브리핑은 최신 4장만 쓴다 — 피드 전체는 /briefing 이 맡는다 */
                 briefings: (briefing && briefing.posts ? briefing.posts : []).slice(0, 4),
                 matches

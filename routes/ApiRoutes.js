@@ -7,6 +7,7 @@ import BillController from '../controllers/BillController.js';
 import BalanceGameController from '../controllers/BalanceGameController.js';
 import BriefingController from '../controllers/BriefingController.js';
 import IssueController from '../controllers/IssueController.js';
+import DistrictController from '../controllers/DistrictController.js';
 
 export default (db) => {
     const router = express.Router();
@@ -17,6 +18,7 @@ export default (db) => {
     const balanceGameController = BalanceGameController(db);
     const briefingController = BriefingController(db);
     const issueController = IssueController(db);
+    const districtController = DistrictController(db);
 
     // API 목록
     /* 초기화 */
@@ -41,6 +43,10 @@ export default (db) => {
 
     // 쟁점 — 접힌 「법안 전체 보기」의 한 페이지 (추가 쿼리 0, 캐시된 전건을 자른다)
     router.get('/issue/:slug/bills', issueController.getBillsPageApi);
+
+    // 지역구 — **공개**. 비로그인도 고를 수 있어야 장벽이 낮다 (선택은 브라우저에만 남는다)
+    router.get('/district/list', districtController.getList);
+    router.get('/district/member', districtController.getMember);
 
     /* 밸런스 게임 — 응답 저장·점수 조회 */
     router.post('/balance-game/respond', balanceGameController.respondApi);

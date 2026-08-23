@@ -1,5 +1,6 @@
 // MyController.js — 마이페이지 (프로필 / 성향 카드 / 풀이 이력 / 분석 요청 요약)
 
+import DistrictService from '../services/DistrictService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 import AuthService from '../services/AuthService.js';
@@ -10,6 +11,7 @@ const ACT_KINDS = ['comment', 'vote', 'rating', 'post'];
 const ACT_PER = 10;
 
 export default (db) => {
+    const districtService = DistrictService(db);   // 내 지역구 (2026-08-23)
     const authService = AuthService(db);
     const billService = BillService(db);
     const bgService   = BalanceGameService(db);
@@ -49,7 +51,15 @@ export default (db) => {
             const reqDone    = analysisRequests.filter(r => r.has_ai_analysis).length;
             const reqPending = reqTotal - reqDone;
 
+            /* 내 지역구 (2026-08-23) — 목록은 6시간 캐시, 실패해도 null 이라 마이페이지는 산다 */
+            const [districtList, myMember] = await Promise.all([
+                districtService.getList(),
+                districtService.getMember(req.user && req.user.district),
+            ]);
+
             res.render('my/profile', {
+                districtGroups: districtList ? districtList.groups : [],
+                myMember,
                 pageTitle: '마이페이지',
                 pageStyles: null,
                 currentUrl: '/my',

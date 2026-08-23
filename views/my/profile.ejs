@@ -95,13 +95,18 @@
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 14px 22px;
   }
-  .pf-field { font-size: 13px; }
+  /* ⚠️ min-width: 0 필수 — 없으면 내용(긴 지역구명 select)이 그리드 셀을 밀어내 카드가 깨진다 (2026-08-23) */
+  .pf-field { font-size: 13px; min-width: 0; }
+  /* 지역구는 옵션 이름이 길어(`전남광주통합특별시 순천시광양시곡성군구례군갑`) 한 칸에 안 들어간다 → 전체 폭 */
+  .pf-field.is-wide { grid-column: 1 / -1; }
+  /* 🔴 mono + 넓은 자간을 쓰지 말 것 (2026-08-23 수정). JetBrains Mono 는 한글 글리프가 없어
+     폴백되는데 letter-spacing 까지 겹치면 `내  지역구` 처럼 흩어져 읽히지 않는다.
+     `/xray/chart` 의 `.ch-label` 에서 이미 겪은 것과 같은 함정이다. 라벨이 전부 한글이라 mono 를 쓸 이유가 없다 */
   .pf-label {
-    color: var(--sub2);
-    font-size: 11px;
-    font-family: 'JetBrains Mono', monospace;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    color: var(--sub);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0;
     margin-bottom: 4px;
   }
   .pf-value {
@@ -240,7 +245,9 @@
   .hist-note { font-size: 12px; color: var(--sub2); line-height: 1.6; margin: 10px 0 0; word-break: keep-all; }
 
   .pf-demo-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
-  .pf-demo-form select { padding: 6px 8px; border: 1px solid var(--border2); border-radius: 6px; font-size: 13px; background: var(--bg2); color: var(--text); font-family: inherit; }
+  .pf-demo-form select { padding: 6px 8px; border: 1px solid var(--border2); border-radius: 6px; font-size: 13px; background: var(--bg2); color: var(--text); font-family: inherit; max-width: 100%; }
+  /* 지역구 select 는 옵션이 255개라 길다. 폼 안에서 한 줄을 다 쓰고 버튼은 아랫줄로 */
+  #pf-dist-form select { flex: 1 1 260px; min-width: 0; }
   .pf-demo-form[hidden] { display: none; }
 
   /* ====== 내 활동 ====== */
@@ -408,6 +415,34 @@
           <div class="pf-field">
             <div class="pf-label">이메일</div>
             <div class="pf-value muted"><%= user.email || '—' %></div>
+          </div>
+          <%# 내 지역구 (2026-08-23) — 개인화 진입점. 성향 진단(20문항)보다 장벽이 압도적으로 낮다
+              🔴 지역구 문자열을 저장한다 (mona_cd 아님). 선거로 사람이 바뀌어도 "내 지역구" 는 유지돼야 한다 %>
+          <div class="pf-field is-wide" id="district">
+            <div class="pf-label">내 지역구 <button type="button" class="pf-nick-edit-btn" id="pf-dist-edit">변경</button></div>
+            <div class="pf-value" id="pf-dist-text">
+              <% if (locals.myMember) { %>
+                <a href="/politician/<%= encodeURIComponent(myMember.mona_cd) %>"><%= myMember.name %></a>
+                <span class="muted"><%= myMember.party_name %> · <%= user.district %></span>
+              <% } else { %>
+                <span class="muted">등록하면 홈에서 내 지역구 의원의 기록을 바로 봅니다.</span>
+              <% } %>
+            </div>
+            <form class="pf-demo-form" id="pf-dist-form" hidden>
+              <select id="pf-dist-select" aria-label="지역구">
+                <option value="">선택 안 함</option>
+                <% (locals.districtGroups || []).forEach((g) => { %>
+                  <optgroup label="<%= g.sido %>">
+                    <% g.districts.forEach((d) => { %>
+                      <option value="<%= d %>" <%= user.district === d ? 'selected' : '' %>><%= d %></option>
+                    <% }); %>
+                  </optgroup>
+                <% }); %>
+              </select>
+              <button type="submit" class="pf-nick-save">저장</button>
+              <button type="button" class="pf-nick-cancel" id="pf-dist-cancel">취소</button>
+              <div class="pf-nick-msg" id="pf-dist-msg"></div>
+            </form>
           </div>
           <div class="pf-field">
             <div class="pf-label">성별 · 연령대 <button type="button" class="pf-nick-edit-btn" id="pf-demo-edit">변경</button></div>
@@ -727,6 +762,38 @@
     actTabs.forEach(t => t.addEventListener('click', () => { if (t.dataset.kind !== cur.kind) load(t.dataset.kind, 1); }));
     drawPager(1, state.pages, (p) => load(cur.kind, p));   // 첫 페이지는 SSR — 요청 0회
   }
+
+  // ── 내 지역구 변경 (PUT /api/auth/district) ──
+  //    ⚠️ 저장 후 화면 텍스트를 즉시 갱신하지 않고 **새로고침**한다 —
+  //       지역구가 바뀌면 의원(이름·정당·링크)이 통째로 달라져서, 부분 갱신하면 옛 링크가 남는다.
+  (function () {
+    const btn = document.getElementById('pf-dist-edit');
+    const form = document.getElementById('pf-dist-form');
+    const sel = document.getElementById('pf-dist-select');
+    const msg = document.getElementById('pf-dist-msg');
+    const cancel = document.getElementById('pf-dist-cancel');
+    if (!btn || !form || !sel) return;
+    const open = (on) => { form.hidden = !on; btn.textContent = on ? '닫기' : '변경'; if (on) sel.focus(); };
+    btn.addEventListener('click', () => open(form.hidden));
+    cancel.addEventListener('click', () => open(false));
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.textContent = '저장 중…';
+      try {
+        const res = await fetch('/api/auth/district', {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ district: sel.value })
+        });
+        const data = await res.json();
+        if (!res.ok) { msg.textContent = data.error || '저장하지 못했습니다.'; return; }
+        msg.textContent = '저장했습니다.';
+        location.reload();
+      } catch { msg.textContent = '저장하지 못했습니다. 잠시 후 다시 시도해 주세요.'; }
+    });
+    // 홈의 CTA(/my#district)로 들어오면 바로 열어준다
+    if (location.hash === '#district') open(true);
+  })();
 
   // ── 성별·연령대 변경 (PUT /api/auth/profile) ──
   const dEdit = document.getElementById('pf-demo-edit'), dForm = document.getElementById('pf-demo-form'),

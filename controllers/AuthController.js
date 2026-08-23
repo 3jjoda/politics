@@ -1,4 +1,5 @@
 import AuthService from '../services/AuthService.js';
+import DistrictService from '../services/DistrictService.js';
 import logger from '../utils/logger.js';
 
 const GOOGLE_ENABLED = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -14,6 +15,7 @@ const resolveNext = (req) => {
 
 export default (db) => {
     const authService = AuthService(db);
+    const districtService = DistrictService(db);   // 내 지역구 (2026-08-23)
 
     return {
         /* 로그인 페이지 */
@@ -270,6 +272,28 @@ export default (db) => {
                 res.json({ ok: true, gender: updated.gender, ageGroup: updated.age_group });
             } catch (err) {
                 logger.error('프로필 변경 중 에러:', `${err.message}\n${err.stack}`);
+                next(err);
+            }
+        },
+
+        /* 내 지역구 등록·변경 (PUT /api/auth/district)
+           🔴 값은 **DB 의 실제 지역구 화이트리스트**로 검증한다 (임의 문자열 저장 금지).
+           ⚠️ 빈 값이면 등록 해제로 본다 — 지우는 길이 없으면 한 번 고르면 못 무른다. */
+        updateDistrict: async (req, res, next) => {
+            try {
+                const userId = req.session?.userId || (req.user && req.user.user_id);
+                if (!userId) return res.status(401).json({ error: '로그인이 필요합니다.' });
+
+                const raw = typeof req.body?.district === 'string' ? req.body.district.trim() : '';
+                if (raw && !(await districtService.isValid(raw))) {
+                    return res.status(400).json({ error: '없는 지역구입니다.' });
+                }
+                const saved = await authService.updateDistrict(userId, raw || null);
+                if (!saved) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+                res.json({ ok: true, district: saved.district });
+            } catch (err) {
+                logger.error('지역구 변경 중 에러:', `${err.message}
+${err.stack}`);
                 next(err);
             }
         },
