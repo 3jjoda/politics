@@ -226,7 +226,7 @@
   <section class="ad-sec">
     <h2 class="ad-h">4. 지금 있는 쟁점</h2>
     <p class="ad-sub">
-      해설(AI 분석)이 3건 미만이면 「무엇이 달라지나」가 빈약해집니다.
+      AI 분석이 3건 미만이면 「무엇이 달라지나」가 빈약해집니다.
       그 쟁점부터 채우는 편이 새 쟁점을 만드는 것보다 낫습니다.
     </p>
     <ul class="ic-cur">
@@ -236,7 +236,7 @@
           <span>법안 <%= c.total === null ? '조회 실패' : nf(c.total) + '건' %></span>
           <span>계류 <%= nf(c.pending) %>건</span>
           <span class="<%= c.analyzed < 3 ? 'ic-low' : '' %>">
-            해설 <%= nf(c.analyzed) %>건<%= c.analyzed < 3 ? ' · 보충 권장' : '' %>
+            AI 분석 <%= nf(c.analyzed) %>건<%= c.analyzed < 3 ? ' · 보충 권장' : '' %>
           </span>
         </li>
       <% }); %>

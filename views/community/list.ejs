@@ -76,9 +76,10 @@
     padding: 13px 18px; border-top: 1px solid var(--border); text-decoration: none; color: inherit; transition: background .12s;
   }
   .cm-row:first-child { border-top: 0; }
-  .cm-row:hover { background: var(--bg); }
+  /* 🔴 hover 는 공용 `.pb-boxlink` 가 맡는다 (main.css). 여기서 background 를 다시 정하면
+     같은 특이도라 **뒤에 있는 이 규칙이 이겨** 이 페이지만 혼자 다르게 보인다. 되살리지 말 것. */
   .cm-row.is-pinned { background: var(--accent-10); }
-  .cm-row.is-pinned:hover { background: var(--accent-15); }
+  .cm-row.is-pinned:hover { background: var(--accent-15); }   /* 고정 공지는 평상시가 이미 틴트라 한 단 더 */
   .cm-type { display: inline-flex; align-items: center; justify-content: center; padding: 3px 9px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--sub); background: var(--bg3); border: 1px solid var(--border); }
   .cm-type.is-gold { color: var(--accent2); background: var(--bg2); border-color: var(--accent); }
   .cm-main { min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -171,7 +172,7 @@
   <% if (posts && posts.length > 0) { %>
     <div class="cm-board">
       <% posts.forEach(p => { const tm = typeMeta(p.post_type); %>
-        <a href="/community/<%= p.id %>" class="cm-row <%= p.is_pinned ? 'is-pinned' : '' %>">
+        <a href="/community/<%= p.id %>" class="cm-row pb-boxlink <%= p.is_pinned ? 'is-pinned' : '' %>">
           <span class="cm-type <%= tm && tm.tone === 'gold' ? 'is-gold' : '' %>"><%= tm ? tm.label : '글' %></span>
           <span class="cm-main">
             <span class="cm-title"><%= p.title %></span>

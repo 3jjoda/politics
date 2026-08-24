@@ -27,7 +27,9 @@
   padding: 22px 24px; color: inherit; text-decoration: none;
   transition: border-color .15s, transform .15s, box-shadow .15s;
 }
-.gd-card:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+/* hover 는 공용 `.pb-boxlink.is-solid` 가 맡는다 (main.css) — 골드 채움 + 흰 글자 + 셰브론.
+   구 규칙의 `transform: translateY(-1px)` 은 이 페이지만의 움직임이라 뺐다 (다른 목록엔 없다). */
+.gd-card:hover { box-shadow: var(--shadow-sm); }
 .gd-card-no {
   font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700;
   color: var(--accent); line-height: 1.1; padding-top: 2px;

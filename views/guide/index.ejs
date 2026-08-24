@@ -22,7 +22,7 @@
   <ol class="gd-list">
     <% articles.forEach((a, i) => { %>
       <li>
-        <a class="gd-card" href="/guide/<%= a.slug %>">
+        <a class="gd-card pb-boxlink is-tall is-solid" href="/guide/<%= a.slug %>">
           <div class="gd-card-no"><%= String(i + 1).padStart(2, '0') %></div>
           <div>
             <h2 class="gd-card-title"><%= a.title %></h2>

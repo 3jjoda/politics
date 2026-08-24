@@ -208,15 +208,15 @@
     <section class="iss-impact" id="iss-sec-impact" data-toc="무엇이 달라지나">
       <h2 class="iss-h">무엇이 달라지나</h2>
       <p class="iss-h-sub">
-        해설이 있는 <strong><%= impacts.length %>건</strong>에서 뽑았습니다
-        (전체 <%= nf(stats.total) %>건 중). 나머지는 아직 해설이 없어 여기 나오지 않습니다.
+        AI 분석이 있는 <strong><%= impacts.length %>건</strong>에서 뽑았습니다
+        (전체 <%= nf(stats.total) %>건 중). 나머지는 아직 분석이 없어 여기 나오지 않습니다.
       </p>
 
       <%# 🔴 **접지 않는다.** 이 섹션은 읽히는 게 목적이라 details 로 감추면 안 읽힌다
            (법안 목록과 성격이 다르다 — 거긴 "전부 공개" 가 목적이라 접는 게 맞았다).
            대신 **카드는 앞 3장까지만, 나머지는 헤드라인 한 줄**로 낸다.
            그러면 "이 쟁점에서 어떤 변화들이 제안됐나" 는 **전부 스캔되고**(한 줄 ≈ 32px),
-           자세히는 법안 상세(5-Zone)에서 본다. 해설이 20건이 돼도 섹션이 늘어지지 않는다.
+           자세히는 법안 상세(5-Zone)에서 본다. AI 분석이 20건이 돼도 섹션이 늘어지지 않는다.
            🔴 「이미 바뀌었습니다」는 **전부 카드로** 낸다 — 확정된 변화라 수가 적고(실측 0~2건)
               이 쟁점에서 실제로 일어난 일이라 가장 중요하다 %>
       <%# 🔴 **카드는 2장까지다** (2026-08-23 4차). 이 섹션은 `bill_ai_analysis` 의 changes·affected 를
@@ -268,7 +268,7 @@
             <ul class="iss-impact-rest">
               <% rest.forEach((x) => { %>
                 <li>
-                  <a href="/bill/<%= encodeURIComponent(x.bill_id) %>">
+                  <a class="pb-boxlink is-solid" href="/bill/<%= encodeURIComponent(x.bill_id) %>">
                     <span class="iss-impact-rest-title"><%= x.headline %></span>
                     <span class="iss-impact-rest-meta"><%= x.proposer_name %></span>
                   </a>
@@ -300,7 +300,7 @@
           <li>
             <%# 🔴 퇴임 의원은 politicians 조인이 비어 상세가 404 다. 링크를 걸지 않는다 %>
             <% if (s.name) { %>
-              <a href="/politician/<%= encodeURIComponent(s.mona_cd) %>">
+              <a class="pb-boxlink is-solid" href="/politician/<%= encodeURIComponent(s.mona_cd) %>">
                 <span class="iss-people-name"><%= s.name %></span>
                 <span class="iss-people-meta"><%= s.party_name %><% if (s.electoral_district) { %> · <%= s.electoral_district %><% } %></span>
                 <span class="iss-people-n"><%= nf(s.n) %>건</span>
@@ -370,7 +370,7 @@
       <ul class="iss-bills" id="iss-all-list">
         <% bills.slice(0, 20).forEach((b) => { %>
           <li class="iss-bill<%= b.has_analysis ? ' has-analysis' : '' %>">
-            <a href="/bill/<%= encodeURIComponent(b.bill_id) %>">
+            <a class="pb-boxlink is-solid" href="/bill/<%= encodeURIComponent(b.bill_id) %>">
               <div class="iss-bill-top">
                 <span class="iss-bill-date"><%= dot(b.propose_dt) %></span>
                 <span class="iss-bill-who"><%= b.proposer_name || '(대표발의자 미상)' %></span>
@@ -382,7 +382,7 @@
               <p class="iss-bill-name"><%= b.bill_name %></p>
               <p class="iss-bill-body">
                 <% if (b.has_analysis && b.ai_summary) { %>
-                  <span class="iss-bill-tag">해설</span><%= b.ai_summary %>
+                  <span class="iss-bill-tag">AI 분석</span><%= b.ai_summary %>
                 <% } else if (b.raw_summary) { %>
                   <%= summaryPreview(b.raw_summary, 130) %>
                 <% } else { %>
@@ -428,10 +428,10 @@
         + '<span class="iss-bill-co">공동 ' + nf(b.co_count) + '명</span>'
         + (b.vote_count > 0 ? '<span class="iss-bill-vote">본회의 표결</span>' : '');
       var body = b.body
-        ? (b.has_analysis ? '<span class="iss-bill-tag">해설</span>' : '') + esc(b.body)
+        ? (b.has_analysis ? '<span class="iss-bill-tag">AI 분석</span>' : '') + esc(b.body)
         : '<span class="iss-bill-none">본문이 공개되지 않은 법안입니다</span>';
       return '<li class="iss-bill' + (b.has_analysis ? ' has-analysis' : '') + '">'
-        + '<a href="/bill/' + encodeURIComponent(b.bill_id) + '">'
+        + '<a class="pb-boxlink is-solid" href="/bill/' + encodeURIComponent(b.bill_id) + '">'
         + '<div class="iss-bill-top">' + top + '</div>'
         + '<p class="iss-bill-name">' + esc(b.bill_name) + '</p>'
         + '<p class="iss-bill-body">' + body + '</p>'
@@ -473,7 +473,7 @@
       <ul class="iss-brief-list">
         <% briefings.forEach((b) => { %>
           <li>
-            <a href="/briefing/<%= b.id %>">
+            <a class="pb-boxlink is-solid" href="/briefing/<%= b.id %>">
               <span class="iss-brief-date"><%= dot(b.briefing_date) %></span>
               <span class="iss-brief-head"><%= b.headline %></span>
               <span class="iss-brief-n">이 쟁점 <%= b.n %>건</span>
@@ -591,5 +591,32 @@
      rAF 는 위 scroll throttle 에만 — 거기선 "렌더링을 안 하면 갱신할 것도 없다" 가 참이다. */
   toc.hidden = false;
   sync();
+})();
+
+/* 「무엇이 달라지나」 카드 전체를 클릭 영역으로 — 행(.iss-row 등)과 같은 규칙으로 통일한다.
+   🔴 오버레이(stretched link)로 하지 않는다. `.iss-impact-title::after { inset: 0 }` 로 만들었다가
+      ① 카드 안 텍스트 선택 불가 ② 드래그가 **링크 드래그**로 잡혀 화면이 멈춘 것처럼 되고
+      다음 클릭이 먹지 않는 문제로 되돌렸다 (2026-08-24).
+   🔴 CSS 의 hover 채움·셰브론은 여기서 붙이는 [data-cardlink] 에만 걸려 있다 —
+      JS 가 죽으면 "빛나는데 안 눌리는" 거짓 신호가 되므로, 그때는 제목 링크만 남는다.
+   ⚠️ 텍스트를 드래그해 선택한 뒤 손을 떼는 것도 click 으로 온다. 선택이 있으면 이동하지 않는다. */
+(() => {
+  var cards = document.querySelectorAll('.iss-impact-card');
+  if (!cards.length) return;
+  cards.forEach(function (card) {
+    var a = card.querySelector('.iss-impact-title');
+    if (!a) return;
+    card.setAttribute('data-cardlink', '');
+    card.addEventListener('click', function (e) {
+      // 진짜 링크·버튼을 눌렀으면 그쪽에 맡긴다
+      if (e.target.closest('a, button')) return;
+      // 드래그로 텍스트를 고른 뒤 떼는 것도 click 으로 온다 — 그땐 이동하지 않는다
+      var sel = window.getSelection && window.getSelection();
+      if (sel && String(sel).trim()) return;
+      // 새 탭 열기(⌘/Ctrl·가운데 버튼)는 브라우저 기본 동작을 흉내낸다
+      if (e.metaKey || e.ctrlKey || e.button === 1) window.open(a.href, "_blank", "noopener");
+      else window.location.assign(a.href);
+    });
+  });
 })();
 </script>

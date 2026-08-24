@@ -43,7 +43,7 @@
   <ul class="iss-list">
     <% issues.forEach((it) => { %>
       <li>
-        <a class="iss-row" href="/issue/<%= it.slug %>">
+        <a class="iss-row pb-boxlink is-solid is-lg" href="/issue/<%= it.slug %>">
           <div class="iss-row-main">
             <h2 class="iss-row-title"><%= it.title %></h2>
             <p class="iss-row-sub"><%= it.sub %></p>
@@ -54,7 +54,7 @@
             <div class="iss-row-nums">
               <b><%= it.total %></b><span>법안</span>
               <b><%= it.pending %></b><span>계류</span>
-              <b class="<%= it.analyzed < 3 ? 'is-thin' : '' %>"><%= it.analyzed %></b><span>해설</span>
+              <b class="<%= it.analyzed < 3 ? 'is-thin' : '' %>"><%= it.analyzed %></b><span>AI 분석</span>
             </div>
             <%# 최근 발의일 = "지금도 움직이나" 의 신호. 기본 정렬 기준이기도 하다 %>
             <div class="iss-row-when">
