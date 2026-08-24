@@ -1422,3 +1422,32 @@ body.pb-menu-open { overflow: hidden; }
     border-bottom-color: var(--border2);
   }
 }
+
+/* ===================================================================
+   비로그인 진단 결과 저장 안내 — views/balance/_anon_save.ejs (2026-08-24)
+
+   invite(완료 히어로)·reveal(카드) 두 뷰가 인라인 <style> 이라 공용으로 여기 둔다.
+   ⚠️ 경고가 아니라 안내다 — 빨강·느낌표를 쓰지 말 것. 결과가 사라질 수 있다는 사실을
+      알려주는 것이지 로그인을 조르는 자리가 아니다 (그 벽을 없애려고 익명 진단을 열었다).
+=================================================================== */
+.bg-anon-save {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+    margin: 20px 0 0; padding: 14px 16px;
+    border: 1px solid var(--border2); border-left: 3px solid var(--accent);
+    border-radius: 10px; background: rgba(184, 116, 12, 0.06);
+}
+.bg-anon-save p {
+    margin: 0; flex: 1 1 320px; min-width: 0;
+    font-size: 13px; line-height: 1.7; color: var(--sub); word-break: keep-all;
+}
+.bg-anon-save p strong { color: var(--text); font-weight: 700; }
+.bg-anon-save-cta {
+    flex: 0 0 auto; display: inline-flex; align-items: center; padding: 9px 16px;
+    border: 1px solid var(--accent); border-radius: 8px;
+    background: var(--accent); color: #fff;
+    font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap;
+}
+.bg-anon-save-cta:hover { background: var(--accent2); border-color: var(--accent2); }
+@media (max-width: 560px) {
+    .bg-anon-save-cta { width: 100%; justify-content: center; }
+}

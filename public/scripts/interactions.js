@@ -1037,6 +1037,48 @@
   });
 
   /* ===================================================================
+     비로그인 진단 답변 승격 — 로그인하면 브라우저에 있던 답변을 계정으로 올린다 (2026-08-24)
+
+     🔴 지역구(`pb.district`)와 **같은 패턴**이다. 비로그인으로 20문항을 푼 사람에게
+        로그인 뒤 다시 풀라고 하면, 진단을 익명으로 연 의미가 없어진다.
+     ⚠️ 키(`pb.bg.answers`)는 respond.ejs · utils/anonAxis.js ANON_ANSWERS_KEY 와 같아야 한다.
+     ⚠️ 성공하면 로컬 사본을 지운다 — 남겨두면 나중에 다시 풀어도 옛 답변이 계속 올라간다.
+        서버가 pb.bg 쿠키도 같이 지운다 (승격 뒤엔 쿠키가 더 이상 진실이 아니다).
+     ⚠️ 실패해도 조용히 둔다. 답변은 로컬에 그대로 남으니 다음 페이지에서 다시 시도된다 —
+        여기서 사용자에게 에러를 띄우면 로그인 직후 첫 화면이 경고로 시작한다.
+  =================================================================== */
+  (() => {
+    const KEY = 'pb.bg.answers';
+    if (!isLoggedIn()) return;
+    let answers = null;
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return;
+      const o = JSON.parse(raw);
+      if (o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length) answers = o;
+    } catch (e) { return; }
+    if (!answers) return;
+
+    fetch('/api/balance-game/answers', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ answers })
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d || !d.stored) return;
+        try { localStorage.removeItem(KEY); } catch (e) {}
+        // 화면이 승격 완료를 알 수 있게 (환영 화면이 문구를 확정형으로 바꾼다)
+        document.dispatchEvent(new CustomEvent('pb:balance-promoted'));
+        /* 진단 화면 안에서 승격됐다면 다시 그린다 — 서버가 렌더한 "비로그인" 상태가 이미 낡았다.
+           다른 페이지에서는 새로고침하지 않는다 (읽던 화면이 튄다) */
+        if (location.pathname.indexOf('/balance-game') === 0) location.reload();
+      })
+      .catch(() => {});
+  })();
+
+  /* ===================================================================
      🔴 박스형 링크의 드래그 차단 — 사이트 전역
 
      목록의 행·카드는 <a> 가 박스를 통째로 감싼다. 그 위에서 마우스를 조금만 끌어도

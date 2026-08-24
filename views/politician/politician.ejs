@@ -1188,6 +1188,7 @@
              data-sex="<%= p.sex_gbn_nm || '' %>"
              data-age-bucket="<%= p.age_bucket || '' %>"
              data-propose="<%= p.propose_cnt || 0 %>"
+             data-copropose="<%= p.co_propose_cnt || 0 %>"
              data-match-pct="<% const _mp = similarityOf(distanceTo(p)); %><%= _mp === null ? '' : _mp %>"
              data-gap="<%= (p.cpv_gap === null || p.cpv_gap === undefined) ? '' : p.cpv_gap %>">
             <% if (p.photo_url) { %>
@@ -1242,51 +1243,11 @@
         <span style="text-align:center">공동</span>
         <span></span>
       </div>
-      <div class="politicians-list" id="list-container">
-        <% politicians.forEach(p => {
-             const pClass = partyClassOf(p.party_name);
-        %>
-          <a href="/politician/<%= p.mona_cd %>"
-             class="pol-list-item pol-item-list"
-             style="text-decoration:none"
-             data-name="<%= p.name %>"
-             data-district="<%= p.electoral_district || '' %>"
-             data-party="<%= p.party_name || '' %>"
-             data-cmit="<%= p.cmit_nm || '' %>"
-             data-elect="<%= p.elect_gbn_nm || '' %>"
-             data-sex="<%= p.sex_gbn_nm || '' %>"
-             data-age-bucket="<%= p.age_bucket || '' %>"
-             data-propose="<%= p.propose_cnt || 0 %>"
-             data-match-pct="<% const _mpL = similarityOf(distanceTo(p)); %><%= _mpL === null ? '' : _mpL %>"
-             data-gap="<%= (p.cpv_gap === null || p.cpv_gap === undefined) ? '' : p.cpv_gap %>">
-            <div class="pol-list-avatar">
-              <%- avatarHtml(p.name, p.photo_url, 40) %>
-            </div>
-            <div>
-              <div class="pol-list-name-row">
-                <span class="pol-list-name"><%= p.name %></span>
-                <span class="pol-party-badge <%= pClass %>"><%= p.party_name || '무소속' %></span>
-                <% if (p.active_yn === false) { %><span class="pol-retired">퇴임</span><% } %>
-              </div>
-              <div class="pol-list-sub"><%= p.electoral_district || '—' %></div>
-            </div>
-            <div class="pol-list-num"><span class="pol-list-num-label">발의</span><%= p.propose_cnt %></div>
-            <div class="pol-list-num"><span class="pol-list-num-label">공동</span><%= p.co_propose_cnt %></div>
-            <div class="pol-list-aside">
-              <%
-                const _dl = distanceTo(p);
-                const _siml = similarityOf(_dl);
-              %>
-              <% if (locals.balanceGameCompleted === true && _siml !== null) { %>
-                <span class="pol-match-line" title="<%= matchTitle(_dl) %>">나의 성향 진단과 <strong><%= _siml %>%</strong> 일치</span>
-              <% } else if (locals.balanceGameCompleted === false) { %>
-                <span class="pol-match-line is-pending" title="성향 진단 후 당신과의 일치도가 표시됩니다">진단 후 일치도 표시</span>
-              <% } %>
-              <span class="pol-list-detail-arrow">상세 →</span>
-            </div>
-          </a>
-        <% }); %>
-      </div>
+      <%# 🔴 리스트 행은 **여기서 그리지 않는다** (2026-08-24). 그리드 카드에서 JS 가 만든다 — 아래 `buildListRows()`.
+          되돌려서 여기에 forEach 를 다시 넣지 말 것. 실측(309명):
+          DOM 10,416 → 5,542 노드 · origin 1,064 → 573KB (brotli 46 → 39KB) · HTML 파싱 21.6 → 12.8ms.
+          숨은 뷰가 DOM 의 47% 였다. 뷰 전환은 원래 JS 전용이라(버튼 + display 토글) 잃는 것도 없다 %>
+      <div class="politicians-list" id="list-container"></div>
       <div class="empty-state" id="list-empty" style="display:none">조건에 맞는 의원이 없습니다.</div>
     </div>
   </div>
@@ -1718,6 +1679,110 @@
       // 사이드바 클릭은 항상 지연 — 적용 버튼에서만 커밋
     });
   });
+  /* ===================================================================
+     리스트 행 만들기 — **그리드 카드가 유일한 소스다** (2026-08-24)
+
+     🔴 EJS 에 리스트 행을 다시 넣지 말 것. 두 벌을 SSR 한 대가(실측 309명):
+        · DOM 10,416 → 5,542 노드 — 숨은 뷰가 47% 였다 (파싱·스타일 계산은 display:none 이어도 든다)
+        · origin 1,064 → 573KB (brotli 46 → 39KB). origin→Cloudflare 구간은 무압축이라 이쪽이 그대로 든다
+        · HTML 파싱 21.6 → 12.8ms (같은 브라우저에서 두 HTML 을 DOMParser 로 7회씩, 중앙값). 모바일은 이 몫이 더 크다
+        · ⚠️ SSR 리스트 아바타 309개에는 `loading="lazy"` 가 없었다 (`avatarHtml()` 이 안 붙인다).
+          lazy 를 존중하는 브라우저에서는 그리드가 미루려던 사진을 숨은 뷰가 전부 끌어왔다는 뜻이다 —
+          다만 **그 델타는 측정하지 못했다** (미리보기 브라우저가 lazy 를 아예 안 미룬다:
+          화면에 12장인데 309장 전부 로드). 아래 빌더는 lazy 를 붙이므로 어느 쪽이든 나빠지지 않는다
+     🔴 마크업이 JS 에만 있는 게 맞다 — 뷰 전환은 원래 JS 전용이라(버튼 + display 토글)
+        JS 없는 사용자는 그리드만 본다. EJS 와 JS 에 같은 행을 두 벌 두면 그게 갈린다
+        (`_activity_row.ejs` 와 JS `row()` 를 같게 유지해야 하는 그 문제)
+     ⚠️ 값은 카드에서 **복제**한다 (정당 배지·퇴임 칩·일치도 줄은 cloneNode). 문자열로 다시 만들면
+        서버가 붙인 클래스·title 이 어긋난다. 숫자 두 개만 data-propose·data-copropose 로 받는다
+     ⚠️ `applyFilter()` 는 매번 `.pol-item-list` 를 다시 조회하므로, 만든 뒤 한 번 부르면
+        현재 필터·정렬이 그대로 적용된다
+  =================================================================== */
+  let listBuilt = false;
+  const buildListRows = () => {
+    if (listBuilt) return;
+    listBuilt = true;
+    const frag = document.createDocumentFragment();
+    gridContainer.querySelectorAll('.pol-item').forEach((card) => {
+      const d = card.dataset;
+      const row = document.createElement('a');
+      row.href = card.getAttribute('href');
+      row.className = 'pol-list-item pol-item-list';
+      row.style.textDecoration = 'none';
+      // 필터·정렬이 두 세트에서 똑같이 돌도록 data-* 를 통째로 옮긴다
+      for (const k in d) row.dataset[k] = d[k];
+
+      // 아바타 — 사진이 있으면 그리드와 같은 URL, 없으면 이니셜 SVG
+      // (PB.avatarSvg 는 utils/avatar.js 와 팔레트·해시·이니셜 규칙이 같다)
+      const av = document.createElement('div');
+      av.className = 'pol-list-avatar';
+      const photo = card.querySelector('.pol-photo-img');
+      if (photo) {
+        /* utils/avatar.js avatarHtml() 이 내는 것과 같은 img + loading="lazy".
+           width/height 속성은 자리를 미리 잡아 레이아웃 이동을 막는다 (원래 마크업에도 있었다) */
+        const img = document.createElement('img');
+        img.src = photo.getAttribute('src');
+        img.alt = d.name || '';
+        img.className = 'pb-avatar-img';
+        img.width = 40; img.height = 40;
+        img.loading = 'lazy';            // 🔴 빼지 말 것 — SSR 리스트에는 이게 없었다
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+        av.appendChild(img);
+      } else if (window.PB && PB.avatarSvg) {
+        av.innerHTML = PB.avatarSvg(d.name || '', 40);
+      }
+
+      // 이름 줄 + 지역구
+      const main = document.createElement('div');
+      const nameRow = document.createElement('div');
+      nameRow.className = 'pol-list-name-row';
+      const nm = document.createElement('span');
+      nm.className = 'pol-list-name';
+      nm.textContent = d.name || '';
+      nameRow.appendChild(nm);
+      const badge = card.querySelector('.pol-party-badge');
+      if (badge) nameRow.appendChild(badge.cloneNode(true));
+      const retired = card.querySelector('.pol-retired');
+      if (retired) nameRow.appendChild(retired.cloneNode(true));
+      const sub = document.createElement('div');
+      sub.className = 'pol-list-sub';
+      sub.textContent = d.district || '—';
+      main.appendChild(nameRow);
+      main.appendChild(sub);
+
+      const numCell = (label, value) => {
+        const el = document.createElement('div');
+        el.className = 'pol-list-num';
+        const lb = document.createElement('span');
+        lb.className = 'pol-list-num-label';
+        lb.textContent = label;
+        el.appendChild(lb);
+        el.appendChild(document.createTextNode(value));
+        return el;
+      };
+
+      const aside = document.createElement('div');
+      aside.className = 'pol-list-aside';
+      const match = card.querySelector('.pol-match-line');
+      if (match) {
+        const m = document.createElement('span');
+        m.className = match.className;      // 'pol-match-line' 또는 '... is-pending'
+        m.title = match.title;
+        m.innerHTML = match.innerHTML;      // <strong>N%</strong> — 서버가 만든 것 그대로
+        aside.appendChild(m);
+      }
+      const arrow = document.createElement('span');
+      arrow.className = 'pol-list-detail-arrow';
+      arrow.textContent = '상세 →';
+      aside.appendChild(arrow);
+
+      row.append(av, main, numCell('발의', d.propose || '0'), numCell('공동', d.copropose || '0'), aside);
+      frag.appendChild(row);
+    });
+    listContainer.appendChild(frag);
+    applyFilter();      // 지금 걸려 있는 필터·정렬을 새 행에 적용
+  };
+
   // Grid/List toggle
   const btnGrid = document.getElementById('btn-grid');
   const btnList = document.getElementById('btn-list');
@@ -1728,6 +1793,7 @@
     gridView.style.display = ''; listView.style.display = 'none';
   });
   btnList.addEventListener('click', () => {
+    buildListRows();                 // 처음 누를 때 한 번만 만든다
     btnList.classList.add('active'); btnGrid.classList.remove('active');
     gridView.style.display = 'none'; listView.style.display = '';
   });

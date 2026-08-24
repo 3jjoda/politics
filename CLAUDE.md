@@ -577,7 +577,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/briefing/:id/threads` | `briefing/threads.ejs` | **쓰레드 연결 게시물** — 500자 단위로 쪼갠 체인 + 게시물별 복사 버튼 |
 | `/issue` | `issue/index.ejs` | **쟁점 목록** (2026-08-23) — 정의는 `utils/issues.js` 단일 소스 |
 | `/issue/:slug` | `issue/detail.ejs` | **쟁점 상세** — 키워드로 모은 법안을 **근거 법률별로** 묶어 보여준다. 기사 수집·인용 없음, 뉴스는 검색 링크만. 모르는 slug 는 404 |
-| `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터) |
+| `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터). 🔴 **리스트 행은 SSR 하지 않는다** (2026-08-24) — 그리드 카드에서 JS 가 만든다. 아래 「리스트 뷰는 SSR 하지 않는다」 참조 |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (AI 분석 진행률 배너 + 통합 필터 카드 + 정렬 + 카테고리·정당 복수선택, 페이징) |
 | `/bill/:id` | `bill/bill_detail.ejs` | 법안 상세 (AI 분석 5-Zone·요청 위젯·국민 찬반·본회의 표결·댓글) |
@@ -653,14 +653,14 @@ PUT /api/auth/district        ← 등록·변경·해제 (requireLogin)
 
 | `/my/analysis-requests` | `my/analysis_requests.ejs` | 마이페이지 — 내가 요청한 AI 분석 (`requireLogin`) |
 | `/balance-game` | `balance/invite.ejs` | 성향 진단 진입 — **2026-08-16 재구성**: 미완료는 "당신과 가장 가까운 국회의원은?" 히어로 + `이렇게 나옵니다` 3칸(좌표·의원 순위·공유 카드), 완료는 히어로가 곧 **내 결과**(4축 막대 + 한 줄 요약) + 행동 3개(**결과 이미지로 공유** · 가까운 의원 · 다른 사람과 비교). `게임팩`·`매핑` 용어는 첫 화면에서 뺐다. 주제팩 "준비 중" 빈 상자 → 한 줄 |
-| `/balance-game/respond` | `balance/respond.ejs` | 단계 2 응답 (한 화면 한 문항, 즉시 서버 저장, 이어하기, 키보드 1·2·3·←) |
-| `/balance-game/reveal` | `balance/reveal.ejs` | **「당신의 카드」** (2026-08-16 재작성) — 카드 = `_result_axes.ejs` 파샬(헤드라인 + 4축 막대·해석, 진입 페이지 완료 히어로와 **같은 마크업**) + 가까운 의원 3명 + [결과 이미지로 공유]·[의원과 비교]. 연출은 약 2.5초, **`localStorage` + `computed_at` 키라 결과가 바뀔 때만** 다시 연출 (구 13초 · sessionStorage 게이트 · \|값\| 다이아몬드 · 응답 분포는 제거). JS 없이도 카드가 보인다 |
+| `/balance-game/respond` | `balance/respond.ejs` | 단계 2 응답 (한 화면 한 문항, 즉시 저장, 이어하기, 키보드 1·2·3·←). **`?redo=1` 이면 완료자도 1번 문항부터** (없으면 결과로 되돌아간다). 🔴 **2026-08-24 부터 로그인 불필요** — 비로그인은 답변이 localStorage 에 쌓이고 서버는 채점만 한다. 아래 「진단은 로그인 없이 푼다」 참조 |
+| `/balance-game/reveal` | `balance/reveal.ejs` | **「당신의 카드」** (2026-08-16 재작성) — 카드 = `_result_axes.ejs` 파샬(헤드라인 + 4축 막대·해석, 진입 페이지 완료 히어로와 **같은 마크업**) + 가까운 의원 3명 + [결과 이미지로 공유]·[의원과 비교]. 연출은 약 2.5초, **`localStorage` + `computed_at` 키라 결과가 바뀔 때만** 다시 연출 (구 13초 · sessionStorage 게이트 · \|값\| 다이아몬드 · 응답 분포는 제거). JS 없이도 카드가 보인다. 🔴 **비로그인도 본다** (pb.bg 쿠키) — 하단에 `_anon_save.ejs` 저장 안내 |
 | `/balance-game/compare` | `balance/compare.ejs` | **「의원과 비교」** (2026-08-16 전면 재작성) — ① 축별 위치: 내 점 vs 의원 전체 평균 마커 + `의원 292명 중 N명이 나보다 ○○ 쪽` ② 좌표가 가장 가까운/먼 3명 (3축 미니 막대에 나·의원 두 점, 순위만) ③ 응답자 평균은 50명 모이면 같은 막대에 마커로 (실측 6명이라 잠금 상태를 숫자로 보인다). 아래 항목 참조 |
 | `/balance-game/connect` | — | **폐지 (2026-08-16)** → `/balance-game/reveal` 로 301. 카드가 가까운 의원·공유·비교를 다 갖게 되어 역할이 겹쳤다. `카드 갤러리 준비 중` 타일 같은 죽은 약속도 같이 사라짐. **카드 컬렉션 구상은 주제팩이 실제로 생기면 그때** (`balance_game_packs` 모델은 그대로) |
 | `/balance-game/types` | `balance/types.ejs` | **성향 유형 9종 안내** (2026-08-16, 공개) — 유형 지도(사분면 4 + 원점 거리 링 0.20/0.55) · 9종 카드(부제·설명·조건) · 판정 기준. 로그인·완료면 내 유형 강조 + 지도에 내 점. 데이터는 `utils/axisConfig.js TYPE_LIST/typeOf` 하나 |
 | `/balance-game/share` | `balance/share.ejs` | **결과 공유 이미지** (2026-08-16) — 스토리 1080×1920 · 피드 1080×1350 를 **클라이언트 canvas** 로 그려 저장·`navigator.share`. 아래 "성향 진단 결과 공유 이미지" 참조 |
 | `/balance-game/mapping` | `balance/mapping_preview.ejs` | 매핑 미리 보기 (DB 조회, 게임팩별 섹션) |
-| `/auth/welcome` | `auth/welcome.ejs` | 가입 직후 환영 페이지 (1회 노출, [지금 풀기]/[둘러보기]) |
+| `/auth/welcome` | `auth/welcome.ejs` | 가입 직후 환영 페이지 (1회 노출). 🔴 **진단 상태에 따라 세 갈래** (2026-08-24) — `new` [지금 풀기] · `done` [내 결과 카드 보기] · `partial` [이어서 풀기]. 익명으로 풀고 가입한 사람에게 다시 "20문항 · 약 5분" 을 보여주지 않기 위한 것. 위 「진단은 로그인 없이 푼다」 참조 |
 | `/admin/titles` | `admin/titles.ejs` | **관리자 — 의원 직위 관리** (`requireAdmin`). 수동 직위 CRUD + 재확인 상태 |
 | `/admin/stats` | `admin/stats.ejs` | **관리자 — 방문 통계** (`requireAdmin`). `?days=7|30|90`. 아래 "방문 통계" 참조 |
 | `/admin/issue-candidates` | `admin/issue_candidates.ejs` | **관리자 — 쟁점 후보** (2026-08-23, `requireAdmin`). 선정 기준을 **실행 가능하게** 만드는 화면: ① 키워드 검사기(`?kw=A,B` GET 폼) ② 반대표 20+ 법안 ③ 브리핑 반복 주제 ④ 현재 쟁점 커버리지. 🔴 **후보를 정해주지 않는다** — 자동 선정이 안 된다는 게 결론이라 재료와 검사기만 준다 |
@@ -1023,6 +1023,73 @@ public/scripts/balance/shareCard.js   🔴 그림은 전부 여기 — canvas 2D
 - 다음에 손댈 땐 매핑 개수가 아니라 **① 방향 균형 ② 불참 처리 ③ 표결 아닌 소스**
   (공동발의는 만장일치가 아니라 선택이다) 를 볼 것
 
+### 🔴 진단은 로그인 없이 푼다 — 답변은 localStorage, 점수는 쿠키 (2026-08-24)
+진단이 로그인 뒤에 있어서 퍼널이 끊겨 있었다. **실측 가입 9명 · 응답 시작 7명 · 완료 3명.**
+아무 가치도 주기 전에 계정을 요구했고, 의원 카드 309장이 전부 `진단 후 일치도 표시` 로 잠겨 있어
+**잠긴 문 하나가 사이트 전체를 잠그고 있었다.**
+
+```
+답변 20개 → localStorage('pb.bg.answers')   서버로 안 간다 (채점 POST 말고는)
+채점 결과 → pb.bg 쿠키 (4축 + 완료여부, ~40B, httpOnly, path=/, 90일) — 서버가 발급, 저장 안 함
+로그인    → localStorage 답변을 DB 로 승격 → 쿠키 삭제      (지역구와 같은 패턴)
+```
+
+| 파일 | 역할 |
+|---|---|
+| `utils/anonAxis.js` | 쿠키 인코딩·검증 + `scoreAnswers` 채점 + `sanitizeAnswers` |
+| `POST /api/balance-game/answers` | 답변 전체를 한 번에. **비로그인이면 채점만, 로그인이면 저장·승격** |
+| `middlewares/balanceGame.js` | userId 없으면 쿠키에서 좌표 복원 → `res.locals.userAxis`·`isAnonAxis` |
+| `views/balance/_anon_save.ejs` | invite·reveal 공용 저장 안내 (`.bg-anon-save`, main.css) |
+| `public/scripts/interactions.js` | 로그인 감지 시 승격 (전역, 키가 있을 때만 동작) |
+
+- 🔴 **쿠키를 쓰는 이유는 SSR 이다.** 결과를 쓰는 화면이 여섯(reveal·invite·share·compare·의원 목록·의원 상세)인데
+  전부 서버 렌더고, 특히 목록 309장은 `data-match-pct` 를 서버가 미리 계산한다. localStorage 만 쓰면
+  그 여섯을 클라이언트에서 다시 그려야 하고 **거리·일치도 식이 JS 로 복제된다** —
+  `utils/balanceDistance.js` 하나로 유지한다는 규칙과 정면 충돌. 쿠키면 기존 SSR 이 한 줄도 안 바뀐다
+- 🔴 **`path=/` 는 의도한 선택이다** (사용자 결정). 좁히면 의원 카드 309장이 잠긴 채 남는데 그게 이걸 만든 이유의 절반이다.
+  대가로 4축 숫자가 모든 요청 헤더에 실린다 — 서버는 저장하지 않고 앱은 헤더를 로깅하지 않는다.
+  **요청 로깅을 붙일 일이 생기면 여기를 먼저 볼 것**
+- 🔴 **세션을 만들지 않는다.** 익명 방문자마다 세션 행을 만들면 2026-08-18 에 고친 익명 세션 폭증(8,599건)이
+  그대로 재발한다. `saveUninitialized: false` 를 건드리지 말 것. **실측: 익명 흐름 한 바퀴에 세션 증가 0**
+- 🔴 **채점 산식이 `BalanceGameDao.recomputeUserAxisScore` 의 SQL 과 같아야 한다** —
+  활성 문항만 · 축 평균은 `score <> 0` 만(C 제외) · `total_responses` 는 C 포함 · 완료는 `packs.question_count` 기준.
+  어긋나면 **로그인하는 순간 좌표가 바뀐다.** 실측 7케이스(전부 A/B/C · 섞임 2 · 부분 12/20 · 전 팩 60문항) 전부 일치
+- 🔴 **엔드포인트를 하나로 둔 이유** — 응답 도중 다른 탭에서 로그인해도 같은 호출이 알아서 DB 저장으로 넘어간다
+  (`stored: true` 를 받으면 화면이 로컬 사본을 지운다). 둘로 나누면 그 순간 401 을 맞고 답변을 잃는다
+- ⚠️ **쿠키 형식이 조금이라도 어긋나면 통째로 버린다** (`decodeAnonAxis` → null). 실측 거부:
+  범위 밖 값 `v1_9_9_9_9_…` · 버전 불일치 `v2_…` · 쓰레기 문자열 · 필드 수 부족
+- ⚠️ **답변은 채점 요청 *전에* localStorage 에 쓴다** — 채점이 실패해도 답변이 남아야 이어 풀 수 있다
+- ⚠️ 초대 화면의 비로그인 진행 표시는 쿠키의 `total_responses` 를 쓰는데 그건 **전 게임팩 합계**라
+  종합팩 문항 수로 클램프한다 (21/20 방지)
+- ⚠️ 비로그인 `respond` 는 서버의 `next_index` 가 항상 0 이다 (답변을 모른다). 이어풀기는 화면이 정한다 —
+  `QUESTIONS.length` 로 클램프할 것. `length-1` 로 조이면 다 푼 사람이 마지막 문항을 다시 보고 결과로 못 간다
+- 🔴 **다시 풀기는 `?redo=1` 이다** (2026-08-24, 사용자 보고로 발견). 이게 없으면 완료자는 문항 화면에 못 들어간다 —
+  `getRespondPage` 의 `progress.completed` 리다이렉트(로그인)와 화면의 이어풀기 복원(비로그인)이 **양쪽 다** 결과로 되돌려보낸다.
+  진입로 셋 전부 이 파라미터를 달아야 한다: `/balance-game` 완료 히어로 · `/balance-game/reveal` · `/my`(성향 카드 + 게임팩 행)
+  - ⚠️ **답변을 지우지 않는다.** 한 문항씩 덮어쓰는 UPSERT 라 중간에 그만두면 고친 데까지만 반영되고 나머지는 옛 답이 남는다
+    (로그인 경로와 같은 동작). 실측: q1~q3 을 A→C 로 바꾸고 이탈 → 저장된 답변 20개 유지, 좌표만 갱신
+  - 🔴 **다시 풀기 중 진행바는 이번 회차를 센다** (`answeredNow` Set). 저장된 답 20개를 세면
+    1번 문항인데 막대가 **100%** 로 차서 바로 옆 카운터(`1 / 20`)와 정면으로 어긋난다 — 실제로 그렇게 나왔다
+  - 🔴 **`reveal` 에 다시 풀기 버튼을 두는 이유** — 문항을 막 끝낸 사람이 도착하는 자리라 여기가 제일 먼저 찾는 곳인데
+    버튼이 아예 없었다. `invite` 쪽은 12.5px 점선 링크(`.bg-actions-links`)라 각주로 읽혀서 `.bg-cta secondary` 로 올렸다
+- 🔴 **가입 직후 환영 화면이 진단 상태를 안다** (2026-08-24, 사용자 보고). 익명으로 다 풀고 가입한 사람에게
+  `/auth/welcome` 이 `🎯 5분만 시간 내주실 수 있나요? · 20문항 · 약 5분` 을 보여줬다 — **방금 5분을 쓴 사람에게 또 5분을 요구**했다.
+  `.wel-wrap[data-wel-mode]` 로 세 갈래: `new`(기존) · `done`(→ `[내 결과 카드 보기]`) · `partial`(→ `[이어서 풀기]`, 남은 문항 수 표시)
+  - 🔴 **서버만으로는 판정이 안 된다.** 익명 답변은 localStorage 에 있고 승격은 로그인 뒤 **클라이언트가** 하므로
+    이 페이지를 그릴 때는 아직 DB 에 없다. 서버는 DB 기준(`carry`)만 넘기고, **뷰의 인라인 스크립트가
+    localStorage 를 보고 첫 페인트 전에 마저 판정**한다. 실측: 서버 `new` → 화면 `done` 으로 승격
+  - 🔴 **그 스크립트는 표시 판정만 한다.** 실제 승격 fetch 는 `interactions.js` 하나뿐이다 — 두 곳에 두면 갈린다.
+    승격이 끝나면 `pb:balance-promoted` 이벤트가 나가고 환영 화면이 각주를 `진단 결과를 계정에 저장했어요` 로 바꾼다
+  - 🔴 **스크립트를 마크업 바로 뒤에 둘 것.** `<head>` 나 `DOMContentLoaded` 로 미루면 `20문항 · 약 5분` 이 한 번 번쩍인다
+  - ⚠️ `ackWelcome` 의 choice 가 넷이다 (`play`·`card`·`resume`·`browse`). 모르는 값은 홈으로 접는다
+  - ⚠️ 신규 가입은 `next` 를 따라가지 않는다 — **환영 화면이 상태를 보고 목적지를 정한다.**
+    예전엔 `submitSetup` 에 "next 가 있으면 보존" 이라는 **빈 if 문**이 있었다 (아무 일도 안 했다). 제거했다
+- ⚠️ `robots.txt` 의 `/balance-game/{respond,reveal,compare}` 차단은 **그대로 둔다** — 쿠키에 따라 내용이 달라진다
+- ✅ 실측 2026-08-24: 비로그인 20문항 → 채점(`stored:false`, DB 쓰기 0) → reveal 200(유형·가까운 의원 3명·저장 배너) ·
+  share·compare·types 200 · 홈 「나와 맞는 의원」 카드 3장 · **의원 목록 `진단 후 표시` 618 → 0** ·
+  의원 상세 `is-pending` → `is-compact` · 부분 12/20 은 `답변이 8개 남았습니다` + reveal 은 계속 302 ·
+  승격 멱등(재승격에 행 안 늘어남) · 전 페이지 500 **0건**
+
 ### 🔴 진단의 의도를 화면에 쓴다 — `/balance-game` `.bg-why` · `/about` 한계 목록 (2026-08-16)
 "문항 20개와 의원 기록을 왜 같은 자로 안 쟀나" · "결국 정당으로 수렴하지 않나" 는 **의도**다 (사용자 설명):
 ① 일반인에게 법안 수백 건을 읽고 표결하라 할 수 없어 사용자는 가벼운 문항, 의원은 실제 활동으로 각각 기준을 세우고 교집합을 찾는다
@@ -1144,6 +1211,35 @@ public/scripts/balance/shareCard.js   🔴 그림은 전부 여기 — canvas 2D
 
 **근본 해결은 매핑 법안을 늘리는 것**이다 (특히 안보 5건). 그 전까지 % 를 키우지 말 것.
 ⚠️ 매핑이 늘면 이 문서의 실측값도 같이 갱신할 것 — 낡은 `[1%, 59%]` 가 그렇게 남았다.
+
+### 🔴 `/politician` 리스트 뷰는 SSR 하지 않는다 — 그리드 카드에서 JS 가 만든다 (2026-08-24)
+같은 의원 309명을 **그리드 카드와 리스트 행으로 두 벌** 그리고 있었다. 하나는 항상 `display:none` 이다.
+
+| | 전 (두 벌 SSR) | 후 (그리드만) |
+|---|---|---|
+| DOM 노드 | 10,416 | **5,542** — 숨은 뷰가 47% 였다 |
+| origin 바이트 | 1,064KB | **573KB** (brotli 46 → 39KB) |
+| HTML 파싱 | 21.6ms | **12.8ms** (같은 브라우저에서 두 HTML 을 DOMParser 로 7회씩, 중앙값) |
+
+- 🔴 **EJS 에 리스트 행을 다시 넣지 말 것.** `buildListRows()`(politician.ejs 인라인)가 그리드 카드에서 만든다.
+  값은 카드에서 **복제**한다 — 정당 배지·퇴임 칩·일치도 줄은 `cloneNode`, 숫자 둘만 `data-propose`·`data-copropose`.
+  문자열로 다시 만들면 서버가 붙인 클래스·title 이 어긋난다
+- 🔴 **마크업이 JS 에만 있는 게 맞다.** 뷰 전환은 원래 JS 전용(버튼 + `display` 토글)이라 JS 없는 사용자는
+  어차피 그리드만 본다. EJS 와 JS 에 같은 행을 두 벌 두면 그게 갈린다
+  (`_activity_row.ejs` 와 JS `row()` 를 같게 유지해야 하는 그 문제)
+- 🔴 **첫 토글 때 한 번만 만들고 곧바로 `applyFilter()` 를 부른다.** `applyFilter` 가 매번
+  `.pol-item-list` 를 다시 조회하므로 **필터가 걸린 상태에서 처음 열어도** 그리드와 같은 집합·같은 순서가 된다
+  (실측: 국민의힘 + 일치도순으로 진입 후 첫 토글 → 양쪽 111명, 순서 동일)
+- ⚠️ **새 아바타에는 `loading="lazy"` 를 붙인다.** 구 SSR 리스트에는 없었다 (`avatarHtml()` 이 안 붙인다) —
+  lazy 를 존중하는 브라우저에서는 숨은 뷰가 그리드가 미루려던 사진 309장을 전부 끌어왔다는 뜻이다.
+  ⚠️ 다만 **그 델타는 측정하지 못했다** (미리보기 브라우저가 lazy 를 아예 안 미룬다: 화면에 12장인데 309장 전부 로드).
+  덜어낸 건 확실하고 나빠질 일은 없다는 것까지가 확인된 범위다
+- ⚠️ 사진 없는 의원은 `PB.avatarSvg(name, 40)` 로 떨어진다 — `utils/avatar.js` 와 팔레트·해시·이니셜 규칙이 **같다**
+  (한쪽만 고치면 아바타 색이 갈린다). 실측 현재 309명 **전원 사진이 있어** 이 분기는 방어용이다
+- ⚠️ `.list-header` 와 행의 열 폭이 2px 어긋난다 (552 vs 550) — 행에만 `border: 1px` 이 있어서다. **이번 변경 전부터 그랬다**
+- ✅ 실측 2026-08-24: 309행 빌드 **71ms** · 구조 시그니처가 구 SSR 마크업과 동일 · 정당 배지 6종 · 퇴임 칩 · 일치도 줄 정상 ·
+  정당 탭·이름 검색·초성 검색(`ㄱㄷㄱ`)·결과 0(빈 상태 2종)·토글 왕복 3회(행 309 유지, 중복 없음) 전부 그리드와 일치 ·
+  1280px 5열(48/1fr/80/80/110) · 375px 3열(공동·헤더·화살표 숨김, 발의 라벨 노출) · 가로 오버플로 0
 
 ### 🔴 홈 재구성 (2026-08-16) — 뺀 것을 되살리기 전에 이 실측을 읽을 것
 구 홈은 **재고 목록**이었다. 섹션 6개 중 4개가 값을 못 했고 하나는 **틀리게 읽혔다**:
@@ -3253,6 +3349,7 @@ D 레이어 본체. **분석 탭 본문의 전체폭 접힘 띠(`bg-vs-collapsib
 | GET / POST | `/api/ratings/politician/:monacd` | 별점 조회/UPSERT |
 | GET / POST | `/api/votes/bill/:billId` | 국민 찬반 조회/UPSERT |
 | GET / POST | `/api/likes` | 좋아요 토글/카운트 |
+| POST | `/api/balance-game/answers` | **진단 답변 전체를 한 번에** (2026-08-24). 비로그인이면 채점만 하고 `pb.bg` 쿠키 발급 (DB 쓰기 0), 로그인이면 저장·승격 후 쿠키 삭제. 위 「진단은 로그인 없이 푼다」 참조 |
 | GET | `/api/bills/search?q=X` | 법안 검색 (커뮤니티 첨부용) |
 | GET | `/api/bills/trending?sort=recent\|close\|popular\|bipartisan` | 홈 주목할 법안 (정렬 탭 동적 교체) |
 | GET | `/api/bill/:id/analysis-status` | AI 분석 요청 상태 `{count, hasRequested, threshold}` |
@@ -3368,7 +3465,8 @@ PC/모바일 동일 패턴으로 통일.
   - nav 배지(`views/layout.ejs` `.pb-nav-badge`)가 "● 법안 N시간 전 갱신" 렌더에 사용. 모바일(≤768px)은 숨김. `syncBills.js` 의 `ON CONFLICT ... updated_at = NOW()` 가 시각 소스 → 크론 배치가 배지를 실시간으로 갱신
 - `middlewares/balanceGame.js` (2026-04-26)
   - `injectBalanceGameStatus(db)` — 세 값 주입:
-    - `res.locals.balanceGameCompleted` boolean — **누적 모델 기준**: `user_axis_score.packs_completed` 에 `'general'` 포함 → true. 그 외(비로그인·종합팩 미완료·부분 풀이) → false
+    - `res.locals.balanceGameCompleted` boolean — 로그인은 `user_axis_score.packs_completed` 에 `'general'` 포함, **비로그인은 `pb.bg` 쿠키가 완료 상태**면 true (2026-08-24). 그 외(미완료·부분 풀이) → false
+    - `res.locals.isAnonAxis` boolean — 좌표가 쿠키에서 왔다. 화면이 "이 브라우저에만 있습니다" 안내를 붙인다
     - `res.locals.userAxis` `{economy, social, security, institution} | null` — 완료 유저의 4축 좌표
     - `res.locals.userDistanceQuartiles` `{q1, q2, q3} | null` — 의원 295명 거리 분포의 25/50/75 분위수. 단일 `PERCENTILE_CONT` 쿼리 (~수ms), 게임 완료 유저 한정
   - **의원 상세 「나와의 성향 일치」** (객관 착시 방지·D 레이어 본체, 2026-04-26 → **2026-08-15 히어로로 이동**):

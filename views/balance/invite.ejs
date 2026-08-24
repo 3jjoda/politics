@@ -230,13 +230,16 @@
         <a href="/balance-game/share" class="bg-cta">결과 이미지로 공유 →</a>
         <a href="/politician?sort=match-desc" class="bg-cta secondary">가까운 의원 보기</a>
         <a href="/balance-game/compare" class="bg-cta secondary">의원과 비교</a>
+        <%# 🔴 다시 풀기는 12.5px 점선 링크(.bg-actions-links)에 있었다 — 각주로 읽혀서
+            "다시 풀 방법이 없다" 는 지적을 받았다 (2026-08-24). 행동이니 버튼 줄에 둔다 %>
+        <% if (generalPack) { %><a href="/balance-game/respond?pack=<%= generalPack.id %>&amp;redo=1" class="bg-cta secondary">다시 풀기</a><% } %>
         <p class="bg-actions-note">공유 카드에는 좌표와 가까운 의원 3명만 담기고, 닉네임 등 개인정보는 들어가지 않습니다.</p>
         <div class="bg-actions-links">
           <a href="/balance-game/types">유형 9종</a>
-          <% if (generalPack) { %><a href="/balance-game/respond?pack=<%= generalPack.id %>">다시 풀기</a><% } %>
         </div>
       </aside>
     </div>
+    <%- include('_anon_save') %>
   </article>
 <% } %>
 

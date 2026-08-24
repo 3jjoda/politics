@@ -2,6 +2,14 @@
   const genderLabel = ({ male: '남성', female: '여성', other: '그 외' })[user.gender] || '';
   const ageLabel    = user.age_group ? user.age_group.replace('s', '대') : '';
   const demoTag     = [ageLabel, genderLabel].filter(Boolean).join(' · ');
+
+  /* 🔴 이미 진단을 푼 사람에게 "20문항 · 약 5분" 을 보여주지 않는다 (2026-08-24 사용자 보고).
+     비로그인으로 풀고 가입하는 흐름에서 방금 5분을 쓴 사람이 첫 화면에서 또 5분을 요구받았다.
+     ⚠️ 서버는 DB 만 안다. 익명 답변은 localStorage 에 있고 승격은 로그인 뒤 클라이언트가 하므로
+        이 시점엔 아직 DB 에 없을 수 있다 — 아래 인라인 스크립트가 첫 페인트 전에 마저 판정한다 */
+  const _total   = Number(locals.generalTotal) || 20;
+  const _carry   = locals.carry || null;
+  const _mode    = !_carry ? 'new' : (_carry.completed ? 'done' : 'partial');
 %>
 
 <style>
@@ -133,6 +141,15 @@
   }
   .wel-btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
 
+  /* 이미 푼 사람 안내 (2026-08-24) — 기본 안내와 배타적으로 하나만 보인다 */
+  [data-wel-mode="new"]     .wel-only-carry { display: none; }
+  [data-wel-mode="done"]    .wel-only-new,
+  [data-wel-mode="partial"] .wel-only-new   { display: none; }
+  [data-wel-mode="done"]    .wel-only-partial { display: none; }
+  [data-wel-mode="partial"] .wel-only-done    { display: none; }
+  .wel-carry-note { margin: 18px 0 0; font-size: 13px; color: var(--sub2); }
+  .wel-carry-note.is-saved { color: var(--green); }
+
   .wel-skip-note {
     font-size: 12px;
     color: var(--sub2);
@@ -148,20 +165,31 @@
   }
 </style>
 
-<div class="wel-wrap">
+<div class="wel-wrap" data-wel-mode="<%= _mode %>">
   <div class="wel-eyebrow">📊 당말사</div>
   <h1 class="wel-greeting">
     <span class="nick"><%= user.nickname %></span>님,<br>
     환영해요
   </h1>
 
-  <p class="wel-prompt">🎯 5분만 시간 내주실 수 있나요?</p>
-  <span class="wel-time">⏱ 20문항 · 약 5분</span>
+  <div class="wel-only-new">
+    <p class="wel-prompt">🎯 5분만 시간 내주실 수 있나요?</p>
+    <span class="wel-time">⏱ <%= _total %>문항 · 약 5분</span>
+  </div>
+  <div class="wel-only-carry">
+    <p class="wel-prompt wel-only-done">✅ 진단은 벌써 마치셨네요</p>
+    <p class="wel-prompt wel-only-partial">🎯 풀던 진단이 <span data-wel-left><%= _carry ? Math.max(0, _total - _carry.answered) : 0 %></span>문항 남았어요</p>
+    <span class="wel-time">답변 <span data-wel-answered><%= _carry ? _carry.answered : 0 %></span>개를 이 계정으로 옮겼어요</span>
+  </div>
 
   <div class="wel-bullets">
-    <div>
+    <div class="wel-only-new">
       <span class="dot">·</span>
-      <span>20문항으로 당신의 정치 입장이 <strong>4축 좌표</strong>로 그려져요.</span>
+      <span><%= _total %>문항으로 당신의 정치 입장이 <strong>4축 좌표</strong>로 그려져요.</span>
+    </div>
+    <div class="wel-only-carry">
+      <span class="dot">·</span>
+      <span>이제 <strong>다른 기기에서 로그인해도</strong> 결과가 따라와요. 브라우저를 정리해도 사라지지 않아요.</span>
     </div>
     <div>
       <span class="dot">·</span>
@@ -183,13 +211,54 @@
   <p class="wel-mission-sub">하고 한 번 멈춰보는 경험이에요.</p>
 
   <form method="post" action="/auth/welcome" class="wel-actions">
-    <button type="submit" name="choice" value="play" class="wel-btn wel-btn-primary">
+    <button type="submit" name="choice" value="play" class="wel-btn wel-btn-primary wel-only-new">
       지금 풀기 (5분)
+    </button>
+    <button type="submit" name="choice" value="card" class="wel-btn wel-btn-primary wel-only-carry wel-only-done">
+      내 결과 카드 보기 →
+    </button>
+    <button type="submit" name="choice" value="resume" class="wel-btn wel-btn-primary wel-only-carry wel-only-partial">
+      이어서 풀기
     </button>
     <button type="submit" name="choice" value="browse" class="wel-btn wel-btn-secondary">
       둘러보기 먼저
     </button>
   </form>
 
-  <p class="wel-skip-note">스킵해도 언제든 메뉴의 "성향 진단"에서 풀 수 있어요</p>
+  <p class="wel-skip-note wel-only-new">스킵해도 언제든 메뉴의 "성향 진단"에서 풀 수 있어요</p>
+  <p class="wel-carry-note wel-only-carry" id="wel-carry-note">결과는 메뉴의 "성향 진단"에서 다시 볼 수 있어요</p>
 </div>
+
+<script>
+/* 🔴 첫 페인트 **전에** 판정해야 한다 — 나중에 바꾸면 "20문항 · 약 5분" 이 한 번 번쩍인다.
+   그래서 이 스크립트는 위 마크업 바로 뒤에 있고, interactions.js(body 뒤 로드)를 기다리지 않는다.
+   여기서 하는 건 **표시 판정뿐**이다. 실제 승격(localStorage → DB)은 interactions.js 가 한다 —
+   같은 fetch 를 두 곳에 두면 갈린다. */
+(() => {
+  const wrap = document.querySelector('.wel-wrap');
+  if (!wrap) return;
+  const TOTAL = Number(<%= _total %>) || 20;
+
+  if (wrap.dataset.welMode === 'new') {
+    let n = 0;
+    try {
+      const o = JSON.parse(localStorage.getItem('pb.bg.answers') || '{}');
+      if (o && typeof o === 'object' && !Array.isArray(o)) n = Object.keys(o).length;
+    } catch (e) {}
+    if (n > 0) {
+      wrap.dataset.welMode = n >= TOTAL ? 'done' : 'partial';
+      const a = wrap.querySelector('[data-wel-answered]');
+      const l = wrap.querySelector('[data-wel-left]');
+      if (a) a.textContent = String(Math.min(n, TOTAL));
+      if (l) l.textContent = String(Math.max(0, TOTAL - n));
+    }
+  }
+
+  /* 승격이 끝나면 문구를 확정형으로 바꾼다. 실패해도 답변은 브라우저에 남아 다음 화면에서 다시 시도되므로
+     경고를 띄우지 않는다 — 가입 직후 첫 화면이 에러로 시작하면 안 된다 */
+  document.addEventListener('pb:balance-promoted', () => {
+    const note = document.getElementById('wel-carry-note');
+    if (note) { note.textContent = '진단 결과를 계정에 저장했어요'; note.classList.add('is-saved'); }
+  }, { once: true });
+})();
+</script>

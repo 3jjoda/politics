@@ -10,11 +10,21 @@ import PoliticianService from '../services/PoliticianService.js';
 import { AXIS_META, ALL_AXES, MATCH_AXES, POL_MAPPING_VERSION, typeOf, TYPE_LIST, D_CENTER, D_STRONG, AXIS_MID } from '../utils/axisConfig.js';
 import { siteUrl } from '../utils/threadsPost.js';
 import { fmtDate } from '../utils/datetime.js';
+import { readAnonAxis, setAnonAxisCookie, clearAnonAxisCookie } from '../utils/anonAxis.js';
 
 export default (db) => {
     const svc = BalanceGameService(db);
     const politicianService = PoliticianService(db);
     const controller = {};
+
+    /* 🔴 좌표 출처는 둘이다 — 로그인은 DB, 비로그인은 pb.bg 쿠키 (2026-08-24 익명 진단).
+       두 결과는 **같은 모양**이라(utils/anonAxis.js decodeAnonAxis) 아래 화면 넷이 분기하지 않는다.
+       진단을 로그인 뒤에 두었더니 실측 완료자가 3명이었다 — 그 게이트를 걷어낸 자리다. */
+    const resolveAxisScore = async (req) => {
+        const userId = req.session?.userId || null;
+        if (userId) return await svc.getUserAxisScore(userId);
+        return readAnonAxis(req);
+    };
 
     /* ===========================================================
        단계 1 — 게임팩 컬렉션 (`/balance-game`)
@@ -22,11 +32,12 @@ export default (db) => {
     controller.getInvitePage = wrapWithContext(async function getInvitePage(req, res, next) {
         try {
             const userId = req.session?.userId || null;
-            const [packs, axisScore, history] = await Promise.all([
+            const [packs, dbAxis, history] = await Promise.all([
                 svc.listPacks(),
                 userId ? svc.getUserAxisScore(userId) : Promise.resolve(null),
                 userId ? svc.listUserPackHistory(userId) : Promise.resolve([])
             ]);
+            const axisScore = userId ? dbAxis : readAnonAxis(req);
             const completed = svc.isCompleted(axisScore);
 
             /* 🔴 "진행 중" — 응답은 있는데 완료가 아닌 상태. **문항을 교체하면 대량으로 생긴다.**
@@ -35,10 +46,20 @@ export default (db) => {
                이때 화면이 "진단 시작하기" 만 보여주면 **한 번도 안 푼 사람과 구분이 안 돼**
                "나 분명히 했는데?" 가 된다. 남은 문항 수를 알려주고 이어서 풀게 한다. */
             const gh = history.find((h) => h.is_general) || null;
-            const progress = (!completed && gh && gh.response_count > 0)
+            let progress = (!completed && gh && gh.response_count > 0)
                 ? { answered: gh.response_count, total: gh.question_count,
                     left: Math.max(0, gh.question_count - gh.response_count) }
                 : null;
+            /* 비로그인은 응답 이력이 DB 에 없다 — 쿠키의 응답 수로 "이어서 풀기" 를 살린다.
+               ⚠️ 쿠키 total_responses 는 전 게임팩 합계라 주제팩까지 푼 사람은 과대 계상될 수 있다.
+                  종합팩 문항 수로 클램프한다 (21/20 같은 표시 방지) */
+            if (!userId && !completed && axisScore && Number(axisScore.total_responses) > 0) {
+                const gp = packs.find((pk) => pk.is_general) || null;
+                if (gp && gp.question_count > 0) {
+                    const answered = Math.min(Number(axisScore.total_responses), gp.question_count);
+                    progress = { answered, total: gp.question_count, left: Math.max(0, gp.question_count - answered) };
+                }
+            }
             res.render('balance/invite', {
                 pageTitle: '성향 진단',
                 pageStyles: 'balance/invite',
@@ -64,18 +85,23 @@ export default (db) => {
        =========================================================== */
     controller.getRespondPage = wrapWithContext(async function getRespondPage(req, res, next) {
         try {
-            const userId = req.session?.userId;
-            if (!userId) {
-                const next_ = encodeURIComponent(req.originalUrl);
-                return res.redirect(`/auth/login?next=${next_}`);
-            }
+            /* 🔴 로그인을 요구하지 않는다 (2026-08-24). 비로그인은 답변이 localStorage 에 쌓이고
+               화면이 매 응답마다 POST /api/balance-game/answers 로 채점만 받아 온다 — DB 쓰기 0 */
+            const userId = req.session?.userId || null;
             const packId = String(req.query.pack || 'general');
+            /* 🔴 다시 풀기 (2026-08-24). 이게 없으면 완료자는 문항 화면에 못 들어간다 —
+               아래 completed 리다이렉트가 곧바로 결과로 되돌려보내기 때문이다.
+               ⚠️ 답변을 지우지 않는다. 한 문항씩 덮어쓰는 UPSERT 라 중간에 그만두면
+                  고친 데까지만 반영되고 나머지는 옛 답이 남는다 (로그인 경로와 같은 동작) */
+            const redo = req.query.redo === '1';
             const pack = await svc.getPack(packId);
             if (!pack) return res.redirect('/balance-game');
 
             const progress = await svc.getPackProgress(userId, packId);
-            // 이미 모든 문항 답했으면 펼침으로
-            if (progress.completed) return res.redirect('/balance-game/reveal');
+            // 이미 모든 문항 답했으면 펼침으로.
+            // ⚠️ 비로그인은 서버가 답변을 모르므로(localStorage) 이 판정이 항상 false 다 —
+            //    화면이 복원한 뒤 클라이언트가 reveal 로 보낸다
+            if (progress.completed && !redo) return res.redirect('/balance-game/reveal');
 
             res.render('balance/respond', {
                 pageTitle: pack.title,
@@ -86,7 +112,9 @@ export default (db) => {
                 mappingVersion: MAPPING_VERSION,
                 questions: progress.questions,
                 answers: progress.answers,
-                startIndex: progress.next_index
+                startIndex: progress.next_index,
+                isAnon: !userId,
+                redo
             });
         } catch (err) {
             logger.error('밸런스 게임 응답 화면 렌더링 중 에러:', `${err.message}\n${err.stack}`);
@@ -100,12 +128,7 @@ export default (db) => {
        =========================================================== */
     controller.getRevealPage = wrapWithContext(async function getRevealPage(req, res, next) {
         try {
-            const userId = req.session?.userId;
-            if (!userId) {
-                const next_ = encodeURIComponent('/balance-game/reveal');
-                return res.redirect(`/auth/login?next=${next_}`);
-            }
-            const axisScore = await svc.getUserAxisScore(userId);
+            const axisScore = await resolveAxisScore(req);
             if (!svc.isCompleted(axisScore)) {
                 // 종합팩 미완료 → 응답 화면으로
                 return res.redirect('/balance-game/respond?pack=general');
@@ -135,12 +158,7 @@ export default (db) => {
        =========================================================== */
     controller.getComparePage = wrapWithContext(async function getComparePage(req, res, next) {
         try {
-            const userId = req.session?.userId;
-            if (!userId) {
-                const next_ = encodeURIComponent('/balance-game/compare');
-                return res.redirect(`/auth/login?next=${next_}`);
-            }
-            const axisScore = await svc.getUserAxisScore(userId);
+            const axisScore = await resolveAxisScore(req);
             if (!svc.isCompleted(axisScore)) return res.redirect('/balance-game/respond?pack=general');
 
             const user = res.locals.currentUser || null;
@@ -201,12 +219,7 @@ export default (db) => {
        =========================================================== */
     controller.getSharePage = wrapWithContext(async function getSharePage(req, res, next) {
         try {
-            const userId = req.session?.userId;
-            if (!userId) {
-                const next_ = encodeURIComponent('/balance-game/share');
-                return res.redirect(`/auth/login?next=${next_}`);
-            }
-            const axisScore = await svc.getUserAxisScore(userId);
+            const axisScore = await resolveAxisScore(req);
             if (!svc.isCompleted(axisScore)) return res.redirect('/balance-game/respond?pack=general');
 
             const userAxis = {};
@@ -244,12 +257,12 @@ export default (db) => {
     /* ===========================================================
        유형 9종 안내 (`/balance-game/types`) — 2026-08-16
        이름 체계·판정 기준을 화면에 명시한다 (외부 제안 채택). 로그인 없이 볼 수 있고,
-       진단 완료 유저면 내 유형을 강조한다. 데이터는 utils/axisConfig.js 하나에서 온다
+       진단 완료 유저면 내 유형을 강조한다 (비로그인도 — 쿠키 좌표를 같은 헬퍼로 읽는다).
+       데이터는 utils/axisConfig.js 하나에서 온다
        =========================================================== */
     controller.getTypesPage = wrapWithContext(async function getTypesPage(req, res, next) {
         try {
-            const userId = req.session?.userId || null;
-            const axisScore = userId ? await svc.getUserAxisScore(userId) : null;
+            const axisScore = await resolveAxisScore(req);
             const completed = svc.isCompleted(axisScore);
             const my = completed ? typeOf({ economy: Number(axisScore.economy), social: Number(axisScore.social) }) : null;
             res.render('balance/types', {
@@ -319,11 +332,42 @@ export default (db) => {
         }
     });
 
+    /* 답변 전체를 한 번에 — 비로그인 채점 · 로그인 저장/승격 공용 (2026-08-24)
+       🔴 엔드포인트를 하나로 둔 이유: 응답 도중에 다른 탭에서 로그인해도 같은 호출이 알아서
+          DB 저장으로 넘어간다. 둘로 나누면 그 순간 화면이 401 을 맞고 답변을 잃는다.
+       ⚠️ 비로그인 경로는 DB 를 건드리지 않고 세션도 만들지 않는다 —
+          익명 방문자마다 세션 행을 만들면 2026-08-18 에 고친 세션 폭증이 재발한다 */
+    controller.answersApi = wrapWithContext(async function answersApi(req, res, next) {
+        try {
+            const userId = req.session?.userId || null;
+            const { stored, score } = await svc.saveAnswers({ userId, answers: req.body?.answers });
+
+            if (stored) clearAnonAxisCookie(res);      // 승격됐다 — 쿠키는 더 이상 진실이 아니다
+            else        setAnonAxisCookie(res, score);
+
+            res.status(200).json({
+                success: true,
+                stored,
+                completed: svc.isCompleted(score),
+                score: {
+                    economy:     score.economy     == null ? null : Number(score.economy),
+                    social:      score.social      == null ? null : Number(score.social),
+                    security:    score.security    == null ? null : Number(score.security),
+                    institution: score.institution == null ? null : Number(score.institution),
+                    total_responses: Number(score.total_responses || 0)
+                },
+                mapping_version: MAPPING_VERSION
+            });
+        } catch (err) {
+            if (err.code === 'NO_ANSWERS') return res.status(400).json({ error: 'answers 필수' });
+            logger.error('answers API 에러:', `${err.message}\n${err.stack}`);
+            next(err);
+        }
+    });
+
     controller.scoreApi = wrapWithContext(async function scoreApi(req, res, next) {
         try {
-            const userId = req.session?.userId;
-            if (!userId) return res.status(401).json({ error: '로그인이 필요합니다.' });
-            const score = await svc.getUserAxisScore(userId);
+            const score = await resolveAxisScore(req);
             const completed = svc.isCompleted(score);
             res.status(200).json({ score, completed, mapping_version: MAPPING_VERSION });
         } catch (err) {

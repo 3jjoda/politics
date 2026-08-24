@@ -3,6 +3,7 @@ import BalanceGameDao from '../daos/BalanceGameDao.js';
 import logger from '../utils/logger.js';
 
 import { AXIS_META } from '../utils/axisConfig.js';
+import { scoreAnswers, sanitizeAnswers } from '../utils/anonAxis.js';
 export const MAPPING_VERSION = 'v1';
 // 🔴 축 이름·양끝 라벨은 utils/axisConfig.js AXIS_META 가 단일 소스 — 진단 화면과 의원 화면이 같은 말을 해야 한다 (2026-08-16)
 export const AXES = Object.fromEntries(Object.entries(AXIS_META).map(([k, m]) => [k, { label: m.name, left: m.Lx, right: m.Rx }]));
@@ -75,6 +76,43 @@ export default (db) => {
                 score,
                 user_axis_score: score4
             };
+        },
+
+        /* 답변 여러 건을 한 번에 — 비로그인 채점 · 로그인 승격 공용 (2026-08-24)
+           🔴 로그인이면 **DB 에 저장**하고, 아니면 **채점만** 한다. 저장 여부가 유일한 차이라
+              같은 답변이면 로그인 전후 좌표가 같다.
+           ⚠️ 승격(로그인 직후 localStorage 답변을 올리는 것)도 이 경로를 탄다 — 지역구와 같은 패턴 */
+        saveAnswers: async ({ userId, answers }) => {
+            const clean = sanitizeAnswers(answers);
+            if (!clean || Object.keys(clean).length === 0) {
+                const e = new Error('NO_ANSWERS');
+                e.code = 'NO_ANSWERS';
+                throw e;
+            }
+            const [questions, packs] = await Promise.all([
+                dao.listAllActiveQuestions(MAPPING_VERSION),
+                dao.listPacks()
+            ]);
+
+            if (!userId) {
+                // 비로그인 — DB 쓰기 0. 채점 결과만 돌려주고 호출부가 쿠키로 넘긴다
+                return { stored: false, score: scoreAnswers({ questions, answers: clean, packs }) };
+            }
+
+            const byId = new Map(questions.map(q => [q.id, q]));
+            for (const [qid, ans] of Object.entries(clean)) {
+                const q = byId.get(qid);
+                if (!q) continue;                      // 없는·비활성 문항은 조용히 버린다
+                const score = ans === 'A' ? q.option_a_score
+                            : ans === 'B' ? q.option_b_score
+                            : 0;
+                await dao.upsertResponse({
+                    userId, questionId: q.id, packId: q.pack_id, axis: q.axis,
+                    answer: ans, score, mappingVersion: q.mapping_version
+                });
+            }
+            await dao.recomputeUserAxisScore(userId, MAPPING_VERSION);
+            return { stored: true, score: await dao.getUserAxisScore(userId, MAPPING_VERSION) };
         },
 
         /* 게임팩 진행 상태 — 응답한 question_id 셋 / 다음 풀어야 할 인덱스 */

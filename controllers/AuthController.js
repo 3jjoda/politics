@@ -1,5 +1,6 @@
 import AuthService from '../services/AuthService.js';
 import DistrictService from '../services/DistrictService.js';
+import BalanceGameService from '../services/BalanceGameService.js';
 import logger from '../utils/logger.js';
 
 const GOOGLE_ENABLED = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -16,6 +17,8 @@ const resolveNext = (req) => {
 export default (db) => {
     const authService = AuthService(db);
     const districtService = DistrictService(db);   // 내 지역구 (2026-08-23)
+    // 환영 화면이 진단 상태를 물어본다 (익명으로 풀고 가입하는 흐름 — 2026-08-24)
+    const balanceGameService = BalanceGameService(db);
 
     return {
         /* 로그인 페이지 */
@@ -153,11 +156,10 @@ export default (db) => {
                 delete req.session.oauthPending;
                 req.logIn(user, (err) => {
                     if (err) return next(err);
-                    // 신규 가입자는 환영 페이지로. 원래 가려던 next 는 세션에 보존돼
-                    // 환영 페이지의 [지금 풀기]/[둘러보기] 가 처리.
-                    if (req.query.next || (req.session && req.session.authNext)) {
-                        // 명시적 next 가 있으면 보존만 하고 welcome 으로
-                    }
+                    /* 신규 가입자는 환영 페이지로.
+                       ⚠️ next 를 여기서 따라가지 않는다 — 환영 화면이 진단 상태를 보고 목적지를 정한다
+                          (이미 푼 사람 → 결과 카드 / 부분 → 이어서 / 처음 → 문항).
+                          예전엔 여기에 "next 가 있으면 보존" 이라는 **빈 if 문**이 있었다. 아무 일도 안 했다 */
                     res.redirect('/auth/welcome');
                 });
             } catch (err) {
@@ -178,7 +180,13 @@ export default (db) => {
         /* 환영 페이지 (가입 직후 1회 노출)
            - 비로그인 → 홈
            - welcomed_at 이미 NOT NULL → 홈 (1회 노출 보장)
-           - 게임 완료 유저 → 홈 (이미 카드 있는 사람) */
+
+           🔴 **이미 진단을 푼 사람에게 "20문항 · 약 5분" 을 보여주면 안 된다** (2026-08-24 사용자 보고).
+              비로그인으로 풀고 가입하는 흐름이 생기면서(익명 진단) 실제로 그렇게 나왔다 —
+              방금 5분을 쓴 사람에게 첫 화면이 다시 5분을 요구했다.
+           ⚠️ 서버만으로는 판정이 안 된다. 익명 답변은 **localStorage** 에 있고 승격은 로그인 뒤
+              클라이언트가 하므로, 이 페이지를 그릴 때는 아직 DB 에 없을 수 있다.
+              → 서버는 DB 기준(`carry`)만 넘기고, 화면이 localStorage 를 보고 첫 페인트 전에 마저 판정한다 */
         renderWelcome: async (req, res, next) => {
             try {
                 const userId = req.session?.userId || (req.user && req.user.user_id);
@@ -187,11 +195,33 @@ export default (db) => {
                 if (!userRow) return res.redirect('/');
                 if (userRow.welcomed_at) return res.redirect('/');
 
+                // 승격이 이미 끝난 경우(다른 탭에서 먼저 돌았다) DB 로 바로 알 수 있다
+                let carry = null;
+                try {
+                    const bg = balanceGameService;
+                    const [score, pack] = await Promise.all([
+                        bg.getUserAxisScore(userId),
+                        bg.getPack('general')
+                    ]);
+                    const total = pack?.question_count || 0;
+                    if (score && Number(score.total_responses) > 0) {
+                        carry = {
+                            answered: Math.min(Number(score.total_responses), total || Number(score.total_responses)),
+                            total,
+                            completed: bg.isCompleted(score)
+                        };
+                    }
+                } catch (e) {
+                    carry = null;   // 진단 상태를 못 읽어도 환영 화면은 떠야 한다 (기본 안내로 폴백)
+                }
+
                 res.render('auth/welcome', {
                     pageTitle: '환영합니다',
                     pageStyles: 'auth/welcome',
                     currentUrl: '/auth/welcome',
-                    user: userRow
+                    user: userRow,
+                    carry,
+                    generalTotal: carry?.total || 20
                 });
             } catch (err) { next(err); }
         },
@@ -204,8 +234,15 @@ export default (db) => {
                 const userId = req.session?.userId || (req.user && req.user.user_id);
                 if (!userId) return res.redirect('/');
                 await authService.markWelcomed(userId);
+                /* card   : 이미 다 푼 사람 → 결과 카드 (익명으로 풀고 가입한 흐름의 목적지)
+                   resume : 부분만 푼 사람 → 남은 문항부터
+                   play   : 처음 푸는 사람
+                   browse : 나중에 */
                 const choice = String(req.body?.choice || 'browse');
-                const target = choice === 'play' ? '/balance-game/respond?pack=general' : '/';
+                const target = choice === 'card'   ? '/balance-game/reveal'
+                             : choice === 'resume' ? '/balance-game/respond?pack=general'
+                             : choice === 'play'   ? '/balance-game/respond?pack=general'
+                             : '/';
                 res.redirect(target);
             } catch (err) { next(err); }
         },

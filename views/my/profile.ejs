@@ -485,6 +485,8 @@
     const gTotal    = generalPack ? generalPack.question_count : 20;
     const gStarted  = gAnswered > 0;
     const respondUrl = generalPack ? `/balance-game/respond?pack=${generalPack.id}` : '/balance-game';
+    /* 완료자는 그냥 보내면 결과 화면으로 되돌아온다 — 다시 풀기는 ?redo=1 이어야 문항이 열린다 */
+    const redoUrl = generalPack ? `${respondUrl}&redo=1` : '/balance-game';
   %>
   <section class="my-section">
     <div class="my-section-head">
@@ -507,7 +509,7 @@
           <a href="/balance-game/share" class="ax-cta">결과 이미지로 공유 →</a>
           <a href="/politician?sort=match-desc" class="ax-cta secondary">가까운 의원 보기</a>
           <a href="/balance-game/compare" class="ax-cta secondary">의원과 비교</a>
-          <a href="<%= respondUrl %>" class="ax-cta secondary">다시 풀기</a>
+          <a href="<%= redoUrl %>" class="ax-cta secondary">다시 풀기</a>
           <p class="ax-side-note">공유 카드에는 좌표와 가까운 의원 3명만 담기고, 닉네임 등 개인정보는 들어가지 않습니다.
             <a href="/balance-game/types" style="color:var(--accent2);text-decoration:none;font-weight:600">유형 9종 →</a></p>
         </aside>
@@ -545,7 +547,7 @@
                     : status === 'partial'   ? { cls: 'resume', txt: '이어서 풀기' }
                     :                          { cls: 'start',  txt: '시작하기' };
       %>
-        <a class="hist-row <%= status %>" href="/balance-game/respond?pack=<%= p.id %>">
+        <a class="hist-row <%= status %>" href="/balance-game/respond?pack=<%= p.id %><%= status === 'completed' ? '&redo=1' : '' %>">
           <div>
             <div class="hist-title">
               <%= p.title %>

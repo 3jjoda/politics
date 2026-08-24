@@ -50,6 +50,8 @@ export default (db) => {
 
     /* 밸런스 게임 — 응답 저장·점수 조회 */
     router.post('/balance-game/respond', balanceGameController.respondApi);
+    // 답변 전체를 한 번에 — **비로그인도 호출한다** (채점만, DB 쓰기 0). 로그인 상태면 저장·승격까지
+    router.post('/balance-game/answers', balanceGameController.answersApi);
     router.get('/balance-game/score',    balanceGameController.scoreApi);
 
     return router;
