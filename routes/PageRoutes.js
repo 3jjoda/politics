@@ -64,7 +64,9 @@ export default (db) => {
                 pageStyles: 'guide',   // 상단 탭(.gd-tabs) 스타일
                 articleCount: GUIDE_ARTICLES.length,
                 currentUrl: '/guide/glossary',
-                pageDesc: '원안가결·수정가결·대안반영폐기, 대표발의와 공동발의, 기권과 불참의 차이. 국회 데이터를 읽는 데 필요한 용어를 쉬운 말로 설명합니다'
+                /* 🔴 실제 검색어가 「발의 뜻」 이었다 (Search Console 첫 유입, 2026-08-21). 사람들은 `○○ 뜻` 으로 찾는다 —
+                   설명 첫머리를 그 형태에 맞춘다. 제목은 `용어 설명` 그대로 둔다 (검색어를 제목에 욱여넣으면 톤이 깨진다). */
+                pageDesc: '발의·가결·계류·대안반영폐기가 무슨 뜻인지. 대표발의와 공동발의의 차이, 기권과 불참의 차이까지 국회 용어를 쉬운 말로 설명합니다'
             });
         } catch (error) {
             next(error);
@@ -83,7 +85,9 @@ export default (db) => {
                 pageTitle: '읽는 법',
                 pageStyles: 'guide',
                 currentUrl: '/guide',
-                pageDesc: '본회의 반대표는 왜 1%도 안 되는지, 발의 건수는 왜 순위가 아닌지, 성향 좌표는 무엇으로 만들었는지. 당말사의 숫자를 읽는 법을 글 다섯 편으로 정리했습니다',
+                // ⚠️ 편수를 문장에 박지 말 것 — 6~8편을 추가했는데 설명은 "다섯 편" 으로 남아 있었다 (2026-08-21 수정).
+                //    글을 늘리면 자동으로 따라오게 GUIDE_ARTICLES.length 를 쓴다
+                pageDesc: `본회의 반대표는 왜 1%도 안 되는지, 발의 건수는 왜 순위가 아닌지, 성향 좌표는 무엇으로 만들었는지. 당말사의 숫자를 읽는 법을 글 ${GUIDE_ARTICLES.length}편으로 정리했습니다`,
                 articles: GUIDE_ARTICLES
             });
         } catch (error) {
