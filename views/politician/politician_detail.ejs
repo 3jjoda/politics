@@ -1961,8 +1961,11 @@
           <% if (politician.e_mail) { %>
             <div class="full"><dt>이메일</dt><dd class="mono"><%= politician.e_mail %></dd></div>
           <% } %>
-          <% if (politician.homepage) { %>
-            <div><dt>홈페이지</dt><dd><a href="<%= politician.homepage %>" target="_blank" rel="noopener">바로가기 →</a></dd></div>
+          <%# 🔴 externalUrl 을 반드시 거칠 것 — 원천(열린국회 API)의 homepage 일부가 스킴이 없어
+              그대로 href 에 넣으면 `/politician/blog.naver.com/…` 상대경로로 샌다 (utils/externalUrl.js) %>
+          <% const hp = externalUrl(politician.homepage); %>
+          <% if (hp) { %>
+            <div><dt>홈페이지</dt><dd><a href="<%= hp %>" target="_blank" rel="noopener nofollow">바로가기 →</a></dd></div>
           <% } %>
           <% const engSlug = (politician.eng_nm || '').toUpperCase().replace(/\s+/g, ''); %>
           <% if (engSlug) { %>
