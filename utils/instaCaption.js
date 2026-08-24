@@ -12,8 +12,10 @@
  *
  * ⚠️ **인스타 캡션의 URL 은 클릭되지 않는다.** `→ dangmalsa.kr` 처럼 링크 모양으로 써두면
  *    눌러도 아무 일이 안 일어나 안 쓴 것만 못하다. 반드시 "프로필 링크" 로 유도할 것.
- * ⚠️ 첫 2줄만 보이고 나머지는 `... 더 보기` 로 접힌다 → 첫 줄은 **헤드라인**이어야 한다.
- *    날짜를 앞에 두면 가장 비싼 자리를 카드 표지(54px 날짜)와 중복시키는 셈이다.
+ * ⚠️ **첫 2줄만 보이고 나머지는 `... 더 보기` 로 접힌다.** 그 두 줄은 표지 이미지와 **나란히** 보이므로
+ *    표지에 있는 것(날짜·헤드라인·숫자)을 다시 쓰면 보이는 전부가 중복이 된다 — 실제로 그랬다 (2026-08-20 수정).
+ *    첫 줄은 표지에 없는 **주제·건수 티저**, 둘째 줄은 **스와이프 유도**(캐러셀은 넘길수록 노출이 는다).
+ *    쓰레드 image 모드 훅과 같은 규칙이다 (utils/threadsPost.js).
  */
 export function buildCaption(p) {
     const [, mm, dd] = p.briefing_date.split('-');
@@ -21,8 +23,13 @@ export function buildCaption(p) {
     const isEmpty = p.model === 'none';
     const st = p.stats || {};
 
-    // ① 첫 2줄 — 더 보기 이전에 노출되는 전부
-    const L = [p.headline, `${Number(mm)}월 ${Number(dd)}일 국회 기록입니다.`];
+    // ① 첫 2줄 — 더 보기 이전에 노출되는 전부. 표지 이미지와 겹치지 않게 (머리 주석 참조)
+    const threads0 = Array.isArray(p.threads) ? p.threads : [];
+    const teaser = threads0.map((t) => `${t.theme} ${t.bill_count}건`).join(" · ");
+    // ⚠️ 흐름이 없는 날(폴백·활동 없음)은 티저를 못 만든다 — 그때만 헤드라인·날짜로 돌아간다
+    const L = teaser
+        ? [teaser, "넘기면 각각 무슨 법안인지 나옵니다."]
+        : [p.headline, `${Number(mm)}월 ${Number(dd)}일 국회 기록입니다.`];
 
     // ② 숫자 (SQL 집계값)
     const nums = [];
@@ -34,10 +41,9 @@ export function buildCaption(p) {
     if (nums.length) L.push('', nums.join(' · '));
 
     // ③ 흐름 — AI 가 값을 더한 유일한 지점이라 캡션에도 남긴다
-    const threads = Array.isArray(p.threads) ? p.threads : [];
-    if (threads.length) {
+    if (threads0.length) {
         L.push('', '이날의 흐름');
-        threads.forEach((t) => L.push(`· ${t.theme} (${t.bill_count}건): ${t.what}`));
+        threads0.forEach((t) => L.push(`· ${t.theme} (${t.bill_count}건): ${t.what}`));
     }
 
     // ④ 프로필 링크 유도 + 소개와 같은 문장 (계정 전체가 같은 말을 반복해야 정체성이 된다)
