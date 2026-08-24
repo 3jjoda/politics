@@ -34,7 +34,7 @@ export default (db) => {
             res.json({
                 mona_cd: m.mona_cd, name: m.name, party_name: m.party_name,
                 electoral_district: m.electoral_district, reelected: m.reelected,
-                active_yn: m.active_yn,
+                active_yn: m.active_yn, photo_url: m.photo_url,   // 홈 카드가 사진을 그린다 (2026-08-24)
             });
         } catch (err) { logger.error(`지역구 의원 API 실패 — ${err.message}`); next(err); }
     };

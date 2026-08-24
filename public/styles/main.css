@@ -270,7 +270,7 @@ input, textarea, select { font-family: inherit; }
   transition: background 0.2s;
 }
 
-.pb-nav-btn:hover { background: var(--accent2); }
+.pb-nav-btn:hover { background-color: var(--accent2); }
 
 .pb-hamburger {
   display: none;
@@ -598,7 +598,7 @@ input, textarea, select { font-family: inherit; }
   display: inline-flex;
   align-items: center;
 }
-.write-submit:hover { background: var(--accent2); }
+.write-submit:hover { background-color: var(--accent2); }
 .write-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .comment-login-cta {
@@ -929,7 +929,7 @@ body.pb-menu-open { overflow: hidden; }
   font-weight: 600;
   border-bottom: none !important;
 }
-.pb-mobile-auth-cta:hover { background: var(--accent2); }
+.pb-mobile-auth-cta:hover { background-color: var(--accent2); }
 .pb-mobile-user {
   display: flex;
   align-items: center;
@@ -1373,7 +1373,7 @@ body.pb-menu-open { overflow: hidden; }
    ══════════════════════════════════════════════════════════════════════ */
 /* ⚠️ 클래스를 두 번 겹쳐(0,2,0) 특이도를 올린다 — 페이지 CSS 의 `.bill-card`·`.cm-row`(0,1,0)가 padding 을 다시 정해
    셰브론 자리가 사라진다 (실측: bill 24px · community 14px 로 덮였다). (0,1,1) 이라 순서와 무관하게 이긴다. */
-.pb-boxlink.pb-boxlink { position: relative; padding-right: 38px; }
+.pb-boxlink.pb-boxlink { position: relative; padding-right: 38px; cursor: pointer; }
 .pb-boxlink::after {
   content: ''; position: absolute; right: 16px; top: 50%; width: 7px; height: 7px; margin-top: -4px;
   border-right: 2px solid var(--border2); border-top: 2px solid var(--border2);
@@ -1386,10 +1386,10 @@ body.pb-menu-open { overflow: hidden; }
 .pb-boxlink.is-lg::after { right: 20px; width: 8px; height: 8px; margin-top: -5px; }
 
 @media (hover: hover) and (pointer: fine) {
-  .pb-boxlink:hover { background: #FBF5EA; border-color: var(--accent); }
+  .pb-boxlink:hover { background-color: #FBF5EA; border-color: var(--accent); }
   .pb-boxlink:hover::after { border-color: var(--accent2); right: 12px; }
 
-  .pb-boxlink.is-solid:hover { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .pb-boxlink.is-solid:hover { background-color: var(--accent2); border-color: var(--accent2); color: #fff; }
   .pb-boxlink.is-solid:hover * { color: inherit; }
   .pb-boxlink.is-solid:hover::after { border-color: #fff; }
 }
@@ -1418,7 +1418,7 @@ body.pb-menu-open { overflow: hidden; }
   .bd-toc-tab:hover,
   .gd-tabs a:hover {
     color: var(--text);
-    background: #FBF5EA;
+    background-color: #FBF5EA;
     border-bottom-color: var(--border2);
   }
 }
@@ -1447,7 +1447,7 @@ body.pb-menu-open { overflow: hidden; }
     background: var(--accent); color: #fff;
     font-size: 13px; font-weight: 700; text-decoration: none; white-space: nowrap;
 }
-.bg-anon-save-cta:hover { background: var(--accent2); border-color: var(--accent2); }
+.bg-anon-save-cta:hover { background-color: var(--accent2); border-color: var(--accent2); }
 @media (max-width: 560px) {
     .bg-anon-save-cta { width: 100%; justify-content: center; }
 }

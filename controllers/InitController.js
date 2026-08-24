@@ -39,7 +39,7 @@ export default (db) => {
             const userAxis = res.locals.userAxis || null;
             /* 2026-08-16 (2차): 히어로 결론 3숫자 → **무작위 의원 3명의 축 좌표**(정당 평균 눈금 포함)로 교체.
                  숫자 3개는 「숫자로 본 국회」 위 스트립으로 내렸고, `주목할 법안`(getTrending) 섹션은 뺐다 (서비스 메서드는 남김) */
-            const [codes, facts, spotlight, briefing, matches, myMember] = await Promise.all([
+            const [codes, facts, spotlight, briefing, spread, myMember] = await Promise.all([
                 codeService.getList(),
                 billService.getHomeFacts(),
                 /* 🔴 3 → 2 (2026-08-23). 이 블록이 모바일 히어로의 **절반**(750/1,402px)을 먹는데
@@ -47,7 +47,12 @@ export default (db) => {
                    ⚠️ 1명으로 줄이지 말 것 — 비교 대상이 없으면 "정당 평균과 얼마나 다른가" 가 안 읽힌다 */
                 politicianService.getAxisSpotlight(2),
                 briefingService.getFeed(1),
-                politicianService.getTopMatches(userAxis, 3),
+                /* 🔴 `getTopMatches` → `getMatchSpread` (2026-08-24). 한 쿼리로 **가까운 3명과 먼 3명**을 같이 받는다
+                   — 홈에 「나와 다른 의원」 섹션이 생겼기 때문이다 (쿼리 하나 더 돌리지 않는다).
+                   ⚠️ 이 쿼리는 **정당명을 주지 않는다.** 의도된 것이다 — 가까운 쪽과 먼 쪽을 나란히 놓는 화면에서
+                      정당명이 붙으면 "가까운 = ○○당 / 먼 = △△당" 대비 구도로 읽혀 「당 말고 사람」이 무너진다
+                      (공유 카드가 정당을 빼는 것과 같은 규칙). 카드에는 지역구까지만 쓴다. */
+                politicianService.getMatchSpread(userAxis, 3),
                 /* 내 지역구 의원 (2026-08-23). 로그인 + 등록한 사용자만.
                    ⚠️ 실패해도 null 이라 홈은 산다 (DistrictService 가 삼킨다) */
                 districtService.getMember(req.user && req.user.district),
@@ -63,7 +68,10 @@ export default (db) => {
                 myMember,
                 /* 브리핑은 최신 4장만 쓴다 — 피드 전체는 /briefing 이 맡는다 */
                 briefings: (briefing && briefing.posts ? briefing.posts : []).slice(0, 4),
-                matches
+                /* near·far 를 갈라 넘긴다. 좌표가 없거나 실패하면 spread 가 null 이라 빈 배열이 된다 */
+                matches:    spread ? spread.near : [],
+                farMatches: spread ? spread.far  : [],
+                matchTotal: spread ? spread.total : null
             });
         } catch (error) {
             logger.error('홈 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
