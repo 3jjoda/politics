@@ -14,7 +14,7 @@
   font-size: 15px; font-weight: 700; color: var(--sub); text-decoration: none; border-bottom: 2px solid transparent;
 }
 .gd-tabs a small { font-size: 12px; font-weight: 600; color: var(--sub2); }
-.gd-tabs a:hover { color: var(--text); }
+/* hover 는 공용 규칙이 맡는다 (main.css 「밑줄 탭 바의 hover」) — 여기서 다시 정하지 말 것 */
 .gd-tabs a.is-active { color: var(--accent2); border-bottom-color: var(--accent); }
 .gd-tabs a.is-active small { color: var(--accent2); }
 

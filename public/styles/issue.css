@@ -60,7 +60,7 @@
   cursor: pointer;
   transition: all 0.15s;
 }
-.iss-toc-link:hover { color: var(--text); }
+/* hover 는 공용 규칙이 맡는다 (main.css 「밑줄 탭 바의 hover」) — 여기서 다시 정하지 말 것 */
 .iss-toc-link.is-active { color: var(--text); border-bottom-color: var(--accent); }
 
 .iss-kicker { margin: 0 0 6px; font-size: 12.5px; font-weight: 700; letter-spacing: .06em; }

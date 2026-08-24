@@ -69,7 +69,16 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+/* 🔴 `overflow-x: clip` 은 body 만으로는 부족하다 — html 에도 있어야 한다 (2026-08-24).
+   증상: 좁은 폭에서 **가로 스크롤바가 생긴다.** 고정 nav(`.pb-nav`, position: fixed · left/right 0)가
+   클래식 세로 스크롤바가 있는 환경에서 `innerWidth`(스크롤바 포함) 만큼 잡혀 문서보다 넓어진다.
+   실측 390px 창: 문서 390 · nav 401~407 → 가로 오버플로 11~17px. html 에 clip 을 주면 nav 도 390 · 오버플로 0.
+   ⚠️ 폰은 오버레이 스크롤바(폭 0)라 이 증상이 없다 — **창을 좁힌 데스크톱**에서만 난다.
+   ⚠️ `hidden` 이 아니라 **`clip`** 이어야 한다. hidden 은 스크롤 컨테이너를 만들어
+      이 사이트가 곳곳에 쓰는 `position: sticky`(목록 필터바·탭바·목차)를 통째로 깨뜨린다.
+   ⚠️ 문서 단위 가로 스크롤이 필요한 곳은 없다 — 넓은 표·차트는 각자 내부 스크롤을 쓴다
+      (`.status-tabs-inner` · `.xr-svg-box` · `.legal-table-wrap`). */
+html { scroll-behavior: smooth; overflow-x: clip; }
 
 body {
   background: var(--bg);
@@ -1383,4 +1392,33 @@ body.pb-menu-open { overflow: hidden; }
   .pb-boxlink.is-solid:hover { background: var(--accent2); border-color: var(--accent2); color: #fff; }
   .pb-boxlink.is-solid:hover * { color: inherit; }
   .pb-boxlink.is-solid:hover::after { border-color: #fff; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   밑줄 탭 바의 hover — 사이트에 여섯 곳이 있고 전부 같게 반응해야 한다
+
+   🔴 구 hover 는 여섯 곳 모두 `color: var(--sub)` → `var(--text)` **한 단계 밝아지는 게 전부**였다.
+      회색에서 살짝 진해지는 정도라 마우스를 올려도 반응이 있는지 알기 어려웠다 (2026-08-24 지적).
+   → 옅은 골드 배경 + 회색 밑줄 **예고**. 밑줄은 활성 상태(2px 골드)의 미리보기라,
+     "누르면 이게 선택된다" 가 형태로 읽힌다. `.pb-boxlink` 의 골드 반응과 같은 언어다.
+
+   ⚠️ **활성 탭의 골드 밑줄은 그대로 유지된다** — 각 페이지의 `.is-active`/`.active` 규칙이
+      main.css 보다 뒤에 로드돼 같은 특이도에서 이긴다. 여기서 `:not(.is-active)` 를 쓰지 않는 이유다
+      (활성 클래스 이름이 페이지마다 `is-active`·`active` 로 갈린다).
+   ⚠️ 클래스 이름을 여기 모아둔 이유: 여섯 탭 바는 **크기가 서로 다르다**
+      (`/bill` 55px `<a>` vs `/politician` 51px `<button>` — CLAUDE.md 「고정 헤더」 참조).
+      공용 클래스로 묶으면 크기까지 통일돼 버리므로, **hover 만** 이름을 모아 공유한다.
+      새 탭 바를 만들면 이 목록에 이름을 추가할 것.
+   ══════════════════════════════════════════════════════════════════════ */
+@media (hover: hover) and (pointer: fine) {
+  .iss-toc-link:hover,
+  .status-tab:hover,
+  .party-tab:hover,
+  .tab-btn:hover,
+  .bd-toc-tab:hover,
+  .gd-tabs a:hover {
+    color: var(--text);
+    background: #FBF5EA;
+    border-bottom-color: var(--border2);
+  }
 }
