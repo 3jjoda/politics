@@ -36,14 +36,27 @@
     </div>
   </header>
 
-  <%# 🔴 image 모드는 표지 이미지 첨부가 전제다 — 안 붙이면 1번에 헤드라인이 없어 무슨 글인지 모른다 %>
+  <%# 🔴 image 모드는 표지 이미지 첨부가 전제다 — 안 붙이면 1번에 헤드라인이 없어 무슨 글인지 모른다.
+      그래서 **여기서 바로 받게** 한다. 카드 페이지로 보내면 폰에서 탭을 오가다 첨부를 빠뜨린다.
+      🔴 카드 마크업·CSS 를 복사해 오지 않는다 — 같은 출처 iframe 으로 `?slide=1` 을 그대로 물어와
+         `cardShot.js` 가 그 안의 `.sl` 을 찍는다. 복사하면 카드가 바뀔 때 두 곳이 갈린다 %>
   <% if (mode === 'image') { %>
-    <p class="th-imgnote">
-      <b>1번 게시물에 표지 이미지를 첨부하세요.</b>
-      <code><%= coverHint %></code> (<code>npm run insta</code> 가 만듭니다) 또는
-      <a href="/briefing/<%= post.id %>/card?slide=1" target="_blank" rel="noopener">표지 1:1로 열기 ↗</a>.
-      이미지가 날짜·헤드라인·숫자를 이미 보여주므로 1번 텍스트에서는 뺐습니다. <b>안 붙이면 무슨 글인지 알 수 없습니다.</b>
-    </p>
+    <section class="th-cover">
+      <div class="th-cover-box">
+        <iframe class="th-cover-frame" id="th-cover-frame" title="표지 카드 미리보기"
+                src="/briefing/<%= post.id %>/card?slide=1" scrolling="no" loading="eager"></iframe>
+      </div>
+      <div class="th-cover-side">
+        <b>1번 게시물에 이 표지 이미지를 첨부하세요.</b>
+        <p>이미지가 날짜·헤드라인·숫자를 이미 보여주므로 1번 텍스트에서는 뺐습니다. <b>안 붙이면 무슨 글인지 알 수 없습니다.</b></p>
+        <div class="th-cover-act">
+          <button type="button" class="th-btn is-main" id="th-cover-dl">표지 PNG 저장</button>
+          <a class="th-btn" href="/briefing/<%= post.id %>/card#pv-1" target="_blank" rel="noopener">카드 전체 ↗</a>
+        </div>
+        <span class="th-cover-status" id="th-cover-status"></span>
+        <p class="th-cover-alt">배치로 만든 <code><%= coverHint %></code> 를 써도 됩니다.</p>
+      </div>
+    </section>
   <% } %>
 
   <ol class="th-list">
@@ -83,11 +96,28 @@
   .th-head p { font-size: 13.5px; line-height: 1.75; color: var(--sub); margin: 0; word-break: keep-all; }
   .th-head strong { color: var(--text); font-weight: 700; }
 
-  .th-imgnote { margin: 0 0 18px; padding: 12px 14px; background: #FBF5EA; border: 1px solid #E8DCC0;
-                border-radius: 10px; font-size: 13px; line-height: 1.7; color: var(--text); word-break: keep-all; }
-  .th-imgnote code { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #fff;
-                     border: 1px solid #E2DFD4; border-radius: 4px; padding: 1px 6px; }
-  .th-imgnote a { color: #8F5800; font-weight: 700; }
+  /* 표지 카드 — 첨부할 이미지를 보면서 바로 받는 자리 */
+  .th-cover { margin: 0 0 18px; padding: 14px; background: #FBF5EA; border: 1px solid #E8DCC0;
+              border-radius: 10px; display: flex; gap: 16px; align-items: flex-start; }
+  /* 🔴 iframe 은 1080×1350 그대로 두고 **감싼 상자를 줄인다** (transform: scale).
+     iframe 을 작게 잡으면 카드가 그 폭에 맞춰 다시 흐르는 게 아니라 스크롤이 생긴다 */
+  .th-cover-box { flex: 0 0 auto; width: 216px; height: 270px; overflow: hidden;
+                  border-radius: 7px; box-shadow: 0 2px 10px rgba(0,0,0,.14); background: #F7F6F1; }
+  .th-cover-frame { width: 1080px; height: 1350px; border: 0; display: block;
+                    transform: scale(.2); transform-origin: top left; pointer-events: none; }
+  .th-cover-side { min-width: 0; display: flex; flex-direction: column; gap: 8px;
+                   font-size: 13px; line-height: 1.7; color: var(--text); word-break: keep-all; }
+  .th-cover-side p { margin: 0; font-size: 12.5px; color: var(--sub); line-height: 1.7; }
+  .th-cover-act { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+  .th-cover-status { font-size: 12px; color: var(--sub); min-height: 1em; }
+  .th-cover-status.is-err { color: var(--red); }
+  .th-cover-alt code { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: #fff;
+                       border: 1px solid #E2DFD4; border-radius: 4px; padding: 1px 6px; }
+  /* 375px 에서 216px 짜리 미리보기를 옆에 두면 글이 90px 폭이 된다 (실측) → 위아래로 쌓는다 */
+  @media (max-width: 560px) {
+    .th-cover { flex-direction: column; align-items: center; }
+    .th-cover-side { align-self: stretch; }
+  }
   .th-modes { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
   .th-mode { flex: 1 1 240px; text-decoration: none; background: var(--bg2);
              border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px;
@@ -143,6 +173,8 @@
   }
 </style>
 
+<%# 표지 PNG 저장 — 캡처 로직은 public/scripts/cardShot.js (카드 페이지와 **같은 파일**을 쓴다) %>
+<% if (mode === 'image') { %><script src="<%= asset('/scripts/cardShot.js') %>"></script><% } %>
 <script>
 (() => {
   /* 복사는 clipboard API — HTTPS·localhost 에서만 동작한다.
@@ -175,6 +207,26 @@
       if (el) copy(el.textContent, btn);
     });
   });
+
+  // 표지 PNG — iframe 안의 카드를 그대로 찍는다. 폰에서는 공유 시트로 열려 쓰레드 앱에 바로 붙는다
+  const cover = document.getElementById('th-cover-dl');
+  if (cover) {
+    const frame = document.getElementById('th-cover-frame');
+    const status = document.getElementById('th-cover-status');
+    const say = (msg, err) => { status.textContent = msg || ''; status.classList.toggle('is-err', !!err); };
+    cover.addEventListener('click', async () => {
+      const label = cover.textContent;
+      cover.disabled = true; cover.textContent = '저장 중…'; say('');
+      try {
+        const card = await PBCard.frameCard(frame);
+        await PBCard.save(card, '<%= post.briefing_date %>-01.png');
+        say('저장했습니다. 1번 게시물에 첨부하세요.');
+      } catch (e) {
+        console.error('[cardShot]', e);
+        say((e && e.message) || '저장에 실패했습니다', true);
+      } finally { cover.disabled = false; cover.textContent = label; }
+    });
+  }
 
   const all = document.getElementById('th-copy-all');
   all?.addEventListener('click', () => {

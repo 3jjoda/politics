@@ -1,6 +1,7 @@
 // syncBillAiAnalysis.js — Claude Haiku 4.5 기반 법안 AI 분석 배치 (v4 프롬프트)
 //
 // 흐름: bills 에서 미분석 대상 조회 → pal.assembly.go.kr 본문 fetch → Haiku 분석 → bill_ai_analysis UPSERT
+//       크롤이 비면 bills.summary 로 폴백한다 (아래 resolveContent 참조)
 //
 // 사용:
 //   node batch/syncBillAiAnalysis.js                 # 기본 limit=3 dry-run
@@ -17,6 +18,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import dbConfig from '../config/database.js';
 import logger from '../utils/logger.js';
 import { CATEGORIES, CATEGORY_DEFINITIONS, CATEGORY_TIE_BREAKER } from './billCategories.js';
+import { stripSummaryHeading } from '../utils/billSummary.js';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const PROMPT_VERSION = 'v4.1';
@@ -68,6 +70,34 @@ async function fetchBillContent(billId) {
     const text = box.text().replace(/\s+/g, ' ').trim();
     // 본문 첫 줄에 또 "제안이유 및 주요내용" 라벨이 들어있는 경우가 있어서 1회 제거
     return text.replace(/^제안이유\s*및\s*주요내용\s*/, '').trim();
+}
+
+/* 🔴 본문 확보는 2단이다 — 크롤이 비면 bills.summary 로 폴백한다 (2026-08-23)
+   pal.assembly.go.kr 는 **입법예고 페이지**라 철회·폐기된 안의 본문이 빠져 있는 경우가 있다.
+   실측: 박범계 법원조직법 개정안(철회)은 크롤 0자인데 bills.summary 에는 752자가 있다.
+   폴백이 없던 동안 이런 법안은 "본문 없음 — 스킵" 으로 **영영 분석되지 않았다.**
+
+   ⚠️ 두 소스는 같은 문서라는 보장이 없다 (pal = 입법예고 / summary = 열린국회 BPMBILLSUMMARY).
+      둘 다 국회가 낸 "제안이유 및 주요내용" 이지만, 그래서 화면에
+      "AI 가 읽은 원문" 같은 표현을 쓰면 안 된다 — bill_detail 의 원문 대조 섹션 주석 참조.
+   ⚠️ summary 는 99.8%가 "제안이유 및 주요내용" 머리말로 시작한다.
+      stripSummaryHeading 을 반드시 거칠 것 (안 거치면 프롬프트에 라벨이 섞여 들어간다).
+   ⚠️ 어느 소스를 썼는지는 **로그로만** 남는다. DB 에 컬럼을 두지 않았다 —
+      화면이 이미 "동일 문서 보장 없음" 을 전제로 쓰여 있어 구분이 표시를 바꾸지 않는다. */
+const MIN_CONTENT = 50;
+async function resolveContent(bill) {
+    let text = null;
+    try {
+        text = await fetchBillContent(bill.bill_id);
+    } catch (e) {
+        logger.warn(`  본문 크롤 실패 (${e.message.slice(0, 60)}) — bills.summary 로 폴백 시도`);
+    }
+    if (text && text.length >= MIN_CONTENT) return { text, src: '국회 입법예고' };
+
+    const fb = stripSummaryHeading(bill.summary || '').replace(/s+/g, ' ').trim();
+    if (fb.length >= MIN_CONTENT) return { text: fb, src: 'bills.summary 폴백' };
+
+    return { text: null, src: null, crawlLen: text ? text.length : 0 };
 }
 
 // --- 프롬프트 (v4) ---
@@ -333,7 +363,8 @@ async function fetchTargets(pool, args) {
     if (args.billIds.length > 0) {
         const { rows } = await pool.query(
             `SELECT bill_id, bill_no, bill_name, committee, proposer_name,
-                    TO_CHAR(propose_dt, 'YYYY-MM-DD') AS propose_dt, proc_result_name
+                    TO_CHAR(propose_dt, 'YYYY-MM-DD') AS propose_dt, proc_result_name,
+                    summary
                FROM bills
               WHERE bill_id = ANY($1::text[])`,
             [args.billIds]
@@ -370,6 +401,7 @@ async function fetchTargets(pool, args) {
     const { rows } = await pool.query(
         `SELECT b.bill_id, b.bill_no, b.bill_name, b.committee, b.proposer_name,
                 TO_CHAR(b.propose_dt, 'YYYY-MM-DD') AS propose_dt, b.proc_result_name,
+                b.summary,
                 COALESCE(rc.request_count, 0) AS request_count,
                 (a.bill_id IS NOT NULL) AS is_reanalysis
            FROM bills b
@@ -439,13 +471,13 @@ async function run() {
             const tag = `[${i + 1}/${targets.length}]${reqMark}${pendMark}${reMark} ${bill.bill_no} ${String(bill.bill_name).substring(0, 30)}`;
             try {
                 logger.info(`${tag} → 본문 수집 중`);
-                const content = await fetchBillContent(bill.bill_id);
-                if (!content || content.length < 50) {
-                    logger.warn(`${tag} 본문 없음/너무 짧음 (len=${content ? content.length : 0}) — 스킵`);
+                const { text: content, src, crawlLen } = await resolveContent(bill);
+                if (!content) {
+                    logger.warn(`${tag} 본문 없음/너무 짧음 (크롤 ${crawlLen}자 · summary ${(bill.summary || '').length}자) — 스킵`);
                     failed++;
                     continue;
                 }
-                logger.info(`${tag} 본문 ${content.length}자 → Claude 분석 중`);
+                logger.info(`${tag} 본문 ${content.length}자 (${src}) → Claude 분석 중`);
 
                 const { analysis, usage } = await analyzeBill(anthropic, bill, content);
                 const cleaned = postprocessAnalysis(analysis);

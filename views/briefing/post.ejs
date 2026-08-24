@@ -119,6 +119,28 @@
       </section>
     <% } %>
 
+    <%# 브리핑 → 쟁점. **날짜로 이었다** (post.bill_ids 는 대표 5건뿐이라 겹침을 놓친다).
+        뉴스 검색 링크 **위**에 둔다 — 사이트 안에서 더 볼 수 있는 걸 먼저 주고, 밖으로 나가는 링크는 그다음 %>
+    <% if (locals.relatedIssues && relatedIssues.length) { %>
+      <section class="bp-sec">
+        <h2 class="bp-h">이날 움직인 쟁점</h2>
+        <p class="bp-sub">
+          이날 발의된 법안 중 일부는 계속 이어지고 있는 쟁점에 속합니다.
+          그 쟁점이 지금 어디까지 왔는지 모아 둔 페이지가 있습니다.
+        </p>
+        <ul class="bp-issues">
+          <% relatedIssues.forEach((it) => { %>
+            <li>
+              <a href="/issue/<%= it.slug %>">
+                <span class="bp-issue-title"><%= it.title %></span>
+                <span class="bp-issue-n">이날 <%= it.n %>건</span>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } %>
+
     <!-- 키워드 → 뉴스 검색 링크 -->
     <% if (p.newsLinks.length) { %>
       <section class="bp-sec">
@@ -226,6 +248,14 @@
   .bp-party { color: var(--sub2); margin-left: 4px; }   /* 정당은 텍스트로만 — 정당색 안 씀 */
 
   .bp-news { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  /* 이날 움직인 쟁점 — 정당색 금지, 강조는 골드 단색 (사이트 공통) */
+  .bp-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .bp-issues a { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+                 padding: 12px 15px; background: var(--bg2); border: 1px solid var(--border);
+                 border-left: 3px solid var(--accent); border-radius: 8px; text-decoration: none; }
+  .bp-issues a:hover { background: #fff; border-color: var(--border2); }
+  .bp-issue-title { font-size: 14px; font-weight: 800; color: var(--text); }
+  .bp-issue-n { flex: 0 0 auto; font-size: 12px; color: var(--sub); }
   .bp-news-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12.5px; }
   .bp-news-kw { color: #8F5800; background: #FBF5EA; border-radius: 6px; padding: 3px 9px; word-break: keep-all; }
   .bp-news-row a { color: var(--sub); text-decoration: none; border-bottom: 1px solid var(--border2); }

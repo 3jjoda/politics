@@ -157,6 +157,36 @@
     let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
     return Math.abs(h);
   };
+  /* ===== 공용 페이저 (2026-08-23 공용화) =====
+     🔴 페이지마다 복사하지 말 것. 의원 상세에서 두 탭이 각자 페이저를 갖고 있다가 모양이 갈린 적이 있고
+        (2026-08-16 합침), 쟁점 페이지가 세 번째 복사본이 될 뻔했다.
+     ⚠️ 창(window) 방식이라 `1 … 마지막` 을 자동으로 못 보여준다 → **`«` `»` 로 처음·끝 이동**을 준다.
+        (서버 렌더 목록 `/bill`·`/community` 는 전체 번호를 직접 그리므로 이 함수를 쓰지 않는다)
+     ⚠️ `busy` 를 넘길 땐 **먼저 내리고** 호출할 것 — true 로 받으면 버튼을 전부 disabled 로 그린다.
+     box: 컨테이너(.pagination-inline) · cur: 현재 페이지 · pages: 총 페이지 · onGo(p) · busy */
+  PB.renderPager = function (box, cur, pages, onGo, busy) {
+    if (!box) return;
+    box.innerHTML = '';
+    if (pages <= 1) return;
+    var mk = function (label, p, opts) {
+      var b = document.createElement('button');
+      b.className = 'pg' + (opts && opts.active ? ' active' : '');
+      b.textContent = label;
+      b.disabled = !!(opts && opts.disabled) || !!busy;
+      if (opts && opts.title) b.title = opts.title;
+      b.onclick = function () { onGo(p); };
+      box.appendChild(b);
+    };
+    var atFirst = cur === 1, atLast = cur === pages;
+    mk('«', 1, { disabled: atFirst, title: '첫 페이지' });
+    mk('←', Math.max(1, cur - 1), { disabled: atFirst });
+    var start = Math.max(1, cur - 3);
+    var end = Math.min(pages, start + 6);
+    for (var p = start; p <= end; p++) mk(String(p), p, { active: p === cur });
+    mk('→', Math.min(pages, cur + 1), { disabled: atLast });
+    mk('»', pages, { disabled: atLast, title: '마지막 페이지 (' + pages + ')' });
+  };
+
   PB.avatarSvg = (name, size = 32) => {
     const c = AVATAR_PALETTE[hashCode(name || '') % AVATAR_PALETTE.length];
     const fs = Math.floor(size * 0.42);

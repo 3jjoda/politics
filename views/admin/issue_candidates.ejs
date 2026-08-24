@@ -1,0 +1,248 @@
+<%
+  // 관리자 쟁점 후보 — 선정 기준(utils/issues.js)을 실행 가능하게 만드는 화면 (2026-08-23)
+  // 🔴 자동 선정은 안 된다는 게 결론이다. 이 화면은 후보를 **정해주지 않는다** —
+  //    사람이 고를 때 쓰는 재료와 검사기를 준다. 이름 짓기와 최종 판단은 사람 몫이고 이유는 `why` 에 쓴다.
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+%>
+<style>
+  .ad-wrap { max-width: 1100px; margin: 0 auto; padding: calc(var(--nav-h) + 28px) 24px 80px; }
+  .ad-head h1 { font-size: 26px; font-weight: 800; margin: 0 0 8px; }
+  .ad-desc { font-size: 13.5px; color: var(--sub); line-height: 1.7; margin: 0 0 22px; word-break: keep-all; }
+  .ad-desc strong { color: var(--text); }
+  .ad-sec { margin-bottom: 34px; min-width: 0; }
+  .ad-h { font-size: 16px; font-weight: 800; margin: 0 0 6px; }
+  .ad-sub { font-size: 12.5px; color: var(--sub); line-height: 1.75; margin: 0 0 14px; }
+  .ad-sub strong { color: var(--text); }
+
+  .ic-form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .ic-form input { flex: 1 1 320px; padding: 10px 13px; border: 1px solid var(--border2);
+                   border-radius: 8px; font-size: 13.5px; font-family: inherit; }
+  .ic-form button { padding: 10px 20px; border: 1px solid var(--accent); background: var(--accent);
+                    color: #fff; border-radius: 8px; font-size: 13.5px; font-weight: 700;
+                    cursor: pointer; font-family: inherit; }
+  .ic-hint { font-size: 12px; color: var(--sub); margin: 0 0 18px; }
+
+  .ic-checks { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+  .ic-checks li { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center;
+                  padding: 9px 13px; background: var(--bg2); border: 1px solid var(--border);
+                  border-radius: 8px; font-size: 13px; }
+  .ic-checks li.is-ng { border-color: var(--border2); background: var(--bg3); }
+  .ic-mark { font-weight: 800; }
+  .ic-mark.ok { color: var(--accent2); }
+  .ic-mark.ng { color: var(--sub); }
+  .ic-got { font-size: 12.5px; color: var(--sub); }
+  .ic-manual { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding: 9px 13px;
+               border: 1px dashed var(--border2); border-radius: 8px; font-size: 13px;
+               color: var(--sub); line-height: 1.7; }
+
+  .ic-verdict { padding: 12px 16px; border-radius: 8px; font-size: 13.5px; line-height: 1.7;
+                font-weight: 700; margin-bottom: 14px; }
+  .ic-verdict.is-pass { background: #FBF5EA; border: 1px solid var(--accent); color: var(--accent2); }
+  .ic-verdict.is-fail { background: var(--bg3); border: 1px solid var(--border2); color: var(--sub); }
+
+  .ic-scroll { overflow-x: auto; }
+  .ic-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .ic-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border2);
+                 font-size: 11.5px; color: var(--sub); font-weight: 700; white-space: nowrap; }
+  .ic-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .ic-table tr.is-covered td { color: var(--sub2); }
+  .ic-num { text-align: right; font-weight: 700; white-space: nowrap; }
+  .ic-name { font-weight: 700; color: var(--text); overflow-wrap: anywhere; text-decoration: none; }
+  a.ic-name:hover { color: var(--accent2); text-decoration: underline; }
+  .ic-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border: 1px solid var(--border2);
+            border-radius: 999px; font-size: 11px; font-weight: 700; color: var(--sub); white-space: nowrap; }
+
+  .ic-empty { padding: 16px 18px; background: var(--bg3); border: 1px dashed var(--border2);
+              border-radius: 8px; font-size: 12.5px; line-height: 1.85; color: var(--sub); }
+  .ic-empty b { color: var(--text); }
+
+  .ic-cur { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .ic-cur li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; padding: 9px 13px;
+               background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+  .ic-cur a { font-weight: 700; color: var(--text); text-decoration: none; }
+  .ic-cur a:hover { color: var(--accent2); text-decoration: underline; }
+  .ic-cur span { font-size: 12px; color: var(--sub); }
+  .ic-low { color: var(--accent2); font-weight: 700; }
+  .ic-links { margin: 14px 0 0; font-size: 12.5px; }
+  .ic-links a { color: var(--accent2); }
+</style>
+
+<div class="ad-wrap">
+  <div class="ad-head">
+    <h1>쟁점 후보</h1>
+    <p class="ad-desc">
+      <strong>이 화면은 쟁점을 정해주지 않습니다.</strong> 자동 선정이 안 된다는 게 실측 결론이라
+      (신호 셋 중 둘 실패), 사람이 고를 때 쓰는 <strong>재료와 기준 검사기</strong>만 제공합니다.
+      최종 판단과 이름 짓기는 사람이 하고, 그 이유를 <code>utils/issues.js</code> 의 <code>why</code> 에 적어
+      화면에 그대로 노출합니다.
+    </p>
+  </div>
+
+  <%# ── 1. 기준 검사기 ── %>
+  <section class="ad-sec">
+    <h2 class="ad-h">1. 키워드 검사기</h2>
+    <p class="ad-sub">
+      쟁점으로 만들 키워드를 넣으면 선정 기준을 통과하는지 판정합니다. 쉼표로 구분, 최대 6개.
+    </p>
+    <form class="ic-form" method="get" action="/admin/issue-candidates">
+      <input type="text" name="kw" value="<%= kwRaw %>" placeholder="예: 상속세, 증여세" aria-label="키워드">
+      <button type="submit">검사</button>
+    </form>
+    <p class="ic-hint">
+      키워드는 <strong>3글자 이상</strong>이어야 합니다. 2글자는 trigram 인덱스가 안 만들어져 느리고 오탐이 폭증합니다.
+    </p>
+
+    <% if (check && check.error) { %>
+      <div class="ic-verdict is-fail"><%= check.error %></div>
+    <% } else if (check) {
+         const passed = check.checks.every((c) => c.ok); %>
+      <div class="ic-verdict <%= passed ? 'is-pass' : 'is-fail' %>">
+        <%= passed ? '자동 판정 항목을 모두 통과했습니다. 남은 건 사람이 볼 항목입니다.'
+                   : '기준에 걸립니다. 아래 표를 확인하세요.' %><br>
+        법안 <%= nf(check.total) %>건 · 계류 <%= nf(check.pending) %>건 · 정당 <%= check.parties.length %>곳 ·
+        최근 발의 <%= check.lastDate || '없음' %>
+      </div>
+      <ul class="ic-checks">
+        <% check.checks.forEach((c) => { %>
+          <li class="<%= c.ok ? '' : 'is-ng' %>">
+            <span class="ic-mark <%= c.ok ? 'ok' : 'ng' %>"><%= c.ok ? 'O' : 'X' %></span>
+            <span><%= c.label %></span>
+            <span class="ic-got"><%= c.got %></span>
+          </li>
+        <% }); %>
+      </ul>
+      <%# 🔴 제목 항목은 자동 판정하지 않는다. 통과했다고 표시하면 거짓이 된다 %>
+      <div class="ic-manual">
+        <span class="ic-mark ng">?</span>
+        <span>
+          <strong>제목을 법률명·제도명으로 쓸 수 있는가</strong> · 이건 사람만 판단할 수 있어 자동 검사에서 뺐습니다.
+          인물명·사건명으로만 부를 수 있는 주제라면 만들지 않습니다.
+        </span>
+      </div>
+
+      <% if (check.overlaps.length) { %>
+        <p class="ad-sub" style="margin-top:16px">
+          <strong>이미 있는 쟁점과 겹칩니다.</strong>
+          <% check.overlaps.forEach((o) => { %>
+            <a href="/issue/<%= o.slug %>"><%= o.title %></a> <%= nf(o.n) %>건(<%= o.pct %>%)
+          <% }); %>
+          겹침이 크면 새로 만들지 말고 기존 쟁점의 키워드를 넓히는 편이 낫습니다.
+        </p>
+      <% } %>
+
+      <% if (check.topLaws.length) { %>
+        <p class="ad-sub" style="margin-top:16px">
+          <strong>걸리는 법률 (건수 순)</strong> · 무관한 법률이 섞이면 키워드를 좁히세요.
+        </p>
+        <div class="ic-scroll">
+          <table class="ic-table">
+            <thead><tr><th>법률</th><th class="ic-num">건수</th></tr></thead>
+            <tbody>
+              <% check.topLaws.forEach((l) => { %>
+                <tr><td class="ic-name"><%= l.law %></td><td class="ic-num"><%= nf(l.n) %></td></tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    <% } %>
+  </section>
+
+  <%# ── 2. 반대표 신호 ── %>
+  <section class="ad-sec">
+    <h2 class="ad-h">2. 본회의에서 갈린 법안 <span class="ic-got">반대 20표 이상</span></h2>
+    <p class="ad-sub">
+      본회의 반대표는 전체 표결의 <strong>0.66%</strong>뿐입니다. 반대가 나왔다는 건 실제로 의견이 갈렸다는 확정적 증거예요.
+      다만 <strong>이미 표결된 것만</strong> 잡히므로, 계류 중인 뜨거운 주제는 이 신호로 못 찾습니다.
+      인물·사건명 특검법은 제외했습니다.
+    </p>
+    <% if (!opposed.length) { %>
+      <div class="ic-empty">해당하는 법안이 없습니다.</div>
+    <% } else { %>
+      <div class="ic-scroll">
+        <table class="ic-table">
+          <thead>
+            <tr>
+              <th>법안</th><th>위원회</th><th>처리일</th>
+              <th class="ic-num">반대</th><th class="ic-num">찬성</th><th class="ic-num">동명 법안</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% opposed.forEach((b) => { %>
+              <tr class="<%= b.covered ? 'is-covered' : '' %>">
+                <td>
+                  <a class="ic-name" href="/bill/<%= encodeURIComponent(b.bill_id) %>"><%= b.bill_name %></a>
+                  <% if (b.covered) { %><span class="ic-tag">이미 쟁점에 포함</span><% } %>
+                  <div class="ic-got"><%= b.proposer_name %> · <%= b.party_name %></div>
+                </td>
+                <td class="ic-got"><%= b.committee || '' %></td>
+                <td class="ic-got"><%= b.proc_dt || '' %></td>
+                <td class="ic-num"><%= nf(b.no_votes) %></td>
+                <td class="ic-num ic-got"><%= nf(b.yes_votes) %></td>
+                <td class="ic-num ic-got"><%= nf(b.family) %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <%# ── 3. 브리핑 반복 주제 ── %>
+  <section class="ad-sec">
+    <h2 class="ad-h">3. 브리핑이 여러 날 뽑은 주제 <span class="ic-got">2일 이상</span></h2>
+    <p class="ad-sub">
+      브리핑은 매일 그날 법안을 읽고 주제로 묶습니다. 같은 주제가 여러 날 나오면 지속되는 사안이라는 뜻이고, 그게 쟁점 후보입니다.
+    </p>
+    <% if (!themes.length) { %>
+      <%# 🔴 빈 목록을 감추지 않는다. 왜 비었고 언제 채워지는지를 쓴다 (/xray 빈 지표 처리와 같은 판단) %>
+      <div class="ic-empty">
+        <b>아직 반복된 주제가 없습니다.</b><br>
+        브리핑 카드가 쌓여야 나오는 신호입니다. 지금은 카드 수가 적어 주제가 대부분 하루만 등장합니다.
+        카드가 몇 달 쌓이면 여기에 후보가 생깁니다.<br>
+        ⚠️ 주제 이름은 AI가 매일 새로 짓는 자유 문자열이라 표기가 조금만 달라도 다른 주제로 셉니다
+        (<b>전세사기 지원</b> vs <b>전세사기 피해 지원</b>). 즉 이 숫자는 실제보다 <b>적게</b> 나옵니다.
+      </div>
+    <% } else { %>
+      <div class="ic-scroll">
+        <table class="ic-table">
+          <thead><tr><th>주제</th><th class="ic-num">등장 일수</th><th class="ic-num">법안</th><th>기간</th></tr></thead>
+          <tbody>
+            <% themes.forEach((t) => { %>
+              <tr>
+                <td class="ic-name"><%= t.theme %></td>
+                <td class="ic-num"><%= nf(t.days) %></td>
+                <td class="ic-num ic-got"><%= nf(t.bills) %></td>
+                <td class="ic-got"><%= t.first_day %> ~ <%= t.last_day %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <%# ── 4. 현재 쟁점 ── %>
+  <section class="ad-sec">
+    <h2 class="ad-h">4. 지금 있는 쟁점</h2>
+    <p class="ad-sub">
+      해설(AI 분석)이 3건 미만이면 「무엇이 달라지나」가 빈약해집니다.
+      그 쟁점부터 채우는 편이 새 쟁점을 만드는 것보다 낫습니다.
+    </p>
+    <ul class="ic-cur">
+      <% current.forEach((c) => { %>
+        <li>
+          <a href="/issue/<%= c.slug %>"><%= c.title %></a>
+          <span>법안 <%= c.total === null ? '조회 실패' : nf(c.total) + '건' %></span>
+          <span>계류 <%= nf(c.pending) %>건</span>
+          <span class="<%= c.analyzed < 3 ? 'ic-low' : '' %>">
+            해설 <%= nf(c.analyzed) %>건<%= c.analyzed < 3 ? ' · 보충 권장' : '' %>
+          </span>
+        </li>
+      <% }); %>
+    </ul>
+    <p class="ic-links">
+      <a href="/admin/schedule">운영 일정</a> · <a href="/admin/stats">방문 통계</a> · <a href="/issue">쟁점 목록</a>
+    </p>
+  </section>
+</div>

@@ -57,5 +57,10 @@ export default (db) => ({
     updateProfile: async (userId, gender, ageGroup) => {
         const { rows } = await db.query(queries.updateProfile, [userId, gender, ageGroup]);
         return rows[0] || null;
+    },
+    /* 내 지역구. null 이면 등록 해제 */
+    updateDistrict: async (userId, district) => {
+        const { rows } = await db.query(queries.updateDistrict, [userId, district]);
+        return rows[0] || null;
     }
 });

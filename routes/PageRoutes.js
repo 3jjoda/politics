@@ -9,6 +9,7 @@ import MyController from '../controllers/MyController.js';
 import XrayController from '../controllers/XrayController.js';
 import BriefingController from '../controllers/BriefingController.js';
 import ChartController from '../controllers/ChartController.js';
+import IssueController from '../controllers/IssueController.js';
 import { requireLogin } from '../middlewares/auth.js';
 import { GUIDE_ARTICLES, guideBySlug, guideNeighbors } from '../utils/guideArticles.js';
 import BillService from '../services/BillService.js';
@@ -24,6 +25,7 @@ export default (db) => {
     const xrayController = XrayController(db);
     const briefingController = BriefingController(db);
     const chartController = ChartController(db);
+    const issueController = IssueController(db);
     const billService = BillService(db);   // /guide 1편의 살아 있는 숫자(getHomeFacts, 10분 캐시)
 
     // 메인 페이지
@@ -68,6 +70,11 @@ export default (db) => {
             next(error);
         }
     });
+
+    // 쟁점 — 뉴스에서 오가는 사안의 **국회 기록**. 기사를 수집·인용하지 않는다 (utils/issues.js 주석)
+    // ⚠️ /issue/:slug 를 /issue 보다 뒤에 둘 것 (Express 는 먼저 걸리는 라우트가 이긴다)
+    router.get('/issue', issueController.getIndexPage);
+    router.get('/issue/:slug', issueController.getDetailPage);
 
     // 「읽는 법」 — 사람이 쓴 해설 글 (2026-08-19). 목록·메타는 utils/guideArticles.js 단일 소스, 본문은 views/guide/articles/<slug>.ejs
     router.get('/guide', async (req, res, next) => {

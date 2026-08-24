@@ -1,5 +1,6 @@
 import logger from './logger.js';
 import { GUIDE_ARTICLES } from './guideArticles.js';
+import { ISSUES } from './issues.js';
 
 /* sitemap.xml — 크롤러에게 "실제로 색인할 URL" 목록을 명시적으로 준다.
 
@@ -34,6 +35,10 @@ const STATIC_PATHS = [
     /* 「읽는 법」 — 사람이 쓴 해설 글. 목록은 guideArticles.js 가 단일 소스 (2026-08-19) */
     ['/guide',        'monthly', '0.7'],
     ...GUIDE_ARTICLES.map((a) => [`/guide/${a.slug}`, 'monthly', '0.7']),
+    /* 쟁점 — 정의는 utils/issues.js 단일 소스 (2026-08-23).
+       내용이 매일 바뀐다 (새 법안이 키워드에 걸린다) → weekly */
+    ['/issue',        'weekly',  '0.8'],
+    ...ISSUES.map((i) => [`/issue/${i.slug}`, 'weekly', '0.8']),
 ];
 
 /* 상세 페이지 소스.

@@ -1,0 +1,595 @@
+<%# /issue/:slug — 쟁점 상세
+    🔴 **2026-08-23 재구성.** 실측으로 지면 배분이 뒤집혀 있었다 (국민연금 기준):
+         문서 27,247px 중 **법률별 법안 목록이 20,364px = 75%**. 리스트 33개 · 항목 194개.
+       그런데 방문자 관심사에서 "법안 전체 목록" 은 최하위고, 그건 `/bill` 이 이미 하는 일이다.
+       → 목록은 **법률별 요약 표 + 접기(details)** 로 바꾸고, 지면을 아래 순서에 돌려줬다.
+
+    🔴 순서는 방문자가 묻는 순서다:
+         무슨 얘기야(요약) → 어떻게 됐어(결과) → 나한테 뭐가 달라져(영향) → 누가 밀고 있어(의원)
+         → 어떤 법률이야(목록) → 지금도 움직여?(브리핑) → 한계 → 뉴스
+       특히 「무엇이 달라지나」와 「어떻게 됐나」 **사이에 다른 섹션을 끼우지 말 것** — 이어서 읽혀야 한다.
+    🔴 순위를 매기지 않는다. 근거 법률(bill_name)로만 묶는다 (utils/issues.js 주석의 실측 결론).
+    🔴 정당은 표시하되 **정당색을 쓰지 않는다.** 강조는 골드 단색 %>
+<%
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const dot = (d) => (d ? String(d).replace(/-/g, '.') : '');
+  const sig = (topSigners && topSigners.length) ? topSigners[0] : null;
+%>
+<div class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <div>
+      <p class="iss-kicker"><a href="/issue">쟁점</a></p>
+      <h1 class="pb-page-title is-issue"><%= issue.title %></h1>
+      <p class="pb-page-desc"><%= issue.sub %></p>
+    </div>
+  </div>
+</div>
+
+<%# ── 앵커 내비 — 섹션이 8개인데 훑을 수단이 없었다.
+     법안 상세엔 sticky 인덱스, 의원 상세엔 `.ov-toc` 가 있는데 **쟁점만 빠져 있었다** (2026-08-24).
+     🔴 목차는 **JS 가 `data-toc` 를 읽어** 만든다. 섹션 절반이 조건부(bench·impact·people·brief)라
+        SSR 로 적어두면 없는 곳으로 보내는 칩이 생긴다 — 의원 상세 `.ov-toc` 와 같은 판단.
+     🔴 그래서 JS 가 죽으면 목차만 없고 본문은 온전하다. 여기에 내용을 넣지 말 것 ── %>
+<nav class="iss-toc" id="iss-toc" aria-label="쟁점 목차" hidden>
+  <div class="iss-toc-inner"></div>
+</nav>
+
+<div class="iss-wrap">
+  <% if (!stats) { %>
+    <p class="iss-empty">
+      아직 이 쟁점으로 잡히는 법안이 없습니다. 국회에 관련 안이 올라오면 여기에 쌓입니다.
+    </p>
+  <% } else { %>
+
+  <%# ── ① 요약 — 숫자·선정 근거·정당을 한 카드로 (구 3개 블록을 합쳤다) ── %>
+  <section class="iss-sum" id="iss-sec-sum" data-toc="요약">
+    <div class="iss-facts">
+      <div class="iss-fact">
+        <b><%= nf(stats.total) %></b><span>관련 법안</span>
+        <i><%= dot(stats.firstDate) %> ~ <%= dot(stats.lastDate) %></i>
+      </div>
+      <div class="iss-fact">
+        <b><%= nf(stats.pending) %></b><span>아직 계류 중</span>
+        <i>전체의 <%= Math.round(stats.pending / stats.total * 100) %>%</i>
+      </div>
+      <div class="iss-fact">
+        <b><%= nf(stats.signerTotal) %></b><span>이름 올린 의원</span>
+        <i>대표·공동발의 고유 인원</i>
+      </div>
+      <div class="iss-fact">
+        <b><%= nf(stats.lawCount) %></b><span>고치려는 법률</span>
+        <i>같은 쟁점, 다른 법률</i>
+      </div>
+    </div>
+
+    <p class="iss-sum-party">
+      <b>대표발의 정당</b>
+      <% stats.byParty.forEach((p, i) => { %><%= i ? ' · ' : '' %><%= p.label %> <%= p.n %><% }); %>
+    </p>
+
+    <p class="iss-sum-note">
+      <b>이 페이지를 만든 근거</b> <%= issue.why %>
+      쟁점은 법안 활동이 이미 있는 것만 만들고, 기사나 논평은 싣지 않습니다.
+    </p>
+    <p class="iss-sum-note is-warn">
+      법안 건수(대표발의 기준)와 의원 수(한 명이 여러 건에 서명해도 1명)는 세는 단위가 다릅니다.
+      의석수도 정당마다 달라 건수를 그대로 비교하면 오해가 됩니다.
+    </p>
+  </section>
+
+  <%# ── 🔴 킥. 이 페이지의 존재 이유다 (2026-08-23 4차) ──
+       그 전까지 요약 숫자가 전부 **총량**(165건·282명·17법률)이라 "많은 건가 적은 건가" 에 답을 못 했다.
+       총량은 놀랍지 않다. **전체 기준선과 나란히 놓는 순간 사실이 된다.**
+       실측 대비: 촉법소년(위원회 0% · 공동서명 0% · 532일) vs 전세사기(39.2% · 4.9% · 463일).
+       같은 "쟁점" 인데 하나는 아무것도 안 굴러가고 하나는 실제로 통과했다. 그 대비가 정보다.
+       🔴 좋다/나쁘다를 쓰지 말 것. 각주가 왜 그렇게 읽으면 안 되는지 밝힌다 %>
+  <% if (benchmark && benchmark.length) { %>
+    <section class="iss-bench" id="iss-sec-bench" data-toc="굴러가고 있나">
+      <h2 class="iss-h">이 쟁점, 국회에서 굴러가고 있나</h2>
+      <p class="iss-h-sub">
+        같은 숫자라도 전체와 견줘야 뜻이 생깁니다. 국회 전체 법안을 기준선으로 놓았습니다.
+      </p>
+      <ul class="iss-bench-list">
+        <% benchmark.forEach((r) => { %>
+          <li class="iss-bench-row is-<%= r.dir %>">
+            <div class="iss-bench-label">
+              <%= r.label %>
+              <% if (r.detail) { %><span><%= r.detail %></span><% } %>
+            </div>
+            <div class="iss-bench-val">
+              <b><%= r.mine == null ? '—' : r.mine %><i><%= r.unit %></i></b>
+              <% if (r.all != null) { %>
+                <span class="iss-bench-base">전체 <%= r.all %><%= r.unit %></span>
+              <% } %>
+            </div>
+            <div class="iss-bench-diff">
+              <% if (r.diff == null) { %>
+                <span class="iss-bench-na">비교 기준 없음</span>
+              <% } else if (r.dir === 'near') { %>
+                <span>전체와 비슷</span>
+              <% } else { %>
+                <span><%= r.diff > 0 ? '+' : '' %><%= r.diff %><%= r.unit === '%' ? '%p' : r.unit %></span>
+              <% } %>
+            </div>
+          </li>
+        <% }); %>
+      </ul>
+      <p class="iss-bench-note">
+        ⚠️ <strong>어느 쪽이 좋다는 뜻이 아닙니다.</strong>
+        위원회 처리율은 발의가 많을수록 분모가 커져 낮아지고, 두 정당이 같이 이름을 올렸다고 해서
+        합의가 됐다는 뜻도 아닙니다(반대 방향의 안에 각자 서명했을 수도 있습니다).
+        대기 기간도 사안이 복잡하면 길어집니다. 여기 숫자는 <strong>지금 어떤 상태인지</strong>까지만 말합니다.
+      </p>
+    </section>
+  <% } %>
+
+  <%# ── ② 지금까지 어떻게 됐나 ── %>
+  <section class="iss-outcome" id="iss-sec-outcome" data-toc="어떻게 됐나">
+    <h2 class="iss-h">지금까지 어떻게 됐나</h2>
+    <p class="iss-h-sub">발의된 <%= nf(stats.total) %>건이 지금 어디에 있는지입니다.</p>
+
+    <ul class="iss-flow">
+      <% if (outcome.passed.length) { %>
+        <li class="iss-flow-row is-done">
+          <b><%= nf(outcome.passed.length) %>건</b>
+          <div>
+            <strong>본회의를 통과했습니다</strong>
+            <ul class="iss-flow-bills">
+              <% outcome.passedBills.forEach((b) => { %>
+                <li>
+                  <a href="/bill/<%= encodeURIComponent(b.bill_id) %>"><%= b.bill_name %></a>
+                  <span><%= b.proposer_name %> 대표발의<% if (b.proc_dt) { %> · <%= dot(b.proc_dt) %> <%= b.proc_result_name %><% } %></span>
+                </li>
+              <% }); %>
+            </ul>
+          </div>
+        </li>
+      <% } %>
+
+      <% if (outcome.merged.length) { %>
+        <li class="iss-flow-row">
+          <b><%= nf(outcome.merged.length) %>건</b>
+          <div>
+            <strong>위원회가 다른 안에 합쳐서 정리했습니다</strong>
+            <p>
+              사라진 게 아니라 여러 의원의 안을 위원회가 하나로 묶은 것입니다(대안반영폐기).
+              <%# 🔴 이 한계를 지우지 말 것 — 실측: 전체 18,830건 중 이름에 '(대안)' 이 들어간 법안 0건.
+                     원천(열린국회 API)이 의원발의만 주고 위원장 대안을 주지 않는다 %>
+              <em>다만 어떤 대안으로 합쳐졌는지는 이 사이트 데이터로 확인할 수 없습니다.
+              국회가 공개하는 목록에 위원장 대안이 들어 있지 않습니다.</em>
+              <a href="/guide/how-a-bill-moves">법안이 가는 길 →</a>
+            </p>
+          </div>
+        </li>
+      <% } %>
+
+      <% if (outcome.dropped.length) { %>
+        <li class="iss-flow-row">
+          <b><%= nf(outcome.dropped.length) %>건</b>
+          <div><strong>발의자가 거둬들였습니다</strong><p>본회의를 거치지 않고 철회된 건입니다.</p></div>
+        </li>
+      <% } %>
+
+      <% if (outcome.killed.length) { %>
+        <li class="iss-flow-row">
+          <b><%= nf(outcome.killed.length) %>건</b>
+          <div><strong>부결되거나 폐기됐습니다</strong></div>
+        </li>
+      <% } %>
+
+      <% if (outcome.other.length) { %>
+        <li class="iss-flow-row">
+          <b><%= nf(outcome.other.length) %>건</b>
+          <div><strong>그 밖의 처리</strong><p><%= outcome.otherLabels.join(' · ') %></p></div>
+        </li>
+      <% } %>
+
+      <% if (outcome.pending.length) { %>
+        <li class="iss-flow-row is-pending">
+          <b><%= nf(outcome.pending.length) %>건</b>
+          <div>
+            <strong>아직 심사 중입니다</strong>
+            <p>
+              발의만 된 상태로, 아무것도 정해지지 않았습니다.
+              <% if (outcome.longestWait) { %>
+                가장 오래 기다린 법안은 <strong><%= nf(outcome.longestWait) %>일째</strong>입니다.
+              <% } %>
+            </p>
+          </div>
+        </li>
+      <% } %>
+    </ul>
+  </section>
+
+  <%# ── ③ 무엇이 달라지나 — ②와 이어서 읽혀야 한다. 사이에 다른 섹션을 끼우지 말 것 ── %>
+  <% if (impacts && impacts.length) {
+       const done = impacts.filter((x) => x.passed);
+       const todo = impacts.filter((x) => !x.passed); %>
+    <section class="iss-impact" id="iss-sec-impact" data-toc="무엇이 달라지나">
+      <h2 class="iss-h">무엇이 달라지나</h2>
+      <p class="iss-h-sub">
+        해설이 있는 <strong><%= impacts.length %>건</strong>에서 뽑았습니다
+        (전체 <%= nf(stats.total) %>건 중). 나머지는 아직 해설이 없어 여기 나오지 않습니다.
+      </p>
+
+      <%# 🔴 **접지 않는다.** 이 섹션은 읽히는 게 목적이라 details 로 감추면 안 읽힌다
+           (법안 목록과 성격이 다르다 — 거긴 "전부 공개" 가 목적이라 접는 게 맞았다).
+           대신 **카드는 앞 3장까지만, 나머지는 헤드라인 한 줄**로 낸다.
+           그러면 "이 쟁점에서 어떤 변화들이 제안됐나" 는 **전부 스캔되고**(한 줄 ≈ 32px),
+           자세히는 법안 상세(5-Zone)에서 본다. 해설이 20건이 돼도 섹션이 늘어지지 않는다.
+           🔴 「이미 바뀌었습니다」는 **전부 카드로** 낸다 — 확정된 변화라 수가 적고(실측 0~2건)
+              이 쟁점에서 실제로 일어난 일이라 가장 중요하다 %>
+      <%# 🔴 **카드는 2장까지다** (2026-08-23 4차). 이 섹션은 `bill_ai_analysis` 의 changes·affected 를
+           옮겨온 **파생 콘텐츠**라, 지면의 38%를 차지하면 쟁점 페이지가 "AI 분석 법안으로 가는 링크 모음" 으로 읽힌다
+           (사용자 지적). 이 페이지에만 있는 것은 집계(요약·어떻게 됐나·의원·법률 표·브리핑)인데 그쪽이 조용해서 묻혔다.
+           → 카드 2장은 **표본을 보여주는 역할**까지만 하고, 나머지는 제목 한 줄. 자세히는 법안 상세에서.
+           ⚠️ 1장으로 줄이지 말 것 — 하나는 우연처럼 보이고 둘이라야 "이런 식의 변화들" 로 읽힌다.
+           ⚠️ 「이미 바뀌었습니다」는 캡을 안 건다 (확정된 변화 · 실측 0~3건).
+
+           🔴 **`affected.direct` 를 빈도 집계하는 안은 데이터에서 무너졌다** (실측 2026-08-23).
+              AI 가 법안마다 표기를 달리 써서 `전세사기피해자`·`전세사기피해임차인`·`전세임차인` 이 전부 별개다.
+              괄호·공백 제거까지 해도 전세사기 30→21, **국민연금 27→27(전혀 안 합쳐짐)**.
+              쟁점 단위 요약을 만들려면 AI 를 한 번 더 부르는 수밖에 없고, 그러면 파생이 더 늘어난다.
+              집계로 풀려고 다시 시도하기 전에 이 실측부터 볼 것 %>
+      <% const CARDS = 2; %>
+      <% [['이미 바뀌었습니다', done, 'is-done', done.length], ['통과되면 이렇게 바뀝니다', todo, '', CARDS]].forEach(([label, list, cls, cardN]) => { %>
+        <% if (list.length) {
+             const shown = list.slice(0, cardN);
+             const rest = list.slice(cardN); %>
+          <h3 class="iss-impact-h <%= cls %>"><%= label %> <em><%= list.length %>건</em></h3>
+          <ul class="iss-impact-list">
+            <% shown.forEach((x) => { %>
+              <li class="iss-impact-card <%= cls %>">
+                <a class="iss-impact-title" href="/bill/<%= encodeURIComponent(x.bill_id) %>"><%= x.headline %></a>
+                <p class="iss-impact-meta">
+                  <%= x.bill_name %> · <%= x.proposer_name %> 대표발의<% if (x.passed && x.proc_dt) { %> · <%= dot(x.proc_dt) %> <%= x.proc_result_name %><% } %>
+                </p>
+                <dl class="iss-impact-diff">
+                  <dt>지금은</dt><dd><%= x.current %></dd>
+                  <dt><%= x.passed ? '바뀌어서' : '바뀌면' %></dt><dd><%= x.revised %></dd>
+                </dl>
+                <dl class="iss-impact-side">
+                  <% if (x.benefit) { %><dt>좋아지는 쪽</dt><dd><%= x.benefit %></dd><% } %>
+                  <% if (x.loss) { %><dt>부담지는 쪽</dt><dd><%= x.loss %></dd><% } %>
+                </dl>
+                <% if (x.who.length) { %>
+                  <p class="iss-impact-who">
+                    <span>영향 받는 사람</span>
+                    <% x.who.forEach((w) => { %><b><%= w %></b><% }); %>
+                  </p>
+                <% } %>
+              </li>
+            <% }); %>
+          </ul>
+          <% if (rest.length) { %>
+            <p class="iss-impact-restlede">
+              나머지 <%= rest.length %>건은 제목만 추렸습니다. 무엇이 달라지는지는 법안을 누르면 나옵니다.
+            </p>
+            <ul class="iss-impact-rest">
+              <% rest.forEach((x) => { %>
+                <li>
+                  <a href="/bill/<%= encodeURIComponent(x.bill_id) %>">
+                    <span class="iss-impact-rest-title"><%= x.headline %></span>
+                    <span class="iss-impact-rest-meta"><%= x.proposer_name %></span>
+                  </a>
+                </li>
+              <% }); %>
+            </ul>
+          <% } %>
+        <% } %>
+      <% }); %>
+
+      <p class="iss-impact-note">
+        ⚠️ 이 칸은 <strong>AI가 법안 원문을 읽고 정리한 것</strong>이라 사실과 다를 수 있습니다.
+        「좋아지는 쪽 · 부담지는 쪽」은 법안이 의도하는 방향이지 실제 결과가 아닙니다.
+        법안 이름을 누르면 국회 원문과 대조할 수 있습니다.
+      </p>
+    </section>
+  <% } %>
+
+  <%# ── ④ 누가 이름을 올렸나 — 쟁점에서 의원으로 가는 유일한 길 ── %>
+  <% if (topSigners && topSigners.length) { %>
+    <section class="iss-people" id="iss-sec-people" data-toc="누가 냈나">
+      <h2 class="iss-h">이 쟁점에 이름을 많이 올린 의원</h2>
+      <p class="iss-h-sub">
+        이름을 올린 <%= nf(sig.total_signers) %>명 중 상위 <%= topSigners.length %>명입니다.
+        중앙값은 <strong><%= nf(sig.median_n) %>건</strong>이라, 그보다 많이 올린 사람이 여기 보입니다.
+      </p>
+      <ul class="iss-people-list">
+        <% topSigners.forEach((s) => { %>
+          <li>
+            <%# 🔴 퇴임 의원은 politicians 조인이 비어 상세가 404 다. 링크를 걸지 않는다 %>
+            <% if (s.name) { %>
+              <a href="/politician/<%= encodeURIComponent(s.mona_cd) %>">
+                <span class="iss-people-name"><%= s.name %></span>
+                <span class="iss-people-meta"><%= s.party_name %><% if (s.electoral_district) { %> · <%= s.electoral_district %><% } %></span>
+                <span class="iss-people-n"><%= nf(s.n) %>건</span>
+              </a>
+            <% } else { %>
+              <span class="is-retired">
+                <span class="iss-people-name">(퇴임)</span>
+                <span class="iss-people-meta"><%= s.mona_cd %></span>
+                <span class="iss-people-n"><%= nf(s.n) %>건</span>
+              </span>
+            <% } %>
+          </li>
+        <% }); %>
+      </ul>
+      <p class="iss-people-note">
+        ⚠️ <strong>공동발의는 이름을 올린 것이지 얼마나 기여했는지와 다릅니다.</strong>
+        순위표가 아니고, 많이 올렸다고 더 적극적이라는 뜻도 아닙니다.
+        같은 쟁점에 반복해서 이름이 보인다는 사실까지만 읽어 주세요.
+      </p>
+    </section>
+  <% } %>
+
+  <%# ── ⑤ 어떤 법률을 고치려 하나 — 요약 표는 보이고, 법안 165건은 접는다 ── %>
+  <section class="iss-laws" id="iss-sec-laws" data-toc="어떤 법률">
+    <h2 class="iss-h">어떤 법률을 고치려 하나</h2>
+    <p class="iss-h-sub">
+      같은 쟁점이라도 손대는 법률이 다르고, 같은 법률 안에서도 바꾸려는 내용이 서로 다릅니다.
+    </p>
+
+    <div class="iss-scroll">
+      <table class="iss-lawtable">
+        <thead><tr><th>법률</th><th>건수</th><th>계류</th><th>기간</th></tr></thead>
+        <tbody>
+          <% groups.forEach((g) => {
+               const pend = g.bills.filter((b) => !b.proc_result_name).length;
+               const ds = g.bills.map((b) => b.propose_dt).filter(Boolean).sort(); %>
+            <tr>
+              <td class="iss-lawtable-name"><%= g.law %></td>
+              <td class="iss-num"><%= nf(g.bills.length) %></td>
+              <td class="iss-num iss-dim"><%= nf(pend) %></td>
+              <td class="iss-dim"><%= dot(ds[0]) %> ~ <%= dot(ds.at(-1)) %></td>
+            </tr>
+          <% }); %>
+          <% if (singles.length) { %>
+            <tr>
+              <td class="iss-lawtable-name iss-dim">한 건씩 있는 법률</td>
+              <td class="iss-num"><%= nf(singles.length) %></td>
+              <td class="iss-num iss-dim"><%= nf(singles.filter((b) => !b.proc_result_name).length) %></td>
+              <td class="iss-dim">종류 <%= nf(singles.length) %>가지</td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <%# 🔴 접는 것이지 숨기는 게 아니다. details 라 JS 없이 동작하고 검색엔진도 본문으로 읽는다.
+         🔴 **안쪽은 법률별 묶음이 아니라 평면 목록 + 페이징이다** (2026-08-23) —
+            "어떤 법률에 몰렸나" 는 위 요약 표가 이미 답하므로 안에서 또 묶을 이유가 없고,
+            165행을 통째로 SSR 하면 페이로드가 그대로다. 첫 20행만 SSR 하고 나머지는 API 로 가져온다.
+         ⚠️ 아래 행 마크업과 스크립트의 `row()` 는 **같아야 한다** — 다르면 1페이지와 2페이지가 달라 보인다 %>
+    <details class="iss-all" id="iss-all">
+      <summary>법안 <%= nf(stats.total) %>건 전체 보기</summary>
+      <p class="iss-all-note">
+        키워드가 본문에 들어간 법안을 모은 것이라, 쟁점을 정면으로 다루는 안과 절차상 스쳐 지나가는 언급이 함께 잡힙니다.
+        위 법률 표와 함께 보시면 구분이 쉽습니다.
+      </p>
+      <ul class="iss-bills" id="iss-all-list">
+        <% bills.slice(0, 20).forEach((b) => { %>
+          <li class="iss-bill<%= b.has_analysis ? ' has-analysis' : '' %>">
+            <a href="/bill/<%= encodeURIComponent(b.bill_id) %>">
+              <div class="iss-bill-top">
+                <span class="iss-bill-date"><%= dot(b.propose_dt) %></span>
+                <span class="iss-bill-who"><%= b.proposer_name || '(대표발의자 미상)' %></span>
+                <% if (b.party_name) { %><span class="iss-bill-party"><%= b.party_name %></span><% } %>
+                <span class="iss-bill-status"><%= b.proc_result_name || '계류' %></span>
+                <span class="iss-bill-co">공동 <%= nf(b.co_count) %>명</span>
+                <% if (Number(b.vote_count) > 0) { %><span class="iss-bill-vote">본회의 표결</span><% } %>
+              </div>
+              <p class="iss-bill-name"><%= b.bill_name %></p>
+              <p class="iss-bill-body">
+                <% if (b.has_analysis && b.ai_summary) { %>
+                  <span class="iss-bill-tag">해설</span><%= b.ai_summary %>
+                <% } else if (b.raw_summary) { %>
+                  <%= summaryPreview(b.raw_summary, 130) %>
+                <% } else { %>
+                  <span class="iss-bill-none">본문이 공개되지 않은 법안입니다</span>
+                <% } %>
+              </p>
+            </a>
+          </li>
+        <% }); %>
+      </ul>
+      <p class="iss-all-status" id="iss-all-status">
+        <%= nf(Math.min(20, stats.total)) %>건 / 전체 <%= nf(stats.total) %>건
+      </p>
+      <div class="pagination-inline" id="iss-all-pager"></div>
+    </details>
+  </section>
+
+  <%# 페이징 — 첫 페이지는 SSR 이라 진입 시 요청 0회. 열어도 페이지를 넘겨야 요청이 나간다 %>
+  <script>
+  (function () {
+    var SLUG = <%- JSON.stringify(issue.slug) %>;
+    var TOTAL = <%= stats.total %>;
+    var PER = 20;
+    var list = document.getElementById('iss-all-list');
+    var pager = document.getElementById('iss-all-pager');
+    var status = document.getElementById('iss-all-status');
+    if (!list || !pager) return;
+    var pages = Math.max(1, Math.ceil(TOTAL / PER));
+    var cur = 1, busy = false;
+
+    var esc = function (v) {
+      return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    };
+    var nf = function (n) { return Number(n || 0).toLocaleString('ko-KR'); };
+    /* ⚠️ 위 EJS 행 마크업과 같아야 한다. 하나만 고치면 1페이지와 2페이지가 달라 보인다 */
+    var row = function (b) {
+      var top = '<span class="iss-bill-date">' + esc(String(b.propose_dt || '').replace(/-/g, '.')) + '</span>'
+        + '<span class="iss-bill-who">' + esc(b.proposer_name || '(대표발의자 미상)') + '</span>'
+        + (b.party_name ? '<span class="iss-bill-party">' + esc(b.party_name) + '</span>' : '')
+        + '<span class="iss-bill-status">' + esc(b.proc_result_name || '계류') + '</span>'
+        + '<span class="iss-bill-co">공동 ' + nf(b.co_count) + '명</span>'
+        + (b.vote_count > 0 ? '<span class="iss-bill-vote">본회의 표결</span>' : '');
+      var body = b.body
+        ? (b.has_analysis ? '<span class="iss-bill-tag">해설</span>' : '') + esc(b.body)
+        : '<span class="iss-bill-none">본문이 공개되지 않은 법안입니다</span>';
+      return '<li class="iss-bill' + (b.has_analysis ? ' has-analysis' : '') + '">'
+        + '<a href="/bill/' + encodeURIComponent(b.bill_id) + '">'
+        + '<div class="iss-bill-top">' + top + '</div>'
+        + '<p class="iss-bill-name">' + esc(b.bill_name) + '</p>'
+        + '<p class="iss-bill-body">' + body + '</p>'
+        + '</a></li>';
+    };
+
+    var draw = function () { PB.renderPager(pager, cur, pages, go, busy); };
+    var go = function (p) {
+      if (busy || p === cur) return;
+      busy = true; draw();
+      list.setAttribute('aria-busy', 'true');
+      PB.fetch('/api/issue/' + encodeURIComponent(SLUG) + '/bills?page=' + p)
+        .then(function (d) {
+          cur = d.page;
+          list.innerHTML = d.bills.map(row).join('');
+          var from = (cur - 1) * PER + 1;
+          status.textContent = from + '~' + (from + d.bills.length - 1) + '건 / 전체 ' + nf(d.total) + '건';
+        })
+        .catch(function () { status.textContent = '불러오지 못했습니다. 잠시 후 다시 시도해 주세요.'; })
+        .finally(function () {
+          busy = false; draw();
+          list.removeAttribute('aria-busy');
+          document.getElementById('iss-all').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    };
+    /* ⚠️ PB 는 body 뒤에 로드된다 → 즉시 그리지 말고 DOMContentLoaded 를 기다린다 */
+    if (window.PB) draw();
+    else document.addEventListener('DOMContentLoaded', draw);
+  })();
+  </script>
+
+  <%# ── ⑥ 지금도 움직이나 (브리핑) ── %>
+  <% if (locals.briefings && briefings.length) { %>
+    <section class="iss-brief" id="iss-sec-brief" data-toc="최근 움직임">
+      <h2 class="iss-h">최근 이 쟁점이 움직인 날</h2>
+      <p class="iss-h-sub">
+        국회 브리핑은 하루 단위로 그날 발의된 법안을 정리합니다. 이 쟁점의 법안이 있었던 날입니다.
+      </p>
+      <ul class="iss-brief-list">
+        <% briefings.forEach((b) => { %>
+          <li>
+            <a href="/briefing/<%= b.id %>">
+              <span class="iss-brief-date"><%= dot(b.briefing_date) %></span>
+              <span class="iss-brief-head"><%= b.headline %></span>
+              <span class="iss-brief-n">이 쟁점 <%= b.n %>건</span>
+            </a>
+          </li>
+        <% }); %>
+      </ul>
+      <p class="iss-brief-more"><a href="/briefing">국회 브리핑 전체 보기 →</a></p>
+    </section>
+  <% } %>
+
+  <%# ── ⑦ 한계 — 🔴 지우지 말 것. 없으면 이 페이지가 "검증된 쟁점 기록" 으로 읽힌다 ── %>
+  <section class="pb-caveat" id="iss-sec-caveat" data-toc="한계">
+    <h2 class="pb-caveat-h">이 페이지가 말하지 않는 것</h2>
+    <ul>
+      <li>
+        <strong>반대하는 쪽의 기록은 구조적으로 적습니다.</strong> 제도를 바꾸자는 사람은 법안을 내지만,
+        지금대로 두자는 사람은 낼 이유가 없습니다. 법안이 많다고 그 방향이 우세하다는 뜻이 아닙니다.
+      </li>
+      <li>
+        <strong>발의는 시작일 뿐입니다.</strong> 계류 중인 법안은 아직 아무것도 정해지지 않았고,
+        국회에 올라온 법안 4건 중 3건은 통과되지 않습니다.
+        <a href="/guide/why-so-few-no-votes">반대표는 왜 1%도 안 될까 →</a>
+      </li>
+      <li>
+        <strong>특정 인물·사건을 다루는 특별검사법·국정조사 관련 법안은 뺐습니다.</strong>
+        이름 자체가 한쪽 프레임이 되기 때문입니다. 숨긴 것이 아니라 단위가 달라서이고,
+        <a href="/bill">법안 목록</a>에서 그대로 볼 수 있습니다.
+      </li>
+    </ul>
+    <%# 뉴스 검색 링크를 각주 안에 뒀다 — 섹션 하나를 줄이면서도 "기사를 안 고른다" 는 선언은 남는다 %>
+    <% if (newsLinks && newsLinks.length) { %>
+      <p class="iss-news-line">
+        <b>관련 뉴스</b>
+        이 사이트는 기사를 수집하거나 고르지 않습니다. 검색 링크만 드리니 어떤 매체를 볼지는 직접 정하세요.
+        <% newsLinks.forEach((n) => { %>
+          <a href="<%= n.naver %>" target="_blank" rel="noopener noreferrer nofollow">네이버 “<%= n.keyword %>” ↗</a>
+        <% }); %>
+      </p>
+    <% } %>
+  </section>
+
+  <% } %>
+</div>
+
+<%# ── 목차 동작 — 의원 상세 `.ov-toc` 와 같은 방식이다. 고칠 일이 생기면 두 곳을 같이 볼 것 ── %>
+<script>
+(function () {
+  var toc = document.getElementById('iss-toc');
+  var secs = Array.prototype.slice.call(document.querySelectorAll('.iss-wrap [data-toc]'));
+  if (!toc || secs.length < 2) return;          /* 한 개짜리는 목차가 아니다 */
+  var inner = toc.querySelector('.iss-toc-inner');
+
+  /* 고정 크롬 높이.
+     🔴 `--nav-h` 는 반응형이다 (데스크톱 100 · 모바일 60). 60 을 하드코딩하지 말 것 —
+        데스크톱에서 섹션 머리가 nav 뒤로 들어간다 (sticky 오프셋 4곳에서 이미 겪은 함정). */
+  var navH = function () {
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 60;
+  };
+  var offset = function () { return navH() + toc.offsetHeight; };
+
+  /* 🔴 `pinned` — 문서 바닥에 크램프되는 섹션들을 위한 것이다. 지우지 말 것.
+     마지막 두어 섹션이 짧으면 **둘 다 마지막 화면 안에 들어와** 어떤 스크롤 위치로도 갈리지 않는다
+     (실측 1280×720 · 전세사기: `최근 움직임` 이 활성선에 영영 못 온다 → 눌러도 `한계` 가 켜졌다).
+     스크롤만 보는 순수 함수로는 원리적으로 구분이 안 되므로, **누른 칩을 기억**해서 바닥 구간에서만 존중한다.
+     ⚠️ 바닥이 아닐 땐 `pinned` 를 보지 않는다 — 평소 추적을 방해하면 안 된다. */
+  var pinned = -1;
+
+  var links = secs.map(function (sec, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'iss-toc-link';
+    b.textContent = sec.dataset.toc;
+    b.addEventListener('click', function () {
+      pinned = i;
+      var y = sec.getBoundingClientRect().top + window.pageYOffset - offset() - 12;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      sync();                                  /* 부드러운 스크롤이 끝나기 전에도 누른 칩이 켜지게 */
+    });
+    inner.appendChild(b);
+    return b;
+  });
+
+  /* 활성 추적 — IntersectionObserver 의 좁은 활성 띠는 **짧은 마지막 섹션을 못 잡는다.**
+     DOM 순서대로 훑어 "고정 크롬 아래로 들어온 마지막 섹션" 을 고른다 (법안·의원 상세와 같은 방식). */
+  var ticking = false;
+  var sync = function () {
+    ticking = false;
+    var line = offset() + 16;
+    var idx = 0;
+    for (var i = 0; i < secs.length; i++) {
+      if (secs[i].getBoundingClientRect().top <= line) idx = i;
+    }
+    /* 누른 칩의 섹션이 화면에서 사라졌으면 기억을 버린다 (사용자가 딴 데로 갔다는 뜻) */
+    if (pinned >= 0) {
+      var pr = secs[pinned].getBoundingClientRect();
+      if (!(pr.bottom > line && pr.top < window.innerHeight)) pinned = -1;
+    }
+    /* 페이지 끝 — 짧은 마지막 섹션들은 활성선에 영영 못 온다.
+       누른 칩이 아직 보이면 그걸, 아니면 마지막을 켠다 */
+    if (window.innerHeight + window.pageYOffset >= document.documentElement.scrollHeight - 4) {
+      idx = pinned >= 0 ? pinned : secs.length - 1;
+    }
+    for (var j = 0; j < links.length; j++) links[j].classList.toggle('is-active', j === idx);
+  };
+  window.addEventListener('scroll', function () {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(sync);
+  }, { passive: true });
+  window.addEventListener('resize', function () { if (!ticking) { ticking = true; requestAnimationFrame(sync); } });
+
+  /* 🔴 첫 표시에 `requestAnimationFrame` 을 쓰지 말 것 — 배경 탭·비가시 상태에서는 콜백이
+     아예 안 돌아 **활성 칩이 하나도 없는 채로** 뜬다 (의원 상세에서 실제로 그렇게 나왔다).
+     rAF 는 위 scroll throttle 에만 — 거기선 "렌더링을 안 하면 갱신할 것도 없다" 가 참이다. */
+  toc.hidden = false;
+  sync();
+})();
+</script>

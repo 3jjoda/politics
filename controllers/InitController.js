@@ -2,6 +2,7 @@ import CodeService from '../services/CodeService.js';
 import BillService from '../services/BillService.js';
 import BriefingService from '../services/BriefingService.js';
 import PoliticianService from '../services/PoliticianService.js';
+import DistrictService from '../services/DistrictService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
@@ -9,6 +10,7 @@ export default (db) => {
     const codeService = CodeService(db);
     const billService = BillService(db);
     const politicianService = PoliticianService(db);
+    const districtService = DistrictService(db);   // 내 지역구 의원 (2026-08-23)
     const briefingService = BriefingService(db);
     const controller = {};
 
@@ -37,12 +39,18 @@ export default (db) => {
             const userAxis = res.locals.userAxis || null;
             /* 2026-08-16 (2차): 히어로 결론 3숫자 → **무작위 의원 3명의 축 좌표**(정당 평균 눈금 포함)로 교체.
                  숫자 3개는 「숫자로 본 국회」 위 스트립으로 내렸고, `주목할 법안`(getTrending) 섹션은 뺐다 (서비스 메서드는 남김) */
-            const [codes, facts, spotlight, briefing, matches] = await Promise.all([
+            const [codes, facts, spotlight, briefing, matches, myMember] = await Promise.all([
                 codeService.getList(),
                 billService.getHomeFacts(),
-                politicianService.getAxisSpotlight(3),
+                /* 🔴 3 → 2 (2026-08-23). 이 블록이 모바일 히어로의 **절반**(750/1,402px)을 먹는데
+                   무작위라 재방문 가치가 낮다. 2명이면 "사람마다 다르다" 는 그대로 보이고 250px 를 돌려준다.
+                   ⚠️ 1명으로 줄이지 말 것 — 비교 대상이 없으면 "정당 평균과 얼마나 다른가" 가 안 읽힌다 */
+                politicianService.getAxisSpotlight(2),
                 briefingService.getFeed(1),
-                politicianService.getTopMatches(userAxis, 3)
+                politicianService.getTopMatches(userAxis, 3),
+                /* 내 지역구 의원 (2026-08-23). 로그인 + 등록한 사용자만.
+                   ⚠️ 실패해도 null 이라 홈은 산다 (DistrictService 가 삼킨다) */
+                districtService.getMember(req.user && req.user.district),
             ]);
 
             res.render('index', {
@@ -52,6 +60,7 @@ export default (db) => {
                 initialData: { CODES: codes },
                 facts,
                 spotlight,
+                myMember,
                 /* 브리핑은 최신 4장만 쓴다 — 피드 전체는 /briefing 이 맡는다 */
                 briefings: (briefing && briefing.posts ? briefing.posts : []).slice(0, 4),
                 matches

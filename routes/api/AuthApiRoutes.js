@@ -14,6 +14,7 @@ export default (db) => {
 
     // 성별·연령대 변경 (마이페이지)
     router.put('/profile', requireLogin, c.updateProfile);
+    router.put('/district', requireLogin, c.updateDistrict);   // 내 지역구 등록·변경
 
     // 회원 탈퇴 (익명화)
     router.delete('/withdraw', requireLogin, c.withdraw);

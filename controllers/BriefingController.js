@@ -3,6 +3,7 @@
 // 1단계: 데이터만. AI 호출 0회.
 
 import BriefingService from '../services/BriefingService.js';
+import IssueService from '../services/IssueService.js';
 import PoliticianService from '../services/PoliticianService.js';
 import { buildThreadsChain, THREADS_LIMIT, siteUrl } from '../utils/threadsPost.js';
 import { buildCaption } from '../utils/instaCaption.js';
@@ -264,6 +265,7 @@ export async function loadShortPerson(politicianService, monaCd) {
 
 export default (db) => {
     const briefingService = BriefingService(db);
+    const issueService = IssueService(db);   // 브리핑 → 쟁점 연결 (그날 법안이 어느 쟁점에 걸리나)
     const politicianService = PoliticianService(db);
     const controller = {};
 
@@ -309,7 +311,13 @@ export default (db) => {
                 });
             }
 
+            // 🔴 그날 발의된 법안이 어느 쟁점에 걸리는지. **날짜로 잇는다** —
+            //    post.bill_ids 는 대표 5건뿐이라 그걸로 매칭하면 겹침을 크게 놓친다
+            //    (실측 bill_ids 9/32 카드 → 날짜 19/32). 실패해도 [] 라 브리핑은 산다
+            const relatedIssues = await issueService.getIssuesForDate(post.briefing_date);
+
             res.render('briefing/post', {
+                relatedIssues,
                 pageTitle: post.headline,
                 pageStyles: null,
                 /* 🔴 '/briefing' 으로 두면 안 된다 (2026-08-19 수정) — layout 의 canonical 이 currentUrl 을 쓰므로

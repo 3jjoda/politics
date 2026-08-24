@@ -108,8 +108,15 @@ export default (db) => {
                 attend !== null ? `본회의 표결 참여 ${attend}%` : null,
             ].filter(Boolean).join(' · ') + '. 발의·표결·발언 기록으로 보는 22대 국회의원 활동';
 
+            /* 제목에 정당·지역구를 붙인다 (2026-08-21) — 이름만으로는 검색결과에서 동명이인·타 사이트와
+               구분이 안 되고, 이 309장은 (법안 상세와 달리) 전부 색인 대상이다.
+               ⚠️ pageDesc 와 재료가 겹치지만 제목은 SERP 한 줄, 설명은 그 아래 두 줄이라 역할이 다르다 */
             res.render('politician/politician_detail', {
-                pageTitle: politician.name,
+                // 괄호로 묶는다 — 브랜드 꼬리(`· 당말사 · 당 말고 사람`)도 `·` 라 그냥 이으면 점 사슬이 된다
+                pageTitle: (() => {
+                    const meta = [politician.party_name, politician.electoral_district].filter(Boolean).join(' · ');
+                    return meta ? `${politician.name} 의원 (${meta})` : `${politician.name} 의원`;
+                })(),
                 pageStyles: 'politician/politician_detail',
                 currentUrl: `/politician/${monaCd}`,
                 pageDesc,

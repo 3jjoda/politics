@@ -1257,3 +1257,84 @@ body.pb-menu-open { overflow: hidden; }
   .pb-footer-inner { flex-direction: column; text-align: center; }
   body { font-size: 14px; }
 }
+
+/* ===== 공용 페이저 `.pagination-inline` (2026-08-23 공용화) =====
+   🔴 JS 는 `PB.renderPager` 하나다. 페이지마다 복사하지 말 것 —
+      의원 상세에서 두 탭이 각자 페이저를 갖고 있다가 모양이 갈린 적이 있고(2026-08-16),
+      쟁점 페이지가 세 번째 복사본이 될 뻔했다. 마크업은 `<div class="pagination-inline">` 하나면 된다. */
+.pagination-inline { display: flex; justify-content: center; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+.pagination-inline .pg {
+    width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg2); color: var(--sub); font-size: 13px; cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+}
+.pagination-inline .pg.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pagination-inline .pg:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ===== 「말하지 않는 것」 — 해석 주의·한계 각주 (2026-08-24 공용화) =====
+   이 사이트의 차별점은 "데이터가 많다" 가 아니라 **"무엇을 모르는지 밝힌다"** 다.
+   그런데 그 문구를 담는 클래스가 여섯 갈래로 흩어져 있었다 —
+   `gd-caveat`(8곳) · `iss-caveat` · `kpi-caveat` · `pf-caveat` · `sp-caveat` · `pv-basis`.
+   같은 역할의 글이 자리마다 다르게 그려지면 **브랜드 장치가 아니라 그때그때의 잔소리로 읽힌다.**
+
+   🔴 **두 층이다. 하나로 합치지 말 것:**
+
+   |        | `.pb-caveat`              | `.pb-note`            |
+   |--------|---------------------------|-----------------------|
+   | 형태   | 박스 (제목 필수)          | 평문                  |
+   | 자리   | 페이지·글 **끝**          | 숫자 **바로 아래**    |
+   | 역할   | "이 페이지가 말하지 않는 것" | 그 숫자의 **전제**  |
+
+   인라인 각주를 박스로 승격하면 안 된다 — **숫자에서 떨어지는 순간 전제가 아니게 된다.**
+   실제로 `.kpi-caveat` 는 KPI 행에 붙이려고 음수 마진(-14px)까지 쓰고 있다.
+   그래서 `.pb-note` 는 **타이포만** 정하고 위치·여백은 각 자리의 local class 가 그대로 갖는다.
+
+   ⚠️ 쓰는 법 — 기존 클래스를 지우지 말고 **나란히** 붙인다: `class="pb-note kpi-caveat"`.
+      main.css 가 페이지 인라인 <style> 보다 먼저 로드되므로, 같은 특이도면 자리 쪽 규칙이 자연히 이긴다.
+      (반대로 하면 못 이긴다 — `.ba-proposers-grid` 5→2열에서 겪은 특이도 함정과 같은 계열) */
+
+/* ── 박스형 — 페이지·글 끝의 「말하지 않는 것」 ── */
+.pb-caveat {
+  margin: 30px 0 0;
+  padding: 18px 20px;
+  background: var(--bg3);
+  border: 1px dashed var(--border2);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--sub);
+  word-break: keep-all;
+}
+/* 제목은 필수다. 클래스를 안 붙여도 상자 안 헤딩이면 잡히게 둔다 (도입 마찰을 없앤다) */
+.pb-caveat-h,
+.pb-caveat > h2,
+.pb-caveat > h3 { margin: 0 0 10px; font-size: 14px; font-weight: 800; color: var(--text); }
+.pb-caveat ul { margin: 0; padding-left: 20px; }
+.pb-caveat li { margin-bottom: 6px; }
+.pb-caveat li:last-child { margin-bottom: 0; }
+.pb-caveat strong { color: var(--text); font-weight: 700; }
+/* 🔴 링크를 반드시 칠할 것 — 전역 규칙이 `a` 를 color:inherit + text-decoration:none 으로 두기 때문에
+   안 칠하면 각주 안의 링크가 **본문과 구분되지 않는다.** 실제로 `/issue` 각주의 링크 두 개가
+   그 상태였다 (2026-08-24 발견). 색은 골드 — 이 사이트의 링크는 파랑이 아니다 */
+.pb-caveat a { color: var(--accent2); text-decoration: underline; text-underline-offset: 3px; }
+/* ⚠️ 폭 넓은 페이지(/issue 는 1000px)에서 한 줄이 90자를 넘는다. 한글 정독 최적이 45~50자라 묶는다.
+   /guide 는 본문이 720px 라 이 값이 안 걸린다 (기존 렌더 그대로) */
+.pb-caveat li, .pb-caveat > p { max-width: 700px; }
+
+/* ── 인라인 — 숫자 바로 아래의 전제 ── */
+/* ⚠️ 12px 은 이 사이트의 **문장형 설명 하한**이다 (2026-08-16 대비 감사). 더 내리지 말 것 —
+   "빼면 숫자가 곧바로 오해가 된다" 고 못박아 둔 문구가 가장 안 읽히게 그려지고 있었다 */
+/* ⚠️ `margin`·`padding-left` 를 **`.pb-note` 자신**(0,1,0)에 둔다.
+   🔴 `ul.pb-note`(0,1,1) 같은 복합 선택자를 쓰지 말 것 — 지역 클래스 `.pf-caveat`(0,1,0)를 이겨버려
+      위에 적어둔 "자리 규칙이 이긴다" 계약이 깨진다. 실제로 그렇게 썼다가 `margin-top: 14px` 이
+      전부 0 이 됐다 (2026-08-24, 실측으로 잡음).
+   ⚠️ ul 기본 padding(40px)을 끄는 게 목적이다 — 안 끄면 li 의 margin-left 와 더해져 들여쓰기가 갈린다
+      (실제로 `.pf-caveat` 14px vs `.sp-caveat` 54px 였다). UA 기본값이라 이 정도 특이도로 충분하다 */
+.pb-note {
+  margin: 0; padding-left: 0;
+  font-size: 12px; line-height: 1.7; color: var(--sub2); word-break: keep-all;
+}
+.pb-note strong { color: var(--sub); font-weight: 700; }
+.pb-note ul, .pb-note ol { margin: 0; padding-left: 0; }   /* 중첩 목록 */
+.pb-note li { margin-left: 14px; }
+.pb-note a { color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; }

@@ -91,6 +91,54 @@
         발의 랭킹(`.politician*`)·월별 추이는 함께 제거했다. 되살리기 전에
         CLAUDE.md "홈 재구성" 항목의 실측(같은 그림 20번 / 기록 2건 / 처리 지연 오해)을 읽을 것. */
 
+  /* ===== 내 지역구 의원 (.mine-*) (2026-08-23) =====
+     🔴 정당색을 쓰지 않는다 (사이트 공통). 강조는 골드 단색.
+     ⚠️ 무작위 3명(.spot) **위**에 온다 — 등록한 사람에겐 홈에서 가장 먼저 볼 것이다 */
+  /* 🔴 카드는 div 다 — 안에 `변경` 버튼이 있어야 해서 <a> 로 감쌀 수 없다 (중첩 인터랙티브 금지) */
+  .mine { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+          margin: 0 0 14px; padding: 14px 18px; background: var(--bg2);
+          border: 1px solid var(--border); border-left: 3px solid var(--accent);
+          border-radius: 10px; }
+  .mine[hidden] { display: none; }
+  .mine:hover { background: #fff; border-color: var(--border2); }
+  .mine-body { text-decoration: none; }
+  .mine-edit { padding: 4px 11px; border: 1px solid var(--border2); background: var(--bg3);
+               color: var(--sub); border-radius: 999px; font-size: 12px; font-weight: 700;
+               cursor: pointer; font-family: inherit; white-space: nowrap; }
+  .mine-edit:hover { border-color: var(--accent); color: var(--accent2); background: #FBF5EA; }
+  .mine-cap { font-size: 11.5px; font-weight: 800; letter-spacing: .04em; color: var(--accent2);
+              white-space: nowrap; }
+  .mine-body { flex: 1 1 auto; min-width: 0; }
+  .mine-body b { font-size: 17px; font-weight: 800; color: var(--text); }
+  .mine-meta { display: block; margin-top: 2px; font-size: 12.5px; color: var(--sub); overflow-wrap: anywhere; }
+  .mine-go { font-size: 12.5px; font-weight: 700; color: var(--accent2); white-space: nowrap; text-decoration: none; }
+  .mine-go:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* 미등록 — 비로그인 포함. JS 가 목록을 받아 채운 뒤 hidden 을 푼다 (JS 없으면 아예 안 보인다)
+     🔴 **첫 행동이라 눈에 띄어야 한다** (2026-08-23). 실측: 미등록 첫 화면(812px)에 행동 요소가 8개인데
+        장벽이 가장 낮은 `지역구 고르기` 가 487px 아래에 점선 상자로 있었다.
+        성향 진단은 로그인 + 20문항인데 완료가 3명뿐이다 — 지역구는 클릭 두 번이다. */
+  .mine-pick { margin: 0 0 14px; padding: 15px 18px; background: #FBF5EA;
+               border: 1px solid var(--accent); border-radius: 10px; }
+  .mine-pick[hidden] { display: none; }
+  .mine-pick-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .mine-pick-open { padding: 7px 16px; border: 1px solid var(--accent); background: var(--accent);
+                    color: #fff; border-radius: 999px; font-size: 13px; font-weight: 700;
+                    cursor: pointer; font-family: inherit; }
+  .mine-pick-open:hover { background: var(--accent2); border-color: var(--accent2); }
+  .mine-pick-sub { margin: 4px 0 0; font-size: 12.5px; color: var(--sub); line-height: 1.7; }
+  .mine-pick-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .mine-pick-form[hidden] { display: none; }
+  .mine-pick-form select { flex: 1 1 240px; min-width: 0; max-width: 100%; padding: 7px 9px;
+                           border: 1px solid var(--border2); border-radius: 6px; font-size: 13px;
+                           background: var(--bg2); color: var(--text); font-family: inherit; }
+  .mine-pick-form button { padding: 7px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 700;
+                           cursor: pointer; font-family: inherit;
+                           border: 1px solid var(--accent); background: var(--accent); color: #fff; }
+  .mine-pick-form button#mine-cancel { background: var(--bg2); color: var(--sub); border-color: var(--border2); }
+  .mine-pick-msg { margin: 6px 0 0; font-size: 12px; color: var(--sub); }
+  .mine-pick-msg:empty { display: none; }
+
   /* ===== 히어로 우측 — 무작위 의원 3명의 축 좌표 (.spot-*) (2026-08-16 2차) =====
      막대 문법은 의원 상세 `.pv-band` 와 같다 (왼끝 L · 오른끝 R · 골드 점 = 의원). 여기선 비교 대상이 "나" 가 아니라
      **소속 정당 평균**이라 눈금(세로 선)으로 그린다. 정당색 금지 — 골드·무채색만 */
@@ -326,6 +374,164 @@
         </a>
       <% } %>
     </div>
+
+    <%# ===== 내 지역구 의원 (2026-08-23) =====
+        🔴 개인화 진입점이 **성향 진단(20문항)뿐**이었는데 실측 완료자가 3명이다.
+           지역구는 로그인 후 클릭 두 번이라 장벽이 압도적으로 낮고, "당 말고 사람" 축에 정확히 맞는다
+           (내가 뽑은 사람이 지금 뭐 하고 있나).
+        🔴 **무작위 3명 위**에 둔다 — 등록한 사람에겐 이게 홈에서 가장 먼저 볼 것이다.
+        ⚠️ 로그인 안 했으면 아무것도 그리지 않는다 (홈에 로그인 유도를 하나 더 붙이지 않는다).
+           등록 안 한 로그인 사용자에게만 한 줄 CTA %>
+    <%# ===== 내 지역구 의원 (2026-08-23) =====
+        🔴 상태 셋을 한 컨테이너가 관리한다: **미등록(피커) / 등록됨(카드) / 변경중(피커)**.
+           카드만 그리고 끝내면 **바꿀 방법이 없다** — 특히 비로그인은 `/my` 에 못 가므로
+           localStorage 를 직접 지우지 않는 한 영영 못 바꾼다 (사용자 지적).
+        🔴 카드를 `<a>` 로 감싸지 않는다 — 안에 `변경` 버튼을 넣어야 하는데 중첩 인터랙티브가 안 된다
+           (`.same-name-chip` 에서 겪은 것과 같은 제약). 컨테이너는 div, 링크는 안쪽 `<a>` 하나.
+        ⚠️ 서버 렌더 카드와 JS 가 그리는 카드의 **마크업이 같아야 한다** — 다르면 로그인/비로그인이 달라 보인다 %>
+    <div class="mine-wrap" id="mine-wrap"
+         data-logged-in="<%= locals.currentUser ? '1' : '' %>"
+         data-district="<%= locals.currentUser && locals.myMember ? myMember.electoral_district : '' %>">
+
+      <% if (locals.currentUser && locals.myMember) { const mm = myMember; %>
+        <div class="mine" id="mine-card">
+          <span class="mine-cap">내 지역구 의원</span>
+          <a class="mine-body" href="/politician/<%= encodeURIComponent(mm.mona_cd) %>">
+            <b><%= mm.name %></b>
+            <span class="mine-meta"><%= mm.party_name %> · <%= mm.electoral_district %><% if (mm.reelected) { %> · <%= mm.reelected %><% } %></span>
+          </a>
+          <a class="mine-go" href="/politician/<%= encodeURIComponent(mm.mona_cd) %>">기록 보기 →</a>
+          <button type="button" class="mine-edit" id="mine-change">변경</button>
+        </div>
+      <% } else { %>
+        <div class="mine" id="mine-card" hidden></div>
+      <% } %>
+
+      <%# 피커 — 항상 마크업에 있고 JS 가 상태에 따라 연다 (JS 없으면 아예 안 보인다) %>
+      <div class="mine-pick" id="mine-pick" hidden>
+        <div class="mine-pick-head">
+          <span class="mine-cap">내 지역구 의원</span>
+          <button type="button" class="mine-pick-open" id="mine-open">지역구 고르기</button>
+        </div>
+        <p class="mine-pick-sub" id="mine-sub">내가 뽑은 사람이 지금 어떻게 일하고 있는지 홈에서 바로 봅니다.</p>
+        <form class="mine-pick-form" id="mine-form" hidden>
+          <select id="mine-select" aria-label="지역구"><option value="">불러오는 중…</option></select>
+          <button type="submit">저장</button>
+          <button type="button" id="mine-cancel">취소</button>
+        </form>
+        <p class="mine-pick-msg" id="mine-msg"></p>
+      </div>
+    </div>
+
+    <script>
+    /* 내 지역구 — 상태 셋: 미등록(피커) / 등록됨(카드) / 변경중(피커)  (2026-08-23)
+       🔴 비로그인 선택은 **localStorage 에만** 남고 서버로 가지 않는다 (방문 통계가 개인 열람 기록을
+          안 남기는 원칙과 같은 판단). 로그인 사용자만 users.district 에 저장한다 — 본인이 준 값이다.
+       🔴 **카드만 그리고 끝내지 말 것.** 바꿀 길이 없으면 비로그인은 영영 못 바꾼다 (사용자 지적). */
+    (function () {
+      var wrap = document.getElementById('mine-wrap');
+      if (!wrap) return;
+      var KEY = 'pb.district';
+      var logged = wrap.dataset.loggedIn === '1';
+      var card = document.getElementById('mine-card');
+      var pick = document.getElementById('mine-pick');
+      var form = document.getElementById('mine-form');
+      var sel  = document.getElementById('mine-select');
+      var msg  = document.getElementById('mine-msg');
+      var sub  = document.getElementById('mine-sub');
+      var openBtn = document.getElementById('mine-open');
+      var cancel  = document.getElementById('mine-cancel');
+      var current = wrap.dataset.district || null;
+      var stored = null;
+      try { stored = localStorage.getItem(KEY); } catch (e) {}
+
+      var esc = function (v) { return String(v == null ? '' : v)
+        .replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+
+      /* ⚠️ 위 EJS 카드와 **같은 마크업**이어야 한다 */
+      function cardHtml(m) {
+        var href = '/politician/' + encodeURIComponent(m.mona_cd);
+        return '<span class="mine-cap">내 지역구 의원</span>'
+          + '<a class="mine-body" href="' + href + '"><b>' + esc(m.name) + '</b>'
+          + '<span class="mine-meta">' + esc(m.party_name) + ' · ' + esc(m.electoral_district)
+          + (m.reelected ? ' · ' + esc(m.reelected) : '') + '</span></a>'
+          + '<a class="mine-go" href="' + href + '">기록 보기 →</a>'
+          + '<button type="button" class="mine-edit" id="mine-change">변경</button>';
+      }
+      function bindChange() {
+        var b = document.getElementById('mine-change');
+        if (b) b.addEventListener('click', function () { showPicker(true); });
+      }
+      function showCard(m, d) {
+        card.innerHTML = cardHtml(m); card.hidden = false; pick.hidden = true;
+        msg.textContent = ''; form.hidden = true; current = d; bindChange();
+      }
+      function showPicker(isChange) {
+        card.hidden = true; pick.hidden = false; msg.textContent = '';
+        openBtn.textContent = isChange ? '다른 지역구 고르기' : '지역구 고르기';
+        sub.textContent = isChange
+          ? '지금은 ' + current + ' 입니다. 바꾸거나 등록을 해제할 수 있습니다.'
+          : '내가 뽑은 사람이 지금 어떻게 일하고 있는지 홈에서 바로 봅니다.';
+        if (isChange) loadList().then(function () { form.hidden = false; sel.value = current || ''; sel.focus(); });
+      }
+      var loaded = false;
+      function loadList() {
+        if (loaded) return Promise.resolve();
+        return fetch('/api/district/list').then(function (r) { return r.json(); }).then(function (d) {
+          sel.innerHTML = '<option value="">등록 안 함</option>'
+            + (d.groups || []).map(function (g) {
+                return '<optgroup label="' + esc(g.sido) + '">'
+                  + g.districts.map(function (x) { return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join('')
+                  + '</optgroup>';
+              }).join('');
+          loaded = true;
+        }).catch(function () { msg.textContent = '지역구 목록을 불러오지 못했습니다.'; });
+      }
+      function fetchMember(d) {
+        return fetch('/api/district/member?d=' + encodeURIComponent(d))
+          .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+      }
+
+      if (current) { bindChange(); }
+      else if (stored && !logged) {
+        fetchMember(stored).then(function (m) { showCard(m, stored); })
+          .catch(function () { try { localStorage.removeItem(KEY); } catch (e) {} showPicker(false); });
+      } else { showPicker(false); }
+
+      openBtn.addEventListener('click', function () {
+        if (!form.hidden) { form.hidden = true; return; }
+        loadList().then(function () { form.hidden = false; sel.value = current || ''; sel.focus(); });
+      });
+      cancel.addEventListener('click', function () {
+        form.hidden = true; msg.textContent = '';
+        if (current && card.innerHTML.trim()) { card.hidden = false; pick.hidden = true; }
+      });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var d = sel.value;
+        msg.textContent = '저장 중…';
+        if (!logged) {
+          try { d ? localStorage.setItem(KEY, d) : localStorage.removeItem(KEY); } catch (err) {}
+          if (!d) { current = null; card.innerHTML = ''; showPicker(false); return; }
+          fetchMember(d).then(function (m) { showCard(m, d); })
+            .catch(function () { msg.textContent = '불러오지 못했습니다.'; });
+          return;
+        }
+        fetch('/api/auth/district', { method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: d }) })
+          .then(function (r) { if (!r.ok) throw new Error(r.status); location.reload(); })
+          .catch(function () { msg.textContent = '저장하지 못했습니다.'; });
+      });
+
+      /* 🔴 로그인했는데 서버에 없고 브라우저에만 있으면 한 번 올려준다 */
+      if (logged && !current && stored) {
+        fetch('/api/auth/district', { method: 'PUT', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ district: stored }) })
+          .then(function (r) { if (r.ok) { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); } })
+          .catch(function () {});
+      }
+    })();
+    </script>
 
     <%# ===== 히어로 우측 — 무작위 의원 3명의 축 좌표 (2026-08-16 2차) =====
         🔴 결론 숫자 3개(계류·반대·불참)가 있던 자리다. 그 숫자는 아래 「숫자로 본 국회」 스트립으로 내렸다 (지우지 않았다).
