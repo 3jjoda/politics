@@ -4,6 +4,7 @@ import { readAnonAxis } from '../utils/anonAxis.js';
 //
 // 모든 요청에 네 값 주입:
 //   res.locals.balanceGameCompleted   : boolean — 미완료면 회색 "📊 진단 후 표시" 배지
+//   res.locals.balanceGameAnswered    : number — 지금까지 답한 문항 수 (홈 히어로가 "이어서 풀기" 판정에 쓴다)
 //   res.locals.userAxis               : {economy, social, security, institution} | null
 //   res.locals.userDistanceQuartiles  : {q1, q2, q3} | null — 의원 거리(3축) 분포의 25/50/75 분위수
 //   res.locals.isAnonAxis             : boolean — 좌표가 쿠키(비로그인)에서 왔다. 화면이 "저장하려면 로그인" 을 붙인다
@@ -22,6 +23,7 @@ import { readAnonAxis } from '../utils/anonAxis.js';
 
 export const injectBalanceGameStatus = (db) => async (req, res, next) => {
     res.locals.balanceGameCompleted = false;
+    res.locals.balanceGameAnswered = 0;   // 홈 히어로 — 시작만 한 사람 구분 (2026-08-25)
     res.locals.userAxis = null;
     res.locals.userDistanceQuartiles = null;
     res.locals.isAnonAxis = false;
@@ -31,7 +33,9 @@ export const injectBalanceGameStatus = (db) => async (req, res, next) => {
 
         if (userId) {
             const { rows } = await db.query(
-                `SELECT economy, social, security, institution, packs_completed
+                /* ⚠️ total_responses 는 홈 히어로가 쓴다 (2026-08-25) — "시작은 했는데 안 끝낸" 사람에게
+                      1번 문항을 다시 보여주지 않기 위한 것. 같은 행이라 조회가 늘지 않는다 */
+                `SELECT economy, social, security, institution, packs_completed, total_responses
                    FROM user_axis_score
                   WHERE user_id = $1 AND mapping_version = 'v1'
                   LIMIT 1`,
@@ -44,6 +48,10 @@ export const injectBalanceGameStatus = (db) => async (req, res, next) => {
             if (row) res.locals.isAnonAxis = true;
         }
         if (!row) return next();
+
+        /* 시작은 했지만 아직 안 끝낸 사람 (2026-08-25 홈 히어로용).
+           ⚠️ 전 게임팩 합계라 종합팩 진행도와 정확히 같지 않다 — "0인가 아닌가" 로만 쓸 것 */
+        res.locals.balanceGameAnswered = Math.max(0, Number(row.total_responses) || 0);
 
         const completed = (row.packs_completed || '').split(',').filter(Boolean);
         res.locals.balanceGameCompleted = completed.includes('general');

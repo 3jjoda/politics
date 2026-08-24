@@ -116,6 +116,15 @@ const KPI_TTL_MS = 10 * 60 * 1000;
 let kpiCache = null;        // { at, byMona: Map }
 let kpiInflight = null;
 
+/* ===== 좌표 지도(점구름) =====
+   🔴 2026-08-25 부터 **홈 히어로**가 이걸 쓴다 (공유·비교 카드 전용이 아니다).
+      홈은 가장 많이 열리는 페이지라 매 요청마다 269행을 뽑으면 안 된다.
+   ⚠️ 입력(`politician_axis_score`)은 하루 1회 `calcPoliticianAxis` 로만 바뀐다 — 10분이면 넉넉하다.
+   ⚠️ inflight 를 빼지 말 것. 캐시가 빈 순간 동시 요청이 전부 같은 쿼리를 돌린다 (KPI 와 같은 수법). */
+const CLOUD_TTL_MS = 10 * 60 * 1000;
+let cloudCache = null;      // { at, rows }
+let cloudInflight = null;
+
 /* 백분위 → 사람이 읽는 말.
    ⚠️ 항상 "상위 N%" 로 쓰면 최하위가 **"상위 100%"** 가 되어 정반대로 읽힌다.
       절반을 기준으로 상위/하위를 뒤집는다 (pr=0 → 하위 1%, pr=1 → 상위 1%). */
@@ -293,10 +302,22 @@ export default (db) => {
                 return null;
             }
         },
-        /* 공유 카드 좌표 지도 — [[economy, social, institution], …]. 실패하면 [] */
+        /* 좌표 지도 — [[economy, social, institution], …]. 실패하면 [].
+           홈 히어로 · 공유 카드 · 「의원과 비교」가 같이 쓴다 (위 CLOUD_TTL_MS 주석 참조). */
         getAxisCloud: async () => {
-            try { return (await politicianDao.getAxisCloud()).map(r => [r.economy, r.social, r.institution]); }
-            catch (err) { logger.error(`좌표 지도 조회 실패: ${err.message}`); return []; }
+            try {
+                if (cloudCache && (Date.now() - cloudCache.at) < CLOUD_TTL_MS) return cloudCache.rows;
+                if (!cloudInflight) {
+                    cloudInflight = politicianDao.getAxisCloud()
+                        .then((rows) => {
+                            const mapped = rows.map(r => [r.economy, r.social, r.institution]);
+                            cloudCache = { at: Date.now(), rows: mapped };
+                            return mapped;
+                        })
+                        .finally(() => { cloudInflight = null; });
+                }
+                return await cloudInflight;
+            } catch (err) { logger.error(`좌표 지도 조회 실패: ${err.message}`); return []; }
         },
         /* 홈 히어로 — 무작위 의원 3명의 축 좌표. 실패해도 [] 를 돌려 홈은 살린다 */
         getAxisSpotlight: async (limit = 3) => {

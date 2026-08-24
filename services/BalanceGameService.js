@@ -10,6 +10,14 @@ export const AXES = Object.fromEntries(Object.entries(AXIS_META).map(([k, m]) =>
 
 const VALID_ANSWERS = new Set(['A', 'B', 'C']);
 
+/* ===== 홈 히어로 첫 문항 =====
+   🔴 2026-08-25 홈 재구성 — 히어로가 진단 첫 문항을 직접 물어본다 (퍼널 첫 칸 제거).
+      홈은 가장 많이 열리는 페이지인데 문항은 **DB 마이그레이션으로만** 바뀌므로 오래 캐시해도 안전하다.
+   ⚠️ 문항을 교체하면(2026-08-16 사회 문항처럼) 최대 이 시간만큼 옛 문항이 홈에 남는다. 재시작하면 즉시 반영. */
+const Q1_TTL_MS = 30 * 60 * 1000;
+let q1Cache = null;         // { at, packId, q }
+let q1Inflight = null;
+
 export default (db) => {
     const dao = BalanceGameDao(db);
 
@@ -20,6 +28,28 @@ export default (db) => {
         listPacks: () => dao.listPacks(),
         getPack:   (packId) => dao.getPack(packId),
         listQuestionsByPack: (packId) => dao.listQuestionsByPack(packId, MAPPING_VERSION),
+
+        /* 홈 히어로가 바로 물어보는 첫 문항 (display_order 순 1번).
+           ⚠️ 실패해도 **null 을 돌려 홈은 살린다** — 문항 하나 때문에 첫 화면이 500 이 되면 안 된다.
+           ⚠️ 화면은 여기서 받은 `id` 를 그대로 localStorage·POST 에 쓴다. 필드 이름을 바꾸지 말 것. */
+        getFirstQuestion: async (packId = 'general') => {
+            try {
+                if (q1Cache && q1Cache.packId === packId && (Date.now() - q1Cache.at) < Q1_TTL_MS) return q1Cache.q;
+                if (!q1Inflight) {
+                    q1Inflight = dao.listQuestionsByPack(packId, MAPPING_VERSION)
+                        .then((rows) => {
+                            const q = rows && rows.length ? rows[0] : null;
+                            q1Cache = { at: Date.now(), packId, q };
+                            return q;
+                        })
+                        .finally(() => { q1Inflight = null; });
+                }
+                return await q1Inflight;
+            } catch (err) {
+                logger.error(`홈 첫 문항 조회 실패: ${err.message}`);
+                return null;
+            }
+        },
         listAllActiveQuestions: () => dao.listAllActiveQuestions(MAPPING_VERSION),
 
         listUserResponsesByPack: (userId, packId) =>

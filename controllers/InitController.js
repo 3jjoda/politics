@@ -3,6 +3,7 @@ import BillService from '../services/BillService.js';
 import BriefingService from '../services/BriefingService.js';
 import PoliticianService from '../services/PoliticianService.js';
 import DistrictService from '../services/DistrictService.js';
+import BalanceGameService from '../services/BalanceGameService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
@@ -12,6 +13,7 @@ export default (db) => {
     const politicianService = PoliticianService(db);
     const districtService = DistrictService(db);   // 내 지역구 의원 (2026-08-23)
     const briefingService = BriefingService(db);
+    const balanceService = BalanceGameService(db); // 홈 히어로 첫 문항 (2026-08-25)
     const controller = {};
 
     /* 초기화 */
@@ -39,7 +41,13 @@ export default (db) => {
             const userAxis = res.locals.userAxis || null;
             /* 2026-08-16 (2차): 히어로 결론 3숫자 → **무작위 의원 3명의 축 좌표**(정당 평균 눈금 포함)로 교체.
                  숫자 3개는 「숫자로 본 국회」 위 스트립으로 내렸고, `주목할 법안`(getTrending) 섹션은 뺐다 (서비스 메서드는 남김) */
-            const [codes, facts, spotlight, briefing, spread, myMember] = await Promise.all([
+            /* 🔴 2026-08-25 홈 재구성 (A → B → C) — 히어로가 **좌표 지도 + 첫 문항**이 됐다.
+                 · axisCloud    : 좌표 있는 의원 전원의 익명 점(이름·정당 없음). 히어로 지도의 재료.
+                                  10분 캐시라 홈이 아무리 열려도 쿼리는 10분에 한 번이다 (PoliticianService)
+                 · firstQuestion: 완료자에겐 필요 없다 — 그 자리에 내 좌표가 들어가므로 아예 조회하지 않는다
+               ⚠️ 둘 다 실패하면 null/[] 이라 히어로가 문항·지도 없이 글만으로 무너진다 (홈은 산다) */
+            const completed = !!res.locals.balanceGameCompleted;
+            const [codes, facts, spotlight, briefing, spread, myMember, axisCloud, firstQuestion] = await Promise.all([
                 codeService.getList(),
                 billService.getHomeFacts(),
                 /* 🔴 3 → 2 (2026-08-23). 이 블록이 모바일 히어로의 **절반**(750/1,402px)을 먹는데
@@ -56,6 +64,8 @@ export default (db) => {
                 /* 내 지역구 의원 (2026-08-23). 로그인 + 등록한 사용자만.
                    ⚠️ 실패해도 null 이라 홈은 산다 (DistrictService 가 삼킨다) */
                 districtService.getMember(req.user && req.user.district),
+                politicianService.getAxisCloud(),
+                completed ? Promise.resolve(null) : balanceService.getFirstQuestion('general'),
             ]);
 
             res.render('index', {
@@ -66,6 +76,9 @@ export default (db) => {
                 facts,
                 spotlight,
                 myMember,
+                /* 히어로 지도 — [economy, social] 만 쓴다. institution 은 평면에 안 그린다 (공유 카드와 같은 규칙) */
+                axisCloud,
+                firstQuestion,
                 /* 브리핑은 최신 4장만 쓴다 — 피드 전체는 /briefing 이 맡는다 */
                 briefings: (briefing && briefing.posts ? briefing.posts : []).slice(0, 4),
                 /* near·far 를 갈라 넘긴다. 좌표가 없거나 실패하면 spread 가 null 이라 빈 배열이 된다 */
