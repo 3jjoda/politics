@@ -45,7 +45,9 @@ export default (db) => {
 
     // SNS 운영용 카드 (운영자 도구 — 공개 라우트지만 noindex + robots /promo 차단)
     //   /promo/numbers?series=pending|oppose|absent  숫자 캐러셀 (SNS.md 백로그 1)
+    //   /promo/balance                                진단 캐러셀 (SNS.md 백로그 2)
     router.get('/promo/numbers', promoController.getNumbersCard);
+    router.get('/promo/balance', promoController.getBalanceCard);
 
     // 소개 페이지
     router.get('/about', async (req, res, next) => {

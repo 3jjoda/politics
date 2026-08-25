@@ -11,6 +11,8 @@
 //    막으면 로그인 상태에 따라 미리보기가 안 된다). noindex + robots /promo 차단.
 
 import BillService from '../services/BillService.js';
+import PoliticianService from '../services/PoliticianService.js';
+import { AXIS_META, MATCH_AXES, TYPE_NAMES } from '../utils/axisConfig.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 import logger from '../utils/logger.js';
 
@@ -109,6 +111,7 @@ const SERIES = {
 
 export default (db) => {
     const billService = BillService(db);
+    const politicianService = PoliticianService(db);
     const controller = {};
 
     controller.getNumbersCard = wrapWithContext(async function getNumbersCard(req, res, next) {
@@ -136,6 +139,59 @@ export default (db) => {
             });
         } catch (error) {
             logger.error('숫자 캐러셀 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    /* 진단 캐러셀 — 성향 진단 홍보 6장 (SNS.md 백로그 2).
+       🔴 TOP3 장은 실명이 아니라 **마스킹 목업**이다 — 계정이 의원을 골라 보이는 순간 편집이 된다 (SNS.md 하지 말 것 2).
+       🔴 "N명" 은 세 축 좌표가 다 있는 의원 수를 렌더 시 센다 (axis cloud 길이) — 269 를 하드코딩하지 않는다.
+       문항 수도 DB(packs.question_count)에서 읽는다 — 문항 교체 이력이 있는 값이라 박아두면 조용히 거짓이 된다. */
+    controller.getBalanceCard = wrapWithContext(async function getBalanceCard(req, res, next) {
+        try {
+            const [cloud, packRow] = await Promise.all([
+                politicianService.getAxisCloud(),
+                db.query(`SELECT question_count FROM balance_game_packs WHERE pack_id = 'general'`)
+                  .then((r) => r.rows[0]).catch(() => null),
+            ]);
+            if (!cloud || !cloud.length) {
+                return res.status(503).type('text/plain; charset=utf-8')
+                    .send('의원 좌표를 불러오지 못했습니다. 잠시 후 다시 열어주세요.');
+            }
+            const polTotal = cloud.length;
+            const qCount = Number(packRow?.question_count) || 20;
+            const axes = MATCH_AXES.map((k) => AXIS_META[k]);
+            // 사분면 이름 4종 — 지도 모서리 라벨 (utils/axisConfig.js TYPE_NAMES 단일 소스)
+            const quads = {
+                LR: TYPE_NAMES['L,R'].name, RR: TYPE_NAMES['R,R'].name,
+                LL: TYPE_NAMES['L,L'].name, RL: TYPE_NAMES['R,L'].name,
+            };
+            const slides = [
+                { kind: 'hook' }, { kind: 'reframe' }, { kind: 'axes' },
+                { kind: 'map' }, { kind: 'mock' }, { kind: 'outro' },
+            ];
+            const raw = req.query.slide;
+            const single = raw === undefined || raw === ''
+                ? null
+                : Math.min(slides.length, Math.max(1, Math.floor(Number(raw) || 1)));
+            const dateKo = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()).replace(/-/g, '.');
+            const caption = [
+                `국회의원 ${nf(polTotal)}명 중 당신과 가장 가까운 사람은 누구일까요?`,
+                '',
+                '정치 성향은 보수 / 진보 하나로 설명되지 않습니다.',
+                `당말사는 경제 · 사회문화 · 정치제도, 세 개의 축으로 봅니다.`,
+                `${qCount}개의 질문에 답하면 국회의원 ${nf(polTotal)}명과 비교해드립니다. 로그인 없이 약 5분.`,
+                '',
+                '프로필 링크에서 바로 해볼 수 있습니다.',
+                '',
+                '#국회 #법안 #당말사 #국회의원 #성향테스트',
+            ].join('\n');
+            res.render('promo/balance_card', {
+                layout: false,
+                slides, single, dateKo, polTotal, qCount, axes, quads, cloud, caption,
+            });
+        } catch (error) {
+            logger.error('진단 캐러셀 렌더링 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
         }
     });
