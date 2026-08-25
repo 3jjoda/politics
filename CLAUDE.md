@@ -16,6 +16,7 @@
   - [UI_BALANCEGAME.md](./UI_BALANCEGAME.md) — 밸런스 게임 5단계 UI 설계 원칙
   - [BILL_AXIS_MAPPING_GUIDE.md](./BILL_AXIS_MAPPING_GUIDE.md) — 법안-축 매핑 가이드라인 (AI 1차 매핑 작업 지침)
   - [PROMO.md](./PROMO.md) — 인스타·쓰레드 **홍보 글** 작성 원칙 (숫자 검증·프레임·톤·채널 제약)
+  - [SNS.md](./SNS.md) — **SNS 운영 전략** (4축 콘텐츠 엔진·일일 루틴·30일 플랜·측정 지표. 2026-08-18)
 
 ---
 
