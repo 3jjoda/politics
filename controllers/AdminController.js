@@ -282,5 +282,29 @@ export default (db) => {
         }
     });
 
+    /* SNS 콘텐츠 허브 — 캐러셀 도구 4종 + 브리핑 인스타 카드·쓰레드를 한 화면에서 (2026-08-26).
+       🔴 도구 페이지들(/promo/*·/briefing/:id/card)은 공개 라우트다 — 여기는 **찾아가는 메뉴**지 권한 경계가 아니다
+       (권한 경계를 여기로 옮기면 브리핑 카드처럼 로그인 상태에 따라 미리보기가 안 되는 문제가 생긴다). */
+    controller.getSnsPage = wrapWithContext(async function getSnsPage(req, res, next) {
+        try {
+            const { rows: briefings } = await db.query(`
+                SELECT id, briefing_date, headline, model
+                  FROM briefing_posts
+                 ORDER BY briefing_date DESC
+                 LIMIT 7`);
+            res.render('admin/sns', {
+                pageTitle: 'SNS 콘텐츠', pageStyles: null, currentUrl: '/admin/sns',
+                briefings: briefings.map((b) => ({
+                    id: Number(b.id), date: b.briefing_date, headline: b.headline,
+                    // 폴백·활동없음 카드는 올릴 카드가 아니다 (export API 의 publishable 과 같은 판정)
+                    publishable: b.model !== 'fallback' && b.model !== 'none',
+                })),
+            });
+        } catch (err) {
+            logger.error('SNS 콘텐츠 허브 렌더링 중 에러:', `${err.message}\n${err.stack}`);
+            next(err);
+        }
+    });
+
     return controller;
 };
