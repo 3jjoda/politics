@@ -65,11 +65,11 @@
 
 <div class="wrap">
   <div class="guide">
-    <b>쓰는 법</b> — 공식: 질문 → 반전 → 데이터 → <b>(답글이 이어지면)</b> 당말사.
+    <b>쓰는 법</b> · 공식: 질문 → 반전 → 데이터 → <b>(답글이 이어지면)</b> 당말사.
     <ol>
       <li>🔴 <b>첫 포스트에는 링크를 넣지 않는다.</b> 링크는 대화가 생긴 뒤 답글에서 자연스럽게.</li>
-      <li>숫자는 이 페이지를 <b>게시 직전에 새로고침</b>한 값 그대로 복사한다 (렌더 시 DB — 박아두면 낡는다).</li>
-      <li>주 2회면 충분하다 (월 상식 뒤집기 · 수/목 당신이라면?). 같은 문안은 4~6주 지나면 재사용해도 된다 — 숫자가 바뀌어 있다.</li>
+      <li>숫자는 이 페이지를 <b>게시 직전에 새로고침</b>한 값 그대로 복사한다 (렌더 시 DB 값이라 박아두면 낡는다).</li>
+      <li>주 2회면 충분하다 (월 상식 뒤집기 · 수/목 당신이라면?). 같은 문안은 4~6주 지나면 재사용해도 된다 (숫자가 바뀌어 있다).</li>
       <li>반박 댓글에는 싸우지 말고 기준을 제시한다: "어떤 기준을 보느냐에 따라 달라집니다."</li>
       <li>글자수는 쓰레드 제한 500자 기준 코드포인트 셈이다. <span class="p-len over" style="display:inline">빨간 숫자</span>면 잘라야 한다.</li>
     </ol>
@@ -111,7 +111,7 @@ document.querySelectorAll('[data-copy]').forEach(function (btn) {
     navigator.clipboard.writeText(document.getElementById(id).textContent).then(function () {
       st.textContent = '복사됨';
       setTimeout(function () { st.textContent = ''; }, 1500);
-    }).catch(function () { st.textContent = '복사 실패 — 본문을 드래그해 복사해주세요'; });
+    }).catch(function () { st.textContent = '복사 실패. 본문을 드래그해 복사해주세요'; });
   });
 });
 </script>
