@@ -255,26 +255,46 @@
     });
 
     var all = document.getElementById('dl-all');
+    var ALL_LABEL = all ? all.textContent : '';
+    var ready = null;   // 모바일 2단계용으로 만들어 둔 File[] — 브리핑 카드와 같은 패턴
+    // 🔴 모바일은 두 번 탭이다 (만들기 → 'N장 공유하기' → 공유). navigator.share 는 제스처 권한(~5초)
+    //    안에서만 열려서, 같은 탭에서 만들기를 await 한 뒤 부르면 실패한다 (브리핑 카드 실기기에서 배운 것).
     if (all) all.addEventListener('click', async function () {
-      all.disabled = true;
       var btns = Array.prototype.slice.call(document.querySelectorAll('.pv-dl'));
-      try {
-        if (PBCard.isTouch && PBCard.canShareFiles([])) {
-          var items = btns.map(function (b) { return { node: cardOf(b), name: b.dataset.name }; });
-          var files = await PBCard.toFiles(items, function (i, n) { say(i + '/' + n + ' 그리는 중…'); });
-          await PBCard.shareFiles(files, files.length + '장');
-          say('완료');
-        } else {
-          for (var j = 0; j < btns.length; j++) {
-            say((j + 1) + '/' + btns.length + ' 저장 중…');
-            await PBCard.save(cardOf(btns[j]), btns[j].dataset.name);
-          }
-          say('완료 · 브라우저가 "여러 파일 다운로드"를 물으면 허용해주세요');
-        }
-      } catch (e) { console.error('[cardShot]', e); say('실패: ' + e.message, true); }
-      all.disabled = false;
-    });
+      var items = btns.map(function (b) { return { node: cardOf(b), name: b.dataset.name }; });
 
+      // 2단계 — 앞선 탭에서 만들어 둔 것을 await 없이 바로 넘긴다
+      if (ready) {
+        try {
+          var ok = await PBCard.shareFiles(ready, ready.length + '장');
+          if (ok) { ready = null; all.textContent = ALL_LABEL; say('사진 앱에 저장했습니다.'); }
+          else say('취소했습니다. 다시 누르면 그대로 보냅니다.');
+        } catch (e) { console.error('[cardShot]', e); say('공유에 실패했습니다. 카드마다 PNG 저장을 눌러주세요.', true); }
+        return;
+      }
+
+      all.disabled = true;
+      try {
+        if (PBCard.isTouch) {
+          // 공유 시트 자체가 없으면 만들 것도 없다 (다 만든 뒤 못 준다고 말하면 시간만 버린다)
+          if (!PBCard.canShareFiles([])) { say('이 브라우저는 여러 장을 한 번에 못 받습니다. 카드마다 PNG 저장을 눌러주세요.', true); return; }
+          var files = await PBCard.toFiles(items, function (i, n) { all.textContent = '만드는 중… ' + (i + 1) + '/' + n; say(''); });
+          if (!PBCard.canShareFiles(files)) { say('이 브라우저는 여러 장을 한 번에 못 받습니다. 카드마다 PNG 저장을 눌러주세요.', true); all.textContent = ALL_LABEL; return; }
+          ready = files;
+          all.textContent = files.length + '장 공유하기';
+          say('다 만들었습니다. 한 번 더 눌러 사진 앱에 저장하세요.');
+          return;
+        }
+        for (var j = 0; j < items.length; j++) {
+          all.textContent = '저장 중… ' + (j + 1) + '/' + items.length; say('');
+          await PBCard.save(items[j].node, items[j].name, { share: false });
+          await new Promise(function (r) { setTimeout(r, 350); });   // 연속 다운로드를 브라우저가 삼키지 않게
+        }
+        say(items.length + '장을 저장했습니다. 다운로드 폴더를 확인하세요.');
+        all.textContent = ALL_LABEL;
+      } catch (e) { console.error('[cardShot]', e); say((e && e.message) || '저장에 실패했습니다', true); all.textContent = ALL_LABEL; }
+      finally { all.disabled = false; }
+    });
     var copyBtn = document.getElementById('cap-copy');
     if (copyBtn) copyBtn.addEventListener('click', function () {
       navigator.clipboard.writeText(document.getElementById('cap-text').textContent).then(function () {
