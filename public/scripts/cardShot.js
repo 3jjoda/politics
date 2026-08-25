@@ -139,23 +139,54 @@
   // 그대로 두면 **데스크톱에서 8장을 받을 때마다 시트가 뜬다** (다운로드가 맞는 자리다)
   const isTouch = matchMedia('(hover: none) and (pointer: coarse)').matches;
 
+  // files 가 비면 "공유 시트가 있는가" 만 본다 (빈 배열로 canShare 를 물으면 false 를 주는 브라우저가 있다)
+  const canShareFiles = (files) =>
+    !!(navigator.share && navigator.canShare && (!files.length || navigator.canShare({ files })));
+
+  function download(file) {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url; a.download = file.name;
+    a.setAttribute('data-no-loader', '');   // 페이지 전환 로더가 이 클릭을 내부 이동으로 오인하지 않게
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  const toFile = async (node, name) =>
+    new File([await toBlob(await toCanvas(node))], name, { type: 'image/png' });
+
+  /* 카드 여러 장 → File[] (`onStep(i, total)` 로 진행 표시).
+     🔴 모바일에서 여러 장이 필요한 이유는 아래 `shareFiles` 주석 참조 */
+  async function toFiles(items, onStep) {
+    const out = [];
+    for (let i = 0; i < items.length; i++) {
+      if (onStep) onStep(i, items.length);
+      out.push(await toFile(items[i].node, items[i].name));
+    }
+    return out;
+  }
+
+  /* 🔴 준비된 File[] 를 **한 번의 시트로** 넘긴다.
+     모바일 브라우저는 프로그래매틱 다운로드를 **사용자 제스처당 한 개만** 허용해서,
+     `a.download` 를 연달아 부르면 첫 장만 저장되고 나머지는 조용히 버려진다 (2026-08-22 실기기 보고).
+     ⚠️ 이 함수를 부르기 **전에 await 를 두지 말 것** — 모바일은 제스처 안에서만 share 를 허용하고
+        await 뒤에는 그 권한이 사라진다. 그래서 파일은 앞선 탭에서 미리 만들어 둔다 (shareCard.js 와 같은 수법) */
+  async function shareFiles(files, text) {
+    try { await navigator.share({ files, text }); return true; }
+    catch (e) { if (e && e.name === 'AbortError') return false; throw e; }   // 시트를 닫은 것은 에러가 아니다
+  }
+
   async function save(node, name, opt = {}) {
     if (busy) return false;
     busy = true;
     try {
-      const blob = await toBlob(await toCanvas(node));
-      const file = new File([blob], name, { type: 'image/png' });
+      const file = await toFile(node, name);
       const wantShare = opt.share !== undefined ? opt.share : isTouch;
-      if (wantShare && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (wantShare && canShareFiles([file])) {
         try { await navigator.share({ files: [file], text: name }); return true; }
-        catch (e) { if (e && e.name === 'AbortError') return false; }   // 사용자가 시트를 닫은 것 — 에러가 아니다
+        catch (e) { if (e && e.name === 'AbortError') return false; }
       }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = name;
-      a.setAttribute('data-no-loader', '');   // 페이지 전환 로더가 이 클릭을 내부 이동으로 오인하지 않게
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      download(file);
       return true;
     } finally { setTimeout(() => { busy = false; }, 350); }
   }
@@ -176,5 +207,5 @@
     });
   }
 
-  window.PBCard = { toCanvas, save, frameCard };
+  window.PBCard = { toCanvas, save, frameCard, toFiles, canShareFiles, shareFiles, download, isTouch };
 })();

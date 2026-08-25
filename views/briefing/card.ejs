@@ -572,24 +572,67 @@
     const target = location.hash && document.querySelector(location.hash + '.pv-item');
     if (target) target.scrollIntoView();
 
-    // 전부 저장 — 한 장씩 순서대로. 🔴 브라우저가 "여러 파일 다운로드" 를 한 번 물어본다 (허용해야 2장째부터 내려온다)
+    /* 전부 저장 — 데스크톱과 모바일이 갈린다.
+       🔴 모바일은 프로그래매틱 다운로드를 **제스처당 한 개만** 허용한다. `a.download` 를 연달아 부르면
+          첫 장만 저장되고 나머지는 조용히 버려진다 (실기기 보고). 그래서 폰에서는
+          **다 만들어 두고 공유 시트 한 번**으로 넘긴다 (사진 앱에 7장이 한꺼번에 들어간다).
+       🔴 만드는 데 1~2초가 걸려 같은 탭 안에서 share 를 부르면 제스처 권한이 이미 사라진다
+          → **두 번 탭**으로 나눈다: 만들기 → (라벨이 바뀌면) 공유하기. shareCard.js 가 쓰는 수법과 같다 */
     const all = document.getElementById('dl-all');
+    const ALL_LABEL = all.textContent;
+    let ready = null;   // 모바일 2단계용으로 만들어 둔 File[]
+
     all.addEventListener('click', async () => {
       const btns = [...document.querySelectorAll('.pv-dl')];
+      const items = btns.map((b) => ({ node: cardOf(b), name: b.dataset.name }));
+
+      // 2단계 — 앞선 탭에서 만들어 둔 것을 await 없이 바로 넘긴다
+      if (ready) {
+        const files = ready;
+        try {
+          const ok = await PBCard.shareFiles(files, `${files.length}장`);
+          if (ok) { ready = null; all.textContent = ALL_LABEL; say('사진 앱에 저장했습니다.'); }
+          else say('취소했습니다. 다시 누르면 그대로 보냅니다.');
+        } catch (e) {
+          console.error('[cardShot]', e);
+          say('공유에 실패했습니다. 카드마다 PNG 저장을 눌러주세요.', true);
+        }
+        return;
+      }
+
       all.disabled = true;
-      const label = all.textContent;
       try {
-        for (let i = 0; i < btns.length; i++) {
-          all.textContent = `저장 중… ${i + 1}/${btns.length}`;
+        if (PBCard.isTouch) {
+          // 공유 시트 자체가 없으면 만들 것도 없다 (7장을 만든 뒤 못 준다고 말하면 2초를 버린다)
+          if (!PBCard.canShareFiles([])) {
+            say('이 브라우저는 여러 장을 한 번에 못 받습니다. 카드마다 PNG 저장을 눌러주세요.', true);
+            return;
+          }
+          const files = await PBCard.toFiles(items, (i, n) => { all.textContent = `만드는 중… ${i + 1}/${n}`; say(''); });
+          if (!PBCard.canShareFiles(files)) {
+            say('이 브라우저는 여러 장을 한 번에 못 받습니다. 카드마다 PNG 저장을 눌러주세요.', true);
+            all.textContent = ALL_LABEL;
+            return;
+          }
+          ready = files;
+          all.textContent = `${files.length}장 공유하기`;
+          say('다 만들었습니다. 한 번 더 눌러 사진 앱에 저장하세요.');
+          return;
+        }
+
+        for (let i = 0; i < items.length; i++) {
+          all.textContent = `저장 중… ${i + 1}/${items.length}`;
           say('');
-          await PBCard.save(cardOf(btns[i]), btns[i].dataset.name, { share: false });
+          await PBCard.save(items[i].node, items[i].name, { share: false });
           await new Promise((r) => setTimeout(r, 350));   // 연속 다운로드를 브라우저가 삼키지 않게
         }
-        say(`${btns.length}장을 저장했습니다. 다운로드 폴더를 확인하세요.`);
+        say(`${items.length}장을 저장했습니다. 다운로드 폴더를 확인하세요.`);
+        all.textContent = ALL_LABEL;
       } catch (e) {
         console.error('[cardShot]', e);
         say((e && e.message) || '저장에 실패했습니다', true);
-      } finally { all.disabled = false; all.textContent = label; }
+        all.textContent = ALL_LABEL;
+      } finally { all.disabled = false; }
     });
   })();
   </script>
