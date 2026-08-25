@@ -48,6 +48,7 @@ export default (db) => {
     //   /promo/balance                                진단 캐러셀 (SNS.md 백로그 2)
     router.get('/promo/numbers', promoController.getNumbersCard);
     router.get('/promo/balance', promoController.getBalanceCard);
+    router.get('/promo/threads', promoController.getThreadsBank);   // 쓰레드 문안 뱅크 (백로그 3)
 
     // 소개 페이지
     router.get('/about', async (req, res, next) => {

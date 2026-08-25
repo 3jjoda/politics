@@ -1,0 +1,119 @@
+<%
+  /* 쓰레드 문안 뱅크 — 대화형 포스트 10개 + 답글 초안 (SNS.md 백로그 3).
+   * 카드가 아니라 **복사해 가는 글**이라 캡처 도구 없이 복사 버튼만 있다.
+   * 숫자는 컨트롤러가 렌더 시 DB 에서 채운다 — 게시 직전에 새로고침하면 그날 값. */
+%><!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>쓰레드 문안 뱅크 · 당말사</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/assets/imgs/favicon-32.svg">
+<link rel="shortcut icon" href="/assets/imgs/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F7F6F1; color: #1A1D24; font-family: 'Noto Sans KR', sans-serif;
+         font-size: 15px; line-height: 1.7; word-break: keep-all; }
+  .tb { position: sticky; top: 0; z-index: 10; background: #26241F; color: #EDEBE4;
+        display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 14px 22px; font-size: 14px; }
+  .tb b { font-size: 15px; }
+  .tb .sp { margin-left: auto; color: #A8A295; font-size: 12.5px; }
+  .tb a { color: #D9A040; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 30px 20px 80px; }
+
+  .guide { background: #FBF5EA; border: 1px solid #E2DFD4; border-left: 4px solid #B8740C;
+           border-radius: 10px; padding: 16px 20px; font-size: 13.5px; color: #4B5362; margin-bottom: 28px; }
+  .guide b { color: #8F5800; }
+  .guide ol { margin: 8px 0 0; padding-left: 20px; }
+  .guide li { margin: 3px 0; }
+
+  .post { background: #FFFFFF; border: 1px solid #E2DFD4; border-radius: 12px; margin-bottom: 22px; overflow: hidden; }
+  .p-head { display: flex; align-items: center; gap: 12px; padding: 13px 20px; border-bottom: 1px solid #E2DFD4; }
+  .p-no { font: 700 13px/1 'JetBrains Mono', monospace; color: #8F5800; }
+  .p-cat { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; color: #8F5800;
+           border: 1px solid #B8740C; border-radius: 5px; padding: 3px 8px; background: #FBF5EA; }
+  .p-cat.q { color: #4B5362; border-color: #C9C5B6; background: transparent; }
+  .p-title { font-weight: 800; font-size: 15px; }
+  .p-len { margin-left: auto; font: 500 12px/1 'JetBrains Mono', monospace; color: #7A8090; }
+  .p-len.over { color: #D03A3A; font-weight: 700; }
+  .p-body { padding: 18px 20px; }
+  .p-main { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 15px; line-height: 1.8;
+            background: #FAFAF7; border: 1px solid #ECE9E0; border-radius: 8px; padding: 14px 16px; }
+  .p-actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .btn { background: #B8740C; color: #fff; border: 0; border-radius: 7px; font-weight: 800;
+         font-size: 12.5px; padding: 7px 14px; cursor: pointer; font-family: inherit; }
+  .btn.ghost { background: transparent; color: #8F5800; border: 1px solid #B8740C; font-weight: 700; }
+  .p-status { font-size: 12px; color: #7A8090; }
+  .p-reply { margin-top: 16px; border-top: 1px dashed #C9C5B6; padding-top: 14px; }
+  .p-reply h4 { margin: 0 0 8px; font-size: 12.5px; color: #5F6674; letter-spacing: .02em; }
+  .p-reply pre { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 13.5px; line-height: 1.75;
+                 color: #4B5362; background: #FAFAF7; border: 1px solid #ECE9E0; border-radius: 8px; padding: 12px 14px; }
+  .p-basis { margin-top: 12px; font-size: 12px; color: #7A8090; }
+  .p-basis b { color: #5F6674; }
+</style>
+</head>
+<body>
+
+<div class="tb">
+  <b>쓰레드 문안 뱅크</b>
+  <span>10개 · <%= dateKo %> 기준 숫자</span>
+  <span class="sp"><a href="/promo/numbers">숫자 캐러셀</a> · <a href="/promo/balance">진단 캐러셀</a></span>
+</div>
+
+<div class="wrap">
+  <div class="guide">
+    <b>쓰는 법</b> — 공식: 질문 → 반전 → 데이터 → <b>(답글이 이어지면)</b> 당말사.
+    <ol>
+      <li>🔴 <b>첫 포스트에는 링크를 넣지 않는다.</b> 링크는 대화가 생긴 뒤 답글에서 자연스럽게.</li>
+      <li>숫자는 이 페이지를 <b>게시 직전에 새로고침</b>한 값 그대로 복사한다 (렌더 시 DB — 박아두면 낡는다).</li>
+      <li>주 2회면 충분하다 (월 상식 뒤집기 · 수/목 당신이라면?). 같은 문안은 4~6주 지나면 재사용해도 된다 — 숫자가 바뀌어 있다.</li>
+      <li>반박 댓글에는 싸우지 말고 기준을 제시한다: "어떤 기준을 보느냐에 따라 달라집니다."</li>
+      <li>글자수는 쓰레드 제한 500자 기준 코드포인트 셈이다. <span class="p-len over" style="display:inline">빨간 숫자</span>면 잘라야 한다.</li>
+    </ol>
+  </div>
+
+  <% posts.forEach((p, i) => { %>
+    <div class="post">
+      <div class="p-head">
+        <span class="p-no"><%= String(i + 1).padStart(2, '0') %></span>
+        <span class="p-cat <%= p.cat === '당신이라면?' || p.cat === '숫자 질문' ? 'q' : '' %>"><%= p.cat %></span>
+        <span class="p-title"><%= p.title %></span>
+        <span class="p-len <%= p.mainLen > 500 ? 'over' : '' %>"><%= p.mainLen %> / 500</span>
+      </div>
+      <div class="p-body">
+        <pre class="p-main" id="main-<%= i %>"><%= p.main %></pre>
+        <div class="p-actions">
+          <button type="button" class="btn" data-copy="main-<%= i %>">본문 복사</button>
+          <span class="p-status" id="st-main-<%= i %>"></span>
+        </div>
+        <div class="p-reply">
+          <h4>답글 초안 (대화가 생겼을 때 · <%= p.replyLen %>자)</h4>
+          <pre id="reply-<%= i %>"><%= p.reply %></pre>
+          <div class="p-actions">
+            <button type="button" class="btn ghost" data-copy="reply-<%= i %>">답글 복사</button>
+            <span class="p-status" id="st-reply-<%= i %>"></span>
+          </div>
+        </div>
+        <p class="p-basis"><b>근거</b> · <%= p.basis %></p>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<script>
+document.querySelectorAll('[data-copy]').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var id = btn.dataset.copy;
+    var st = document.getElementById('st-' + id);
+    navigator.clipboard.writeText(document.getElementById(id).textContent).then(function () {
+      st.textContent = '복사됨';
+      setTimeout(function () { st.textContent = ''; }, 1500);
+    }).catch(function () { st.textContent = '복사 실패 — 본문을 드래그해 복사해주세요'; });
+  });
+});
+</script>
+</body>
+</html>
