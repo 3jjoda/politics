@@ -283,5 +283,47 @@ export default (db) => {
         }
     });
 
+    /* 브랜드 소개 캐러셀 — 30일 플랜 1주차 재료. 문안은 /about 과 같은 말이어야 한다 (거기 없는 주장을 만들지 말 것).
+       구성: 훅(내가 뽑은 사람, 지금 뭘 할까) → 정체 → 무엇이 있나 → 하지 않는 것 → 한계도 밝힘 → 마무리.
+       🔴 "한계도 밝힘" 장을 빼지 말 것 — 이 사이트의 차별점은 데이터가 많다가 아니라 **무엇을 모르는지 밝힌다**다 (/about 재작성 때의 결론). */
+    controller.getIntroCard = wrapWithContext(async function getIntroCard(req, res, next) {
+        try {
+            const [facts, polR] = await Promise.all([
+                billService.getHomeFacts(),
+                db.query(`SELECT COUNT(*)::int AS n FROM politicians`).then((r) => r.rows[0]).catch(() => null),
+            ]);
+            const billTotal = facts ? facts.bill_total : null;
+            const polTotal = polR ? polR.n : null;
+            const slides = [
+                { kind: 'hook' }, { kind: 'who' }, { kind: 'what' },
+                { kind: 'not' }, { kind: 'limits' }, { kind: 'outro' },
+            ];
+            const raw = req.query.slide;
+            const single = raw === undefined || raw === ''
+                ? null
+                : Math.min(slides.length, Math.max(1, Math.floor(Number(raw) || 1)));
+            const dateKo = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()).replace(/-/g, '.');
+            const caption = [
+                '내가 뽑은 국회의원, 지금 뭘 하고 있을까요?',
+                '',
+                '당말사는 국회가 공개한 자료를 그대로 모아, 내가 뽑은 사람을 끝까지 지켜볼 수 있게 만듭니다.',
+                `의원 ${polTotal ? nf(polTotal) + '명' : '전원'}의 발의·표결·발언 기록, 법안 ${billTotal ? nf(billTotal) + '건' : '전건'}의 처리 경과, 그리고 나와 가장 가까운 의원을 찾는 성향 진단까지.`,
+                '',
+                '정당색도, 좋은 의원·나쁜 의원 평가도 없습니다. 기록과 숫자만 보여줍니다.',
+                '',
+                '프로필 링크에서 시작할 수 있습니다.',
+                '',
+                '#국회 #법안 #당말사 #국회의원 #정치데이터',
+            ].join('\n');
+            res.render('promo/intro_card', {
+                layout: false,
+                slides, single, dateKo, polTotal, billTotal, caption,
+            });
+        } catch (error) {
+            logger.error('브랜드 소개 캐러셀 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
     return controller;
 };

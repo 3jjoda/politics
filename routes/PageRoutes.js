@@ -49,6 +49,7 @@ export default (db) => {
     router.get('/promo/numbers', promoController.getNumbersCard);
     router.get('/promo/balance', promoController.getBalanceCard);
     router.get('/promo/threads', promoController.getThreadsBank);   // 쓰레드 문안 뱅크 (백로그 3)
+    router.get('/promo/intro', promoController.getIntroCard);       // 브랜드 소개 캐러셀 (30일 플랜 1주차)
 
     // 소개 페이지
     router.get('/about', async (req, res, next) => {
