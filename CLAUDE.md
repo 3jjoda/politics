@@ -2149,6 +2149,17 @@ controllers/IssueController.js · views/issue/*.ejs · public/styles/issue.css
 - 실측 2026-08-23: `/issue` 15KB · 법원행정처 30건 38KB · 전세사기 102건 96KB · 촉법소년 12건 27KB (origin 기준,
   실사용자는 Cloudflare brotli). 375·1270px 가로 오버플로 **0**, 모르는 slug **404**
 
+### 숫자 캐러셀 `/promo/numbers` — SNS 운영용 카드 (2026-08-26)
+SNS.md 백로그 1. 인스타 4:5 캐러셀을 브라우저에서 그려 PNG 로 받는 **운영자 도구** (`controllers/PromoController.js` · `views/promo/numbers_card.ejs`).
+브리핑 인스타 카드와 같은 문법 — 쿼리 없음 = 0.35배 미리보기 + PNG 저장 버튼(cardShot.js) + 캡션 복사 / `?slide=N` = 1080×1350 1:1.
+
+- 시리즈 3종 `?series=` — `pending`(계류 74.6% → 1년 초과 → "발의 많으면 일 잘한 의원?" → 과정 도식 → 마무리 5장) ·
+  `oppose`(반대 0.68% → 147번 중 1번 → "어디서 걸러질까" → 위원회 5장) · `absent`(불참 중앙값 → 기권vs불참 → "게으른 의원?" 각주 → 4장)
+- 🔴 **숫자는 렌더 시 `getHomeFacts`(10분 캐시)** — 카드에 `YYYY.MM.DD 기준` 이 항상 붙는다. 실측: CLAUDE.md 에 적힌 75.8% 가 이미 74.6% 로 움직여 있었다 (하드코딩하면 안 되는 산 증거)
+- 🔴 **문안은 홈 B 섹션·용어 설명과 같은 말이어야 한다.** 특히 계류의 "계류가 곧 방치는 아닙니다" · 불참의 "게으름이 아니다"(장관 겸직·의장 관례·보이콧) 각주는 사이트의 같은 자리 각주와 세트다 — 카드에서 빼면 SNS 에서만 다른 주장을 하게 된다
+- 라우트는 공개 (브리핑 카드와 같은 판단) + `noindex` + robots `Disallow: /promo/`. 시리즈·slide 모르는 값은 기본값으로 접는다
+- 편 추가 = `PromoController.SERIES` 에 항목 하나 (label·title·slides(f)·caption(f))
+
 ### `/briefing` AI 카드 피드 (2026-08-11)
 원래 구상은 **"AI가 정리한 카드가 피드처럼 쌓이고, 댓글 달고 외부 공유"** 였다.
 1단계에서 만든 주간 데이터 대시보드는 **상단 요약 스트립으로 축소**하고 피드를 본체로 삼았다.

@@ -9,6 +9,7 @@ import MyController from '../controllers/MyController.js';
 import XrayController from '../controllers/XrayController.js';
 import BriefingController from '../controllers/BriefingController.js';
 import ChartController from '../controllers/ChartController.js';
+import PromoController from '../controllers/PromoController.js';
 import IssueController from '../controllers/IssueController.js';
 import { requireLogin } from '../middlewares/auth.js';
 import { GUIDE_ARTICLES, guideBySlug, guideNeighbors } from '../utils/guideArticles.js';
@@ -25,6 +26,7 @@ export default (db) => {
     const xrayController = XrayController(db);
     const briefingController = BriefingController(db);
     const chartController = ChartController(db);
+    const promoController = PromoController(db);
     const issueController = IssueController(db);
     const billService = BillService(db);   // /guide 1편의 살아 있는 숫자(getHomeFacts, 10분 캐시)
 
@@ -40,6 +42,10 @@ export default (db) => {
     router.get('/briefing/:id/card', briefingController.getBriefingCard);
     router.get('/briefing/:id/threads', briefingController.getBriefingThreads);
     router.get('/briefing/:id', briefingController.getBriefingPost);
+
+    // SNS 운영용 카드 (운영자 도구 — 공개 라우트지만 noindex + robots /promo 차단)
+    //   /promo/numbers?series=pending|oppose|absent  숫자 캐러셀 (SNS.md 백로그 1)
+    router.get('/promo/numbers', promoController.getNumbersCard);
 
     // 소개 페이지
     router.get('/about', async (req, res, next) => {

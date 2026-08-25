@@ -157,6 +157,7 @@ const ROBOTS_TXT = [
     '# 같은 브리핑을 SNS 배포용으로 다시 그린 것 — 색인되면 중복 콘텐츠가 된다',
     'Disallow: /briefing/*/card',
     'Disallow: /briefing/*/threads',
+    'Disallow: /promo/',
     '',
     '# Google 은 무시하지만 Bingbot·Yandex 는 따른다',
     'Crawl-delay: 2',
