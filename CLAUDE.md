@@ -594,7 +594,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/community` | `community/list.ejs` | 게시판 목록 (20개/페이지). 🔴 **2026-08-27 부터 통합 피드** — 글과 댓글(법안·의원·브리핑)이 한 줄기로 흐른다. `?on=` 으로 보기, `?on=posts&type=` 으로 글 유형 (위 「커뮤니티 ↔ 댓글」 참조). **2026-08-19 보드(행) 형태 + 글 유형 탭** (`?type=` — 전체·공지·잡담·법안 이야기·질문·건의·피드백, 모르는 값은 전체). 행 = `[유형] 제목 [댓글수] (법안칩) | 닉네임·시간·조회`, 고정 공지는 `is_pinned DESC` 로 맨 위 + 골드 배경. 카드형에서 바꾼 이유: 썸네일·요약이 없어 글 하나가 110px 이었다 |
 | `/community/write` | `community/write.ejs` | 작성 (법안 검색 첨부 + **글 유형 칩**). 🔴 **유형 단일 소스 `utils/postTypes.js`** (`notice` 공지=관리자만 · `free` 잡담 · `bill` 법안 이야기 · `question` 질문 · `feedback` 건의·피드백). 공지는 `allowedPostTypes(isAdmin)` 로 관리자에게만 보이고, **서버(`PostController.create/update`)가 `resolvePostType` 으로 다시 검증**한다 (화면 숨김은 방어가 아니다 — 실측: 일반 유저가 `postType:'notice'` 를 보내면 400). 관리자는 공지에 `상단 고정` 체크. DB: `posts.post_type` CHECK + `is_pinned` (`ddl/migrations/2026-08-19-post-type.sql`) — 유형을 추가하면 CHECK 와 배열을 같이 |
 | `/community/:id/edit` | `community/write.ejs` | 수정 (mode=edit) |
-| `/community/:id` | `community/detail.ejs` | 상세 (조회수·좋아요·댓글). 본문은 HTML 금지 — **`linkify()`(`utils/linkify.js`, app.locals)가 이스케이프한 뒤 `https?://` 주소만 링크로**. 같은 호스트(`dangmalsa.kr`·`BASE_URL`)는 경로만 표시·같은 탭, 외부는 `_blank noopener nofollow`. 끝 문장부호는 링크에서 뺀다. 링크 색은 골드 (2026-08-19) |
+| `/community/:id` | `community/detail.ejs` | 상세 (조회수·좋아요·댓글). 본문은 HTML 금지 — **`linkify()`(`utils/linkify.js`, app.locals)가 이스케이프한 뒤 `https?://` 주소만 링크로**. 같은 호스트(`dangmalsa.kr`·`BASE_URL`)는 **`바로가기`** 로 표시·같은 탭(2026-08-27 — 경로를 그대로 노출하던 것을 바꿨다. 아래 참조), 외부는 주소 그대로 + `_blank noopener nofollow`. 끝 문장부호는 링크에서 뺀다. 링크 색은 골드 (2026-08-19) |
 | `/my` | `my/profile.ejs` | 마이페이지 (`requireLogin`) — 프로필(+로그아웃·회원 탈퇴) / 성향 카드 / 게임팩 / 분석 요청 요약. **2026-08-16 재구성**: 카드는 `balance/_result_axes.ejs` 파샬(invite·reveal 과 같은 마크업 — 구 \|값\| 다이아몬드·`mapping v1` 메타 삭제) + 행동 4개(공유·가까운 의원·비교·다시 풀기). 미완료면 `16 / 20` 진행바 + `이어서 풀기`. 게임팩 행은 **통째로 링크**(`/balance-game/respond?pack=`), 상태별 버튼 라벨(시작/이어서/다시). ⚠️ 응답 수는 **활성 문항 기준**(`listUserPackHistory` 조인) — 문항 교체 후 옛 응답을 세면 16/20 인데 완료로 보인다. **+ 내 활동** — 총계 카드 4장(댓글·찬반·별점·게시글)이 **탭**이고, 고른 종류의 목록을 10건씩 페이징 (`getActivityCounts.sql` · `getActivityPage.sql`, 첫 페이지 SSR + `GET /my/activity?kind&page` JSON, 행 마크업은 `_activity_row.ejs` 와 JS `row()` 가 같아야 한다). 기본 탭은 활동이 있는 첫 종류. 모르는 kind·범위 밖 page 는 기본값·마지막으로 접는다. 🔴 본인에게만 보이는 화면이다. 이 쿼리를 다른 사람의 활동 기록 표시에 재사용하지 말 것 (방문 통계가 사용자별 페이지 로그를 안 남기는 원칙과 같다). **+ 성별·연령대 인라인 변경**(`PUT /api/auth/profile`, 선택지는 `auth/setup.ejs` 와 동일 — 14세 미만 없음) |
 ### 내 지역구 의원 (2026-08-23)
 개인화 진입점이 **성향 진단(20문항)뿐**이었는데 실측 완료자가 **3명**이다 (가입 9 · 응답 시작 7).
@@ -1442,6 +1442,42 @@ public/scripts/balance/shareCard.js   🔴 그림은 전부 여기 — canvas 2D
   🔴 일치도 식(`거리/2`, `(1-d/1.5)*100`)은 **의원 상세·목록과 글자 그대로 같아야** 한다
 - **숫자로 본 국회** — `/xray`·`/xray/chart`·`/politician` 진입 카드 3장.
   ⚠️ 여기에 지표 숫자를 다시 그리지 말 것 (히어로 결론 3칸과 겹친다)
+
+### 본문 속 내부 링크는 `바로가기` 다 — 경로를 노출하지 않는다 (2026-08-27)
+`linkify()` 가 같은 호스트 URL 을 **경로 텍스트**로 렌더했다 (`https://dangmalsa.kr/briefing` → `/briefing`).
+공지 본문이 이렇게 나갔다: `· 매일 아침 국회 브리핑 /briefing`.
+
+- 🔴 **주소는 읽는 사람에게 정보가 아니다.** 문장 사이에 영문 경로가 끼면 리듬이 끊기고,
+  어디로 가는지는 **앞 문장이 이미 말한다**. 지금은 `· 매일 아침 국회 브리핑 바로가기 →`
+- 🔴 **페이지 이름(브리핑·성향 진단·읽는 법…)을 라벨로 쓰지 말 것.** 후보였지만 실제 본문에 대입해 보고 버렸다 —
+  작성자가 앞에서 이미 부르므로 `매일 아침 국회 브리핑 → 브리핑` 처럼 **같은 말이 두 번** 나온다.
+  (`middlewares/pageViews.js` 의 `PAGE_KINDS` 가 경로→이름 지도를 이미 갖고 있어 기술적으로는 쉬웠다)
+- 🔴 **화살표는 CSS(`.pb-inlink::after`)가 붙인다.** 텍스트에 넣으면 복사할 때 따라오고 스크린리더가 읽는다
+- ⚠️ **어디로 가는지는 `title` 에 경로로 남긴다** — 문맥 없이 링크만 있는 글에서 유일한 단서다.
+  (앞 문장이 목적지를 말한다는 전제라 WCAG 2.4.4 는 "문맥 안에서" 로 충족된다)
+- ⚠️ **외부 링크는 주소를 그대로 보여준다.** 사이트 밖으로 나가는 건 어디로 가는지 보이는 게 맞다 — 바꾸지 말 것
+- ⚠️ CSS 는 `main.css` 에 뒀다 (`.pb-inlink`). `linkify` 는 `app.locals` 라 출력이 다른 페이지에 놓일 수 있다
+- 🔴 **댓글도 같은 규칙을 쓴다 (2026-08-27). 단 링크 처리를 JS 로 옮기지 않았다** —
+  댓글 위젯은 클라이언트 렌더인데, 같은 규칙을 `interactions.js` 에 한 벌 더 두면 **반드시 갈린다**
+  (`_activity_row.ejs` ↔ JS `row()`, 아바타 팔레트에서 반복해서 겪었다).
+  → **서버가 `content_html` 을 같이 내려준다** (`CommentService.list`). 규칙은 `utils/linkify.js` 한 곳
+  - ⚠️ 원문(`content`)도 같이 내린다 — 수정 시 textarea 에 들어가야 한다
+  - ⚠️ **줄바꿈을 `<br>` 로 바꾸지 않는다.** `.comment-body` 가 `white-space: pre-wrap` 이라
+    `\n` 이 그대로 줄바꿈이 된다 (`.post-body` 와 같은 처리). 구 코드의 `.replace(/\n/g,'<br>')` 은 제거
+  - ⚠️ **목록에만 붙인다** — create/update/delete 뒤 위젯이 `load()` 로 다시 받아간다
+  - ⚠️ 위젯의 폴백은 이스케이프만 (`bodyHtml()`). 구 응답이나 오류 시 링크가 안 걸릴 뿐 본문은 보인다
+  - `.comment-body a` 도 `.post-body a` 와 **같은 골드**로 (한쪽만 고치면 자리에 따라 색이 갈린다)
+- 🔴 **삭제된 댓글의 본문을 API 로 내보내지 않는다** (`CommentService.list` 가 잘라낸다).
+  본인 삭제(`comment/softDelete.sql`)는 DB 에서 `content=''` 로 지우지만,
+  **관리자 삭제(`admin/setCommentDeleted.sql`)는 `is_deleted` 만 바꾸고 본문을 남긴다** —
+  「되살리기」 를 하려면 본문이 있어야 해서 그건 **의도된 설계**다. 그래서 그 경로로 지워진 댓글은
+  응답에 본문이 실려 개발자도구로 읽혔다 (실측 확인: DB 에는 남고 API 응답은 `''`).
+  ⚠️ **관리자 삭제 쿼리에서 본문을 지우지 말 것** — 되살리기가 죽는다. 막는 자리는 응답이다
+- ⚠️ 작성자가 링크 문구를 직접 정하고 싶다면 `[텍스트](주소)` 같은 문법이 필요한데 **아직 없다.**
+  지금은 자동 치환뿐이라 "앞 문장이 목적지를 말한다" 는 전제가 깨지면 `바로가기` 만 남는다
+- ✅ 실측 2026-08-27: 공지 본문 4링크 전부 `바로가기` · href 정확 · 같은 탭 · 클릭 시 `/balance-game` 이동 ·
+  **화살표가 `textContent`·복사 본문에 안 섞임** · 쿼리·해시·www·루트·끝 문장부호·XSS 시도 전부 정상 ·
+  외부 링크는 주소 유지 · 가로 오버플로 0
 
 ### 🔴 커뮤니티 ↔ 댓글 — 두 곳은 경쟁이 아니라 역할이 다르다 (2026-08-27)
 대화 공간이 **두 종류**로 있었는데 서로 싸우고 있었다. `/community` 의 `bill` 유형("법안 이야기")과

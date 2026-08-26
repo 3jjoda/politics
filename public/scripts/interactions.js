@@ -406,6 +406,13 @@
       </div>
     `;
 
+    /* 본문 HTML — 🔴 링크 규칙은 **서버(utils/linkify.js)** 가 갖는다. 여기 같은 규칙을 다시 쓰지 말 것.
+       서버가 `content_html`(이스케이프 + 내부/외부 링크)을 같이 내려준다.
+       ⚠️ 폴백은 이스케이프만 — 구 응답이나 오류 시 링크가 안 걸릴 뿐 본문은 그대로 보인다.
+       ⚠️ 줄바꿈을 `<br>` 로 바꾸지 않는다. `.comment-body` 가 `white-space: pre-wrap` 이다 */
+    const bodyHtml = (c) =>
+      (typeof c.content_html === 'string' ? c.content_html : PB.escapeHtml(c.content || ''));
+
     const renderCard = (c, myId, isReply) => {
       if (c.is_deleted) {
         return `
@@ -428,7 +435,7 @@
               <div class="comment-date">${PB.escapeHtml(c.created_at)}${c.updated_at && c.updated_at !== c.created_at ? ' · 수정됨' : ''}</div>
             </div>
           </div>
-          <div class="comment-body" data-body>${PB.escapeHtml(c.content).replace(/\n/g, '<br>')}</div>
+          <div class="comment-body" data-body>${bodyHtml(c)}</div>
           <div class="comment-footer">
             <span class="comment-action ${liked ? 'liked' : ''}" data-like>
               👍 도움돼요 <strong data-like-count>${likeCnt}</strong>

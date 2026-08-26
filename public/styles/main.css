@@ -684,6 +684,11 @@ input, textarea, select { font-family: inherit; }
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+/* 댓글 본문 링크 — 게시글 본문(`.post-body a`)과 **같은 처리**여야 한다.
+   ⚠️ 파랑은 정당색이라 금지. 사이트 링크 색은 골드 */
+.comment-body a { color: var(--accent2); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.comment-body a:hover { color: var(--accent); }
+
 .comment-footer {
   display: flex;
   align-items: center;
@@ -740,6 +745,11 @@ input, textarea, select { font-family: inherit; }
   font-size: 13px;
   margin-bottom: 0;
 }
+/* 본문 안 내부 링크 — `linkify()` 가 `바로가기` 로 바꾼 것 (utils/linkify.js).
+   ⚠️ 화살표는 여기서 붙인다. 텍스트에 넣으면 복사할 때 따라오고 스크린리더가 읽는다 */
+.pb-inlink { white-space: nowrap; }
+.pb-inlink::after { content: ' \2192'; }
+
 .comment-report-form {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   margin-top: 8px; padding: 9px 11px;
