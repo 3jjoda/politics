@@ -46,8 +46,9 @@ export const PAGE_KINDS = [
 export const KIND_LABEL = Object.fromEntries(PAGE_KINDS.map((k) => [k.kind, k.label]));
 KIND_LABEL.site = '전체';
 
-/* 세지 않는 경로 — 세션 의존·기계용·SNS 배포용 중복 렌더 (robots.txt 의 Disallow 와 같은 목록) */
-const SKIP_PATH = /^\/(api|admin|auth|my|ads\.txt|robots\.txt|sitemap\.xml|xray\/s\/|briefing\/\d+\/(card|threads))(\/|$|\?)|\.[a-z0-9]{2,5}$/i;
+/* 세지 않는 경로 — 세션 의존·기계용·SNS 배포용 중복 렌더 (robots.txt 의 Disallow 와 같은 목록)
+   ⚠️ /promo 를 빠뜨리면 운영자가 로그아웃 상태(폰에서 PNG 저장 등)로 열 때 `other` 로 잡혀 비회원 방문이 부푼다 */
+const SKIP_PATH = /^\/(api|admin|auth|my|promo|ads\.txt|robots\.txt|sitemap\.xml|xray\/s\/|briefing\/\d+\/(card|threads))(\/|$|\?)|\.[a-z0-9]{2,5}$/i;
 const BOT_UA = /bot|crawl|spider|slurp|fetch|curl|wget|python|java\/|httpclient|headless|phantom|lighthouse|pingdom|monitor|preview|facebookexternalhit|whatsapp|telegram|discord|scrapy|go-http|axios|node-fetch|okhttp|apache-http|libwww|dataprovider|semrush|ahrefs|mj12|dotbot|petalbot|bytespider|gptbot|claudebot|ccbot|perplexity|applebot|yandex|baidu|bingpreview|duckduck/i;
 /* 🔴 로컬·사설망 접속은 세지 않는다 — 개발하면서 연 페이지가 그대로 지표에 섞인다.
    운영 초기엔 이게 관리자 브라우징만큼 크다 (실측: 하루 전체 뷰의 절반이 로컬 테스트였다).

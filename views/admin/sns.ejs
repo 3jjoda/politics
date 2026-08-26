@@ -45,7 +45,8 @@
   <div class="ad-head"><h1>SNS 콘텐츠</h1></div>
   <p class="ad-desc">
     매일·주간 루틴에서 쓰는 도구를 모았습니다. 전략·루틴의 원문은 저장소의 <strong>SNS.md</strong>.
-    캐러셀의 숫자는 전부 <strong>여는 순간의 DB 값</strong>이라 게시 직전에 페이지를 새로 열면 됩니다.
+    캐러셀의 숫자는 전부 <strong>여는 순간의 DB 값</strong>이라 게시 직전에 페이지를 새로 열면 됩니다.<br>
+    <strong>브리핑은 오전, 주간 슬롯은 점심</strong> — 인스타·쓰레드가 같은 리듬을 씁니다 (아래 표).
   </p>
 
   <div class="sns-h">캐러셀 · 문안 도구</div>
@@ -56,7 +57,7 @@
       <div class="sns-links"><a href="/promo/intro">열기 · PNG 저장</a></div>
     </div>
     <div class="sns-card">
-      <h3>숫자 캐러셀 <span class="sns-when">월요일</span></h3>
+      <h3>숫자 캐러셀 <span class="sns-when">월요일 점심</span></h3>
       <p>계류 · 반대표 · 불참 3시리즈. 시리즈 하나 골라 PNG 전부 저장 → 인스타 캐러셀 + 캡션 복사.</p>
       <div class="sns-links">
         <a href="/promo/numbers?series=pending">계류</a>
@@ -65,13 +66,13 @@
       </div>
     </div>
     <div class="sns-card">
-      <h3>진단 캐러셀 <span class="sns-when">수 · 목</span></h3>
+      <h3>진단 캐러셀 <span class="sns-when">수 · 목 중 하루</span></h3>
       <p>성향 진단 홍보 6장. 익명 점구름 지도 + 마스킹 목업 결과. 의원 수·문항 수는 DB 값.</p>
       <div class="sns-links"><a href="/promo/balance">열기 · PNG 저장</a></div>
     </div>
     <div class="sns-card">
-      <h3>쓰레드 문안 뱅크 <span class="sns-when">주 2회</span></h3>
-      <p>대화형 포스트 10개 + 답글 초안. 첫 포스트에 링크 금지 — 링크는 대화가 생긴 뒤 답글에서.</p>
+      <h3>쓰레드 문안 뱅크 <span class="sns-when">월 · 수/목 중 하루</span></h3>
+      <p>대화형 포스트 10개 + 셀프 답글. 첫 포스트에 링크 금지 — 본문을 올린 뒤 <b>곧바로 내가 답글을 달아</b> 거기에 링크를 둡니다 (남의 댓글을 기다리지 않습니다).</p>
       <div class="sns-links"><a href="/promo/threads">열기 · 복사</a></div>
     </div>
   </div>
@@ -101,11 +102,17 @@
 
   <div class="sns-h">주간 루틴 요약 (원문 SNS.md)</div>
   <div class="tblwrap"><table class="wk-table">
-    <tr><th>언제</th><th>인스타</th><th>쓰레드</th><th>유튜브</th></tr>
-    <tr><td><b>매일</b></td><td>브리핑 캐러셀</td><td>브리핑 체인 3개</td><td>(영상 보류)</td></tr>
-    <tr><td><b>월</b></td><td>숫자 캐러셀</td><td>상식 뒤집기 1 (문안 뱅크)</td><td></td></tr>
-    <tr><td><b>수 · 목</b></td><td>진단 캐러셀</td><td>"당신이라면?" 1 (문안 뱅크)</td><td></td></tr>
-    <tr><td><b>금</b></td><td colspan="3">성과 기록 10분 — 저장 수(인스타) · 답글 수(쓰레드) · <a href="/admin/stats" style="color:var(--accent2)">방문 통계</a>의 balance 뷰</td></tr>
+    <tr><th>언제</th><th>시각</th><th>인스타</th><th>쓰레드</th><th>유튜브</th></tr>
+    <tr><td><b>매일</b></td><td>오전 8~9시</td><td>브리핑 캐러셀</td><td>브리핑 체인 3개 (연달아)</td><td>(영상 보류)</td></tr>
+    <tr><td><b>월</b></td><td>점심 12~13시</td><td>숫자 캐러셀</td><td>상식 뒤집기 1 + 셀프 답글</td><td></td></tr>
+    <tr><td><b>수 · 목 중 하루</b></td><td>점심 12~13시</td><td>진단 캐러셀</td><td>"당신이라면?" 1 + 셀프 답글</td><td></td></tr>
+    <tr><td><b>매일</b></td><td>밤 21시</td><td colspan="3">달린 댓글에 답글 몰아서 대응 (기준 제시 화법)</td></tr>
+    <tr><td><b>금</b></td><td colspan="4">성과 기록 10분 — 저장 수(인스타) · 답글 수(쓰레드) · <a href="/admin/stats" style="color:var(--accent2)">방문 통계</a>의 성향 진단 뷰. 기록표에 <b>게시 시각</b>을 같이 남길 것</td></tr>
   </table></div>
-  <p class="sns-note">바쁜 날은 브리핑 캐러셀 하나만이라도. 끊기는 것이 제일 나쁩니다.</p>
+  <p class="sns-note">
+    바쁜 날은 브리핑 캐러셀 하나만이라도. 끊기는 것이 제일 나쁩니다.<br>
+    브리핑과 슬롯 사이는 <b>최소 4시간</b> — 체인 3개를 먼저 끝내고, 슬롯은 점심에. 붙여 올리면 우리 글끼리 도달을 먹습니다.
+    점심인 이유는 답글이 오후~저녁에 쌓여 <b>그날 밤 한 번에 대응</b>할 수 있어서입니다 (저녁에 올리면 대응이 다음 날로 밀립니다).
+    이건 실측이 아니라 출발값이라, 성과 기록의 <b>시각</b> 칸으로 4주 뒤에 검증합니다.
+  </p>
 </div>
