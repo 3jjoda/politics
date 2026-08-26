@@ -46,6 +46,9 @@ export default (db) => {
     router.get('/schedule', admin.getSchedulePage);   // 운영 일정 (정기·조건부 작업 현황)
     router.get('/issue-candidates', admin.getIssueCandidatesPage);   // 쟁점 후보 발굴 + 기준 검사기
     router.get('/sns', admin.getSnsPage);             // SNS 콘텐츠 허브 (캐러셀·브리핑 카드·쓰레드 문안)
+    router.post('/sns/log', admin.createSnsLog);              // 성과표 기록 (PRG)
+    router.post('/sns/log/:id', admin.updateSnsLog);          // 지표 채우기 (금요일)
+    router.post('/sns/log/:id/delete', admin.deleteSnsLog);
 
     return router;
 };

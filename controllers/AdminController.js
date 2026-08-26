@@ -362,11 +362,22 @@ export default (db) => {
        (권한 경계를 여기로 옮기면 브리핑 카드처럼 로그인 상태에 따라 미리보기가 안 되는 문제가 생긴다). */
     controller.getSnsPage = wrapWithContext(async function getSnsPage(req, res, next) {
         try {
-            const { rows: briefings } = await db.query(`
-                SELECT id, briefing_date, headline, model
-                  FROM briefing_posts
-                 ORDER BY briefing_date DESC
-                 LIMIT 7`);
+            const [{ rows: briefings }, { rows: logRows }, { rows: axisAgg }, { rows: weekAgg }] = await Promise.all([
+                db.query(`SELECT id, briefing_date, headline, model
+                            FROM briefing_posts ORDER BY briefing_date DESC LIMIT 7`),
+                db.query(`SELECT id, TO_CHAR(posted_on, 'YYYY-MM-DD') AS posted_on, slot, channel, axis, format,
+                                 saves, reach, replies, note
+                            FROM sns_log ORDER BY posted_on DESC, id DESC LIMIT 60`),
+                /* 축별 집계 — "4주 뒤 승자 정하기" 를 표가 직접 해준다. 지표 없는(아직 안 채운) 행은 평균에서 자연히 빠진다 */
+                db.query(`SELECT axis, COUNT(*)::int AS cnt
+                               , ROUND(AVG(saves))::int   AS avg_saves
+                               , ROUND(AVG(reach))::int   AS avg_reach
+                               , ROUND(AVG(replies))::int AS avg_replies
+                            FROM sns_log GROUP BY axis ORDER BY COUNT(*) DESC`),
+                db.query(`SELECT TO_CHAR(DATE_TRUNC('week', posted_on), 'MM.DD') AS wk, COUNT(*)::int AS cnt
+                               , SUM(saves)::int AS saves, SUM(replies)::int AS replies
+                            FROM sns_log GROUP BY 1 ORDER BY 1 DESC LIMIT 6`),
+            ]);
             res.render('admin/sns', {
                 pageTitle: 'SNS 콘텐츠', pageStyles: null, currentUrl: '/admin/sns',
                 briefings: briefings.map((b) => ({
@@ -374,11 +385,93 @@ export default (db) => {
                     // 폴백·활동없음 카드는 올릴 카드가 아니다 (export API 의 publishable 과 같은 판정)
                     publishable: b.model !== 'fallback' && b.model !== 'none',
                 })),
+                logRows, axisAgg, weekAgg,
+                // 폼 기본값 — 오늘 (KST 고정, 로컬 getter 금지)
+                todayKst: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()),
+                flash: req.query.ok || null,
+                error: req.query.err || null,
             });
         } catch (err) {
             logger.error('SNS 콘텐츠 허브 렌더링 중 에러:', `${err.message}\n${err.stack}`);
             next(err);
         }
+    });
+
+    /* ── SNS 성과표 (sns_log) — PRG 패턴 (titles 와 동일). 지표는 게시 당일 비워두고 금요일에 채운다 ── */
+    const backSns = (res, { ok, err }) =>
+        res.redirect(`/admin/sns?${ok ? `ok=${encodeURIComponent(ok)}` : `err=${encodeURIComponent(err)}`}#sns-log`);
+    const SNS_ENUM = {
+        slot: ['', '아침', '점심', '저녁'],
+        channel: ['인스타', '쓰레드', '유튜브', '기타'],
+        axis: ['당신', '숫자', '오늘', '사람', '브랜드'],
+    };
+    // 숫자 칸: 빈 문자열 = NULL (아직 안 잼). 음수·쓰레기는 거부
+    const numOrNull = (v) => {
+        const t = String(v ?? '').trim();
+        if (t === '') return { val: null };
+        const n = Number(t);
+        return Number.isInteger(n) && n >= 0 ? { val: n } : { bad: true };
+    };
+    const parseSnsForm = (body) => {
+        const postedOn = String(body.postedOn || '').trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(postedOn)) return { error: '게시일이 필요합니다 (YYYY-MM-DD).' };
+        const slot = SNS_ENUM.slot.includes(body.slot) ? body.slot : '';
+        const channel = String(body.channel || '');
+        const axis = String(body.axis || '');
+        if (!SNS_ENUM.channel.includes(channel)) return { error: '채널을 선택해주세요.' };
+        if (!SNS_ENUM.axis.includes(axis)) return { error: '축을 선택해주세요.' };
+        const format = String(body.format || '').trim().slice(0, 100);
+        if (!format) return { error: '포맷을 적어주세요 (예: 문안 8 · 브리핑 캐러셀).' };
+        const nums = {};
+        for (const k of ['saves', 'reach', 'replies']) {
+            const r = numOrNull(body[k]);
+            if (r.bad) return { error: '저장·도달·답글은 0 이상의 정수만 됩니다.' };
+            nums[k] = r.val;
+        }
+        return { data: { postedOn, slot, channel, axis, format, ...nums, note: String(body.note || '').trim() } };
+    };
+
+    controller.createSnsLog = wrapWithContext(async function createSnsLog(req, res) {
+        const { data, error } = parseSnsForm(req.body);
+        if (error) return backSns(res, { err: error });
+        try {
+            await db.query(`INSERT INTO sns_log (posted_on, slot, channel, axis, format, saves, reach, replies, note)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                [data.postedOn, data.slot, data.channel, data.axis, data.format, data.saves, data.reach, data.replies, data.note]);
+            return backSns(res, { ok: `기록했습니다: ${data.postedOn} ${data.format}` });
+        } catch (e) {
+            logger.error(`[admin] SNS 기록 실패: ${e.message}`);
+            return backSns(res, { err: e.message });
+        }
+    });
+
+    /* 지표만 나중에 채우는 수정 — 행의 인라인 폼이 숫자 셋 + 비고만 보낸다 */
+    controller.updateSnsLog = wrapWithContext(async function updateSnsLog(req, res) {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) return backSns(res, { err: '잘못된 요청입니다.' });
+        const nums = {};
+        for (const k of ['saves', 'reach', 'replies']) {
+            const r = numOrNull(req.body[k]);
+            if (r.bad) return backSns(res, { err: '저장·도달·답글은 0 이상의 정수만 됩니다.' });
+            nums[k] = r.val;
+        }
+        try {
+            const { rowCount } = await db.query(
+                `UPDATE sns_log SET saves = $2, reach = $3, replies = $4, note = $5 WHERE id = $1`,
+                [id, nums.saves, nums.reach, nums.replies, String(req.body.note || '').trim()]);
+            if (!rowCount) return backSns(res, { err: '대상을 찾을 수 없습니다.' });
+            return backSns(res, { ok: '지표를 채웠습니다.' });
+        } catch (e) {
+            logger.error(`[admin] SNS 기록 수정 실패: ${e.message}`);
+            return backSns(res, { err: e.message });
+        }
+    });
+
+    controller.deleteSnsLog = wrapWithContext(async function deleteSnsLog(req, res) {
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) return backSns(res, { err: '잘못된 요청입니다.' });
+        const { rowCount } = await db.query(`DELETE FROM sns_log WHERE id = $1`, [id]);
+        return rowCount ? backSns(res, { ok: '지웠습니다.' }) : backSns(res, { err: '대상을 찾을 수 없습니다.' });
     });
 
     return controller;

@@ -39,6 +39,38 @@
   .wk-table b { color: var(--text); }
   .sns-note { font-size: 12.5px; color: var(--sub2); line-height: 1.7; margin-top: 10px; word-break: keep-all; }
   .tblwrap { overflow-x: auto; border-radius: 10px; }
+
+  .ad-msg { padding: 11px 15px; border-radius: 9px; font-size: 13.5px; margin: 0 0 16px; }
+  .ad-msg.is-ok  { background: #EAF6F0; border: 1px solid #B9E0CD; color: #0B6B4B; }
+  .ad-msg.is-err { background: #FBEDED; border: 1px solid #E7C3C3; color: #A32B2B; }
+  .lg-form { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+             display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+  .lg-f { display: flex; flex-direction: column; gap: 4px; }
+  .lg-f label { font-size: 11px; color: var(--sub2); font-weight: 700; }
+  .lg-f input, .lg-f select { font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid var(--border2);
+                              border-radius: 7px; background: var(--bg2); color: var(--text); }
+  .lg-f input[type="number"] { width: 72px; }
+  .lg-f input[name="format"] { width: 190px; }
+  .lg-f input[name="note"] { width: 220px; }
+  .lg-btn { background: var(--accent); color: #fff; border: 0; border-radius: 8px; font-weight: 800;
+            font-size: 13px; padding: 9px 16px; cursor: pointer; font-family: inherit; }
+  .lg-table { width: 100%; border-collapse: collapse; background: var(--bg2); border: 1px solid var(--border);
+              border-radius: 10px; overflow: hidden; font-size: 12.5px; }
+  .lg-table th { text-align: left; font-size: 11px; color: var(--sub2); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .lg-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .lg-table tr:last-child td { border-bottom: none; }
+  .lg-table input { font: inherit; font-size: 12.5px; padding: 4px 6px; border: 1px solid var(--border2);
+                    border-radius: 6px; background: var(--bg2); color: var(--text); }
+  .lg-table input[type="number"] { width: 58px; }
+  .lg-table input[name="note"] { width: 170px; }
+  .lg-save { background: transparent; color: var(--accent2); border: 1px solid var(--accent); border-radius: 6px;
+             font-weight: 700; font-size: 11.5px; padding: 4px 10px; cursor: pointer; font-family: inherit; }
+  .lg-del { background: transparent; color: var(--sub2); border: 1px solid var(--border2); border-radius: 6px;
+            font-size: 11.5px; padding: 4px 8px; cursor: pointer; font-family: inherit; }
+  .lg-chip { font-size: 11px; font-weight: 700; color: var(--accent2); border: 1px solid var(--accent);
+             border-radius: 5px; padding: 2px 7px; background: #FAF6EB; white-space: nowrap; }
+  .lg-chip.q { color: var(--sub); border-color: var(--border2); background: transparent; }
+  .lg-empty { color: var(--sub2); }
 </style>
 
 <div class="ad-wrap">
@@ -100,6 +132,61 @@
     <code>out/video/daily/</code> 에 계속 생성되니, 재개할 때 잘 나온 편을 골라 올리면 됩니다. 브리핑 쇼츠는 <code>npm run video</code>.
   </p>
 
+  <div class="sns-h" id="sns-log">성과표 · 기록</div>
+  <% if (flash) { %><div class="ad-msg is-ok"><%= flash %></div><% } %>
+  <% if (error) { %><div class="ad-msg is-err"><%= error %></div><% } %>
+  <p class="sns-note" style="margin:0 0 10px">
+    게시하면 바로 한 줄 적습니다 (지표는 비워두고). <b>저장·도달·답글은 금요일에</b> 행의 칸을 채우고 <b>채우기</b>를 누르면 됩니다.
+    팔로워 수는 적지 않습니다 — 보는 건 저장 · 답글 · 진단 시작 셋뿐.
+  </p>
+  <form class="lg-form" method="post" action="/admin/sns/log">
+    <div class="lg-f"><label>게시일</label><input type="date" name="postedOn" value="<%= todayKst %>" required></div>
+    <div class="lg-f"><label>시각</label><select name="slot"><option value="아침">아침</option><option value="점심" selected>점심</option><option value="저녁">저녁</option><option value="">모름</option></select></div>
+    <div class="lg-f"><label>채널</label><select name="channel"><option>인스타</option><option>쓰레드</option><option>유튜브</option><option>기타</option></select></div>
+    <div class="lg-f"><label>축</label><select name="axis"><option>당신</option><option>숫자</option><option>오늘</option><option>사람</option><option>브랜드</option></select></div>
+    <div class="lg-f"><label>포맷</label><input name="format" placeholder="예: 문안 8 · 브리핑 캐러셀" required></div>
+    <div class="lg-f"><label>저장</label><input type="number" name="saves" min="0" placeholder="나중에"></div>
+    <div class="lg-f"><label>도달</label><input type="number" name="reach" min="0" placeholder="나중에"></div>
+    <div class="lg-f"><label>답글</label><input type="number" name="replies" min="0" placeholder="나중에"></div>
+    <div class="lg-f"><label>비고</label><input name="note" placeholder="유기적 공유·인상적 댓글 등"></div>
+    <button type="submit" class="lg-btn">기록</button>
+  </form>
+  <div class="tblwrap"><table class="lg-table">
+    <tr><th>게시일</th><th>채널</th><th>축</th><th>포맷</th><th>저장</th><th>도달</th><th>답글</th><th>비고</th><th></th><th></th></tr>
+    <% if (!logRows.length) { %><tr><td colspan="10" class="lg-empty">아직 기록이 없습니다. 첫 게시물부터 적어보세요.</td></tr><% } %>
+    <% logRows.forEach((r) => { %>
+      <tr>
+        <td style="white-space:nowrap"><%= r.posted_on %><% if (r.slot) { %> <span style="color:var(--sub2)"><%= r.slot %></span><% } %></td>
+        <td><span class="lg-chip q"><%= r.channel %></span></td>
+        <td><span class="lg-chip"><%= r.axis %></span></td>
+        <td style="min-width:150px"><%= r.format %></td>
+        <%# 지표 셋 + 비고는 인라인 수정 — 금요일에 채운다. input 의 form 속성으로 아래 form 에 묶는다 (테이블 안 중첩 form 회피) %>
+        <td><input form="lg-u-<%= r.id %>" type="number" name="saves" min="0" value="<%= r.saves ?? '' %>"></td>
+        <td><input form="lg-u-<%= r.id %>" type="number" name="reach" min="0" value="<%= r.reach ?? '' %>"></td>
+        <td><input form="lg-u-<%= r.id %>" type="number" name="replies" min="0" value="<%= r.replies ?? '' %>"></td>
+        <td><input form="lg-u-<%= r.id %>" name="note" value="<%= r.note %>"></td>
+        <td><form id="lg-u-<%= r.id %>" method="post" action="/admin/sns/log/<%= r.id %>"><button type="submit" class="lg-save">채우기</button></form></td>
+        <td><form method="post" action="/admin/sns/log/<%= r.id %>/delete" onsubmit="return confirm('이 기록을 지울까요?')"><button type="submit" class="lg-del">삭제</button></form></td>
+      </tr>
+    <% }) %>
+  </table></div>
+
+  <% if (axisAgg.length) { %>
+    <div class="sns-h">축별 집계 (지표를 채운 행만 평균에 들어갑니다)</div>
+    <div class="tblwrap"><table class="lg-table">
+      <tr><th>축</th><th>게시 수</th><th>평균 저장</th><th>평균 도달</th><th>평균 답글</th></tr>
+      <% axisAgg.forEach((a) => { %>
+        <tr><td><span class="lg-chip"><%= a.axis %></span></td><td><%= a.cnt %></td>
+            <td><%= a.avg_saves ?? '·' %></td><td><%= a.avg_reach ?? '·' %></td><td><%= a.avg_replies ?? '·' %></td></tr>
+      <% }) %>
+      <% weekAgg.forEach((w) => { %>
+        <tr><td style="color:var(--sub2)">주간 <%= w.wk %>~</td><td><%= w.cnt %></td>
+            <td><%= w.saves ?? '·' %></td><td>·</td><td><%= w.replies ?? '·' %></td></tr>
+      <% }) %>
+    </table></div>
+    <p class="sns-note">4주 치가 쌓이면 이 표의 축 평균이 곧 순위입니다. 상위 2개가 5주차부터의 주력 (SNS.md 5장).</p>
+  <% } %>
+
   <div class="sns-h">주간 루틴 요약 (원문 SNS.md)</div>
   <div class="tblwrap"><table class="wk-table">
     <tr><th>언제</th><th>시각</th><th>인스타</th><th>쓰레드</th><th>유튜브</th></tr>
@@ -108,7 +195,7 @@
     <tr><td><b>화</b></td><td>점심 12~13시</td><td>—</td><td>쟁점 1 + 셀프 답글 (문안 뱅크 하단)</td><td></td></tr>
     <tr><td><b>수 · 목 중 하루</b></td><td>점심 12~13시</td><td>진단 캐러셀</td><td>"당신이라면?" 1 + 셀프 답글</td><td></td></tr>
     <tr><td><b>매일</b></td><td>밤 21시</td><td colspan="3">달린 댓글에 답글 몰아서 대응 (기준 제시 화법)</td></tr>
-    <tr><td><b>금</b></td><td colspan="4">성과 기록 10분 — 저장 수(인스타) · 답글 수(쓰레드) · <a href="/admin/stats" style="color:var(--accent2)">방문 통계</a>의 성향 진단 뷰. 기록표에 <b>게시 시각</b>을 같이 남길 것</td></tr>
+    <tr><td><b>금</b></td><td colspan="4">성과 기록 10분 — 저장 수(인스타) · 답글 수(쓰레드) · <a href="/admin/stats" style="color:var(--accent2)">방문 통계</a>의 성향 진단 뷰. 기록은 아래 <a href="#sns-log" style="color:var(--accent2)">성과표</a>에, <b>게시 시각</b>도 같이</td></tr>
   </table></div>
   <p class="sns-note">
     바쁜 날은 브리핑 캐러셀 하나만이라도. 끊기는 것이 제일 나쁩니다.<br>
