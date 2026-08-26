@@ -51,6 +51,17 @@
   .p-reply h4 { margin: 0 0 8px; font-size: 12.5px; color: #5F6674; letter-spacing: .02em; }
   .p-reply pre { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 13.5px; line-height: 1.75;
                  color: #4B5362; background: #FAFAF7; border: 1px solid #ECE9E0; border-radius: 8px; padding: 12px 14px; }
+  .sec-h { margin: 40px 0 14px; padding-top: 26px; border-top: 2px solid #C9C5B6;
+           font-size: 19px; font-weight: 800; }
+  .sec-h span { display: block; margin-top: 4px; font-size: 13px; font-weight: 500; color: #4B5362; }
+  .r-they { margin: 0 0 10px; font-size: 13.5px; color: #4B5362; }
+  .r-they b { color: #1A1D24; }
+  .r-how { margin: 0 0 12px; padding: 9px 13px; background: #FBF5EA; border-left: 3px solid #B8740C;
+           border-radius: 0 6px 6px 0; font-size: 13px; }
+  .r-no { margin-top: 12px; padding: 9px 13px; background: #F0F1F3; border-radius: 6px;
+          font-size: 12.5px; color: #4B5362; white-space: pre-line; }
+  .r-no b { color: #1A1D24; }
+  .p-cat.seen { color: #0F9D6E; border-color: #0F9D6E; background: transparent; }
   .p-basis { margin-top: 12px; font-size: 12px; color: #7A8090; }
   .p-basis b { color: #5F6674; }
 </style>
@@ -59,7 +70,7 @@
 
 <div class="tb">
   <b>쓰레드 문안 뱅크</b>
-  <span>10개 · <%= dateKo %> 기준 숫자</span>
+  <span>포스트 10개 · 답글 화법 7종 · 쟁점 <%= issuePosts.length %>종 · <%= dateKo %> 기준 숫자</span>
   <span class="sp"><a href="/promo/intro">소개</a> · <a href="/promo/numbers">숫자 캐러셀</a> · <a href="/promo/balance">진단 캐러셀</a></span>
 </div>
 
@@ -103,6 +114,96 @@
       </div>
     </div>
   <% }) %>
+
+<div class="sec-h">
+  대화 답글 화법 <span>위 셀프 답글과 다른 것입니다. 이건 <b>실제로 달린 남의 댓글</b>에 답할 때 씁니다.</span>
+</div>
+
+<div class="guide">
+  <b>쓰는 법</b> · 문안이 아니라 <b>뼈대</b>입니다. 상대가 쓴 말에 맞춰 고쳐 쓰세요 — 복붙 답글은 티가 납니다.
+  <ol>
+    <li>🔴 <b>먼저 그 사람이 한 말에 답한다.</b> 서비스 얘기는 그다음이다 — 순서가 뒤집히면 영업이 된다.</li>
+    <li>🔴 <b>싸움에 끼지 않는다.</b> 반박 대신 기준을 제시하고, 판단은 상대에게 남긴다.</li>
+    <li>🔴 <b>상대의 아이디·프로필로 성향이나 지역을 추측하지 않는다.</b> 댓글에 쓰인 말에만 답한다.</li>
+    <li><b>좋아요는 동의가 아니라 "읽었다"는 신호다</b> — 답글을 다는 모든 댓글에 누른다.
+        진지하게 쓴 댓글이면 <b>반대 의견이어도</b> 누르고, 욕설·인신공격·특정인 비방·명백한 허위에는 누르지 않는다.
+        🔴 우리 결론에 동의한 댓글만 골라 누르면 그 순간 좋아요가 <b>동의 표시</b>로 바뀐다.</li>
+    <li>계정 초기엔 첫 댓글들에 바로 답한다. 밤에 몰아서 대응하는 규칙은 댓글이 하루 5~10개씩 붙을 때부터 의미가 있다.</li>
+  </ol>
+</div>
+
+<% replies.forEach(function (r, i) { %>
+  <div class="post">
+    <div class="p-head">
+      <span class="p-no"><%= String(i + 1).padStart(2, '0') %></span>
+      <span class="p-cat <%= r.seen ? 'seen' : 'q' %>"><%= r.seen ? '겪음' : '예상' %></span>
+      <span class="p-title"><%= r.kind %></span>
+      <span class="p-len"><%= r.exLen %>자</span>
+    </div>
+    <div class="p-body">
+      <p class="r-they"><b>상대가 한 말</b> · <%= r.they %></p>
+      <p class="r-how"><b>뼈대</b> · <%= r.how %></p>
+      <pre class="p-main" id="rex-<%= i %>"><%= r.ex %></pre>
+      <div class="p-actions">
+        <button type="button" class="btn" data-copy="rex-<%= i %>">예시 복사</button>
+        <span class="p-status" id="st-rex-<%= i %>"></span>
+      </div>
+      <p class="r-no"><b>하지 말 것</b> · <%= r.no %></p>
+    </div>
+  </div>
+<% }); %>
+
+<div class="sec-h">
+  쟁점 문안 <span>주간 슬롯 세 번째 축입니다. 쟁점 페이지가 6개라 로테이션으로 돌립니다 — <b>기록이라 낡지 않습니다.</b></span>
+</div>
+
+<div class="guide">
+  <b>쓰는 법</b> · 뉴스에 대응하는 글이 아니라 <b>그 주제의 기록</b>입니다.
+  <ol>
+    <li>🔴 <b>판별 기준: 뉴스를 몰라도 읽히는 글인가.</b> 그렇다면 기록이고, 뉴스를 알아야 이해되면 반응이다.
+        <b>논란 · 요즘 · 지금 시끄러운</b> 같은 말을 넣지 않는다.</li>
+    <li>🔴 <b>화제가 된 게시물을 인용하거나 반박하지 않는다.</b> 인용하는 순간 그쪽 프레임을 우리가 유통시킨다.
+        같은 주제가 밖에서 시끄러우면 <b>정규 슬롯 차례에</b> 올린다 — 몇 시간 안에 올리면 그게 반응이 된다.</li>
+    <li>🔴 <b>정당별 건수는 문안에 쓰지 않는다.</b> 의석수가 달라 그대로 비교하면 오해가 되는데 500자 안에 그 각주가 안 들어간다.
+        <b>N개 정당이 각자 안을 냈다</b> 까지만.</li>
+    <li>⚠️ <b>법안 건수는 키워드로 모은 값이라 곁가지가 섞여 있다</b> (본문에 그 말이 스쳐 지나가도 걸린다).
+        그래서 <b>셀프 답글의 쟁점 페이지 링크가 필수다</b> — 누가 따지면 목록을 그대로 보여줄 수 있어야 한다.</li>
+    <li>이 주제를 올리면 <b>정당을 비난하는 댓글이 올 확률이 높다.</b> 위 「대화 답글 화법」 03번을 먼저 읽고 올린다.</li>
+  </ol>
+</div>
+
+<% if (!issuePosts.length) { %>
+  <div class="post"><div class="p-body">
+    <p class="r-they">쟁점 데이터를 불러오지 못했습니다. 잠시 후 새로고침해주세요.</p>
+  </div></div>
+<% } %>
+
+<% issuePosts.forEach(function (q, i) { %>
+  <div class="post">
+    <div class="p-head">
+      <span class="p-no"><%= String(i + 1).padStart(2, '0') %></span>
+      <span class="p-cat q">쟁점</span>
+      <span class="p-title"><%= q.title %></span>
+      <span class="p-len <%= q.mainLen > 500 ? 'over' : '' %>"><%= q.mainLen %> / 500</span>
+    </div>
+    <div class="p-body">
+      <pre class="p-main" id="iq-<%= i %>"><%= q.main %></pre>
+      <div class="p-actions">
+        <button type="button" class="btn" data-copy="iq-<%= i %>">본문 복사</button>
+        <span class="p-status" id="st-iq-<%= i %>"></span>
+      </div>
+      <div class="p-reply">
+        <h4>셀프 답글 · 본문 직후 내가 이어 단다 (<%= q.replyLen %>자)</h4>
+        <pre id="ir-<%= i %>"><%= q.reply %></pre>
+        <div class="p-actions">
+          <button type="button" class="btn ghost" data-copy="ir-<%= i %>">셀프 답글 복사</button>
+          <span class="p-status" id="st-ir-<%= i %>"></span>
+        </div>
+      </div>
+      <p class="p-basis"><b>근거</b> · <%= q.basis %></p>
+    </div>
+  </div>
+<% }); %>
 </div>
 
 <script>
