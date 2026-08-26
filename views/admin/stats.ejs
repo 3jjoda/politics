@@ -10,6 +10,11 @@
   const maxUsers = Math.max(1, ...daily.map((d) => Number(d.users)));
   const kindTotal = byKind.reduce((a, k) => a + Number(k.guest_views), 0) || 1;
   const rangeLabel = days === 7 ? '최근 7일' : days === 90 ? '최근 90일' : '최근 30일';
+  // 신규 / 재방문 — 쿠키의 최초 방문일로 판정 (middlewares/pageViews.js). 2026-08-27 부터 측정.
+  // ⚠️ uniques 와 더하지 말 것 — 저건 (페이지, 방문자) 단위 근사고 이건 사이트 방문자 단위다
+  const retN = Number(totals.returningVisitors || 0), newN = Number(totals.newVisitors || 0);
+  const retTot = retN + newN;
+  const retPct = retTot ? Math.round(retN / retTot * 100) : 0;
 %>
 
 <div class="ad-wrap">
@@ -82,7 +87,7 @@
            const pv = Number(d.guest_views) + Number(d.member_views);
            const u = gu + mu, m = Number(d.users);
       %>
-        <div class="st-col<%= d.is_weekend ? ' is-we' : '' %>" title="<%= d.d %> · 비회원 <%= nf(gu) %>명 / <%= nf(d.guest_views) %>뷰 · 회원 <%= nf(mu) %>명 / <%= nf(d.member_views) %>뷰 · 접속 회원 <%= nf(m) %>명">
+        <div class="st-col<%= d.is_weekend ? ' is-we' : '' %>" title="<%= d.d %> · 비회원 <%= nf(gu) %>명 / <%= nf(d.guest_views) %>뷰 · 회원 <%= nf(mu) %>명 / <%= nf(d.member_views) %>뷰 · 접속 회원 <%= nf(m) %>명 · 신규 <%= nf(d.new_visitors) %> / 재방문 <%= nf(d.returning_visitors) %>">
           <div class="st-bars">
             <div class="st-bar st-bar-p" style="height: <%= (pv / maxPv * 100).toFixed(1) %>%"></div>
             <div class="st-bar st-bar-u" style="height: <%= (u / maxUniq * 100).toFixed(1) %>%"></div>
@@ -96,6 +101,37 @@
       <% }); %>
     </div>
     <p class="st-note">막대 위 숫자는 방문자(유니크), 아래 골드 짧은 막대는 로그인 회원 수. 주말은 흐리게. 유니크는 하루 단위 근사값입니다.</p>
+  </section>
+
+  <!-- ── 신규 · 재방문 ──
+       🔴 운영 초기에 유일하게 의미 있는 지표다. 유입은 SNS 가 만들어주지만 **재방문은 콘텐츠가 만든다.**
+          가입 수는 후행 지표다 — 이 사이트는 진단·지역구를 비로그인으로 열어둬서 가입할 이유를 일부러 없앴다.
+       ⚠️ 비어 있어도 감추지 않는다 (`/xray` 빈 지표와 같은 판단) — 왜 비었는지를 문구로 말한다 -->
+  <section class="ad-sec">
+    <h2 class="ad-h">신규 · 재방문 <span class="st-legend"><i class="st-lg-r"></i> 재방문 <i class="st-lg-n"></i> 신규</span></h2>
+    <% if (retTot === 0) { %>
+      <p class="st-empty">아직 측정된 방문자가 없습니다. 2026-08-27 부터 재방문을 세기 시작했고, 그 이전 날짜는 값이 없습니다.</p>
+    <% } else { %>
+      <div class="st-ret">
+        <div class="st-ret-v"><%= retPct %><span>%</span></div>
+        <div class="st-ret-main">
+          <div class="st-ret-bar"><div class="st-ret-fill" style="width: <%= (retN / retTot * 100).toFixed(1) %>%"></div></div>
+          <div class="st-ret-legend">
+            <span>방문자 <b><%= nf(retTot) %></b>명 중</span>
+            <span>재방문 <b><%= nf(retN) %></b></span>
+            <span>처음 <b><%= nf(newN) %></b></span>
+            <span class="st-ret-range"><%= rangeLabel %></span>
+          </div>
+        </div>
+      </div>
+    <% } %>
+    <p class="st-note">
+      같은 브라우저에 남는 <code>_v</code> 쿠키의 <strong>최초 방문일</strong>만 오늘과 비교해 셉니다. 누가 언제 왔는지는 저장하지 않습니다.
+      다른 기기·시크릿창·쿠키 삭제는 새 방문자로 잡히므로 <strong>재방문은 실제보다 낮게</strong> 나옵니다.
+      회원·비회원을 나누지 않습니다 (쿠키만으로는 사람을 알 수 없습니다).
+      <strong>2026-08-27 부터 측정</strong>하며 그 이전은 소급되지 않습니다.
+      신규 + 재방문 = 위 <strong>방문자(유니크)</strong> 수입니다. 같은 사람들을 처음/다시로 나눈 값이라, 어긋난다면 집계 버그입니다.
+    </p>
   </section>
 
   <!-- ── 페이지 종류별 + 사용자 ── -->
@@ -217,6 +253,21 @@
   .st-mem b { display: block; width: 40%; height: calc(var(--h) * 0.22px); min-height: 0; background: var(--accent); border-radius: 2px 2px 0 0; }
   .st-lbl { font-size: 10px; color: var(--sub2); margin-top: 3px; white-space: nowrap; }
   .st-note { font-size: 12px; color: var(--sub2); margin: 8px 0 0; }
+
+  /* 신규 · 재방문 — 재방문이 골드(=지금 보려는 값), 신규는 무채색 트랙 */
+  .st-ret { display: flex; align-items: center; gap: 18px; background: var(--bg2); border: 1px solid var(--border); border-radius: 11px; padding: 16px 18px; }
+  .st-ret-v { font-family: 'JetBrains Mono', monospace; font-size: 38px; font-weight: 700; color: var(--accent2); line-height: 1; flex: 0 0 auto; }
+  .st-ret-v span { font-size: 17px; margin-left: 2px; }
+  .st-ret-main { flex: 1 1 auto; min-width: 0; }
+  .st-ret-bar { height: 14px; border-radius: 7px; background: var(--bg3); border: 1px solid var(--border); overflow: hidden; }
+  /* ⚠️ min-width 필수 — 1명짜리 재방문이 폭 0 으로 사라진다 (.pf-fill·.sp-kind-fill 과 같은 함정) */
+  .st-ret-fill { height: 100%; min-width: 3px; background: var(--accent); }
+  .st-ret-legend { display: flex; gap: 14px; margin-top: 8px; font-size: 12px; color: var(--sub); flex-wrap: wrap; }
+  .st-ret-legend b { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text); }
+  .st-ret-range { margin-left: auto; color: var(--sub2); }
+  .st-lg-r { background: var(--accent); }
+  .st-lg-n { background: var(--bg3); border: 1px solid var(--border2); }
+  .st-empty { font-size: 13px; color: var(--sub); background: var(--bg2); border: 1px dashed var(--border2); border-radius: 11px; padding: 18px; margin: 0; }
 
   .st-2col { display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px; }
   .st-3col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }

@@ -10,10 +10,15 @@
 //    그래도 완벽하지 않다 — 관리자 화면에 "Cloudflare 수치와 같이 볼 것" 각주가 붙는 이유.
 // 🔴 유니크는 근사다. 하루 단위 Set 을 메모리에 들고 판정하므로 프로세스가 재시작되면 그날 방문자가 다시 세어진다.
 //
-// 방문자 식별: 경량 쿠키 `_v` (랜덤 16hex · 1년 · httpOnly). 세션을 만들지 않는다 —
+// 방문자 식별: 경량 쿠키 `_v` = **`<랜덤16hex>.<최초방문일 YYYYMMDD>`** (1년 · httpOnly). 세션을 만들지 않는다 —
 //    `saveUninitialized:false` 라 비로그인 방문자는 세션이 없고, 방문자마다 세션 행을 만들면 session 테이블만 불어난다.
 //    cookie-parser 가 없어 헤더를 직접 파싱한다.
-//    ⚠️ 이 쿠키는 개인정보처리방침 6항(쿠키)에 적혀 있다 — 이름·기간을 바꾸면 거기도 같이.
+//    ⚠️ 이 쿠키는 개인정보처리방침 6항(쿠키)에 적혀 있다 — **이름·기간뿐 아니라 담는 값이 바뀌어도** 거기를 같이 고칠 것.
+//       (2026-08-27 에 날짜를 더하면서 "무작위 값" · "하루 단위 방문자 수를 세는 데만" 문구를 고쳤다)
+//
+// 🔴 신규/재방문은 **최초 방문일을 쿠키에 담아** 판정한다 (ddl/migrations/2026-08-27-page-views-returning.sql).
+//    서버는 그 날짜를 저장하지 않고 오늘과 비교만 한다 → 방문자별 기록 없이 일별 합계만 남는 원칙 유지.
+//    운영 초기에 유일하게 의미 있는 지표가 재방문인데, **소급이 안 되므로** 일찍 넣어야 한다.
 
 import crypto from 'crypto';
 import { isAdminUser } from './auth.js';
@@ -67,12 +72,25 @@ function readCookie(header, name) {
     for (const part of header.split(';')) {
         const i = part.indexOf('=');
         if (i < 0) continue;
-        if (part.slice(0, i).trim() === name) {
-            const v = part.slice(i + 1).trim();
-            return /^[0-9a-f]{16,32}$/.test(v) ? v : null;   // 형식이 이상하면 새로 발급
-        }
+        if (part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
     }
     return null;
+}
+
+/* `_v` 파싱 — `<16hex>.<YYYYMMDD>`(현행) 또는 `<16hex>`(2026-08-27 이전).
+   ⚠️ 구 형식은 최초 방문일을 모르지만 **쿠키가 있다는 것 자체가 전에 왔다는 뜻**이라 재방문으로 본다.
+      대신 오늘 날짜로 다시 발급하므로, 도입 직후 며칠만 재방문이 과소 계상되고 그다음부터 정상이다. */
+function parseVid(raw) {
+    const m = /^([0-9a-f]{16,32})(?:\.(\d{8}))?$/.exec(raw || '');
+    if (!m) return null;                              // 형식이 이상하면 새로 발급
+    return { vid: m[1], firstSeen: m[2] || null };    // firstSeen null = 구 형식
+}
+
+function setVidCookie(res, vid, today) {
+    res.cookie(COOKIE, `${vid}.${today.replace(/-/g, '')}`, {
+        maxAge: COOKIE_MAX_AGE, httpOnly: true, sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+    });
 }
 
 function classify(path) {
@@ -87,7 +105,7 @@ function classify(path) {
 const state = {
     day: null,
     pages: new Map(),   // key `${kind}|${target}` → { views, uniques }  (flush 때 비운다)
-    seen: new Set(),    // `${kind}|${target}|${vid}` — 그날 이미 센 (페이지, 방문자). flush 해도 유지
+    seen: new Set(),    // `${kind}|${target}|${vid}` 와 `visitor|${vid}` — 그날 이미 센 것. flush 해도 유지
     users: new Map(),   // user_id → views  (flush 때 비운다)
     flushing: false,
 };
@@ -105,7 +123,7 @@ function rollDay(today) {
 function bump(kind, target, vid, isMember) {
     const key = `${kind}|${target}`;
     let e = state.pages.get(key);
-    if (!e) { e = { views: 0, uniques: 0, mViews: 0, mUniques: 0 }; state.pages.set(key, e); }
+    if (!e) { e = { views: 0, uniques: 0, mViews: 0, mUniques: 0, newV: 0, retV: 0 }; state.pages.set(key, e); }
     e.views += 1;
     if (isMember) e.mViews += 1;
     const sk = `${key}|${vid}`;
@@ -113,6 +131,18 @@ function bump(kind, target, vid, isMember) {
     // ⚠️ 유니크는 로그인 상태별로 따로 센다 — 같은 사람이 하루에 두 상태로 보면 양쪽에 1씩 잡힌다 (근사값)
     const mk = `${key}|${vid}|m`;
     if (isMember && !state.seen.has(mk)) { state.seen.add(mk); e.mUniques += 1; }
+}
+
+/* 신규/재방문 — **사이트 단위로 하루 한 번만** 센다 ('site' 행에만 값이 들어간다).
+   🔴 페이지마다 세면 한 방문자가 본 페이지 수만큼 중복돼 합계가 방문자 수를 넘는다.
+   ⚠️ 회원/비회원으로 나누지 않는다 — 쿠키는 사람을 모른다. */
+function bumpVisitor(vid, isNew) {
+    const vk = `visitor|${vid}`;
+    if (state.seen.has(vk)) return;
+    state.seen.add(vk);
+    const e = state.pages.get('site|');
+    if (!e) return;                       // bump('site', …) 이 먼저 불린다 — 방어
+    if (isNew) e.newV += 1; else e.retV += 1;
 }
 
 export async function flushPageViews(db) {
@@ -129,18 +159,20 @@ export async function flushPageViews(db) {
             const params = [];
             rows.forEach(([key, e], i) => {
                 const [kind, target] = key.split('|');
-                const b = i * 6;
-                values.push(`($1::date, $${b + 2}, $${b + 3}, $${b + 4}::int, $${b + 5}::int, $${b + 6}::int, $${b + 7}::int)`);
-                params.push(kind, target, e.views, e.uniques, e.mViews, e.mUniques);
+                const b = i * 8;
+                values.push(`($1::date, $${b + 2}, $${b + 3}, $${b + 4}::int, $${b + 5}::int, $${b + 6}::int, $${b + 7}::int, $${b + 8}::int, $${b + 9}::int)`);
+                params.push(kind, target, e.views, e.uniques, e.mViews, e.mUniques, e.newV, e.retV);
             });
             await db.query(`
-                INSERT INTO page_views_daily (view_date, page_kind, target_id, views, uniques, member_views, member_uniques)
+                INSERT INTO page_views_daily (view_date, page_kind, target_id, views, uniques, member_views, member_uniques, new_visitors, returning_visitors)
                 VALUES ${values.join(',')}
                 ON CONFLICT (view_date, page_kind, target_id)
                 DO UPDATE SET views = page_views_daily.views + EXCLUDED.views,
                               uniques = page_views_daily.uniques + EXCLUDED.uniques,
                               member_views = page_views_daily.member_views + EXCLUDED.member_views,
-                              member_uniques = page_views_daily.member_uniques + EXCLUDED.member_uniques`,
+                              member_uniques = page_views_daily.member_uniques + EXCLUDED.member_uniques,
+                              new_visitors = page_views_daily.new_visitors + EXCLUDED.new_visitors,
+                              returning_visitors = page_views_daily.returning_visitors + EXCLUDED.returning_visitors`,
                 [day, ...params]);
         }
         if (users.size) {
@@ -192,13 +224,17 @@ export function pageViews(db) {
         const page = classify(path);
         if (!page) return next();
 
-        let vid = readCookie(req.headers.cookie, COOKIE);
-        if (!vid) {
+        const today = kstToday();
+        const parsed = parseVid(readCookie(req.headers.cookie, COOKIE));
+        let vid, isNewVisitor;
+        if (!parsed) {
             vid = crypto.randomBytes(8).toString('hex');
-            res.cookie(COOKIE, vid, {
-                maxAge: COOKIE_MAX_AGE, httpOnly: true, sameSite: 'lax',
-                secure: process.env.NODE_ENV === 'production',
-            });
+            isNewVisitor = true;
+            setVidCookie(res, vid, today);
+        } else {
+            vid = parsed.vid;
+            isNewVisitor = parsed.firstSeen === today;
+            if (!parsed.firstSeen) setVidCookie(res, vid, today);   // 구 형식 → 날짜를 붙여 다시 발급 (위 parseVid 주석)
         }
         const userId = req.user?.user_id;
         const isMember = Boolean(userId);
@@ -207,9 +243,10 @@ export function pageViews(db) {
             if (res.statusCode !== 200) return;
             if (!String(res.get('content-type') || '').includes('text/html')) return;
             try {
-                rollDay(kstToday());
-                bump('site', '', vid, isMember);
+                rollDay(today);
+                bump('site', '', vid, isMember);          // ⚠️ bumpVisitor 가 'site|' 엔트리를 쓰므로 먼저
                 bump(page.kind, page.target, vid, isMember);
+                bumpVisitor(vid, isNewVisitor);
                 if (userId) state.users.set(userId, (state.users.get(userId) || 0) + 1);
             } catch (e) {
                 logger.error(`[pageViews] 집계 실패: ${e.message}`);

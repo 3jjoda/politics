@@ -93,6 +93,8 @@ export default (db) => {
                     views: sum('views'), uniques: sum('uniques'),
                     guestViews: sum('guest_views'), guestUniques: sum('guest_uniques'),
                     memberViews: sum('member_views'), memberUniques: sum('member_uniques'),
+                    /* 신규 + 재방문 = uniques (같은 집합을 쪼갠 값). 회원/비회원 분해와는 축이 다르다 */
+                    newVisitors: sum('new_visitors'), returningVisitors: sum('returning_visitors'),
                 },
                 today: daily[daily.length - 1] || null,
                 yesterday: daily[daily.length - 2] || null,
