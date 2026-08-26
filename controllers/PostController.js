@@ -4,6 +4,17 @@ import logger from '../utils/logger.js';
 import { isAdminUser } from '../middlewares/auth.js';
 import { POST_TYPES, allowedPostTypes, resolvePostType, postTypeOf } from '../utils/postTypes.js';
 
+/* 무엇을 보나 — `posts` 는 **커뮤니티 글만**이다 (글에 달린 댓글은 `all` 에서 보인다).
+   ⚠️ 키를 `post` 로 쓰지 말 것 — 댓글 종류(`comments.type='post'`)와 글자가 겹쳐 어느 쪽인지 안 보인다 */
+const FEED_TABS = [
+    { key: 'all',        label: '전체' },
+    { key: 'bill',       label: '법안' },
+    { key: 'politician', label: '의원' },
+    { key: 'briefing',   label: '브리핑' },
+    { key: 'posts',      label: '글' },
+];
+const FEED_FILTERS = FEED_TABS.map((t) => t.key);
+
 export default (db) => {
     const postService = PostService(db);
     const billService = BillService(db);
@@ -26,31 +37,46 @@ export default (db) => {
     };
 
     return {
-        /* GET /community — 목록 */
+        /* GET /community — 🔴 **통합 피드**가 기본이다 (2026-08-27, 4단계)
+           글과 댓글이 한 줄기로 흐른다. 3단계까지는 둘이 탭으로 갈라져 있었는데, 그러면 댓글이
+           여전히 탭 하나 뒤에 숨고 첫 화면은 계속 "대상 없는 글" 만 보여준다 — 고치려던 구조가 그대로 남는다.
+
+           ?on=all|bill|politician|briefing|posts   무엇을 보나
+           ?type=<글 유형>                          `on=posts` 일 때만 의미가 있다
+           ⚠️ 모르는 값은 에러가 아니라 기본값으로 접는다 (/xray/chart 와 같은 판단) */
         listPage: async (req, res, next) => {
             try {
                 const pageSize = 20;
                 const page = Math.max(1, parseInt(req.query.page) || 1);
                 const offset = (page - 1) * pageSize;
-                /* 유형 탭 — 모르는 값은 전체로 접는다 (URL 을 손으로 고쳐도 안전) */
+
+                const rawOn = String(req.query.on || '');
                 const typeRaw = req.query.type ? String(req.query.type) : '';
-                const type = postTypeOf(typeRaw) ? typeRaw : null;
+                const postType = postTypeOf(typeRaw) ? typeRaw : null;
+                /* 구 링크 호환: `?type=` 만 있으면 글 보기로 친다 (3단계까지의 주소) */
+                const filter = FEED_FILTERS.includes(rawOn) ? rawOn : (postType ? 'posts' : 'all');
+                /* 글 유형은 글 보기에서만 — 다른 보기에 걸리면 댓글이 통째로 빠진다 */
+                const effType = filter === 'posts' ? postType : null;
+
                 const [rows, counts] = await Promise.all([
-                    postService.list({ limit: pageSize, offset, postType: type }),
+                    postService.listFeed({ filter, postType: effType, limit: pageSize, offset }),
                     postService.countByType(),
                 ]);
                 const totalCount = rows.length > 0 ? parseInt(rows[0].total_count) : 0;
                 const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
                 const countMap = Object.fromEntries(counts.map((r) => [r.post_type, Number(r.cnt)]));
                 const allCount = counts.reduce((s, r) => s + Number(r.cnt), 0);
+
+                const onLabel = (FEED_TABS.find((t) => t.key === filter) || {}).label || '전체';
                 res.render('community/list', {
-                    pageTitle: type ? `${postTypeOf(type).label} · 커뮤니티` : '커뮤니티',
+                    pageTitle: filter === 'all' ? '커뮤니티'
+                        : (effType ? `${postTypeOf(effType).label} · 커뮤니티` : `${onLabel} · 커뮤니티`),
                     pageStyles: null,
                     currentUrl: '/community',
-                    pageDesc: '당말사 커뮤니티. 공지·잡담·법안 이야기·질문·건의를 나눕니다',
-                    posts: rows,
+                    pageDesc: '당말사 커뮤니티. 법안·의원·브리핑에 달린 의견과 자유 게시글이 한자리에 모입니다',
+                    rows, filter, feedTabs: FEED_TABS,
                     postTypes: POST_TYPES,
-                    activeType: type,
+                    activeType: effType,
                     typeCounts: countMap,
                     allCount,
                     pagination: { page, pageSize, totalCount, totalPages }

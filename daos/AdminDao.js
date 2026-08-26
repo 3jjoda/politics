@@ -17,6 +17,20 @@ fs.readdirSync(queriesPath).forEach((file) => {
 });
 
 export default (db) => ({
+    /* ── 신고 처리 (2026-08-27) ──
+       🔴 대상 단위로 다룬다. 자세한 이유는 ddl/migrations/2026-08-27-reports-status.sql */
+    getReportGroups: (filter, limit = 100) =>
+        db.query(queries.getReportGroups, [filter, limit]).then((r) => r.rows),
+    getReportSummary: () => db.query(queries.getReportSummary).then((r) => r.rows[0]),
+    getReportGroupStatus: (type, targetId) =>
+        db.query(queries.getReportGroupStatus, [type, targetId]).then((r) => r.rows[0]),
+    resolveReports: (type, targetId, status, handledBy) =>
+        db.query(queries.resolveReports, [type, targetId, status, handledBy]).then((r) => r.rowCount),
+    /* 🔴 type 은 화이트리스트로만 온다 (컨트롤러의 resolveReportType). 문자열을 SQL 에 넣지 않는다 */
+    setTargetDeleted: (type, targetId, deleted) =>
+        db.query(type === 'comment' ? queries.setCommentDeleted : queries.setPostDeleted,
+                 [targetId, deleted]).then((r) => r.rowCount),
+
     getTitles: () => db.query(queries.getTitles).then((r) => r.rows),
     getPoliticianOptions: () => db.query(queries.getPoliticianOptions).then((r) => r.rows),
     getCommitteeRoles: () => db.query(queries.getCommitteeRoles).then((r) => r.rows),

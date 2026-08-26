@@ -10,6 +10,7 @@ import commentRoutes from './api/CommentRoutes.js';
 import ratingRoutes  from './api/RatingRoutes.js';
 import voteRoutes    from './api/VoteRoutes.js';
 import likeRoutes    from './api/LikeRoutes.js';
+import reportRoutes  from './api/ReportRoutes.js';
 
 export default (app, db) => {
     // 인증
@@ -27,6 +28,7 @@ export default (app, db) => {
     app.use('/api/ratings',  ratingRoutes(db));
     app.use('/api/votes',    voteRoutes(db));
     app.use('/api/likes',    likeRoutes(db));
+    app.use('/api/reports',  reportRoutes(db));   // 신고 접수 (처리는 /admin/reports)
 
     // 기존 API
     app.use('/api', apiRoutes(db));

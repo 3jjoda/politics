@@ -175,7 +175,8 @@
   </article>
 
   <!-- 댓글 — comments.type='briefing' 으로 기존 위젯 재사용 -->
-  <section class="bp-sec bp-comments">
+  <%# id 는 커뮤니티 「최근 대화」 피드의 착지점이다 (2026-08-27). 바꾸면 utils 아닌 views/community/list.ejs 의 TALK_KIND 도 같이 %>
+  <section class="bp-sec bp-comments" id="part-comments">
     <h2 class="bp-h">의견</h2>
     <div id="comment-widget"></div>
   </section>

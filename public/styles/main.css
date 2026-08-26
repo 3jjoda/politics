@@ -740,6 +740,23 @@ input, textarea, select { font-family: inherit; }
   font-size: 13px;
   margin-bottom: 0;
 }
+.comment-report-form {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  margin-top: 8px; padding: 9px 11px;
+  background: var(--bg3); border: 1px dashed var(--border2); border-radius: 8px;
+}
+.comment-report-hint { font-size: 12px; color: var(--sub); margin-right: 2px; }
+.comment-report-hint.is-done { color: var(--accent2); font-weight: 600; }
+/* ⚠️ 사유 버튼에 색을 주지 않는다 — 어떤 사유가 더 무거운지를 화면이 정하면 안 된다 */
+.comment-report-btn {
+  padding: 4px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+  color: var(--sub); background: var(--bg2);
+  border: 1px solid var(--border2); border-radius: 6px;
+}
+.comment-report-btn:hover { color: var(--text); border-color: var(--accent); }
+.comment-report-btn.is-cancel { color: var(--sub2); border-style: dashed; }
+.comment-report-btn:disabled { opacity: .5; cursor: not-allowed; }
+
 .comment-reply-form {
   margin-top: 12px;
   padding-top: 12px;

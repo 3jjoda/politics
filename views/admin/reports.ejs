@@ -1,0 +1,180 @@
+<%
+  // 관리자 신고 처리 — 소스는 reports (ddl/migrations/2026-08-27-reports-status.sql)
+  // 🔴 처리 단위는 **대상**이다. 같은 댓글에 신고가 3건이면 한 줄로 뜨고 한 번에 닫힌다.
+  const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
+  const rl = (k) => (reasons.find((r) => r.key === k) || {}).label || k;
+
+  /* 원래 자리로 — 커뮤니티 「최근 대화」 피드의 TALK_KIND 와 같은 규칙이다.
+     ⚠️ 앵커를 바꾸면 두 곳을 같이 (views/community/list.ejs) */
+  const placeOf = (g) => {
+    if (g.type === 'post') return { label: '커뮤니티 글', href: `/community/${g.target_id}` };
+    switch (g.comment_kind) {
+      case 'bill':       return { label: '법안 댓글',   href: `/bill/${encodeURIComponent(g.comment_target)}#part-comments` };
+      case 'politician': return { label: '의원 댓글',   href: `/politician/${encodeURIComponent(g.comment_target)}#comments` };
+      case 'briefing':   return { label: '브리핑 댓글', href: `/briefing/${encodeURIComponent(g.comment_target)}#part-comments` };
+      case 'post':       return { label: '글 댓글',     href: `/community/${encodeURIComponent(g.comment_target)}` };
+      default:           return { label: '댓글', href: null };
+    }
+  };
+  const TABS = [
+    { key: 'open',    label: '미처리', n: summary.open_targets },
+    { key: 'handled', label: '처리됨', n: summary.handled_targets },
+    { key: 'all',     label: '전체',   n: summary.all_targets },
+  ];
+%>
+
+<div class="ad-wrap">
+  <header class="ad-head">
+    <h1>신고 처리</h1>
+    <p class="ad-desc">
+      이용자가 신고한 <strong>댓글·글</strong>입니다. 판단하는 것은 신고가 아니라 <strong>대상</strong>이라,
+      같은 대상에 신고가 여러 건이면 한 줄로 묶이고 <strong>한 번의 처리로 같이 닫힙니다</strong>.
+      선거기간에는 후보자 비방·허위사실 게시물에 삭제 의무가 생길 수 있습니다 (ELECTION_LAW.md §5).
+    </p>
+    <nav class="st-range">
+      <% TABS.forEach((t) => { %>
+        <a href="/admin/reports?status=<%= t.key %>" class="<%= t.key === filter ? 'is-on' : '' %>"><%= t.label %> <%= nf(t.n) %></a>
+      <% }); %>
+      <a href="/admin/stats" class="st-range-other">방문 통계 →</a>
+      <a href="/admin/schedule" class="st-range-other">운영 일정 →</a>
+    </nav>
+  </header>
+
+  <% if (flash) { %><div class="ad-msg is-ok"><%= flash %></div><% } %>
+  <% if (error) { %><div class="ad-msg is-err"><%= error %></div><% } %>
+
+  <% if (!groups.length) { %>
+    <%# 🔴 비어 있어도 왜 비었는지 말한다 (/xray 빈 지표와 같은 판단) %>
+    <div class="rq-empty">
+      <% if (filter === 'open') { %>
+        처리할 신고가 없습니다. 이용자가 댓글·글의 <b>신고</b>를 누르면 여기에 쌓입니다.
+      <% } else if (filter === 'handled') { %>
+        아직 처리한 신고가 없습니다.
+      <% } else { %>
+        접수된 신고가 없습니다.
+      <% } %>
+    </div>
+  <% } else { %>
+    <section class="ad-sec">
+      <% groups.forEach((g) => { const place = placeOf(g); const meta = statusMeta[g.status] || {}; %>
+        <article class="rq is-<%= meta.tone || 'open' %>">
+          <div class="rq-top">
+            <span class="rq-badge is-<%= meta.tone || 'open' %>"><%= meta.label || g.status %></span>
+            <span class="rq-place"><%= place.label %></span>
+            <% if (g.target_deleted) { %><span class="rq-flag">삭제된 상태</span><% } %>
+            <span class="rq-count"><%= nf(g.report_count) %>건 · <%= nf(g.reporter_count) %>명</span>
+            <span class="rq-when"><%= g.last_reported_at %></span>
+          </div>
+
+          <%# ⚠️ 대상이 사라져도 행을 숨기지 않는다 — 숨기면 목록 수가 왜 안 맞는지 알 수 없다 %>
+          <blockquote class="rq-text<%= g.target_text ? '' : ' is-gone' %>"><%
+            %><%= g.target_text || '(대상을 찾을 수 없습니다 — 원본이 완전히 삭제된 것으로 보입니다)' %><%
+          %></blockquote>
+
+          <div class="rq-meta">
+            <span>작성자 <b><%= g.author_nick || '(탈퇴·알 수 없음)' %></b></span>
+            <span>사유
+              <% (g.reasons || []).forEach((r, i) => { %><%= i ? ', ' : '' %><b><%= rl(r) %></b><% }); %>
+            </span>
+            <% if (g.handled_at) { %>
+              <span class="rq-handled">처리 <%= g.handled_at %><%= g.handled_by_nick ? ` · ${g.handled_by_nick}` : '' %></span>
+            <% } %>
+            <% if (place.href) { %><a class="rq-go" href="<%= place.href %>" target="_blank" rel="noopener">원래 자리에서 보기 ↗</a><% } %>
+          </div>
+
+          <%# 🔴 폼 두 개 = 버튼 두 개. JS 없이 동작해야 한다 (관리자 화면 공통 규칙).
+              현재 필터를 쿼리로 넘겨 처리 후 보던 목록으로 돌아온다 %>
+          <div class="rq-acts">
+            <form method="post" action="/admin/reports/<%= g.type %>/<%= g.target_id %>?status=<%= filter %>">
+              <input type="hidden" name="action" value="keep">
+              <button type="submit" class="rq-btn"><%= g.status === 'removed' ? '되살리기' : '살려둠' %></button>
+            </form>
+            <form method="post" action="/admin/reports/<%= g.type %>/<%= g.target_id %>?status=<%= filter %>"
+                  onsubmit="return confirm('이 <%= g.type === 'comment' ? '댓글' : '글' %>을 삭제합니다. 계속할까요?')">
+              <input type="hidden" name="action" value="remove">
+              <button type="submit" class="rq-btn is-danger" <%= g.status === 'removed' ? 'disabled' : '' %>>삭제</button>
+            </form>
+          </div>
+        </article>
+      <% }); %>
+    </section>
+
+    <p class="rq-note">
+      「살려둠」은 대상을 그대로 두고 판단만 기록합니다.
+      우리가 삭제한 대상에서만 「되살리기」가 됩니다 — <strong>작성자 본인이 지운 글은 되살리지 않습니다</strong>.
+      삭제는 소프트 삭제(<code>is_deleted</code>)라 원본 행은 남습니다.
+      목록은 최근 100건까지 보여줍니다.
+    </p>
+  <% } %>
+</div>
+
+<style>
+  .ad-wrap { max-width: 1100px; margin: 0 auto; padding: calc(var(--nav-h) + 28px) 24px 80px; }
+  .ad-head h1 { font-size: 26px; font-weight: 800; margin: 0 0 8px; }
+  .ad-desc { font-size: 13.5px; color: var(--sub); line-height: 1.7; margin: 0 0 20px; word-break: keep-all; }
+  .ad-desc strong { color: var(--text); }
+  .ad-msg { padding: 11px 15px; border-radius: 9px; font-size: 13.5px; margin-bottom: 16px; }
+  .ad-msg.is-ok  { background: #EAF6F0; border: 1px solid #B9E0CD; color: #0B6B4B; }
+  .ad-msg.is-err { background: #FBEDED; border: 1px solid #E7C3C3; color: #A32B2B; }
+  .ad-sec { margin-bottom: 24px; }
+
+  /* 필터 탭 — /admin/stats 의 .st-range 와 같은 문법 (관리자 화면끼리 같아 보여야 한다) */
+  .st-range { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 22px; }
+  .st-range a { padding: 6px 13px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px;
+                color: var(--sub); text-decoration: none; background: var(--bg2); }
+  .st-range a.is-on { border-color: var(--accent); color: var(--accent2); font-weight: 700; }
+  /* ⚠️ `margin-left:auto` 는 **첫 번째 보조 링크에만**. 둘 다 걸리면 각자 남은 공간을 먹어
+     오른쪽 링크들 사이가 벌어진다 (800px 실측으로 잡음) */
+  .st-range-other { margin-left: auto; }
+  .st-range-other ~ .st-range-other { margin-left: 0; }
+
+  /* 신고 한 건(= 대상 하나) */
+  .rq { background: var(--bg2); border: 1px solid var(--border); border-radius: 11px;
+        padding: 15px 17px; margin-bottom: 10px; border-left: 3px solid var(--border2); }
+  /* ⚠️ 좌측 바는 상태의 **보조** 신호다. 배지 라벨이 항상 같이 있어야 색만으로 구분되지 않는다 */
+  .rq.is-open    { border-left-color: var(--accent); }
+  .rq.is-removed { border-left-color: var(--sub2); }
+  .rq.is-kept    { border-left-color: var(--border2); }
+
+  .rq-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 10px; }
+  .rq-badge { font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 5px;
+              border: 1px solid var(--border2); color: var(--sub); background: var(--bg3); }
+  .rq-badge.is-open { color: var(--accent2); border-color: var(--accent); background: var(--bg2); }
+  .rq-place { font-size: 12.5px; font-weight: 600; color: var(--sub); }
+  .rq-flag { font-size: 11.5px; color: var(--sub2); border: 1px dashed var(--border2); border-radius: 5px; padding: 1px 7px; }
+  .rq-count { font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--text); font-weight: 700; }
+  .rq-when { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sub2); margin-left: auto; }
+
+  .rq-text { margin: 0 0 10px; padding: 10px 13px; background: var(--bg3); border-radius: 8px;
+             font-size: 13.5px; line-height: 1.65; color: var(--text); white-space: pre-line;
+             word-break: break-word; overflow-wrap: anywhere; }
+  .rq-text.is-gone { color: var(--sub2); font-style: italic; }
+
+  .rq-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--sub); margin-bottom: 12px; }
+  .rq-meta b { color: var(--text); font-weight: 600; }
+  .rq-handled { color: var(--sub2); }
+  .rq-go { margin-left: auto; color: var(--accent2); font-weight: 600; text-decoration: underline; }
+
+  .rq-acts { display: flex; gap: 8px; }
+  .rq-acts form { margin: 0; }
+  .rq-btn { padding: 7px 15px; border: 1px solid var(--border2); border-radius: 7px; background: var(--bg2);
+            font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; }
+  .rq-btn:hover { border-color: var(--accent); color: var(--accent2); }
+  /* ⚠️ 빨강은 「삭제」 버튼 하나뿐이다. 되돌리기 어려운 행동이라 유일하게 색을 준다 */
+  .rq-btn.is-danger { color: #A32B2B; border-color: #E7C3C3; }
+  .rq-btn.is-danger:hover { background: #FBEDED; border-color: #D03A3A; color: #A32B2B; }
+  .rq-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .rq-btn:disabled:hover { border-color: var(--border2); color: var(--text); background: var(--bg2); }
+
+  .rq-empty { padding: 44px 24px; text-align: center; font-size: 13.5px; color: var(--sub);
+              background: var(--bg2); border: 1px dashed var(--border2); border-radius: 11px; }
+  .rq-empty b { color: var(--text); }
+  .rq-note { font-size: 12px; color: var(--sub2); line-height: 1.8; margin: 4px 0 0; word-break: keep-all; }
+  .rq-note strong { color: var(--sub); }
+
+  @media (max-width: 720px) {
+    .ad-wrap { padding: calc(var(--nav-h) + 20px) 16px 80px; }
+    .rq-when, .rq-go { margin-left: 0; }
+    .rq-acts { flex-wrap: wrap; }
+  }
+</style>

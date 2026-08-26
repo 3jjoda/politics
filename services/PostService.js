@@ -18,6 +18,10 @@ export default (db) => {
     return {
         list: (params) => dao.list(params),
 
+        listFeed: (params) => dao.listFeed(params),
+
+        listByBillId: (billId, limit) => dao.listByBillId(billId, limit),
+
         countByType: () => dao.countByType(),
 
         getById: (id) => dao.getById(id),

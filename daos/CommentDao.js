@@ -17,6 +17,11 @@ export default (db) => ({
         const { rows } = await db.query(queries.list, [type, targetId]);
         return rows;
     },
+    /* 최근 대화 피드 (`/community?tab=talk`) — 네 종류 댓글을 한 줄기로 */
+    listRecent: async (limit = 20, offset = 0) => {
+        const { rows } = await db.query(queries.listRecent, [limit, offset]);
+        return rows;
+    },
     findById: async (id) => {
         const { rows } = await db.query(queries.findById, [id]);
         return rows[0] || null;

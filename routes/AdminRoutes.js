@@ -7,6 +7,8 @@
 
 import express from 'express';
 import AdminController from '../controllers/AdminController.js';
+import AdminDao from '../daos/AdminDao.js';
+import logger from '../utils/logger.js';
 import { requireAdmin, sameOrigin } from '../middlewares/auth.js';
 
 export default (db) => {
@@ -15,10 +17,30 @@ export default (db) => {
 
     router.use(requireAdmin, sameOrigin);
 
+    /* 🔴 미처리 신고 수를 **모든 관리자 화면**에 주입한다.
+       신고 처리는 주기 작업이 아니라 사건이라 "가끔 들러서 확인" 으로는 잊힌다.
+       각 페이지가 따로 세면 갈리므로 여기 한 곳에서만 센다.
+       ⚠️ 실패해도 화면을 죽이지 않는다 — 배지는 부가 정보다 (null 이면 뷰가 숫자를 안 그린다). */
+    const reportDao = AdminDao(db);
+    router.use(async (req, res, next) => {
+        try {
+            const s = await reportDao.getReportSummary();
+            res.locals.openReportCount = Number(s?.open_targets || 0);
+        } catch (e) {
+            logger.warn(`[admin] 미처리 신고 수 조회 실패: ${e.message}`);
+            res.locals.openReportCount = null;
+        }
+        next();
+    });
+
     router.get('/titles', admin.getTitlesPage);
     router.post('/titles', admin.createTitle);
     router.post('/titles/:id', admin.updateTitle);
     router.post('/titles/:id/delete', admin.deleteTitle);
+
+    /* 신고 처리 — 대상 단위. `:type` 은 컨트롤러가 화이트리스트로 거른다 */
+    router.get('/reports', admin.getReportsPage);
+    router.post('/reports/:type/:targetId', admin.resolveReport);
 
     router.get('/stats', admin.getStatsPage);
     router.get('/schedule', admin.getSchedulePage);   // 운영 일정 (정기·조건부 작업 현황)

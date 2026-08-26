@@ -20,6 +20,12 @@
     </p>
   </header>
 
+  <nav class="ad-links">
+    <a href="/admin/reports">신고 처리<%= (locals.openReportCount ? ` ${locals.openReportCount}` : '') %> →</a>
+    <a href="/admin/stats">방문 통계 →</a>
+    <a href="/admin/schedule">운영 일정 →</a>
+  </nav>
+
   <% if (flash) { %><div class="ad-msg is-ok"><%= flash %></div><% } %>
   <% if (error) { %><div class="ad-msg is-err"><%= error %></div><% } %>
 
@@ -145,6 +151,9 @@
   .ad-desc { font-size: 13.5px; color: var(--sub); line-height: 1.7; margin: 0 0 20px; word-break: keep-all; }
   .ad-desc strong { color: var(--text); }
 
+  .ad-links { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 18px; font-size: 12.5px; }
+  .ad-links a { color: var(--accent2); text-decoration: none; font-weight: 600; }
+  .ad-links a:hover { text-decoration: underline; }
   .ad-msg { padding: 11px 15px; border-radius: 9px; font-size: 13.5px; margin-bottom: 16px; }
   .ad-msg.is-ok  { background: #EAF6F0; border: 1px solid #B9E0CD; color: #0B6B4B; }
   .ad-msg.is-err { background: #FBEDED; border: 1px solid #E7C3C3; color: #A32B2B; }

@@ -10,10 +10,30 @@
   };
   const { page, totalPages, totalCount } = pagination;
 
-  const buildHref = (p) => {
-    const q = [`page=${p}`];
-    if (locals.activeType) q.unshift(`type=${encodeURIComponent(activeType)}`);
-    return `/community?${q.join('&')}`;
+  const rows = locals.rows || [];
+  const filter = locals.filter || 'all';
+  const isPosts = filter === 'posts';
+
+  /* 링크 조립 — 보기(on)·글유형(type)·페이지를 함께 들고 다닌다 */
+  const qs = (o) => {
+    const on = o.on !== undefined ? o.on : filter;
+    const ty = o.type !== undefined ? o.type : locals.activeType;
+    const q = [];
+    if (on && on !== 'all') q.push(`on=${encodeURIComponent(on)}`);
+    if (ty) q.push(`type=${encodeURIComponent(ty)}`);
+    if (o.page && o.page > 1) q.push(`page=${o.page}`);
+    return q.length ? `/community?${q.join('&')}` : '/community';
+  };
+  const buildHref = (pg) => qs({ page: pg });
+
+  /* 대화 종류 → 라벨·원래 자리 링크.
+     🔴 링크가 이 피드의 핵심이다 — 댓글을 **읽는 곳**이 아니라 원래 맥락으로 **돌려보내는 곳**이다.
+     ⚠️ 앵커는 각 페이지의 실제 섹션 id 와 같아야 한다 (법안 #part-comments · 의원 #comments) */
+  const TALK_KIND = {
+    bill:       { label: '법안',   href: (t) => `/bill/${encodeURIComponent(t)}#part-comments` },
+    politician: { label: '의원',   href: (t) => `/politician/${encodeURIComponent(t)}#comments` },
+    briefing:   { label: '브리핑', href: (t) => `/briefing/${encodeURIComponent(t)}#part-comments` },
+    post:       { label: '글',     href: (t) => `/community/${encodeURIComponent(t)}` },
   };
   const typeMeta = (k) => (locals.postTypes || []).find((t) => t.key === k) || null;
   const pagesAround = () => {
@@ -105,6 +125,26 @@
     .cm-meta { order: 2; justify-content: flex-start; }
     .cm-bill-chip-name { max-width: 180px; }
   }
+  /* 둘째 줄 = 글 유형. 🔴 첫 줄(무엇을 보나)보다 가벼워야 위계가 읽힌다 —
+     같은 무게로 두면 두 줄이 한 덩어리로 보여 무엇이 무엇의 하위인지 안 보인다 */
+  .cm-tabs.is-sub { border-bottom: 0; margin: -14px 0 12px; padding-left: 2px; }
+  .cm-tabs.is-sub .cm-tab { padding: 6px 10px; font-size: 12.5px; border-bottom-width: 2px; }
+  .cm-tabs.is-sub .cm-tab small { font-size: 11px; }
+
+  /* 댓글 행 — 제목 대신 [대상 이름] + [본문] 두 조각 */
+  .cm-talk-lede { font-size: 12.5px; color: var(--sub); margin: -8px 0 14px; }
+  .cm-talk-main { flex-wrap: nowrap; }
+  .cm-talk-target { flex: 0 0 auto; max-width: 40%; font-size: 13px; font-weight: 700; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cm-talk-target::after { content: '·'; margin-left: 8px; color: var(--border2); font-weight: 400; }
+  /* ⚠️ min-width:0 이 없으면 flex 아이템이 안 줄어 메타가 행 밖으로 나간다 */
+  .cm-talk-body { flex: 1 1 auto; min-width: 0; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 720px) {
+    .cm-talk-main { flex-wrap: wrap; }
+    .cm-talk-target { max-width: 100%; }
+    .cm-talk-body { flex: 1 1 100%; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  }
+
+  .cm-empty a { color: var(--accent2); font-weight: 600; text-decoration: underline; }
   .cm-empty {
     padding: 60px 24px;
     text-align: center;
@@ -145,7 +185,9 @@
   <div class="pb-page-header-inner">
     <div>
       <h1 class="pb-page-title">커뮤니티</h1>
-      <p class="pb-page-desc">공지 · 잡담 · 법안 이야기 · 질문 · 건의. 자유롭게 의견을 나눠보세요</p>
+      <%# ⚠️ 4단계에서 이 페이지는 게시판이 아니라 **통합 피드**가 됐다. 옛 설명(공지·잡담·질문…)은
+          글 유형만 나열해 댓글이 여기 있다는 걸 말하지 못한다 %>
+      <p class="pb-page-desc">법안·의원·브리핑에 남긴 의견과 커뮤니티 글이 한자리에 모입니다</p>
     </div>
     <% if (locals.currentUser) { %>
       <a href="/community/write<%= locals.activeType ? '?type=' + activeType : '' %>" class="cm-write-btn">
@@ -162,20 +204,51 @@
 </div>
 
 <div class="cm-wrap">
-  <nav class="cm-tabs" aria-label="글 유형">
-    <a href="/community" class="cm-tab <%= !locals.activeType ? 'is-active' : '' %>">전체 <small><%= nf(locals.allCount || 0) %></small></a>
-    <% (locals.postTypes || []).forEach((t) => { %>
-      <a href="/community?type=<%= t.key %>" class="cm-tab <%= locals.activeType === t.key ? 'is-active' : '' %>"><%= t.label %> <small><%= nf((locals.typeCounts || {})[t.key] || 0) %></small></a>
+  <%# 🔴 **무엇을 보나** 한 줄. 글과 댓글을 가르지 않는다 — 첫 화면이 곧 통합 피드다.
+      글 유형(공지·잡담…)은 「글」을 골랐을 때만 둘째 줄로 나온다 (글에만 있는 축이라) %>
+  <nav class="cm-tabs" aria-label="보기">
+    <% (locals.feedTabs || []).forEach((t) => { %>
+      <a href="<%= qs({ on: t.key, type: null }) %>" class="cm-tab <%= filter === t.key ? 'is-active' : '' %>"><%= t.label %><% if (t.key === 'posts') { %> <small><%= nf(locals.allCount || 0) %></small><% } %></a>
     <% }); %>
   </nav>
 
-  <% if (posts && posts.length > 0) { %>
+  <% if (isPosts) { %>
+    <nav class="cm-tabs is-sub" aria-label="글 유형">
+      <a href="<%= qs({ type: null }) %>" class="cm-tab <%= !locals.activeType ? 'is-active' : '' %>">전체 <small><%= nf(locals.allCount || 0) %></small></a>
+      <% (locals.postTypes || []).forEach((t) => { %>
+        <a href="<%= qs({ type: t.key }) %>" class="cm-tab <%= locals.activeType === t.key ? 'is-active' : '' %>"><%= t.label %> <small><%= nf((locals.typeCounts || {})[t.key] || 0) %></small></a>
+      <% }); %>
+    </nav>
+  <% } %>
+
+  <p class="cm-talk-lede">
+    <% if (filter === 'all') { %>법안·의원·브리핑에 달린 의견과 커뮤니티 글이 시간순으로 흐릅니다. 누르면 그 기록 옆으로 갑니다.
+    <% } else if (isPosts) { %>커뮤니티에 올라온 글입니다. 글에 달린 의견은 「전체」에서 같이 흐릅니다.
+    <% } else { %><%= (feedTabs.find((t) => t.key === filter) || {}).label %>에 달린 의견입니다. 누르면 그 기록 옆으로 갑니다.<% } %>
+  </p>
+
+  <% if (rows.length > 0) { %>
     <div class="cm-board">
-      <% posts.forEach(p => { const tm = typeMeta(p.post_type); %>
+      <%# 🔴 한 목록에 두 종류가 섞인다. 배지가 그 둘을 가른다 —
+          글은 유형(공지·잡담…), 댓글은 어디에 달렸는지(법안·의원·브리핑·글) %>
+      <% rows.forEach(p => {
+           if (p.kind === 'comment') { const k = TALK_KIND[p.ctx_kind]; if (!k) return; %>
+        <a href="<%= k.href(p.ctx_id) %>" class="cm-row pb-boxlink">
+          <span class="cm-type"><%= k.label %></span>
+          <span class="cm-main cm-talk-main">
+            <span class="cm-talk-target"><%= p.ctx_label %></span>
+            <span class="cm-talk-body"><%= p.text %></span>
+          </span>
+          <span class="cm-meta">
+            <span class="nick"><%= p.nickname || '탈퇴한 사용자' %></span>
+            <span class="date" title="<%= p.created_at %>"><%= timeAgo(p.created_at) %></span>
+          </span>
+        </a>
+      <% } else { const tm = typeMeta(p.post_type); %>
         <a href="/community/<%= p.id %>" class="cm-row pb-boxlink <%= p.is_pinned ? 'is-pinned' : '' %>">
           <span class="cm-type <%= tm && tm.tone === 'gold' ? 'is-gold' : '' %>"><%= tm ? tm.label : '글' %></span>
           <span class="cm-main">
-            <span class="cm-title"><%= p.title %></span>
+            <span class="cm-title"><%= p.text %></span>
             <% if (Number(p.comment_count) > 0) { %><span class="cm-cmt">[<%= nf(p.comment_count) %>]</span><% } %>
             <% if (p.linked_bill_id && p.linked_bill_name) { %>
               <span class="cm-bill-chip">
@@ -191,7 +264,7 @@
             <span class="views" title="조회"><svg class="cm-stat-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><%= nf(p.view_count) %></span>
           </span>
         </a>
-      <% }); %>
+      <% } }); %>
     </div>
 
     <% if (totalPages > 1) {
@@ -222,8 +295,14 @@
       </div>
     <% } %>
   <% } else { %>
+    <%# 🔴 비어 있어도 왜 비었는지 + 무엇을 하면 채워지는지를 말한다 (/xray 빈 지표와 같은 판단)
+        ⚠️ **범위 밖 페이지를 "내용 없음" 이라고 하면 거짓말이다** — 내용은 있고 이 쪽이 없을 뿐이다 %>
     <div class="cm-empty">
-      <% if (locals.activeType) { %>아직 「<%= (typeMeta(activeType) || {}).label %>」 글이 없습니다.<% } else { %>아직 등록된 게시글이 없습니다. 첫 글의 주인공이 되어보세요.<% } %>
+      <% if (page > 1) { %>이 페이지에는 더 이상 없습니다. <a href="<%= qs({ page: 1 }) %>">처음으로 →</a>
+      <% } else if (locals.activeType) { %>아직 「<%= (typeMeta(activeType) || {}).label %>」 글이 없습니다.
+      <% } else if (isPosts) { %>아직 등록된 게시글이 없습니다. 첫 글의 주인공이 되어보세요.
+      <% } else if (filter === 'all') { %>아직 오간 이야기가 없습니다. 법안·의원 페이지에서 남긴 의견과 커뮤니티 글이 여기에 모입니다.
+      <% } else { %>아직 <%= (feedTabs.find((t) => t.key === filter) || {}).label %>에 달린 의견이 없습니다.<% } %>
     </div>
   <% } %>
 </div>

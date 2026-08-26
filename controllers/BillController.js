@@ -1,9 +1,11 @@
 import BillService from '../services/BillService.js';
+import PostService from '../services/PostService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
 export default (db) => {
     const billService = BillService(db);
+    const postService = PostService(db);   // 「이 법안을 다룬 글」 역링크
     const controller = {};
 
     controller.getList = wrapWithContext(async function getList(req, res, next) {
@@ -167,7 +169,7 @@ export default (db) => {
             const bill = billData[0];
 
             const userId = req.session?.userId || null;
-            const [coProposers, votes, analysis, analysisRequestCount, hasRequested] = await Promise.all([
+            const [coProposers, votes, analysis, analysisRequestCount, hasRequested, relatedPosts] = await Promise.all([
                 billService.getBillCoProposers(billId),
                 billService.getBillDetailVotes(billId),
                 billService.getAiAnalysis(billId).catch((err) => {
@@ -175,7 +177,12 @@ export default (db) => {
                     return null;
                 }),
                 billService.getAnalysisRequestCount(billId),
-                billService.hasUserRequested(billId, userId)
+                billService.hasUserRequested(billId, userId),
+                /* ⚠️ 부가 정보다 — 실패해도 법안 페이지는 살려야 한다 (AI 분석과 같은 처리) */
+                postService.listByBillId(billId, 5).catch((err) => {
+                    logger.warn(`법안 관련 글 조회 실패 (bill_id=${billId}): ${err.message}`);
+                    return [];
+                })
             ]);
 
             const voters = {
@@ -229,6 +236,7 @@ export default (db) => {
                     absent:   voters.absent.length
                 },
                 analysis,
+                relatedPosts,
                 analysisRequestCount,
                 hasRequested,
                 requestThreshold: billService.getRequestThreshold()

@@ -29,6 +29,8 @@
       <% daysOptions.forEach((d) => { %>
         <a href="/admin/stats?days=<%= d %>" class="<%= d === days ? 'is-on' : '' %>">최근 <%= d %>일</a>
       <% }); %>
+      <%# 🔴 미처리 건수는 AdminRoutes 미들웨어가 넣는다 (한 곳에서만 센다) %>
+      <a href="/admin/reports" class="st-range-other">신고 처리<%= (locals.openReportCount ? ` ${locals.openReportCount}` : '') %> →</a>
       <a href="/admin/schedule" class="st-range-other">운영 일정 →</a>
       <a href="/admin/titles" class="st-range-other">직위 관리 →</a>
     </nav>
@@ -220,7 +222,10 @@
   .st-range { display: flex; gap: 6px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
   .st-range a { font-size: 13px; padding: 5px 12px; border: 1px solid var(--border2); border-radius: 999px; color: var(--sub); text-decoration: none; }
   .st-range a.is-on { background: var(--text); border-color: var(--text); color: #fff; font-weight: 600; }
+  /* ⚠️ `margin-left:auto` 는 **첫 번째 보조 링크에만**. 둘 다 걸리면 각자 남은 공간을 먹어
+     오른쪽 링크들 사이가 벌어진다 (800px 실측으로 잡음) */
   .st-range a.st-range-other { margin-left: auto; border-color: transparent; color: var(--accent2); }
+  .st-range a.st-range-other ~ a.st-range-other { margin-left: 0; }
 
   .st-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 30px; }
   .st-kpi { background: var(--bg2); border: 1px solid var(--border); border-radius: 11px; padding: 14px 16px; min-width: 0; }

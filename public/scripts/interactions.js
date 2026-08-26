@@ -438,7 +438,9 @@
               <span class="comment-action" data-edit>✎ 수정</span>
               <span class="comment-action" data-delete>🗑 삭제</span>
             ` : ''}
+            ${!mine && !isDeletedUser ? `<span class="comment-action" data-report>신고</span>` : ''}
           </div>
+          <div class="comment-report-form" data-report-form style="display:none"></div>
           ${!isReply ? `<div class="comment-reply-form" data-reply-form style="display:none"></div>` : ''}
         </div>`;
     };
@@ -500,6 +502,53 @@
             if (err.status === 401) return PB.redirectToLogin();
             alert('좋아요 실패: ' + err.message);
           }
+        });
+
+        /* 신고 — 사유를 고르게 한다 (한 번에 보내면 오클릭이 곧 신고가 된다).
+           🔴 사유 목록을 여기 하드코딩하지 말 것. 단일 소스는 utils/reportReasons.js 이고
+              `/api/reports/reasons` 가 그걸 그대로 내려준다. 화면에서 뺀 `political` 이
+              여기에만 되살아나는 사고를 막는다. */
+        card.querySelector('[data-report]')?.addEventListener('click', async () => {
+          if (!isLoggedIn()) return PB.redirectToLogin();
+          const formEl = card.querySelector('[data-report-form]');
+          if (!formEl) return;
+          if (formEl.style.display !== 'none') {   // 토글로 닫기
+            formEl.style.display = 'none'; formEl.innerHTML = ''; return;
+          }
+          formEl.style.display = '';
+          formEl.innerHTML = '<span class="comment-report-hint">사유를 불러오는 중…</span>';
+          let reasons;
+          try {
+            reasons = (await PB.fetch('/api/reports/reasons')).reasons || [];
+          } catch (err) {
+            formEl.innerHTML = '<span class="comment-report-hint">사유를 불러오지 못했습니다.</span>';
+            return;
+          }
+          formEl.innerHTML =
+            '<span class="comment-report-hint">신고 사유를 고르세요</span>' +
+            reasons.map((r) => `<button class="comment-report-btn" data-reason="${PB.escapeHtml(r.key)}" title="${PB.escapeHtml(r.desc || '')}">${PB.escapeHtml(r.label)}</button>`).join('') +
+            '<button class="comment-report-btn is-cancel" data-report-cancel>취소</button>';
+
+          formEl.querySelector('[data-report-cancel]')?.addEventListener('click', () => {
+            formEl.style.display = 'none'; formEl.innerHTML = '';
+          });
+          formEl.querySelectorAll('[data-reason]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              formEl.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+              try {
+                await PB.fetch('/api/reports', {
+                  method: 'POST',
+                  body: JSON.stringify({ type: 'comment', targetId: cid, reason: btn.dataset.reason })
+                });
+                /* ⚠️ 접수 결과에 신고 **건수를 보여주지 않는다** — 몇 명이 신고했는지가 보이면
+                      그 자체가 여론 표시가 되고 동조 신고를 부른다. 관리자만 본다 */
+                formEl.innerHTML = '<span class="comment-report-hint is-done">신고했습니다. 관리자가 확인합니다.</span>';
+              } catch (err) {
+                if (err.status === 401) return PB.redirectToLogin();
+                formEl.innerHTML = `<span class="comment-report-hint">신고 실패: ${PB.escapeHtml(err.message)}</span>`;
+              }
+            });
+          });
         });
 
         // 답글 토글 (최상위 댓글만)

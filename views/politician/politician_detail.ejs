@@ -2581,10 +2581,17 @@
     if (key === 'comments') mountCommentsIfNeeded();
   }));
 
-  // URL hash 로 국민 평가 바로 열기: /politician/XXX#comments
+  /* URL hash 로 국민 평가 바로 열기: /politician/XXX#comments
+     🔴 **스크롤까지 해야 한다.** 이 페이지는 분석 탭이 기본이라 탭만 바꾸면 화면은 그대로 맨 위에 있고,
+        모바일 문서가 7,000px 대라 정작 보러 온 댓글이 한참 아래에 남는다.
+        커뮤니티 「최근 대화」 피드가 이 주소로 사람을 보내므로(2026-08-27) 도착 지점이 맞아야 한다.
+     ⚠️ 아래 `data-open-tab` 경로와 **같은 동작**이어야 한다 — 한쪽만 고치면 같은 탭인데 다르게 도착한다 */
   if (location.hash === '#comments') {
     const btn = document.querySelector('[data-tab="comments"]');
-    if (btn) btn.click();
+    if (btn) {
+      btn.click();
+      document.querySelector('.tab-head')?.scrollIntoView({ block: 'start' });
+    }
   }
 
   /* 본문 안에서 탭으로 보내는 링크 (`data-open-tab`).

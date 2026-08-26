@@ -10,6 +10,7 @@ import IssueService from '../services/IssueService.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 import { KIND_LABEL } from '../middlewares/pageViews.js';
+import { REPORT_REASONS, REPORT_STATUS, resolveReportType } from '../utils/reportReasons.js';
 
 // DB CHECK 와 같은 값이어야 한다 (ddl/migrations/2026-08-12-politician-titles.sql)
 const CATEGORIES = ['의장단', '국무위원', '교섭단체', '당직'];
@@ -61,6 +62,78 @@ export default (db) => {
         } catch (error) {
             logger.error('관리자 직위 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
             next(error);
+        }
+    });
+
+    /* ── 신고 처리 (2026-08-27) ──
+       🔴 처리 단위는 **대상**이다 (신고가 아니다). 같은 댓글에 신고가 3건이면 한 줄로 뜨고
+          한 번의 판단으로 3건이 같이 닫힌다. 자세한 이유는 마이그레이션 파일 주석. */
+    const REPORT_FILTERS = ['open', 'handled', 'all'];
+
+    controller.getReportsPage = wrapWithContext(async function getReportsPage(req, res, next) {
+        /* 모르는 값은 에러가 아니라 기본값으로 접는다 (URL 을 손으로 고쳐도 안전 — /xray/chart 와 같은 판단) */
+        const filter = REPORT_FILTERS.includes(String(req.query.status)) ? String(req.query.status) : 'open';
+        try {
+            const [groups, summary] = await Promise.all([
+                dao.getReportGroups(filter, 100),
+                dao.getReportSummary(),
+            ]);
+            res.render('admin/reports', {
+                pageTitle: '신고 처리',
+                pageStyles: null,
+                currentUrl: '/admin/reports',
+                groups, summary, filter,
+                reasons: REPORT_REASONS,
+                statusMeta: REPORT_STATUS,
+                flash: req.query.ok || null,
+                error: req.query.err || null,
+            });
+        } catch (error) {
+            logger.error('관리자 신고 페이지 렌더링 중 에러:', `${error.message}\n${error.stack}`);
+            next(error);
+        }
+    });
+
+    const backReports = (res, filter, { ok, err }) => {
+        const q = [`status=${encodeURIComponent(filter)}`];
+        q.push(ok ? `ok=${encodeURIComponent(ok)}` : `err=${encodeURIComponent(err)}`);
+        return res.redirect(`/admin/reports?${q.join('&')}`);
+    };
+
+    /* POST /admin/reports/:type/:targetId — action=keep|remove
+       🔴 「살려둠」이 대상을 되살리는 것은 **우리가 지운 경우(status='removed')뿐**이다.
+          작성자 본인이 지운 글까지 되살리면 그건 삭제 의사를 뒤집는 것이라 하면 안 된다. */
+    controller.resolveReport = wrapWithContext(async function resolveReport(req, res) {
+        const filter = REPORT_FILTERS.includes(String(req.query.status)) ? String(req.query.status) : 'open';
+        const type = resolveReportType(req.params.type);
+        const targetId = Number(req.params.targetId);
+        const action = String((req.body || {}).action || '');
+
+        if (!type || !Number.isSafeInteger(targetId) || targetId <= 0) {
+            return backReports(res, filter, { err: '잘못된 요청입니다.' });
+        }
+        if (!['keep', 'remove'].includes(action)) {
+            return backReports(res, filter, { err: '알 수 없는 처리입니다.' });
+        }
+        try {
+            const before = await dao.getReportGroupStatus(type, targetId);
+            if (!before || before.n === 0) return backReports(res, filter, { err: '이미 없는 신고입니다.' });
+
+            if (action === 'remove') {
+                await dao.setTargetDeleted(type, targetId, true);
+            } else if (before.status === 'removed') {
+                await dao.setTargetDeleted(type, targetId, false);   // 우리가 지운 것만 되살린다
+            }
+            const n = await dao.resolveReports(type, targetId, action === 'remove' ? 'removed' : 'kept',
+                                               req.user?.user_id || null);
+            const what = type === 'comment' ? '댓글' : '글';
+            const verb = action === 'remove' ? '삭제했습니다'
+                       : (before.status === 'removed' ? '되살렸습니다' : '살려뒀습니다');
+            logger.info(`[admin] 신고 처리: ${type}#${targetId} → ${action} (신고 ${n}건, by ${req.user?.email})`);
+            return backReports(res, filter, { ok: `${what}을 ${verb} (신고 ${n}건 처리)` });
+        } catch (e) {
+            logger.error(`[admin] 신고 처리 실패: ${e.message}`);
+            return backReports(res, filter, { err: e.message });
         }
     });
 

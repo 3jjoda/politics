@@ -231,12 +231,19 @@
           <%= nf(post.view_count) %>
         </span>
 
+        <%# 🔴 신고는 **작성자가 아닌 로그인 사용자**에게만. 비로그인에 보여주면 눌렀을 때
+            로그인으로 튕겨 무슨 일이 일어난 건지 알 수 없다 (댓글 위젯과 같은 규칙) %>
         <% if (isAuthor) { %>
           <div class="post-actions">
             <a href="/community/<%= post.id %>/edit" class="post-act-btn">수정</a>
             <button type="button" class="post-act-btn danger" id="pd-delete">삭제</button>
           </div>
+        <% } else if (locals.currentUser) { %>
+          <div class="post-actions">
+            <button type="button" class="post-act-btn" id="pd-report">신고</button>
+          </div>
         <% } %>
+        <div class="comment-report-form" id="pd-report-form" style="display:none"></div>
       </div>
     </section>
 
@@ -320,6 +327,42 @@
       }
     });
   };
+
+  /* 신고 — 댓글 위젯(interactions.js)과 같은 흐름. 사유 목록은 API 에서 받는다
+     🔴 사유를 여기 하드코딩하지 말 것 (단일 소스 utils/reportReasons.js) */
+  const reportBtn = document.getElementById('pd-report');
+  if (reportBtn) {
+    const formEl = document.getElementById('pd-report-form');
+    reportBtn.addEventListener('click', async () => {
+      if (formEl.style.display !== 'none') { formEl.style.display = 'none'; formEl.innerHTML = ''; return; }
+      formEl.style.display = '';
+      formEl.innerHTML = '<span class="comment-report-hint">사유를 불러오는 중…</span>';
+      let reasons;
+      try { reasons = (await PB.fetch('/api/reports/reasons')).reasons || []; }
+      catch (e) { formEl.innerHTML = '<span class="comment-report-hint">사유를 불러오지 못했습니다.</span>'; return; }
+      formEl.innerHTML = '<span class="comment-report-hint">신고 사유를 고르세요</span>'
+        + reasons.map((r) => '<button class="comment-report-btn" data-reason="' + PB.escapeHtml(r.key) + '">' + PB.escapeHtml(r.label) + '</button>').join('')
+        + '<button class="comment-report-btn is-cancel" data-report-cancel>취소</button>';
+      formEl.querySelector('[data-report-cancel]').addEventListener('click', () => {
+        formEl.style.display = 'none'; formEl.innerHTML = '';
+      });
+      formEl.querySelectorAll('[data-reason]').forEach((b) => {
+        b.addEventListener('click', async () => {
+          formEl.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+          try {
+            await PB.fetch('/api/reports', {
+              method: 'POST',
+              body: JSON.stringify({ type: 'post', targetId: POST_ID, reason: b.dataset.reason })
+            });
+            formEl.innerHTML = '<span class="comment-report-hint is-done">신고했습니다. 관리자가 확인합니다.</span>';
+          } catch (err) {
+            if (err.status === 401) return PB.redirectToLogin();
+            formEl.innerHTML = '<span class="comment-report-hint">신고 실패: ' + PB.escapeHtml(err.message) + '</span>';
+          }
+        });
+      });
+    });
+  }
 
   // 삭제
   if (IS_AUTHOR) {

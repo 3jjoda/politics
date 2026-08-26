@@ -7,6 +7,9 @@ const VALID_TYPES = new Set(['politician', 'bill', 'post', 'briefing']);
 export default (db) => {
     const dao = CommentDao(db);
     return {
+        /* 최근 대화 피드 — 타입 검증이 필요 없다 (전 종류를 그대로 낸다) */
+        listRecent: (limit, offset) => dao.listRecent(limit, offset),
+
         list: (type, targetId) => {
             if (!VALID_TYPES.has(type)) throw new Error('INVALID_TYPE');
             if (!targetId) throw new Error('INVALID_TARGET');

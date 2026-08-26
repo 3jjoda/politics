@@ -17,6 +17,17 @@ export default (db) => ({
         const { rows } = await db.query(queries.list, [limit, offset, postType]);
         return rows;
     },
+    /* 커뮤니티 통합 피드 — 글 + 댓글 한 줄기 (queries/post/listFeed.sql 머리 주석 참조) */
+    listFeed: async ({ filter = 'all', postType = null, limit = 20, offset = 0 } = {}) => {
+        const { rows } = await db.query(queries.listFeed, [filter, postType, limit, offset]);
+        return rows;
+    },
+
+    /* 법안 상세의 「이 법안을 다룬 글」 — 실패해도 법안 페이지는 살아야 하므로 호출부가 catch 한다 */
+    listByBillId: async (billId, limit = 5) => {
+        const { rows } = await db.query(queries.listByBillId, [billId, limit]);
+        return rows;
+    },
     countByType: async () => {
         const { rows } = await db.query(queries.countByType);
         return rows;

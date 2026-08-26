@@ -65,6 +65,10 @@
     margin-top: 4px;
   }
 
+  /* 첨부한 법안이 있을 때의 권유 문구 — 막지 않고 권유만 한다 (지시가 아니라 안내라 가볍게) */
+  .wr-bill-hint { font-size: 12.5px; line-height: 1.75; color: var(--sub); margin: 9px 2px 0; word-break: keep-all; }
+  .wr-bill-hint a { color: var(--accent2); font-weight: 600; text-decoration: underline; }
+
   /* 법안 첨부 */
   .wr-bill-block {
     padding: 16px 18px;
@@ -333,8 +337,19 @@
             </div>
             <button type="button" class="wr-bill-remove" id="wr-bill-remove" aria-label="첨부 취소">×</button>
           </div>
+          <%# 🔴 3단계 — 법안 하나에 대한 이야기는 **그 법안 페이지 댓글**이 제자리다.
+              거기 쓰면 표결 기록이 바로 옆에서 검증하고, 그 법안을 보러 온 사람에게 닿는다.
+              ⚠️ **막지 않는다. 권유만 한다** — 여러 건을 엮거나 배경을 길게 쓰려면 글이 맞다.
+                 강제하면 "쓸 곳이 없다" 가 되어 고치려던 문제(대화가 안 생긴다)가 되돌아온다 %>
+          <p class="wr-bill-hint">
+            이 법안 하나에 대한 이야기라면 <a id="wr-bill-link" href="#" target="_blank" rel="noopener">법안 페이지에 바로 의견 남기기 ↗</a>가
+            더 잘 닿습니다. 표결 기록 옆에 놓이고, 그 법안을 보러 온 사람이 읽습니다.
+            여러 법안을 엮거나 배경을 길게 쓸 때는 글이 좋습니다.
+          </p>
         </div>
         <input type="hidden" id="wr-linked-bill-id" value="<%= (post && post.linked_bill_id) || '' %>">
+        <%# ⚠️ 수정 모드는 첨부 상자가 SSR 로 열린 채 뜬다 — 링크 href 를 JS 로만 채우면 그때 비어 있다 %>
+        <% if (attachedBill) { %><script>document.getElementById('wr-bill-link').href = '/bill/<%= encodeURIComponent(attachedBill.bill_id) %>#part-comments';</script><% } %>
       </div>
     </div>
 
@@ -448,6 +463,8 @@
     if (b.committee) parts.push(escapeHtml(b.committee));
     if (b.propose_dt) parts.push(escapeHtml(b.propose_dt));
     billMeta.innerHTML = parts.map(p => `<span>${p}</span>`).join(' · ');
+    const link = document.getElementById('wr-bill-link');
+    if (link) link.href = '/bill/' + encodeURIComponent(b.bill_id) + '#part-comments';
     idleBox.style.display = 'none';
     attachedBox.style.display = '';
     searchInput.value = '';
