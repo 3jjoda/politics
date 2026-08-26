@@ -363,7 +363,7 @@ export default (db) => {
     controller.getSnsPage = wrapWithContext(async function getSnsPage(req, res, next) {
         try {
             const [{ rows: briefings }, { rows: logRows }, { rows: axisAgg }, { rows: weekAgg }] = await Promise.all([
-                db.query(`SELECT id, briefing_date, headline, model
+                db.query(`SELECT id, TO_CHAR(briefing_date, 'YYYY-MM-DD') AS briefing_date, headline, model
                             FROM briefing_posts ORDER BY briefing_date DESC LIMIT 7`),
                 db.query(`SELECT id, TO_CHAR(posted_on, 'YYYY-MM-DD') AS posted_on, slot, channel, axis, format,
                                  saves, reach, replies, note

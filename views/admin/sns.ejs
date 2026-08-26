@@ -120,6 +120,23 @@
           <% if (b.publishable) { %>
             <a class="bf-a" href="/briefing/<%= b.id %>/card">인스타 카드</a>
             <a class="bf-a" href="/briefing/<%= b.id %>/threads?mode=short">쓰레드 체인</a>
+            <%# 원클릭 성과표 기록 — 올린 직후 누른다. 게시일은 누른 날(오늘)이다 (브리핑 날짜가 아니라 — 보통 다음 날 아침에 올리니까) %>
+            <form method="post" action="/admin/sns/log" style="display:inline">
+              <input type="hidden" name="postedOn" value="<%= todayKst %>">
+              <input type="hidden" name="slot" value="아침">
+              <input type="hidden" name="channel" value="인스타">
+              <input type="hidden" name="axis" value="오늘">
+              <input type="hidden" name="format" value="브리핑 캐러셀 (<%= b.date.slice(5) %>)">
+              <button type="submit" class="lg-save" title="성과표에 오늘 날짜로 기록">+기록 인스타</button>
+            </form>
+            <form method="post" action="/admin/sns/log" style="display:inline">
+              <input type="hidden" name="postedOn" value="<%= todayKst %>">
+              <input type="hidden" name="slot" value="아침">
+              <input type="hidden" name="channel" value="쓰레드">
+              <input type="hidden" name="axis" value="오늘">
+              <input type="hidden" name="format" value="브리핑 체인 (<%= b.date.slice(5) %>)">
+              <button type="submit" class="lg-save" title="성과표에 오늘 날짜로 기록">+기록 쓰레드</button>
+            </form>
           <% } else { %>
             <span class="bf-skip">폴백·활동 없음 — 올리지 않는 카드</span>
           <% } %>
@@ -136,7 +153,7 @@
   <% if (flash) { %><div class="ad-msg is-ok"><%= flash %></div><% } %>
   <% if (error) { %><div class="ad-msg is-err"><%= error %></div><% } %>
   <p class="sns-note" style="margin:0 0 10px">
-    게시하면 바로 한 줄 적습니다 (지표는 비워두고). <b>저장·도달·답글은 금요일에</b> 행의 칸을 채우고 <b>채우기</b>를 누르면 됩니다.
+    게시하면 바로 한 줄 적습니다 (지표는 비워두고). 브리핑은 위 표의 <b>+기록</b> 버튼이 오늘 날짜·아침으로 자동 입력합니다. <b>저장·도달·답글은 금요일에</b> 행의 칸을 채우고 <b>채우기</b>를 누르면 됩니다.
     팔로워 수는 적지 않습니다 — 보는 건 저장 · 답글 · 진단 시작 셋뿐.
   </p>
   <form class="lg-form" method="post" action="/admin/sns/log">
