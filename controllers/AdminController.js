@@ -362,21 +362,41 @@ export default (db) => {
        (권한 경계를 여기로 옮기면 브리핑 카드처럼 로그인 상태에 따라 미리보기가 안 되는 문제가 생긴다). */
     controller.getSnsPage = wrapWithContext(async function getSnsPage(req, res, next) {
         try {
-            const [{ rows: briefings }, { rows: logRows }, { rows: axisAgg }, { rows: weekAgg }] = await Promise.all([
+            const [{ rows: briefings }, { rows: logRows }, { rows: axisAgg }, { rows: weekAgg }, { rows: unpaired }] = await Promise.all([
                 db.query(`SELECT id, TO_CHAR(briefing_date, 'YYYY-MM-DD') AS briefing_date, headline, model
                             FROM briefing_posts ORDER BY briefing_date DESC LIMIT 7`),
                 db.query(`SELECT id, TO_CHAR(posted_on, 'YYYY-MM-DD') AS posted_on, slot, channel, axis, format,
                                  saves, reach, replies, note
                             FROM sns_log ORDER BY posted_on DESC, id DESC LIMIT 60`),
-                /* 축별 집계 — "4주 뒤 승자 정하기" 를 표가 직접 해준다. 지표 없는(아직 안 채운) 행은 평균에서 자연히 빠진다 */
-                db.query(`SELECT axis, COUNT(*)::int AS cnt
-                               , ROUND(AVG(saves))::int   AS avg_saves
-                               , ROUND(AVG(reach))::int   AS avg_reach
-                               , ROUND(AVG(replies))::int AS avg_replies
-                            FROM sns_log GROUP BY axis ORDER BY COUNT(*) DESC`),
+                /* 축별 집계 — 🔴 **채널로 먼저 쪼갠다** (2026-08-27). 채널마다 채우는 칸이 달라서
+                   (저장은 인스타만 · 답글은 쓰레드 중심) 섞으면 평균이 곧바로 거짓이 된다.
+                   실제로 쓰레드 행에 저장 0 이 들어가 `오늘` 축 평균 저장이 내려가 있었다.
+                   ⚠️ `COUNT(지표)` 를 같이 낸다 — 게시 18건인데 평균이 1건에서 나온 값일 수 있다.
+                      화면이 `n=` 으로 밝히지 않으면 표본 1짜리를 순위로 읽게 된다. */
+                db.query(`SELECT channel, axis, COUNT(*)::int AS cnt
+                               , COUNT(saves)::int   AS n_saves,   ROUND(AVG(saves))::int   AS avg_saves
+                               , COUNT(reach)::int   AS n_reach,   ROUND(AVG(reach))::int   AS avg_reach
+                               , COUNT(replies)::int AS n_replies, ROUND(AVG(replies))::int AS avg_replies
+                            FROM sns_log GROUP BY channel, axis ORDER BY channel, COUNT(*) DESC`),
                 db.query(`SELECT TO_CHAR(DATE_TRUNC('week', posted_on), 'MM.DD') AS wk, COUNT(*)::int AS cnt
                                , SUM(saves)::int AS saves, SUM(replies)::int AS replies
                             FROM sns_log GROUP BY 1 ORDER BY 1 DESC LIMIT 6`),
+                /* 짝 없는 브리핑 — 인스타·쓰레드 중 한쪽만 기록된 건 (2026-08-27).
+                   🔴 브리핑은 항상 두 채널에 같이 올리므로 한쪽만 있으면 **기록이 빠진 것**이다.
+                      실제로 08-12 브리핑의 쓰레드 행이 통째로 빠져 있었는데 눈으로는 못 잡았다.
+                   ⚠️ 패턴에 역슬래시(\d)를 쓰지 말 것 — 템플릿 리터럴이 먹어서 매칭이 통째로 실패하고,
+                      그러면 경고가 **조용히 안 뜬다**. 대괄호 표현([0-9])이라야 안전하다.
+                   ⚠️ 포맷의 `(MM-DD)` 로 묶는다 — 그게 브리핑을 식별하는 유일한 키다 (bill 처럼 id 를 안 들고 있다). */
+                db.query(`SELECT bd
+                               , BOOL_OR(channel = '인스타') AS has_ig
+                               , BOOL_OR(channel = '쓰레드') AS has_th
+                               , MIN(TO_CHAR(posted_on, 'MM-DD')) AS d
+                            FROM (SELECT SUBSTRING(format FROM '[(]([0-9][0-9]-[0-9][0-9])[)]') AS bd, channel, posted_on
+                                    FROM sns_log WHERE format LIKE '브리핑%') t
+                           WHERE bd IS NOT NULL
+                           GROUP BY bd
+                          HAVING NOT (BOOL_OR(channel = '인스타') AND BOOL_OR(channel = '쓰레드'))
+                           ORDER BY bd DESC`),
             ]);
             res.render('admin/sns', {
                 pageTitle: 'SNS 콘텐츠', pageStyles: null, currentUrl: '/admin/sns',
@@ -385,7 +405,7 @@ export default (db) => {
                     // 폴백·활동없음 카드는 올릴 카드가 아니다 (export API 의 publishable 과 같은 판정)
                     publishable: b.model !== 'fallback' && b.model !== 'none',
                 })),
-                logRows, axisAgg, weekAgg,
+                logRows, axisAgg, weekAgg, unpaired,
                 // 폼 기본값 — 오늘 (KST 고정, 로컬 getter 금지)
                 todayKst: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date()),
                 flash: req.query.ok || null,

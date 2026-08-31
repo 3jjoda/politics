@@ -38,6 +38,15 @@
   .wk-table tr:last-child td { border-bottom: none; }
   .wk-table b { color: var(--text); }
   .sns-note { font-size: 12.5px; color: var(--sub2); line-height: 1.7; margin-top: 10px; word-break: keep-all; }
+  .lg-help { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px;
+             margin: 0 0 12px; }
+  .lg-help-col { background: #FBF5EA; border: 1px solid #E2DFD4; border-left: 3px solid var(--accent);
+                 border-radius: 0 8px 8px 0; padding: 9px 12px; font-size: 12.5px; line-height: 1.65; }
+  .lg-help-col.is-warn { background: #F0F1F3; border-left-color: var(--sub); }
+  .lg-help-col b { color: var(--text); }
+  .lg-help-col ul { margin: 5px 0 0; padding-left: 16px; }
+  .lg-help-col li { margin: 2px 0; word-break: keep-all; }
+  .agg-n { margin-left: 5px; font-size: 10.5px; color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
   .tblwrap { overflow-x: auto; border-radius: 10px; }
 
   .ad-msg { padding: 11px 15px; border-radius: 9px; font-size: 13.5px; margin: 0 0 16px; }
@@ -152,10 +161,61 @@
   <div class="sns-h" id="sns-log">성과표 · 기록</div>
   <% if (flash) { %><div class="ad-msg is-ok"><%= flash %></div><% } %>
   <% if (error) { %><div class="ad-msg is-err"><%= error %></div><% } %>
+  <%# 🔴 짝 없는 브리핑 — 브리핑은 두 채널에 같이 올리므로 한쪽만 있으면 기록이 빠진 것이다 (2026-08-27) %>
+  <% if (unpaired.length) { %>
+    <div class="ad-msg is-err" style="margin-bottom:10px">
+      <b>짝 없는 브리핑 <%= unpaired.length %>건</b> — 브리핑은 인스타·쓰레드에 같이 올리는데 한쪽만 기록돼 있습니다.
+      <ul style="margin:6px 0 0; padding-left:18px">
+        <% unpaired.forEach((u) => { %>
+          <li><b><%= u.bd %></b> 브리핑 · <%= u.d %> 게시 — <b><%= u.has_ig ? '쓰레드' : '인스타' %></b> 기록이 없습니다</li>
+        <% }) %>
+      </ul>
+      <span style="display:block;margin-top:6px;font-size:12px">
+        정말 한쪽만 올렸다면 그대로 두세요. 이 경고는 <b>빠뜨린 기록</b>을 찾아주는 용도입니다.
+      </span>
+    </div>
+  <% } %>
+
   <p class="sns-note" style="margin:0 0 10px">
     게시하면 바로 한 줄 적습니다 (지표는 비워두고). 브리핑은 위 표의 <b>+기록</b> 버튼이 오늘 날짜·아침으로 자동 입력합니다. <b>저장·도달·답글은 금요일에</b> 행의 칸을 채우고 <b>채우기</b>를 누르면 됩니다.
     팔로워 수는 적지 않습니다 — 보는 건 저장 · 답글 · 진단 시작 셋뿐.
   </p>
+  <%# 🔴 채널마다 채우는 칸이 다르다 — 금요일에 매번 헷갈리는 자리라 화면에 박아둔다 (2026-08-27) %>
+  <div class="lg-help">
+    <div class="lg-help-col">
+      <b>인스타</b> · 게시물 &gt; 인사이트
+      <ul>
+        <li><b>저장</b> ← 저장 수</li>
+        <li><b>도달</b> ← 도달 (본 계정 수)</li>
+        <li><b>답글</b> ← 댓글 수</li>
+      </ul>
+    </div>
+    <div class="lg-help-col">
+      <b>쓰레드</b> · 게시물 &gt; 인사이트
+      <ul>
+        <li><b>저장</b> ← <b>없음. 비웁니다</b></li>
+        <li><b>도달</b> ← <b>조회수</b></li>
+        <li><b>답글</b> ← 답글 <b>− 내가 단 것</b></li>
+      </ul>
+    </div>
+    <div class="lg-help-col is-warn">
+      🔴 <b>체인은 답글로 잡힙니다</b>
+      <ul>
+        <li>브리핑 체인 3개 → 1번의 답글 2는 내 2·3번 글. 실제 답글은 <b>0</b></li>
+        <li>문안 + 셀프 답글 → <b>답글 − 1</b></li>
+        <li>체인은 <b>1번(훅)에서만</b> 읽습니다. 2·3번을 따로 적으면 한 게시물을 세 줄로 셉니다</li>
+      </ul>
+    </div>
+    <div class="lg-help-col is-warn">
+      ⚠️ <b>채널을 넘어 비교하지 마세요</b>
+      <ul>
+        <li>인스타 <b>도달</b> = 본 계정 수 (중복 제외)</li>
+        <li>쓰레드 <b>조회수</b> = 노출 횟수 (같은 사람 2번이면 2)</li>
+        <li>다른 지표라 한 칸에 들어가도 <b>평균을 섞으면 안 됩니다</b></li>
+      </ul>
+    </div>
+  </div>
+
   <form class="lg-form" method="post" action="/admin/sns/log">
     <div class="lg-f"><label>게시일</label><input type="date" name="postedOn" value="<%= todayKst %>" required></div>
     <div class="lg-f"><label>시각</label><select name="slot"><option value="아침">아침</option><option value="점심" selected>점심</option><option value="저녁">저녁</option><option value="">모름</option></select></div>
@@ -189,16 +249,36 @@
   </table></div>
 
   <% if (axisAgg.length) { %>
-    <div class="sns-h">축별 집계 (지표를 채운 행만 평균에 들어갑니다)</div>
+    <%# 🔴 채널 × 축. 채널을 섞으면 평균이 거짓이 된다 — 저장은 인스타만, 답글은 쓰레드 중심이라 (2026-08-27) %>
+    <div class="sns-h">채널 · 축별 집계</div>
+    <p class="sns-note" style="margin:0 0 10px">
+      지표를 채운 행만 평균에 들어갑니다. <b>n</b> 은 그 평균이 몇 건에서 나왔는지입니다 — <b>n 이 1~2면 순위로 읽지 마세요.</b><br>
+      🔴 인스타 <b>도달</b>(본 계정 수)과 쓰레드 <b>도달</b>(조회수 = 노출 횟수)은 다른 지표입니다. <b>채널 안에서만</b> 비교하세요.
+      저장은 인스타에만, 답글은 쓰레드에만 의미가 있습니다.
+    </p>
     <div class="tblwrap"><table class="lg-table">
-      <tr><th>축</th><th>게시 수</th><th>평균 저장</th><th>평균 도달</th><th>평균 답글</th></tr>
-      <% axisAgg.forEach((a) => { %>
-        <tr><td><span class="lg-chip"><%= a.axis %></span></td><td><%= a.cnt %></td>
-            <td><%= a.avg_saves ?? '·' %></td><td><%= a.avg_reach ?? '·' %></td><td><%= a.avg_replies ?? '·' %></td></tr>
+      <tr><th>채널</th><th>축</th><th>게시 수</th><th>평균 저장</th><th>평균 도달</th><th>평균 답글</th></tr>
+      <% let prevCh = null; axisAgg.forEach((a) => { const newCh = a.channel !== prevCh; prevCh = a.channel; %>
+        <tr>
+          <td><% if (newCh) { %><span class="lg-chip q"><%= a.channel %></span><% } %></td>
+          <td><span class="lg-chip"><%= a.axis %></span></td>
+          <td><%= a.cnt %></td>
+          <% [['saves', a.avg_saves, a.n_saves], ['reach', a.avg_reach, a.n_reach], ['replies', a.avg_replies, a.n_replies]].forEach(([, avg, n]) => { %>
+            <td><% if (!n) { %><span style="color:var(--sub2)">·</span><% } else { %><%= avg %><% if (n < a.cnt) { %><span class="agg-n">n=<%= n %></span><% } %><% } %></td>
+          <% }) %>
+        </tr>
       <% }) %>
+    </table></div>
+
+    <div class="sns-h">주간 집계</div>
+    <p class="sns-note" style="margin:0 0 10px">
+      합계입니다 (평균 아님). <b>저장은 인스타에만 값이 있어</b> 사실상 인스타 합계, 답글은 두 채널 합입니다.
+    </p>
+    <div class="tblwrap"><table class="lg-table">
+      <tr><th>주차</th><th>게시 수</th><th>저장 합</th><th>답글 합</th></tr>
       <% weekAgg.forEach((w) => { %>
-        <tr><td style="color:var(--sub2)">주간 <%= w.wk %>~</td><td><%= w.cnt %></td>
-            <td><%= w.saves ?? '·' %></td><td>·</td><td><%= w.replies ?? '·' %></td></tr>
+        <tr><td style="white-space:nowrap">주간 <%= w.wk %>~</td><td><%= w.cnt %></td>
+            <td><%= w.saves ?? '·' %></td><td><%= w.replies ?? '·' %></td></tr>
       <% }) %>
     </table></div>
     <p class="sns-note">4주 치가 쌓이면 이 표의 축 평균이 곧 순위입니다. 상위 2개가 5주차부터의 주력 (SNS.md 5장).</p>
