@@ -3,7 +3,7 @@ import { linkify } from '../utils/linkify.js';
 
 // ⚠️ DB 의 comments_type_check 제약과 **반드시 같은 집합**이어야 한다.
 //    한쪽만 넓히면 조용히 400 이 난다 (실제로 'briefing' 추가 때 DB 만 넓혔다가 겪음).
-const VALID_TYPES = new Set(['politician', 'bill', 'post', 'briefing']);
+const VALID_TYPES = new Set(['politician', 'bill', 'post', 'briefing', 'anomaly']);
 
 export default (db) => {
     const dao = CommentDao(db);

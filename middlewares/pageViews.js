@@ -41,6 +41,8 @@ export const PAGE_KINDS = [
     { kind: 'xray',              label: '숫자로 본 국회', re: /^\/xray\/?$/ },
     /* ⚠️ 목록형 규칙에 **캡처 그룹을 쓰지 말 것** — 구분자를 잡아 target_id 가 '/' 가 된다.
        그러면 같은 종류가 target '' 와 '/' 두 행으로 갈린다 (실측 balance 11 + 14). 비캡처 (?:…) 로 */
+    { kind: 'anomaly_detail',    label: '설명이 필요한 숫자 상세', re: /^\/why\/(\d{4}-\d{2}-\d{2})\/?$/ },
+    { kind: 'anomaly',           label: '설명이 필요한 숫자',      re: /^\/why\/?$/ },
     { kind: 'balance',           label: '성향 진단',   re: /^\/balance-game(?:\/|$)/ },
     { kind: 'community',         label: '커뮤니티',    re: /^\/community(?:\/|$)/ },
     { kind: 'glossary',          label: '용어 설명',   re: /^\/guide\/glossary\/?$/ },

@@ -4,6 +4,8 @@ import BriefingService from '../services/BriefingService.js';
 import PoliticianService from '../services/PoliticianService.js';
 import DistrictService from '../services/DistrictService.js';
 import BalanceGameService from '../services/BalanceGameService.js';
+import AnomalyService from '../services/AnomalyService.js';
+import { ENABLED as ANOMALY_ENABLED } from '../utils/anomalies.js';
 import logger from '../utils/logger.js';
 import { wrapWithContext } from '../utils/wrapWithContext.js';
 
@@ -14,6 +16,7 @@ export default (db) => {
     const districtService = DistrictService(db);   // 내 지역구 의원 (2026-08-23)
     const briefingService = BriefingService(db);
     const balanceService = BalanceGameService(db); // 홈 히어로 첫 문항 (2026-08-25)
+    const anomalyService = AnomalyService(db);     // 설명이 필요한 숫자 (2026-09-01)
     const controller = {};
 
     /* 초기화 */
@@ -47,7 +50,9 @@ export default (db) => {
                  · firstQuestion: 완료자에겐 필요 없다 — 그 자리에 내 좌표가 들어가므로 아예 조회하지 않는다
                ⚠️ 둘 다 실패하면 null/[] 이라 히어로가 문항·지도 없이 글만으로 무너진다 (홈은 산다) */
             const completed = !!res.locals.balanceGameCompleted;
-            const [codes, facts, spotlight, briefing, spread, myMember, axisCloud, firstQuestion] = await Promise.all([
+            /* 「설명이 필요한 숫자」 (2026-09-01) — 매일 바뀌는 콘텐츠가 브리핑뿐이라 재방문 이유가 얇았다.
+               ⚠️ 서비스가 실패를 삼켜 null 을 준다 (홈은 산다). 10분 캐시라 홈이 열려도 쿼리는 거의 안 돈다 */
+            const [codes, facts, spotlight, briefing, spread, myMember, axisCloud, firstQuestion, anomaly] = await Promise.all([
                 codeService.getList(),
                 billService.getHomeFacts(),
                 /* 🔴 3 → 2 (2026-08-23). 이 블록이 모바일 히어로의 **절반**(750/1,402px)을 먹는데
@@ -66,6 +71,8 @@ export default (db) => {
                 districtService.getMember(req.user && req.user.district),
                 politicianService.getAxisCloud(),
                 completed ? Promise.resolve(null) : balanceService.getFirstQuestion('general'),
+                /* 🔴 꺼져 있으면 조회조차 하지 않는다 — 홈 카드는 `anomaly` 가 null 이면 통째로 안 그려진다 */
+                ANOMALY_ENABLED ? anomalyService.getLatest() : Promise.resolve(null),
             ]);
 
             res.render('index', {
@@ -79,6 +86,7 @@ export default (db) => {
                 /* 히어로 지도 — [economy, social] 만 쓴다. institution 은 평면에 안 그린다 (공유 카드와 같은 규칙) */
                 axisCloud,
                 firstQuestion,
+                anomaly,
                 /* 브리핑은 최신 4장만 쓴다 — 피드 전체는 /briefing 이 맡는다 */
                 briefings: (briefing && briefing.posts ? briefing.posts : []).slice(0, 4),
                 /* near·far 를 갈라 넘긴다. 좌표가 없거나 실패하면 spread 가 null 이라 빈 배열이 된다 */

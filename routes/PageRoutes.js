@@ -11,6 +11,8 @@ import BriefingController from '../controllers/BriefingController.js';
 import ChartController from '../controllers/ChartController.js';
 import PromoController from '../controllers/PromoController.js';
 import IssueController from '../controllers/IssueController.js';
+import AnomalyController from '../controllers/AnomalyController.js';
+import { ENABLED as ANOMALY_ENABLED } from '../utils/anomalies.js';
 import { requireLogin } from '../middlewares/auth.js';
 import { GUIDE_ARTICLES, guideBySlug, guideNeighbors } from '../utils/guideArticles.js';
 import BillService from '../services/BillService.js';
@@ -28,6 +30,7 @@ export default (db) => {
     const chartController = ChartController(db);
     const promoController = PromoController(db);
     const issueController = IssueController(db);
+    const anomalyController = AnomalyController(db);
     const billService = BillService(db);   // /guide 1편의 살아 있는 숫자(getHomeFacts, 10분 캐시)
 
     // 메인 페이지
@@ -87,6 +90,15 @@ export default (db) => {
     // ⚠️ /issue/:slug 를 /issue 보다 뒤에 둘 것 (Express 는 먼저 걸리는 라우트가 이긴다)
     router.get('/issue', issueController.getIndexPage);
     router.get('/issue/:slug', issueController.getDetailPage);
+
+    // 설명이 필요한 숫자 — 하루 한 장. 우리는 판정하지 않고 질문만 던진다 (utils/anomalies.js 주석)
+    // 🔴 **현재 꺼져 있다** (`ANOMALY_ENABLED`). 라우트를 아예 등록하지 않아 /why 는 404 다.
+    //    켜려면 utils/anomalies.js 의 ENABLED 한 줄 — 홈 카드·사이트맵도 같이 열린다
+    // ⚠️ /why/:date 를 /why 보다 뒤에 둘 것
+    if (ANOMALY_ENABLED) {
+        router.get('/why', anomalyController.getIndexPage);
+        router.get('/why/:date', anomalyController.getDetailPage);
+    }
 
     // 「읽는 법」 — 사람이 쓴 해설 글 (2026-08-19). 목록·메타는 utils/guideArticles.js 단일 소스, 본문은 views/guide/articles/<slug>.ejs
     router.get('/guide', async (req, res, next) => {

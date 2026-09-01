@@ -1,6 +1,7 @@
 import logger from './logger.js';
 import { GUIDE_ARTICLES } from './guideArticles.js';
 import { ISSUES } from './issues.js';
+import { ENABLED as ANOMALY_ENABLED } from './anomalies.js';
 
 /* sitemap.xml — 크롤러에게 "실제로 색인할 URL" 목록을 명시적으로 준다.
 
@@ -39,12 +40,21 @@ const STATIC_PATHS = [
        내용이 매일 바뀐다 (새 법안이 키워드에 걸린다) → weekly */
     ['/issue',        'weekly',  '0.8'],
     ...ISSUES.map((i) => [`/issue/${i.slug}`, 'weekly', '0.8']),
+    /* 설명이 필요한 숫자 — 목록은 매일 한 장씩 늘어난다 (상세는 아래 SOURCES).
+       🔴 **꺼져 있으면 넣지 않는다.** 라우트가 없어 404 인데 사이트맵에 실으면 크롤러에게 죽은 URL 을 주는 셈이고,
+          AdSense 반려 사유였던 "가치 없는 콘텐츠" 신호가 된다. `utils/anomalies.js` 의 ENABLED 한 줄이 여기도 연다 */
+    ...(ANOMALY_ENABLED ? [['/why', 'daily', '0.8']] : []),
 ];
 
 /* 상세 페이지 소스.
    lastmod 는 TO_CHAR 로 문자열화해서 받는다 — DATE 를 JS Date 로 받으면 타임존 해석이 끼어
    하루 밀린다 (프로젝트 공통 규칙). DB 기본 타임존이 KST 라 조회는 명시 변환하지 않는다. */
 const SOURCES = [
+    /* 설명이 필요한 숫자(`/why/:date`) — 🔴 **꺼져 있어 여기 없다** (2026-09-01).
+       켤 때 되살릴 것 (카드는 한 번 쓰면 고치지 않으므로 changefreq 는 never):
+         { key: 'anomalies', prefix: '/why/', changefreq: 'never', priority: '0.7',
+           sql: `SELECT card_date::text AS slug, TO_CHAR(card_date, 'YYYY-MM-DD') AS lastmod
+                   FROM anomaly_cards ORDER BY card_date DESC` }, */
     {
         /* 🔴 AI 분석이 있는 법안만 (2026-08-19). 전건(18,741)을 싣던 것을 좁혔다.
            AdSense 가 "가치가 별로 없는 콘텐츠" 로 반려 — 사이트맵의 98% 가 법안 상세인데 그 본문은

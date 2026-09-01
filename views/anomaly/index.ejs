@@ -1,0 +1,103 @@
+<%
+  /* 🔴 목록은 **행(row)** 이다. 카드를 세로로 쌓으면 한 장이 430px 이라 12장에 5,000px 이 넘는다.
+     썸네일도 요약도 없는 목록은 행이 맞다 — /community 를 보드형으로, /issue 를 행으로 바꾼 것과 같은 판단.
+     대신 **맨 위 한 장만 카드**로 크게 둔다 (오늘 것). 그게 이 페이지가 무엇인지 보여주는 견본이다.
+     ⚠️ 필터가 걸렸거나 2페이지부터는 견본을 그리지 않는다 — "오늘" 이 아닌 것을 오늘처럼 보이면 안 된다. */
+  const showHero = !metric && page === 1 && cards.length > 0;
+  const hero = showHero ? cards[0] : null;
+  const rows = showHero ? cards.slice(1) : cards;
+  const qs = (o) => {
+    const p = new URLSearchParams();
+    if (o.metric) p.set('metric', o.metric);
+    if (o.page && o.page > 1) p.set('page', o.page);
+    const s = p.toString();
+    return '/why' + (s ? '?' + s : '');
+  };
+%>
+
+<header class="pb-page-header">
+  <div class="pb-page-header-inner">
+    <h1 class="pb-page-title">설명이 필요한 숫자</h1>
+    <p class="pb-page-desc">국회 기록에서 설명이 필요한 숫자를 하루 한 가지씩 꺼냅니다.<br>순위를 매기지 않고, 이유를 알면 적고 모르면 모른다고 씁니다.</p>
+  </div>
+</header>
+
+<%# 지표 탭 — 사이트 공통 밑줄 탭 문법 (`/bill` .status-tab · `/politician` .party-tab 과 같은 값).
+    🔴 배경·보더는 바깥이 아니라 가운데 정렬된 `-inner` 에 준다. 바깥에 주면 흰 띠만 화면 끝까지 뻗어
+       본문과 따로 논다 (/issue 와 /bill 상세에서 두 번 겪은 규칙).
+    🔴 지표는 고정 5종이라 **0건이어도 전부 그린다** — 건수만큼만 보이면 무엇을 재는 사이트인지 흐려진다 %>
+<nav class="an-tabs">
+  <div class="an-tabs-inner">
+    <%# ⚠️ `allTotal` 이다. `total` 은 필터가 걸리면 그 지표 건수라 「전체 2」 가 된다 %>
+    <a class="an-tab<%= metric ? '' : ' is-on' %>" href="/why">전체 <i><%= allTotal %></i></a>
+    <% tabs.forEach((t) => { %>
+      <a class="an-tab<%= metric === t.key ? ' is-on' : '' %>" href="<%= qs({ metric: t.key }) %>"><%= t.short %> <i><%= t.n %></i></a>
+    <% }); %>
+  </div>
+</nav>
+
+<div class="an-wrap">
+  <% if (hero) { %>
+    <section class="an-card is-hero">
+      <div class="an-date"><%= hero.date.replace(/-/g, '.') %> · 오늘</div>
+      <%- include('_card', { c: hero, compact: true }) %>
+      <a class="an-open" href="/why/<%= hero.date %>">어떻게 보세요? →</a>
+    </section>
+  <% } %>
+
+  <% if (!cards.length) { %>
+    <p class="an-empty">
+      <% if (page > 1) { %>
+        이 페이지에는 더 이상 없습니다. <a href="<%= qs({ metric }) %>">처음으로 →</a>
+      <% } else if (metric) { %>
+        이 지표로 꺼낸 숫자가 아직 없습니다. <a href="/why">전체 보기 →</a>
+      <% } else { %>
+        아직 카드가 없습니다. 매일 아침 한 장씩 쌓입니다.
+      <% } %>
+    </p>
+  <% } %>
+
+  <% if (rows.length) { %>
+    <%# 행 — `[날짜] [지표] 헤드라인 | 이름 | 숫자`.
+        ⚠️ 행 전체가 링크라 안에 다른 링크를 넣지 않는다 (의원 링크는 상세에서). 중첩 링크는 DOM 을 깨뜨린다 %>
+    <ul class="an-rows">
+      <% rows.forEach((c) => { %>
+        <li>
+          <a class="an-row" href="/why/<%= c.date %>">
+            <span class="an-row-date"><%= c.date.slice(5).replace('-', '.') %></span>
+            <span class="an-row-metric"><%= c.metricShort %></span>
+            <span class="an-row-main">
+              <span class="an-row-head"><%= c.headline %></span>
+              <span class="an-row-who"><%= c.name %><i><%= [c.party, c.district].filter(Boolean).join(' · ') %></i></span>
+            </span>
+            <%# ⚠️ `rowValue` 다 — 축 지표는 `0.07` 이 아니라 방향 라벨(`가운데`)이어야 읽힌다 %>
+            <span class="an-row-val<%= c.axis ? ' is-word' : '' %>"><%= c.rowValue %></span>
+            <span class="an-row-why<%= c.explained ? ' is-known' : '' %>"><%= c.explained ? '이유 있음' : '이유 모름' %></span>
+          </a>
+        </li>
+      <% }); %>
+    </ul>
+  <% } %>
+
+  <% if (totalPages > 1) { %>
+    <nav class="pagination-inline an-pager">
+      <% if (page > 1) { %><a class="pg-btn" href="<%= qs({ metric, page: page - 1 }) %>">← 최신</a><% } %>
+      <span class="pg-now"><%= page %> / <%= totalPages %></span>
+      <% if (page < totalPages) { %><a class="pg-btn" href="<%= qs({ metric, page: page + 1 }) %>">이전 날짜 →</a><% } %>
+    </nav>
+  <% } %>
+
+  <%# 🔴 선정 규칙은 감추지 않는다 — "우리가 골랐다" 가 아니라 "규칙이 꺼냈다" 여야 편집이 아니다.
+      ⚠️ 다만 목록 **아래**로 내렸다. 위에 두면 매일 오는 사람이 같은 다섯 줄을 매번 지나야 한다
+         (/issue 는 쟁점이 6개뿐이라 위가 맞았지만, 여기는 날마다 쌓이는 피드다) %>
+  <details class="an-rules">
+    <summary>이 숫자들은 어떻게 고르나</summary>
+    <ol>
+      <% rules.forEach((r) => { %><li><%= r %></li><% }); %>
+    </ol>
+    <p class="an-rules-metrics">
+      쓰는 지표 <%= metrics.length %>가지 —
+      <% metrics.forEach((m, i) => { %><b><%= m.label %></b><%= i < metrics.length - 1 ? ' · ' : '' %><% }); %>
+    </p>
+  </details>
+</div>

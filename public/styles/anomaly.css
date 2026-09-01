@@ -1,0 +1,217 @@
+/* anomaly.css — 「설명이 필요한 숫자」 (/why)
+ *
+ * 🔴 성적표처럼 보이면 실패다. 빨강·초록·정당색을 쓰지 않는다 — 강조는 골드와 여백으로만.
+ *
+ * 🔴 **카드 안 세로 리듬은 flex gap 하나로 잡는다.** 블록마다 margin 을 주면 반드시 갈린다 —
+ *    실측으로 14 / 12 / 44 / 20 / 20 / 18px 여섯 가지가 나왔다.
+ *    의원 상세 분석 탭(`#tab-overview`)에서 같은 문제를 같은 방법으로 고친 선례가 있다.
+ *    ⚠️ 그래서 자식들에게 margin 을 주지 말 것. 예외는 `.an-cohort`(윗 블록의 각주라 당겨 붙인다) 하나다.
+ */
+
+.an-wrap { max-width: 760px; margin: 0 auto; padding: 28px 24px 80px; }
+
+/* 🔴 제목·탭·본문이 한 기준선을 갖게 셋을 같이 맞춘다.
+   공용 `.pb-page-header-inner` 는 **1280px** 인데 이 페이지 본문은 **760px** 이라
+   그냥 두면 제목이 본문보다 한참 왼쪽에 선다 (/issue 에서 같은 문제를 같은 방법으로 고쳤다).
+   ⚠️ 부모 패딩을 0 으로 안 내리면 좁은 화면에서 24+24=48px 로 더해져 제목만 안쪽으로 밀린다.
+   ⚠️ 세로 패딩·border-top 투명 트릭·그라디언트는 건드리지 않는다 (full-bleed 부모여야 성립).
+   🔴 anomaly.css 는 이 페이지에서만 로드된다 — 공용 규칙을 고치지 말 것 */
+.pb-page-header { padding-left: 0; padding-right: 0; }
+.pb-page-header-inner { max-width: 760px; padding: 0 24px; }
+
+/* ── 지표 탭 ─────────────────────────────────────────
+   사이트 공통 밑줄 탭 (`/bill` .status-tab · `/politician` .party-tab 과 같은 값).
+   🔴 흰 배경·보더는 **가운데 정렬된 -inner 에** 준다. 바깥에 주면 흰 띠만 화면 끝까지 뻗는다 */
+.an-tabs { position: sticky; top: var(--nav-h); z-index: 40; }
+.an-tabs-inner {
+  max-width: 760px; margin: 0 auto; padding: 0 24px;
+  display: flex; overflow-x: auto; scrollbar-width: none;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+}
+.an-tabs-inner::-webkit-scrollbar { display: none; }
+.an-tab {
+  flex: 0 0 auto; padding: 14px 18px; font-size: 14px; font-weight: 500;
+  color: var(--sub); text-decoration: none; white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+.an-tab:hover { color: var(--text); }
+/* ⚠️ 활성색은 --accent(흰 배경 3.79 미달)가 아니라 --text 다. 골드는 밑줄이 맡는다 */
+.an-tab.is-on { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+.an-tab i { font-style: normal; margin-left: 4px; font-size: 12px; color: var(--sub2); }
+.an-tab.is-on i { color: var(--accent2); }
+
+/* ── 카드 (상세 · 목록 맨 위 견본) ───────────────────
+   🔴 이 블록을 <a> 로 감싸지 말 것 — 안에 의원 링크가 있어 중첩 링크가 되고 DOM 이 뒤틀린다
+      (실측: 간격이 20 → 44px 로 벌어졌다). views/anomaly/_card.ejs 주석 참조 */
+.an-card {
+  display: flex; flex-direction: column; gap: 18px;      /* ← 카드 안 모든 간격은 여기 하나 */
+  background: var(--bg2); border: 1px solid var(--border2); border-top: 3px solid var(--accent);
+  border-radius: 12px; padding: 26px 28px;
+}
+.an-card.is-hero { margin-bottom: 30px; }
+.an-card.is-detail { padding: 28px 30px; }
+
+.an-date { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: 0.12em; color: var(--sub2); }
+
+.an-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.an-metric { font-size: 12.5px; font-weight: 700; color: var(--accent2); }
+.an-metric-why { font-size: 12px; color: var(--sub); word-break: keep-all; }
+
+/* 🔴 주인공은 질문이다. 이름을 먼저 크게 쓰면 그 순간 지목이 된다 */
+.an-headline { margin: 0; font-family: 'Noto Serif KR', serif; font-weight: 900;
+  font-size: 26px; line-height: 1.45; color: var(--text); word-break: keep-all; }
+.an-card.is-detail .an-headline { font-size: 30px; }
+
+/* 숫자와 사람을 한 줄에. 🔴 중앙값 없이 숫자만 두면 큰지 알 수 없어 인상만 남는다 */
+.an-body { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  padding: 16px 18px; background: var(--bg3); border-radius: 10px; }
+.an-figure { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.an-value { font-family: 'JetBrains Mono', monospace; font-size: 38px; font-weight: 700; line-height: 1; color: var(--accent2); }
+.an-value i { font-style: normal; font-size: 18px; margin-left: 2px; }
+.an-median { font-size: 13px; color: var(--sub); }
+.an-median b { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--text); }
+
+/* ── 축 좌표 막대 (axis 지표 전용) ───────────────────
+   🔴 `0.07` 같은 좌표는 혼자 두면 아무 뜻이 없다. 양극 막대로 그리고 **긴** 라벨을 양끝에 둔다
+      (의원 상세 `.pv-band`·홈 스포트라이트와 같은 문법). `시장`·`개입` 만 두면 무엇의 어느 쪽인지 안 읽힌다 */
+.an-body.is-axis { flex-direction: column; align-items: stretch; gap: 12px; }
+.an-axis-name { font-size: 13px; font-weight: 800; color: var(--text); }
+.an-axis-name i { font-style: normal; margin-left: 5px; font-size: 12px; font-weight: 500; color: var(--sub); }
+.an-axis-band { display: flex; align-items: center; gap: 10px; }
+.an-axis-pole { flex: 0 0 auto; font-size: 12px; color: var(--sub); white-space: nowrap; }
+.an-axis-pole.is-r { text-align: right; }
+.an-axis-track { position: relative; flex: 1 1 auto; height: 10px; min-width: 0;
+  background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; }
+/* 가운데 기준선 — 좌표 0 이 어디인지 보이게 */
+.an-axis-track::before { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px;
+  width: 1px; background: var(--border2); }
+/* 정당 평균: 진한 세로선 + 삼각캡 (사이트 공통 평균 마커) */
+.an-axis-avg { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px;
+  background: var(--sub); }
+.an-axis-avg::after { content: ''; position: absolute; left: -3px; top: -4px;
+  border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid var(--sub); }
+/* 이 의원: 골드 점 */
+.an-axis-me { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  background: var(--accent); border: 2px solid var(--bg2); border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--accent); }
+.an-axis-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--sub); }
+.an-axis-legend b { color: var(--text); font-weight: 700; }
+.an-axis-legend i { font-style: normal; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); }
+.an-axis-legend .dot { display: inline-block; width: 9px; height: 9px; background: var(--accent);
+  border-radius: 50%; margin-right: 3px; }
+.an-axis-legend .bar { display: inline-block; width: 2px; height: 11px; background: var(--sub);
+  margin-right: 5px; vertical-align: -1px; }
+
+.an-who { display: flex; align-items: center; gap: 11px; }
+.an-photo { width: 42px; height: 42px; border-radius: 50%; object-fit: cover;
+  border: 1px solid var(--border); flex: 0 0 auto; background: var(--bg2); }
+.an-who-text { display: flex; flex-direction: column; min-width: 0; }
+.an-name { font-size: 15px; font-weight: 800; color: var(--text); text-decoration: none; }
+.an-name:hover { color: var(--accent2); text-decoration: underline; }
+.an-meta { margin-top: 1px; font-size: 12.5px; color: var(--sub); }
+
+/* ⚠️ 위 숫자 블록의 각주라 gap 을 줄여 붙인다 — 카드에서 유일하게 margin 을 쓰는 자리다 */
+.an-cohort { margin-top: -10px; font-size: 12px; color: var(--sub2); word-break: keep-all; }
+
+/* 🔴 모르면 모른다고 쓴다 — 이게 이 카드의 핵심이다 */
+.an-explain { padding: 15px 17px; border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 8px; background: #FBF7EE; }
+/* ⚠️ 모르는 쪽에 경고색을 쓰지 않는다. 모르는 것은 잘못이 아니라 상태다 */
+.an-explain.is-unknown { border-left-color: var(--border2); background: var(--bg3); }
+.an-explain-tag { display: block; margin-bottom: 6px; font-size: 11.5px; font-weight: 700; color: var(--accent2); }
+.an-explain.is-unknown .an-explain-tag { color: var(--sub); }
+.an-explain p { margin: 0; font-size: 14px; line-height: 1.75; color: var(--text); word-break: keep-all; }
+
+.an-open { align-self: flex-start; font-size: 13.5px; font-weight: 700; color: var(--accent2);
+  text-decoration: none; border-bottom: 1px solid currentColor; padding-bottom: 2px; }
+
+/* ── 판단 질문 · 각주 ───────────────────────────────── */
+.an-ask { padding: 20px 22px; border: 1px dashed var(--border2); border-radius: 10px; }
+.an-ask h2 { margin: 0 0 12px; font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 17px; color: var(--text); }
+.an-ask ul { margin: 0; padding-left: 20px; }
+.an-ask li { font-size: 14.5px; line-height: 1.8; color: var(--sub); word-break: keep-all; }
+.an-ask li + li { margin-top: 6px; }
+.an-caveat { margin: 0; }
+.an-more { margin: 12px 0 0; font-size: 13px; }
+.an-more a { color: var(--accent2); font-weight: 600; }
+
+/* ── 행 목록 ─────────────────────────────────────────
+   🔴 카드를 세로로 쌓지 않는다. 한 장이 430px 이라 12장이면 5,000px 이 넘는다.
+      썸네일도 요약도 없는 목록은 행이 맞다 (/community 보드형·/issue 행과 같은 판단) */
+.an-rows { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--border); }
+.an-row {
+  display: grid; grid-template-columns: 52px 88px minmax(0, 1fr) 92px 66px;
+  align-items: center; gap: 14px; padding: 15px 6px;
+  border-bottom: 1px solid var(--border); text-decoration: none; color: inherit;
+}
+.an-row:hover { background: var(--bg2); }
+.an-row-date { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--sub2); }
+.an-row-metric { font-size: 11.5px; font-weight: 700; color: var(--accent2); word-break: keep-all; }
+.an-row-main { min-width: 0; }
+.an-row-head { display: block; font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-row-who { display: block; margin-top: 3px; font-size: 12px; color: var(--sub); }
+.an-row-who i { font-style: normal; margin-left: 6px; color: var(--sub2); }
+.an-row-val { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700;
+  color: var(--accent2); text-align: right; white-space: nowrap; }
+.an-row-val i { font-style: normal; font-size: 11px; margin-left: 1px; }
+/* ⚠️ 축 지표는 값이 숫자가 아니라 말이다 (`가운데`) — mono 는 한글 글리프가 없어 폴백된다 */
+.an-row-val.is-word { font-family: inherit; font-size: 13px; }
+/* ⚠️ '이유 모름' 에 경고색을 쓰지 않는다 — 모르는 것은 잘못이 아니라 상태다 */
+.an-row-why { font-size: 11px; color: var(--sub2); text-align: right; white-space: nowrap; }
+.an-row-why.is-known { color: var(--sub); }
+
+/* ── 상세 전용 ─────────────────────────────────────── */
+.an-crumb { padding-top: calc(var(--nav-h) + 8px); margin-bottom: 18px; font-size: 12.5px; color: var(--sub); }
+.an-crumb a { color: var(--sub); text-decoration: none; }
+.an-crumb a:hover { color: var(--accent2); text-decoration: underline; }
+.an-crumb span { margin: 0 6px; color: var(--sub2); }
+
+.an-nav { display: flex; justify-content: space-between; gap: 12px; margin: 24px 0 34px; }
+.an-nav-btn { font-size: 13px; font-weight: 600; color: var(--sub); text-decoration: none;
+  padding: 9px 14px; border: 1px solid var(--border2); border-radius: 8px; background: var(--bg2); }
+.an-nav-btn:hover { color: var(--accent2); border-color: var(--accent); }
+
+.an-comments { margin-bottom: 34px; }
+.an-h2 { margin: 0 0 16px; font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 20px; color: var(--text); }
+
+/* ── 선정 규칙 (목록 아래 · 상세 아래) ───────────────── */
+.an-rules { margin-top: 30px; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--bg3); padding: 14px 18px; }
+.an-rules summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--sub); }
+.an-rules ol { margin: 12px 0 2px; padding-left: 20px; }
+.an-rules li { font-size: 13px; line-height: 1.8; color: var(--sub); word-break: keep-all; }
+.an-rules-metrics { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--border);
+  font-size: 12.5px; color: var(--sub2); word-break: keep-all; }
+.an-rules-metrics b { color: var(--sub); font-weight: 700; }
+
+.an-empty { padding: 44px 20px; text-align: center; font-size: 14px; color: var(--sub); }
+.an-empty a { color: var(--accent2); font-weight: 600; }
+.an-pager { margin-top: 26px; }
+
+@media (max-width: 768px) {
+  .an-wrap { padding: 22px 16px 64px; }
+  /* ⚠️ 셋을 같이 내린다. 하나만 빠뜨리면 그것만 어긋난다 (/issue 실측) */
+  .pb-page-header-inner { padding: 0 16px; }
+  .an-tabs-inner { padding: 0 16px; }
+  .an-tab { padding: 13px 14px; font-size: 13px; }
+  .an-card { padding: 20px 18px; gap: 16px; }
+  .an-card.is-detail { padding: 22px 18px; }
+  .an-headline { font-size: 21px; }
+  .an-card.is-detail .an-headline { font-size: 23px; }
+  .an-body { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .an-value { font-size: 32px; }
+  /* 축 막대 — 375px 에서 양끝 라벨(`시장 자율`·`정부 개입`)을 옆에 두면 트랙이 100px 도 안 남는다.
+     라벨을 트랙 **위아래**로 돌린다 */
+  .an-body.is-axis { align-items: stretch; }
+  .an-axis-band { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 0; }
+  .an-axis-pole { grid-row: 1; font-size: 11.5px; }
+  .an-axis-pole.is-r { grid-column: 2; }
+  .an-axis-track { grid-row: 2; grid-column: 1 / -1; }
+  .an-axis-legend { gap: 4px 14px; font-size: 11.5px; }
+  /* 행 — 지표·이유 열을 접고 3열로. 헤드라인은 2줄까지 보인다 */
+  .an-row { grid-template-columns: 46px minmax(0, 1fr) 72px; gap: 10px; padding: 13px 4px; }
+  .an-row-metric, .an-row-why { display: none; }
+  .an-row-head { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .an-row-val { font-size: 15px; }
+}

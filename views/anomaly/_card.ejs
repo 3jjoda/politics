@@ -1,0 +1,87 @@
+<%#
+  「설명이 필요한 숫자」 카드 본문 — 상세와 목록 맨 위 「오늘」이 같은 마크업을 쓴다.
+  🔴 한쪽만 고치면 자리에 따라 다르게 보인다 (`_activity_row.ejs` 와 같은 규칙).
+
+  🔴 **이 파샬을 `<a>` 로 감싸지 말 것.** 안에 의원 이름 링크가 있어 **중첩 링크**가 되는데,
+     브라우저는 파서 수준에서 앞의 `<a>` 를 닫아버려 **DOM 이 통째로 뒤틀린다**
+     (실측: `.an-card-link` 가 `.an-who` 의 자식이 되고 간격이 20px→44px 로 벌어졌다).
+     `.same-name-chip`·내 지역구 카드에서 이미 두 번 겪은 함정이다. 컨테이너는 `div`, 링크는 안쪽에.
+
+  변수: c (카드) · compact (true 면 판단 질문·각주를 접는다)
+%>
+<% const cp = typeof compact !== 'undefined' && compact; %>
+
+<div class="an-head">
+  <span class="an-metric"><%= c.metricLabel %></span>
+  <span class="an-metric-why"><%= c.metricWhy %></span>
+</div>
+
+<%# 🔴 주인공은 사람 이름이 아니라 질문이다. 이름을 먼저 크게 쓰면 그 순간 지목이 된다 %>
+<p class="an-headline"><%= c.headline %></p>
+
+<div class="an-body<%= c.axis ? ' is-axis' : '' %>">
+  <% if (c.axis) { %>
+    <%# 🔴 좌표는 숫자로 두면 아무 뜻이 없다 (`0.07` 을 보고 "가운데" 를 읽을 사람은 없다).
+        양극 막대 + **긴** 양끝 라벨로 그린다 — 의원 상세 `.pv-band`·홈 스포트라이트와 같은 문법.
+        ⚠️ `시장`·`개입` 처럼 짧은 라벨만 두면 무엇의 어느 쪽인지 안 읽힌다 (의원 상세에서 겪은 지적) %>
+    <div class="an-axis">
+      <div class="an-axis-name"><%= c.axis.name %> <i><%= c.axis.short %> 법안에서</i></div>
+      <div class="an-axis-band">
+        <span class="an-axis-pole"><%= c.axis.Lx %></span>
+        <span class="an-axis-track">
+          <%# 정당 평균은 진한 세로선 + 삼각캡 — 사이트 공통 평균 마커 언어 %>
+          <i class="an-axis-avg" style="left: <%= c.axis.pavgPct.toFixed(1) %>%"></i>
+          <i class="an-axis-me" style="left: <%= c.axis.mePct.toFixed(1) %>%"></i>
+        </span>
+        <span class="an-axis-pole is-r"><%= c.axis.Rx %></span>
+      </div>
+      <div class="an-axis-legend">
+        <span><b class="dot"></b> 이 의원 <b><%= c.axis.meSide %></b> <i><%= c.axis.me %></i></span>
+        <span><b class="bar"></b> 같은 당 평균 <b><%= c.axis.pavgSide %></b> <i><%= c.axis.pavg %></i></span>
+      </div>
+    </div>
+  <% } else { %>
+    <%# 숫자 + 기준선. 🔴 중앙값 없이 숫자만 두면 큰지 알 수 없어 인상만 남는다 %>
+    <div class="an-figure">
+      <span class="an-value"><%= c.value %><i><%= c.unit %></i></span>
+      <% if (c.median !== null && c.median !== undefined) { %>
+        <span class="an-median"><%= c.medianLabel %> <b><%= c.median %><%= c.unit %></b></span>
+      <% } %>
+    </div>
+  <% } %>
+
+  <div class="an-who">
+    <% if (c.photoUrl) { %><img class="an-photo" src="<%= c.photoUrl %>" alt="" loading="lazy"><% } %>
+    <span class="an-who-text">
+      <a class="an-name" href="/politician/<%= c.monaCd %>"><%= c.name %></a>
+      <span class="an-meta"><%= [c.party, c.district].filter(Boolean).join(' · ') %></span>
+    </span>
+  </div>
+</div>
+
+<div class="an-cohort"><%= c.note %> · <%= c.cohort %>명 기준</div>
+
+<%# 🔴 설명. 모르면 모른다고 쓴다 — 이게 이 카드의 핵심이고 댓글이 붙을 자리다 %>
+<div class="an-explain<%= c.explained ? '' : ' is-unknown' %>">
+  <span class="an-explain-tag"><%= c.explained ? '알려진 이유' : '이유를 모릅니다' %></span>
+  <p><%= c.explainText %></p>
+</div>
+
+<% if (!cp) { %>
+  <%# 판단은 읽는 사람의 몫이다 (법안 5-Zone 의 판단 질문과 같은 장치) %>
+  <div class="an-ask">
+    <h2>어떻게 보세요?</h2>
+    <ul>
+      <% (c.questions || []).forEach((q) => { %><li><%= q %></li><% }); %>
+    </ul>
+  </div>
+
+  <div class="pb-caveat an-caveat">
+    <h2>이 숫자가 말하지 않는 것</h2>
+    <ul>
+      <% (c.caveats || []).forEach((t) => { %><li><%= t %></li><% }); %>
+      <li>이 사이트는 의원에게 점수를 매기지 않습니다. 여기 실린 것은 순위가 아니라 하루치 질문입니다.</li>
+    </ul>
+    <% if (c.link) { %><p class="an-more"><a href="<%= c.link.href %>"><%= c.link.text %></a></p><% } %>
+  </div>
+<% } %>

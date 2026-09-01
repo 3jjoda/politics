@@ -1,0 +1,43 @@
+<div class="an-wrap">
+  <nav class="an-crumb">
+    <a href="/why">설명이 필요한 숫자</a> <span>/</span> <span><%= card.date.replace(/-/g, '.') %></span>
+  </nav>
+
+  <%# 🔴 <article> 을 <a> 로 감싸지 말 것 — 안에 의원 링크가 있어 중첩 링크가 되면 DOM 이 뒤틀린다 %>
+  <article class="an-card is-detail">
+    <div class="an-date"><%= card.date.replace(/-/g, '.') %></div>
+    <%- include('_card', { c: card, compact: false }) %>
+  </article>
+
+  <nav class="an-nav">
+    <% if (neighbors.prev) { %>
+      <a class="an-nav-btn" href="/why/<%= neighbors.prev %>">← <%= neighbors.prev.replace(/-/g, '.') %></a>
+    <% } else { %><span></span><% } %>
+    <% if (neighbors.next) { %>
+      <a class="an-nav-btn" href="/why/<%= neighbors.next %>"><%= neighbors.next.replace(/-/g, '.') %> →</a>
+    <% } else { %><span></span><% } %>
+  </nav>
+
+  <%# 🔴 댓글이 이 페이지의 목적이다. 우리가 판정을 안 하니 판정은 여기서 일어난다 %>
+  <section class="an-comments" id="part-comments">
+    <h2 class="an-h2">국민 의견</h2>
+    <div id="comment-widget"></div>
+  </section>
+
+  <%# 선정 규칙을 감추지 않는다 — "우리가 골랐다" 가 아니라 "규칙이 꺼냈다" 여야 편집이 아니다 %>
+  <details class="an-rules">
+    <summary>이 사람은 어떻게 골랐나</summary>
+    <ol>
+      <% rules.forEach((r) => { %><li><%= r %></li><% }); %>
+    </ol>
+  </details>
+</div>
+
+<script>
+  window.__CARD_DATE__ = <%- JSON.stringify(card.date) %>;
+  document.addEventListener('DOMContentLoaded', function () {
+    if (window.PB && PB.mountComments) {
+      PB.mountComments({ containerId: 'comment-widget', type: 'anomaly', targetId: window.__CARD_DATE__ });
+    }
+  });
+</script>

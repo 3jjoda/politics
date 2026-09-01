@@ -580,6 +580,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `ddl/migrations/2026-08-06-db-timezone-kst.sql` — **DB 세션 타임존 KST**. `ALTER DATABASE postgres SET timezone`. ⚠️ DB 재생성 시 반드시 재실행 (빠뜨려도 에러 없이 시각이 9시간 밀림)
   - `ddl/migrations/2026-08-12-politician-speeches.sql` — **의원 발언 기록 테이블**. 2026-08-15 에 **라이브 스키마에서 복원**한 것 (원본 유실). `(clip_id, mona_cd)` UNIQUE + mona/date/mona_kind 인덱스 3종
   - `ddl/migrations/2026-08-15-speeches-role-kind-split.sql` — **`role_kind` 구 `gov` 를 `government`/`witness`/`other` 로 3분할** + CHECK 제약. ⚠️ **`syncSpeeches.js --full` 을 먼저 돌린 뒤** 실행할 것 (값을 바꾸는 건 배치고 이 파일은 제약·주석만 건다)
+  - `ddl/migrations/2026-09-01-anomaly-cards.sql` — **「설명이 필요한 숫자」 카드** `anomaly_cards` + `comments.type` CHECK 에 `anomaly` 추가. 값을 `payload` JSONB 에 굳혀 저장한다 (배치가 매일 돌아 지표가 움직여도 카드·댓글이 어긋나지 않게). 위 「설명이 필요한 숫자」 참조
   - `ddl/migrations/2026-09-01-speeches-org.sql` — **발언 기록에 소속(`org`) 저장 + `role` VARCHAR(20)→(40)**. 정부 위원회 위원장(방통위·금융위·선관위…)이 국회 상임위원장으로 집계되던 문제. 컬럼만 만들고 값은 배치가 채운다 — 실행 순서 **이 파일 → `syncSpeeches.js --full` → `refreshCommitteeSpeech.js`**. 파일 하단에 검증 쿼리 3종. 위 `politician_speeches` 항목 참조
   - `ddl/migrations/2026-08-15-committee-history.sql` — **위원회 소속 관측 이력** `politician_committee_history` + 현재 명단 시드(477행, `is_seed=TRUE`). ⚠️ 시드에 오늘 날짜를 찍지 말 것 (위 테이블 항목 참조)
   - `ddl/migrations/2026-08-16-bill-axis-mapping-v2.sql` — **법안-축 매핑 v2 · 3축**. `bill_axis_mapping` PK → `(bill_id, mapping_version)`, `politician_axis_score` 축 컬럼 NULL 허용 + `*_n` 서명 수, 파일럿 테이블에서 4,854건 적재. ⚠️ 실행 후 `calcPoliticianAxis.js` 를 돌려야 좌표가 생긴다
@@ -604,6 +605,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 | `/briefing/:id/threads` | `briefing/threads.ejs` | **쓰레드 연결 게시물** — 500자 단위로 쪼갠 체인 + 게시물별 복사 버튼 |
 | `/issue` | `issue/index.ejs` | **쟁점 목록** (2026-08-23) — 정의는 `utils/issues.js` 단일 소스 |
 | `/issue/:slug` | `issue/detail.ejs` | **쟁점 상세** — 키워드로 모은 법안을 **근거 법률별로** 묶어 보여준다. 기사 수집·인용 없음, 뉴스는 검색 링크만. 모르는 slug 는 404 |
+| ~~`/why`~~ | `anomaly/index.ejs` | **설명이 필요한 숫자** (2026-09-01) — 🔴 **현재 꺼져 있다** (`utils/anomalies.js` 의 `ENABLED = false`). 라우트 미등록이라 404 |
+| ~~`/why/:date`~~ | `anomaly/detail.ejs` | 카드 상세 — 댓글이 붙는 단위. 위와 같이 꺼져 있다 |
 | `/politician` | `politician/politician.ejs` | 의원 목록 (정당 히스토그램, 그리드/리스트 토글, 사이드바 복수선택 필터). 🔴 **리스트 행은 SSR 하지 않는다** (2026-08-24) — 그리드 카드에서 JS 가 만든다. 아래 「리스트 뷰는 SSR 하지 않는다」 참조 |
 | `/politician/:id` | `politician/politician_detail.ejs` | 의원 상세 (분석·법안·표결·국민평가 탭, 분석이 기본) |
 | `/bill` | `bill/bill.ejs` | 법안 목록 (AI 분석 진행률 배너 + 통합 필터 카드 + 정렬 + 카테고리·정당 복수선택, 페이징) |
@@ -1604,6 +1607,127 @@ public/scripts/balance/shareCard.js   🔴 그림은 전부 여기 — canvas 2D
 모르는 `?on=` 폴백 · 역링크 `[1]` 댓글 수 · **소프트 삭제된 글은 역링크에서 제외** ·
 글쓰기 권유 문구(신규·수정 두 경로) · 375px 가로 오버플로 0 · 500 **0건**.
 테스트 데이터·세션 전량 삭제 확인
+
+### 🔴 「설명이 필요한 숫자」 `/why` — **현재 꺼져 있다** (2026-09-01)
+> **만들었지만 공개하지 않는다.** 사용자 판단 — *"이 내용은 일단 막아두자, 내용이 아직 잘 모르겠네."*
+> 코드·데이터·배치는 그대로 두고 **노출만** 막았다.
+>
+> **켜는 법: `utils/anomalies.js` 의 `ENABLED = true` 한 줄.** 그게 네 곳을 동시에 연다 —
+> ① 라우트 등록(`PageRoutes`) ② 홈 카드 조회(`InitController`) ③ 사이트맵(`utils/sitemap.js`) ④ 화면.
+> ⚠️ 사이트맵의 **`/why/:date` SOURCES 항목은 주석으로 남겨뒀다** — 켤 때 같이 되살릴 것 (`ENABLED` 로는 안 열린다).
+>
+> - 끈 상태에서 `/why` 는 라우트가 없어 **404** 다 (500 아님). 실측 확인
+> - 홈 카드는 `anomaly === null` 이라 **섹션 자체가 안 그려진다.** CSS(`.anom-*`)만 남아 있다 —
+>   참조 0 인 채 두는 건 `.match-cta`·`.facts-strip` 과 같은 판단 (되살릴 때 쓴다)
+> - **진입로는 원래도 홈 두 곳뿐이었다** (섹션 헤더 `지난 숫자 →` · 카드 전체). nav·푸터에는 넣지 않았다.
+>   그 밖의 통로는 **사이트맵**뿐이었고 그것도 막았다
+> - 🔴 **배치(`genAnomalyCard`)는 계속 돈다.** 카드는 **그날의 데이터로 굳는 것**이라 멈추면 나중에 켤 때
+>   그 기간이 통째로 빈다. AI 호출 0 · 하루 0.4초라 비용이 없다.
+>   완전히 멈추려면 `package.json` 의 `batch:daily` 에서 뺄 것
+> - 댓글 타입 `anomaly`(DB CHECK·`CommentService.VALID_TYPES`)는 **그대로 뒀다** — 페이지가 없어 달릴 수 없고,
+>   되돌리면 이미 달린 댓글이 있을 때 깨진다
+
+아래는 켤 때를 위한 설계 기록이다.
+
+사이트에 지표는 많은데 **누가 이상한지를 사이트가 먼저 꺼내주지 않았다.**
+`김태호 불참률 80.4%` · `우원식 대표발의 0건` · `박형수 법사위 103번 중 8번` 같은 "어? 왜?" 가
+이미 데이터에 있는데, 보려면 의원 상세 309장을 하나씩 열거나 `/xray` 아코디언을 직접 펼쳐야 했다.
+
+```
+utils/anomalies.js          ← 지표 5종 · 선정 규칙 · 판단 질문 · 설명 해석 (단일 소스)
+daos/queries/anomaly/*.sql · daos/AnomalyDao.js · services/AnomalyService.js
+batch/genAnomalyCard.js     ← 하루 1장. batch:daily 체인 **맨 뒤**
+ddl/migrations/2026-09-01-anomaly-cards.sql
+views/anomaly/{index,detail,_card}.ejs · public/styles/anomaly.css
+홈: 브리핑 다음 · 「나와 맞는 의원」 앞 (`.anom-*`, index.ejs 인라인)
+```
+
+- 🔴 **순위표를 만들지 말 것.** 목록으로 내면 그 자체가 정당 판정이 된다 — 실측 **자당·타당 격차
+  15%p 이상 14명 중 11명이 국민의힘**이다. 그래서 ① 하루 한 장 ② 지표를 날짜로 돌아가며
+  ③ 번호·순위·"1위" 를 쓰지 않는다 ④ 평가어 금지(성실·소신·거수기·게으름) ⑤ 정당색 금지.
+  실측 12장 정당 분포 **민주 7 · 국힘 3 · 개혁 1 · 조국 1** — 안배하지 않았는데 지표 로테이션만으로 섞인다
+- 🔴 **선정은 사람이 아니라 규칙이 하고, 그 규칙을 화면에 공개한다** (`SELECTION_RULES`, 쟁점 `why` 노출과 같은 패턴)
+- 🔴 **후보 1등만 뽑지 말 것.** 그러면 5일마다 같은 사람이 나와 "이 사이트가 저 사람을 저격한다" 로 읽힌다.
+  날짜에서 나온 **회차(`rotationRound`)로 후보 목록을 순환**한다 — DB 상태에 의존하지 않아
+  backfill 순서·재생성과 무관하게 같은 날짜는 항상 같은 사람이다 (실측 중복 출연 **0명**)
+- 🔴 **중앙값을 반드시 병기한다.** `불참률 80.4%` 만으로는 큰지 알 수 없다 — 기준 없는 숫자는 정보가 아니라 인상이다
+- 🔴 **"모릅니다" 가 이 기능의 핵심이다.** 설명이 안 붙는 케이스를 숨기지 않고
+  `국회는 불참 사유를 공개하지 않습니다. 우리는 모릅니다` 라고 쓴다 (사용자 결정 2026-09-01).
+  실측 12장 중 **10장이 설명 없음** — `.pb-caveat` 로 정립한 "무엇을 모르는지 밝힌다" 의 연장이고,
+  우리가 판정을 안 하니 **댓글이 붙을 자리**가 여기다
+  - ⚠️ 그래서 `unknownText` 는 **지표마다 다르다.** 한 문장으로 뭉뚱그리면 열 장이 전부 같은 말이 되어 안 읽힌다
+- 🔴 **설명 소스는 `politician_titles` 가 아니라 관측 데이터(발언 기록)다.**
+  titles 는 **현재만** 담는데 지표는 **임기 전체 누적**이라 시간 축이 안 맞는다 —
+  우원식은 2024-06~2026-05 국회의장이었는데(발언 917건) 후반기 의장이 조정식으로 바뀌며 titles 에서 빠져,
+  대표발의 0건에 "설명 없음" 이 붙었다. `politician_committees` 가 스냅샷이라 이력 테이블을 만든 것과
+  **같은 문제인데 이번엔 새로 쌓을 필요가 없다 — 발언 기록이 이미 이력이다**
+  (`role='국회의장'`·`role='장관' + org` 의 날짜 범위). 2026-09-01 에 추가한 `org` 컬럼이 여기서 쓰인다
+- 🔴 **카드는 값을 굳혀 저장한다** (`payload` JSONB). 결정적 생성만으로는 부족하다 — 배치가 매일 돌아
+  불참률·좌표가 움직이므로 같은 날짜를 나중에 계산하면 다른 사람이 뽑힐 수 있고, 그러면 **댓글이 엉뚱한 대상에 붙는다.**
+  브리핑과 같은 규칙(카드는 한 번 쓰면 고치지 않는다)
+- 🔴 **AI 를 부르지 않는다.** 문장은 전부 `utils/anomalies.js` 템플릿이고 숫자는 SQL 산출값이다.
+  실명이 걸리는 화면이라 생성물이 끼어들 자리가 없어야 한다
+- ⚠️ **`axis` 지표만 표시값과 선정값이 다르다** — 후보는 거리(|본인 − 당 평균|)로 고르지만 화면엔 본인 좌표를 쓴다 (`showMe: true`)
+
+#### 🔴 `axis` 지표는 **숫자를 내보내지 않는다** — 방향을 말로 (2026-09-01 사용자 지적)
+*"당 평균과 거리 수치는 저렇게만 보면 무슨 말인지 모르겠는데? 나도 모르겠어."*
+`0.07` · `0.41` 은 **단위도 축도 방향도 없어 아무 뜻이 없다.** 다른 네 지표(%·건·%p)는 자명한데 이것만 아니다.
+
+| 자리 | 무엇을 쓰나 |
+|---|---|
+| 헤드라인 | `같은 당 의원들은 평균적으로 약간 정부 개입 쪽인데, 이 의원은 가운데에 가까운 편입니다` |
+| 카드 본문 | **양극 막대** — 축 이름 + `AXIS_META.short`(무엇을 다루나) + **긴** 양끝 라벨 + 나(골드 점)·당 평균(세로선+삼각캡) |
+| 범례 | `● 이 의원 가운데에 가까운 편 0.07 · ┃ 같은 당 평균 약간 정부 개입 쪽 0.41` ← 숫자는 **근거로 뒤에** |
+| 목록 행 | `가운데` (`payload.rowValue`) — `0.07` 이 아니다 |
+| 홈 카드 | 말만. 막대는 상세가 그린다 |
+
+- 🔴 **짧은 라벨(`시장`·`개입`)만 두지 말 것** — 무엇의 어느 쪽인지 안 읽힌다. 의원 상세 `.pv-band` 에서 이미 받은 지적이다
+- 🔴 **경계는 사이트 공통 상수다** (`axisConfig` 의 `AXIS_MID` 0.25 · `D_STRONG` 0.55).
+  성향 진단 결과·공유 카드가 같은 기준으로 말하므로 여기만 다르면 같은 좌표가 다르게 설명된다.
+  `axisSide()`(긴 형) · `axisSideShort()`(행·탭용) · `axisPct()`(막대 위치) 셋 다 `utils/anomalies.js`
+- ⚠️ **말에 mono 폰트를 쓰지 말 것** — JetBrains Mono 는 한글 글리프가 없어 폴백되며 자간이 흩어진다
+  (`약간  시장  자율  쪽`). `.an-row-val.is-word` · `.anom-value.is-word` · `.anom-median b.is-word` 로 되돌린다.
+  `.pf-label`·`.ch-label` 에서 반복해 겪은 함정이다
+- ⚠️ 막대는 모바일에서 양끝 라벨을 트랙 **위**로 돌린다 (375px 에서 옆에 두면 트랙이 100px 도 안 남는다. 실측 269px 확보)
+- ⚠️ **댓글 타입 `anomaly` 는 세 곳을 같이 넓혀야 한다** — DB CHECK · `CommentService.VALID_TYPES` ·
+  (좋아요를 쓴다면) `LikeService.VALID`. 한쪽만 하면 조용히 400 이 난다.
+  ⚠️ `comments.target_id` 에는 **`card_date` 문자열**이 들어간다 (VARCHAR). `likes.target_id` 는 INTEGER 라 **카드 좋아요는 안 된다**
+- ⚠️ 지표를 추가하면 `METRICS` 에 한 항목 + `JUDGMENT_QUESTIONS` 한 줄 + 후보 쿼리 하나.
+  목록·상세·홈·사이트맵·로테이션은 자동으로 따라온다
+- ⚠️ 배치 로그의 **`⚠후보부족`** 은 후보가 5명 미만이라 반복 주기가 짧아졌다는 뜻이다 — 문턱을 다시 볼 것
+
+#### 🔴 화면 — 목록은 **행**, 카드는 맨 위 한 장만 (2026-09-01 재구성)
+처음엔 목록도 카드를 세로로 쌓았는데 한 장이 **430px** 이라 12장에 5,000px 이 넘었다.
+썸네일도 요약도 없는 목록은 행이 맞다 — `/community` 를 보드형으로, `/issue` 를 행으로 바꾼 것과 같은 판단.
+실측 문서 높이 **5,000px대 → 1,987px**.
+- **맨 위 한 장만 카드**(오늘 것) — 이 페이지가 무엇인지 보여주는 견본이다.
+  ⚠️ 필터가 걸렸거나 2페이지부터는 그리지 않는다 ("오늘" 이 아닌 것을 오늘처럼 보이면 안 된다)
+- **지표 탭** (`?metric=`) — 지표가 고정 5종이라는 점을 활용한다. 사이트 공통 밑줄 탭 문법
+  (`/bill` `.status-tab` · `/politician` `.party-tab` 과 같은 값). 모르는 값은 전체로 조용히 접는다
+  - 🔴 **0건인 지표도 탭에 그린다.** 건수만큼만 보이면 지표가 늘고 줄어 "무엇을 재는 사이트인지" 가 흐려진다
+  - ⚠️ 「전체」 탭 숫자는 **`allTotal`** 이다. `total` 은 필터가 걸리면 그 지표 건수라 「전체 2」 가 된다 (실측으로 잡았다)
+- 🔴 **선정 규칙은 목록 *아래*** 다 (`/issue` 는 위). 쟁점은 6개뿐이라 위가 맞지만 여기는 날마다 쌓이는 피드라,
+  위에 두면 매일 오는 사람이 같은 다섯 줄을 매번 지나야 한다
+
+#### 🔴 카드를 `<a>` 로 감싸지 말 것 — 중첩 링크가 DOM 을 깨뜨린다 (2026-09-01 실제 발생)
+목록 카드를 `<a class="an-card-link">` 로 감쌌는데 그 안에 의원 이름 링크가 있었다.
+HTML 은 `<a>` 중첩을 허용하지 않아 **브라우저가 파서 수준에서 앞의 `<a>` 를 닫아버리고**,
+그 결과 `.an-card-link` 가 `.an-who` 의 **자식**이 됐다. 증상은 간격이었다 —
+`headline→who` 가 20px 선언인데 **44px**, `.an-who` 높이가 49px 이어야 하는데 **98px**.
+`.same-name-chip`·홈 지역구 카드에서 이미 두 번 겪은 함정이다. **컨테이너는 `div`, 링크는 안쪽에.**
+- 행 목록은 행 전체가 링크라 **안에 다른 링크를 넣지 않는다** (의원 링크는 상세에서)
+
+#### 🔴 카드 안 세로 리듬은 **flex gap 하나**로 잡는다
+블록마다 margin 을 주면 반드시 갈린다 — 실측 **14 / 12 / 44 / 20 / 20 / 18px** 여섯 가지가 나왔다.
+`.an-card { display: flex; flex-direction: column; gap: 18px }` 로 통일 후 **전부 18px**.
+의원 상세 분석 탭(`#tab-overview`)에서 같은 문제를 같은 방법으로 고친 선례가 있다.
+- ⚠️ 예외는 `.an-cohort` 하나 (`margin-top: -10px`) — 윗 숫자 블록의 각주라 당겨 붙인다
+- 🔴 **제목·탭·본문 좌측 기준선을 셋 다 맞춘다.** 공용 `.pb-page-header-inner` 는 **1280px** 인데
+  이 페이지 본문은 **760px** 이라 그냥 두면 제목만 왼쪽에 선다 (실측 24px vs 279px).
+  anomaly.css 에서 스코프 오버라이드 — `/issue` 와 같은 처리. 모바일도 셋을 같이 16px 로 내린다
+- ⚠️ CSS 를 고쳐도 화면이 안 바뀌면 **`?v=` 캐시**다. `ASSET_VER` 이 기동 시각이라 **서버를 재시작**해야 갱신된다
+- 실측 2026-09-01: 12장 생성 · 중복 0 · 지표 고르게 분포(3·3·2·2·2) ·
+  375px 가로 오버플로 **0** · 모르는 날짜/형식 **404** · 홈 카드 430px
 
 ### 신고 처리 — `/admin/reports` (2026-08-27)
 `reports` 테이블은 있었지만 **코드 참조 0곳 · 행 0건**이었다. 신고를 접수하는 UI 도, 처리하는 화면도,
@@ -3989,6 +4113,7 @@ PC/모바일 동일 패턴으로 통일.
 | `refreshCrossPartyVote.js` | DB 집계 | `politician_cross_party_vote` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~0.4초). 의원 목록의 격차 필터·정렬이 이걸 읽는다. **syncBills·syncVotes 다음에 실행** |
 | `refreshDissent.js` | DB 집계 | `politician_dissent` MV 갱신 (`REFRESH ... CONCURRENTLY`). "숫자로 본 국회"의 소신 표결이 이걸 읽는다. **syncPoliticians·syncVotes 다음에 실행** |
 | `genBriefing.js` | 그날 법안 전건 + Claude Haiku 4.5 | 브리핑 카드 생성 (v2 프롬프트, 주제 묶음). 하루 1콜 · `--date` `--limit` `--force` `--dry-run`. `START_DATE`(2026-08-13) 이후 · 주말 제외 · 활동 없는 평일은 `model='none'` 카드. **체인 맨 뒤** — 그날 법안·요약이 다 들어온 뒤 읽는다 |
+| `genAnomalyCard.js` | DB 집계 | **「설명이 필요한 숫자」 카드** 하루 1장. `--date` `--force` `--backfill N` `--dry-run`. **AI 호출 0** — 문장은 `utils/anomalies.js` 템플릿, 숫자는 SQL. `batch:daily` 체인 맨 뒤. ⚠️ **화면은 꺼져 있지만 배치는 돈다** (카드는 그날 데이터로 굳는 것이라 멈추면 그 기간이 빈다) |
 | `genInstaCards.js` | 헤드리스 브라우저 | **인스타 캐러셀 PNG + 캡션** 생성 (`npm run insta`). `--id` `--date` `--out` `--base`. **로컬 전용** — 크론 체인에 넣지 않는다 |
 | `genBriefingVideo.js` | 헤드리스 브라우저 + `say` + ffmpeg | **유튜브 쇼츠 MP4** (`npm run video`). 카드 PNG 슬라이드쇼 + TTS 나레이션 + 자막, 60초 상한. `--date` `--rate` `--voice` `--tts edge`. **로컬 전용** — 위 「유튜브 쇼츠」 참조 |
 | `genQuizVideo.js` | DB + edge-tts + 헤드리스 브라우저 | **퀴즈형 쇼츠** 「예상 vs 데이터」. `--ep own-vs-other` `--voice`. 숫자는 렌더 시 DB. **로컬 전용** — 위 「퀴즈형 쇼츠」 참조 |
