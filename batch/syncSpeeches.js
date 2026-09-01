@@ -43,27 +43,86 @@ const MIN_PARSE_RATE = 0.90;
 /* ─────────────────────────────────────────────────────────────
    파서 — 여기가 이 배치의 전부다. 함부로 손대지 말 것.
 
-   `ESSENTIAL_PERSON` 은 `"이름 직위(소속) 행위"` 를 ` / ` 로 이은 자유 텍스트다.
+   `ESSENTIAL_PERSON` 은 `"이름 직위(소속)  행위"` 를 ` / ` 로 이은 자유 텍스트다.
      "서영교 위원장(더불어민주당)  질의 / 정성호 장관(법무부)  답변"
-     "조정식 국회의장  발언, 산회"        ← 괄호 없음 (의장은 당적 이탈이라 소속 표기가 없다)
-     "김이탁 제1차관(국토교통부)  답변"   ← 직위에 숫자
+     "조정식 국회의장  발언, 산회"                 ← 괄호 없음 (의장은 당적 이탈이라 소속이 없다)
+     "김이탁 제1차관(국토교통부)  답변"            ← 직위에 숫자
+     "김태규 위원장 직무대행(방송통신위원회)  답변" ← 직위가 두 어절
+
+   🔴 정규식 한 방으로 뽑지 말 것 (2026-09-01 재작성).
+      구 `SEG_RE` 는 직위를 한 어절(`{2,12}`)로 봐서 **직위가 두 어절이면 소속을 통째로 놓쳤다.**
+      `"김태규 위원장 직무대행(방송통신위원회)  답변"` 이 `직위=위원장 · 소속=없음 · 행위=직무대행`
+      으로 파싱돼 ① 소속이 사라지고 ② 진짜 행위(답변)까지 잃었다. 실측 544건.
+      소속이 사라지면 아래 `classifyRole` 이 정부 위원회 위원장을 국회 상임위원장으로 본다.
+
+   → **괄호가 경계다.** 실측 전건(133,891 세그먼트)이 이 구조를 지킨다:
+        [괄호 앞] 이름 + 직위(1~5어절)   [괄호 안] 소속   [괄호 뒤] 행위(쉼표로 여러 개)
+      괄호가 없으면(6.4%) 두 칸 이상의 공백이 직위와 행위를 가른다.
    ───────────────────────────────────────────────────────────── */
 
-// 🔴 직위(2번째 그룹)는 반드시 **greedy** 여야 한다.
-//    non-greedy(`{2,12}?`)로 두면 `위원장` 이 `위원` 에서 멈춰 **위원장 사회 발언이 전부
-//    일반 위원 활동으로 분류된다** (실측 chair 0건이 나온 적이 있다).
-// 🔴 괄호를 필수로 두면 **국회의장 발언을 통째로 놓친다** (위 예시 2행).
-const SEG_RE = /^([가-힣]{2,4})\s+([가-힣0-9]{2,12})(?:\s*\(([^)]*)\))?(?:\s+([가-힣]{2,4}))?/;
+const NAME_RE = /^[가-힣]{2,4}$/;
+
+/** "이름 직위(소속)  행위" → { name, role, org, act } · 못 읽으면 null */
+export const parseSegment = (seg) => {
+    const s = String(seg || '').trim();
+    if (!s) return null;
+
+    // 소속 괄호는 **마지막** 것으로 본다 — "(전)정보통신기획평가원 …" 처럼 앞에 붙는 괄호가 있다
+    const open = s.lastIndexOf('(');
+    const close = open > -1 ? s.indexOf(')', open) : -1;
+
+    let head, org = null, act = null;
+    if (close > -1) {
+        head = s.slice(0, open).trim();
+        org = s.slice(open + 1, close).trim() || null;
+        act = s.slice(close + 1).trim() || null;
+    } else {
+        // 괄호 없음 — 두 칸 이상 공백이 직위와 행위를 가른다
+        const m = s.split(/\s{2,}/);
+        head = m[0].trim();
+        act = m.length > 1 ? m.slice(1).join(' ').trim() || null : null;
+    }
+
+    const words = head.split(/\s+/).filter(Boolean);
+    const name = words.shift();
+    if (!name || !NAME_RE.test(name) || words.length === 0) return null;
+
+    return { name, role: words.join(' '), org, act };
+};
 
 /* 직위 분류.
-   ⚠️ CHAIR·MEMBER 는 **국회의원만 가질 수 있는 직위**다. 그래서 이름 매칭이 안전하다.
-      그 밖의 직위(장관·참고인·도지사·교수·회장…)는 외부인이 가질 수 있어
-      이름이 같은 현역 의원에게 잘못 붙는다 — 아래 GOV_* 주석 참조. */
+   🔴 **직위만 보면 안 된다 — 소속을 같이 봐야 한다** (2026-09-01).
+      구버전 주석은 "CHAIR·MEMBER 는 국회의원만 가질 수 있는 직위라 이름 매칭이 안전하다" 고
+      단정했는데 **틀렸다.** 정부·독립기관에도 `위원장`·`위원` 이 있다:
+        방송통신위원회 288 · 금융위원회 570 · 공정거래위원회 340 · 국가인권위원회 178 …
+      그래서 방통위원장 이진숙(192건)·방통위 직무대행 김태규(227건)의 **정부측 답변이
+      국회 상임위원장 사회 발언으로 집계**됐다. 두 사람 모두 나중에 의원이 되어 이름이 매칭됐다.
+      집계 대상(chair·member)이라 상임위 참여율의 분모·분자까지 오염됐다.
+
+   → 국회 직위(CHAIR·MEMBER)는 **소속이 정당일 때만** 인정한다.
+     소속이 없으면(괄호 없음) 그대로 인정한다 — 국회의장·부의장은 당적을 이탈해 소속 표기가 없다. */
 const CHAIR = new Set(['위원장', '위원장대리', '소위원장', '국회의장', '의장', '국회부의장', '부의장']);
 const MEMBER = new Set([
     '위원', '간사', '의원', '정책위원', '감사반장', '감사반장대리',
     '원내대표',   // 교섭단체 대표 — 국회의원만 가능한 자리라 위 두 집합과 같은 성격이다
 ]);
+
+/* 정당 화이트리스트.
+   ⚠️ `parties` 테이블은 **현재 정당만** 담는다 (실측 8개). 22대 임기 중 사라진 정당이 빠져 있어
+      그것만 쓰면 그 소속 의원이 통째로 외부인으로 밀린다 — 그래서 아래 상수와 합집합을 쓴다.
+   ⚠️ 그래도 못 채운 정당이 생길 수 있으므로, 배치가 **"정당이 아니라고 판정한 소속"을 로그로
+      찍는다** (`[소속미상]`). 새 정당이 누락되면 거기 이름이 뜬다. 조용히 틀리지 않게 하는 장치다. */
+const PARTY_FALLBACK = [
+    '더불어민주당', '국민의힘', '조국혁신당', '개혁신당', '진보당', '기본소득당', '사회민주당', '무소속',
+    // 22대 임기 중 존재했거나 총선 비례연합으로 쓰인 이름들 (parties 에 없다)
+    '새로운미래', '국민의미래', '더불어민주연합', '자유통일당', '녹색정의당', '정의당', '시대전환', '한국의희망',
+];
+let PARTY_SET = new Set(PARTY_FALLBACK);
+/** parties 테이블 값을 상수에 **더한다** (덮어쓰지 않는다). syncSpeeches 기동 시 1회. */
+export const setPartyNames = (names = []) => {
+    PARTY_SET = new Set([...PARTY_FALLBACK, ...names.filter(Boolean).map((s) => String(s).trim())]);
+};
+export const isParty = (org) => PARTY_SET.has(String(org || '').trim());
 
 /* ⛔ 구 `gov` 를 셋으로 가른다 (2026-08-15).
    구버전은 CHAIR·MEMBER 가 아니면 전부 `gov` 로 몰았는데, 화면에 `국무위원석 답변` 이라
@@ -78,11 +137,23 @@ const MEMBER = new Set([
 const WITNESS_RE = /(참고인|증인|진술인|신청인)$/;
 const GOVT_RE = /(장관|차관|총리|청장|처장|실장|국장|과장|본부장|위원장후보|후보자|대사|검찰총장|감사원장|기획관|감사관|부장)$/;
 
-export const classifyRole = (role) => {
-    if (CHAIR.has(role)) return 'chair';
-    if (MEMBER.has(role)) return 'member';
-    if (WITNESS_RE.test(role)) return 'witness';
-    if (GOVT_RE.test(role)) return 'government';
+/** 직위 + 소속 → role_kind.
+ *  @param role 원문 직위 (여러 어절 가능: `위원장 직무대행`)
+ *  @param org  괄호 안 소속 (없으면 null)
+ *  ⚠️ 판정은 **직위의 첫 어절**로 한다. `위원장 직무대행`·`위원장 대리` 는 국회에도 정부에도 있어
+ *     첫 어절만으로는 못 가른다 — 그래서 소속이 필요하다. */
+export const classifyRole = (role, org = null) => {
+    const head = String(role || '').split(/\s+/)[0];
+    const isChair = CHAIR.has(role) || CHAIR.has(head);
+    const isMember = MEMBER.has(role) || MEMBER.has(head);
+
+    if (isChair || isMember) {
+        // 🔴 소속이 있는데 정당이 아니면 국회의원이 아니다 (방통위원장·금융위원장·선관위원 …)
+        if (org && !isParty(org)) return 'government';
+        return isChair ? 'chair' : 'member';
+    }
+    if (WITNESS_RE.test(head) || WITNESS_RE.test(role)) return 'witness';
+    if (GOVT_RE.test(head) || GOVT_RE.test(role)) return 'government';
     return 'other';
 };
 
@@ -111,8 +182,11 @@ const secOf = (t) => {
 };
 
 /* 행위는 **첫 번째 것만** 쓴다 — `"발언, 산회"` 의 산회·정회·상정은 진행 절차지 발언이 아니다.
-   SEG_RE 의 4번째 그룹이 이미 첫 덩어리만 잡지만, 표기 흔들림에 대비해 한 번 더 자른다. */
-const firstAct = (act) => (act ? String(act).split(/[,·]/)[0].trim() || null : null);
+   ⚠️ 컬럼이 VARCHAR(20) 이라 자른다. `"개의, 발언, 의사일정 제1항 상정"` 같은 긴 값이 온다. */
+const firstAct = (act) => {
+    const v = act ? String(act).split(/[,·]/)[0].trim() : '';
+    return v ? v.slice(0, 20) : null;
+};
 
 async function fetchYear(key, age, year) {
     const rows = [];
@@ -179,7 +253,10 @@ function parseAll(apiRows, resolver) {
         if (cid && !clips.has(cid)) clips.set(cid, r);
     }
 
-    const stat = { apiRows: apiRows.length, clips: clips.size, segTotal: 0, segParsed: 0, failSamples: [] };
+    const stat = {
+        apiRows: apiRows.length, clips: clips.size, segTotal: 0, segParsed: 0,
+        failSamples: [], demoted: 0, nonPartyOrg: {},
+    };
     const byKind = {};
     const out = [];
     const seen = new Set();
@@ -191,17 +268,24 @@ function parseAll(apiRows, resolver) {
 
         for (const seg of segs) {
             stat.segTotal++;
-            const m = seg.match(SEG_RE);
-            if (!m) {
-                // 실측 실패분은 전부 외부인이다 ("곽종근 前 육군 특수전사령관", "박기완 PD(KBS)")
+            const p = parseSegment(seg);
+            if (!p) {
+                // 실측 실패분은 전부 외부인이다 ("실무자  답변" 처럼 이름이 없는 것)
                 if (stat.failSamples.length < 10) stat.failSamples.push(seg);
                 continue;
             }
             stat.segParsed++;
 
-            const [, name, role, , act] = m;
-            const roleKind = classifyRole(role);
+            const { name, role, org, act } = p;
+            const roleKind = classifyRole(role, org);
             byKind[roleKind] = (byKind[roleKind] || 0) + 1;
+
+            /* 🔴 국회 직위인데 소속이 정당이 아니라 강등된 건을 센다.
+               정당 목록에 빠진 정당이 있으면 여기에 그 이름이 뜬다 (조용히 틀리지 않게 하는 장치). */
+            if (roleKind === 'government' && org && (CHAIR.has(role.split(/\s+/)[0]) || MEMBER.has(role.split(/\s+/)[0]))) {
+                stat.demoted++;
+                stat.nonPartyOrg[org] = (stat.nonPartyOrg[org] || 0) + 1;
+            }
 
             const monaCd = resolver.resolve(name, r.TITLE);
             if (!monaCd) continue;
@@ -211,15 +295,15 @@ function parseAll(apiRows, resolver) {
             if (seen.has(k)) continue;
             seen.add(k);
 
-            out.push([clipId, monaCd, role, roleKind, firstAct(act), r.TAKING_DATE,
-                meetingKind, r.TITLE || null, recSec, r.LINK_URL || null]);
+            out.push([clipId, monaCd, role.slice(0, 40), roleKind, firstAct(act), r.TAKING_DATE,
+                meetingKind, r.TITLE || null, recSec, r.LINK_URL || null, org ? org.slice(0, 60) : null]);
         }
     }
     return { rows: out, stat, byKind };
 }
 
-const COLS = 10;
-const CHUNK = 2000;   // 2000 × 10 = 20,000 파라미터 (PG 상한 65,535)
+const COLS = 11;
+const CHUNK = 2000;   // 2000 × 11 = 22,000 파라미터 (PG 상한 65,535)
 
 async function upsert(pool, rows) {
     let written = 0;
@@ -227,12 +311,12 @@ async function upsert(pool, rows) {
         const chunk = rows.slice(i, i + CHUNK);
         const values = chunk.map((_, j) => {
             const b = j * COLS;
-            return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10})`;
+            return `(${Array.from({ length: COLS }, (_, k) => `$${b + k + 1}`).join(',')})`;
         }).join(',');
 
         const { rowCount } = await pool.query(`
             INSERT INTO politician_speeches
-                (clip_id, mona_cd, role, role_kind, act, taking_date, meeting_kind, conf_title, rec_sec, link_url)
+                (clip_id, mona_cd, role, role_kind, act, taking_date, meeting_kind, conf_title, rec_sec, link_url, org)
             VALUES ${values}
             ON CONFLICT (clip_id, mona_cd) DO UPDATE SET
                 role         = EXCLUDED.role,
@@ -242,7 +326,8 @@ async function upsert(pool, rows) {
                 meeting_kind = EXCLUDED.meeting_kind,
                 conf_title   = EXCLUDED.conf_title,
                 rec_sec      = EXCLUDED.rec_sec,
-                link_url     = EXCLUDED.link_url`, chunk.flat());
+                link_url     = EXCLUDED.link_url,
+                org          = EXCLUDED.org`, chunk.flat());
         written += rowCount;
     }
     return written;
@@ -268,12 +353,16 @@ async function run() {
         if (!key) throw new Error('OPEN_ASSEMBLY_API_KEY 환경변수가 없습니다.');
         const age = process.env.ASSEMBLY_AGE || '22';
 
-        const [{ rows: pols }, { rows: cmts }] = await Promise.all([
+        const [{ rows: pols }, { rows: cmts }, { rows: partyRows }] = await Promise.all([
             pool.query('SELECT mona_cd, name FROM politicians'),
             pool.query('SELECT mona_cd, dept_nm FROM politician_committees'),
+            pool.query('SELECT party_name FROM parties'),
         ]);
         if (pols.length === 0) throw new Error('politicians 가 비어 있습니다 — syncPoliticians 를 먼저 실행하세요.');
         if (cmts.length === 0) logger.warn('  ⚠ politician_committees 가 비어 있습니다 — 동명이인을 가를 수 없어 그 행들이 버려집니다');
+
+        // 소속이 정당인지 판정할 목록. 조회가 비어도 상수 폴백이 있어 배치는 산다
+        setPartyNames(partyRows.map((r) => r.party_name));
 
         const apiRows = [];
         for (const y of years) {
@@ -292,6 +381,14 @@ async function run() {
         logger.info(`  [파싱] ${(parseRate * 100).toFixed(1)}% (${stat.segParsed}/${stat.segTotal})`);
         if (stat.failSamples.length) logger.info(`         실패 예: ${stat.failSamples.slice(0, 3).map((s) => JSON.stringify(s)).join(' ')}`);
         logger.info(`  [분류] ${Object.entries(byKind).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+
+        /* 🔴 국회 직위인데 소속이 정당이 아니라 government 로 내린 건.
+           여기 뜬 이름이 **실제 정당**이면 PARTY_FALLBACK 에 빠진 것이다 — 반드시 확인할 것. */
+        if (stat.demoted) {
+            const top = Object.entries(stat.nonPartyOrg).sort((a, b) => b[1] - a[1]).slice(0, 12);
+            logger.info(`  [소속미상] 국회 직위이나 소속이 정당이 아니어서 제외 ${stat.demoted}건`
+                + ` — ${top.map(([o, n]) => `${o} ${n}`).join(' · ')}`);
+        }
         logger.info(`  [귀속] 동명이인 ${resolver.stat.homonym}건 중 ${resolver.stat.homonymResolved}건 해소`
             + ` (${resolver.stat.homonym - resolver.stat.homonymResolved}건 폐기) · 의원 아님 ${resolver.stat.unknown}건`);
 
