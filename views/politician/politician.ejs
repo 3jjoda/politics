@@ -1,15 +1,23 @@
 <%
   const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
 
-  // 정당별 카드 색상
+  // 🔴 정당색(파랑·빨강)을 쓰지 않는다 — 중립성 브랜드의 핵심 규칙 (2026-09-02 적용).
+  //    구 버전은 #1E40AF(민주)·#B91C1C(국힘)·#6D28D9(조국) 을 그대로 뿌려서
+  //    페이지 최상단 667px 짜리 의석 막대가 곧 **파랑 vs 빨강 대비 구도**였다.
+  //    2026-08-15 에 정당별 협력 카드에서 같은 함수를 걷어낸 것과 같은 판단이다.
+  //
+  //    ⚠️ 의석 수를 감추는 게 아니다. 바꾼 건 **색뿐**이고 숫자·이름·비율은 그대로 나간다
+  //       (「중립성의 경계」 — 쏠린 결과도 감추지 않는다. 다만 이름을 붙이지 않는다).
+  //    ⚠️ 계단은 의석 많은 순일 뿐 서열 평가가 아니라서, 막대·범례 어디서나 이름과 석수를 같이 쓴다.
+  //    ⚠️ 앞 두 계단만 흰 글자를 얹는다 (5% 미만 구간은 숫자를 안 그린다) — accent(3.79)로
+  //       올리지 말 것. 골드 규칙: 흰 글자를 얹는 면은 accent2 보다 어두워야 한다.
+  const PARTY_STEPS = ['#6F4507', '#925C09', '#B8740C', '#CF9433', '#DFB268', '#EBCB99', '#F2DFC2', '#E6E2D6'];
+  const _partyRank = new Map(
+    ((typeof partyCounts !== 'undefined' && partyCounts) || []).map((pc, i) => [pc.party_name, i])
+  );
   const partyColorOf = (name) => {
-    if (!name) return '#4B5563';
-    if (name.indexOf('더불어민주') > -1) return '#1E40AF';
-    if (name.indexOf('국민의힘') > -1) return '#B91C1C';
-    if (name.indexOf('조국혁신') > -1) return '#6D28D9';
-    if (name.indexOf('개혁') > -1) return '#B45309';
-    if (name.indexOf('진보') > -1) return '#991B1B';
-    return '#4B5563';
+    const i = _partyRank.has(name) ? _partyRank.get(name) : PARTY_STEPS.length - 1;
+    return PARTY_STEPS[Math.min(i, PARTY_STEPS.length - 1)];
   };
   const partyClassOf = (name) => {
     if (!name) return 'party-etc';
@@ -47,12 +55,12 @@
     gap: 12px;
     flex-wrap: wrap;
   }
+  /* mono + 자간 금지 — 한글이라 폴백돼 `정 당 별  의 석  분 포` 로 흩어진다 */
   .ph-title-label {
-    font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
+    font-weight: 700;
     color: var(--sub2);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
   }
   .ph-title-label strong { color: var(--text); }
   .ph-total { font-size: 13px; color: var(--sub); }
@@ -168,7 +176,9 @@
   .search-input:focus { border-color: var(--accent); }
   .search-input:focus + .search-icon,
   .search-wrap:focus-within .search-icon { color: var(--accent); }
-  .search-input::placeholder { color: #7A8090; }
+  <%# 🔴 #7A8090 은 2026-08-16 에 폐기된 --sub2 구값이다 (어느 배경에서도 AA 미달).
+      토큰을 바꿨을 때 이 하드코딩만 남아 있었다 — hex 로 되돌리지 말 것 %>
+  .search-input::placeholder { color: var(--sub2); }
 
   .filter-select {
     padding: 10px 30px 10px 14px;
@@ -214,7 +224,7 @@
     align-items: center;
     gap: 6px;
   }
-  .filter-toggle-btn.active { background: var(--accent); color: #fff; }
+  .filter-toggle-btn.active { background: var(--accent2); color: #fff; }
 
   .filter-count {
     font-family: 'JetBrains Mono', monospace;
@@ -260,7 +270,7 @@
     border-radius: 3px;
     color: var(--sub2);
   }
-  .party-tab.active .party-count { background: rgba(184,116,12,0.15); color: var(--accent); }
+  .party-tab.active .party-count { background: rgba(184,116,12,0.15); color: var(--accent2); }
 
   /* Content layout */
   .content-wrap {
@@ -307,9 +317,7 @@
     font-weight: 600;
     color: var(--sub2);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
     border-bottom: 1px solid var(--border);
-    font-family: 'JetBrains Mono', monospace;
   }
   .sidebar-list { padding: 8px 0; max-height: 360px; overflow-y: auto; }
   .sidebar-item {
@@ -322,7 +330,7 @@
     font-size: 14px;
   }
   .sidebar-item:hover { background: var(--bg3); }
-  .sidebar-item.active { background: rgba(184,116,12,0.08); color: var(--accent); }
+  .sidebar-item.active { background: rgba(184,116,12,0.08); color: var(--accent2); }
   .sidebar-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sidebar-item-count {
     font-family: 'JetBrains Mono', monospace;
@@ -331,7 +339,7 @@
     flex-shrink: 0;
     margin-left: 8px;
   }
-  .sidebar-item.active .sidebar-item-count { color: var(--accent); }
+  .sidebar-item.active .sidebar-item-count { color: var(--accent2); }
 
   /* 분포 카드 (성별/연령대) — 클릭 필터 지원 */
   .dist-body { padding: 10px 8px 14px; }
@@ -371,7 +379,11 @@
     border-radius: 4px;
     transition: width 0.6s ease-out;
   }
-  .dist-bar.male   { background: var(--blue); }
+  /* 🔴 성별을 색으로 가르지 않는다 (2026-09-02). 구 버전은 남성 --blue(#2563EB) / 여성 골드였다 —
+     ① 파랑은 이 사이트가 안 쓰는 색이고(정당색 회피) ② 남=파랑 관습을 그대로 옮긴 것이며
+     ③ 바로 아래 연령대 막대는 전부 골드라 성별만 색으로 갈린 이유가 없었다.
+     구분은 라벨(남성·여성)과 숫자가 이미 하고 있다. */
+  .dist-bar.male,
   .dist-bar.female { background: var(--accent); }
   .dist-bar.age-0  { background: var(--accent); opacity: 1.00; }
   .dist-bar.age-1  { background: var(--accent); opacity: 0.85; }
@@ -415,10 +427,12 @@
     line-height: 1;
     margin-bottom: 4px;
   }
-  .mini-stat:nth-child(1) .mini-stat-val { color: var(--accent); }
-  .mini-stat:nth-child(2) .mini-stat-val { color: var(--green); }
-  .mini-stat:nth-child(3) .mini-stat-val { color: var(--accent); }
-  .mini-stat:nth-child(4) .mini-stat-val { color: var(--purple); }
+  /* 🔴 네 숫자를 서로 다른 색으로 칠하지 말 것 (2026-09-02).
+     구 버전은 1·3번 골드 / 2번 --green / 4번 --purple 이었는데 **색이 아무것도 뜻하지 않았다** —
+     총 발의 법안이 초록일 이유도, 정당 수가 보라일 이유도 없다.
+     --green/--red 는 토큰 주석대로 **객관 데이터(본회의 가결·부결) 전용**이다.
+     여기서 흘려 쓰면 정작 표결 화면에서 초록·빨강이 신호로 안 읽힌다. (/issue 요약 4칸과 같은 처리) */
+  .mini-stat-val { color: var(--accent2); }
   .mini-stat-label { font-size: 13px; color: var(--sub); }
 
   /* GRID — 리퀴드 오버레이 카드 (사진이 카드 전체) */
@@ -491,12 +505,17 @@
     font-weight: 600;
     backdrop-filter: blur(4px);
   }
-  .party-minjoo  { background: rgba(30,64,175,0.9);  color: #fff; }
-  .party-gukhim  { background: rgba(185,28,28,0.9);  color: #fff; }
-  .party-jokuk   { background: rgba(109,40,217,0.9); color: #fff; }
-  .party-gaehyuk { background: rgba(180,83,9,0.9);   color: #fff; }
-  .party-jinbo   { background: rgba(153,27,27,0.9);  color: #fff; }
-  .party-etc     { background: rgba(75,85,99,0.9);   color: #fff; }
+  /* 🔴 정당 배지는 여섯이 **같은 무채색**이다 (2026-09-02). 정당색 금지 규칙 그대로다 —
+     구 버전은 파랑·빨강·보라 칩이라 카드 309장이 진영 모자이크로 읽혔다.
+     어느 당인지는 **칩 안의 이름**이 말한다. 색으로 한 번 더 말할 이유가 없다.
+     (퇴임 배지를 무채색으로 둔 것, 발의자 스택에 정당색을 안 쓴 것과 같은 판단)
+     ⚠️ 사진 위에 얹히므로 반투명 차콜 + 흰 글자여야 어떤 사진에서도 읽힌다. */
+  .party-minjoo,
+  .party-gukhim,
+  .party-jokuk,
+  .party-gaehyuk,
+  .party-jinbo,
+  .party-etc     { background: rgba(26,29,36,0.82); color: #fff; }
 
   .pol-elect-badge {
     display: inline-block;
@@ -505,7 +524,7 @@
     font-size: 11px;
     font-weight: 500;
     color: #fff;
-    background: rgba(0,0,0,0.45);
+    background: rgba(0,0,0,0.62);
     backdrop-filter: blur(4px);
   }
 
@@ -535,7 +554,7 @@
     border-radius: 4px; padding: 3px 9px;
   }
   .pol-badges .pol-retired {
-    color: #fff; background: rgba(0,0,0,0.45);
+    color: #fff; background: rgba(0,0,0,0.62);
     border: 1px solid rgba(255,255,255,0.45);
   }
   .pol-list-name-row .pol-retired {
@@ -546,7 +565,7 @@
     font-size: 16px;
     font-weight: 800;
     color: #fff;
-    margin-bottom: 3px;
+    margin: 0 0 3px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -599,6 +618,25 @@
     font-style: italic;
   }
 
+  /* 당 성향 격차 — 🔴 **격차로 정렬하거나 필터를 걸었을 때만** 보인다.
+     항상 띄우면 카드마다 줄이 하나 늘어 목록이 길어지고, 그 값을 보러 온 게 아닌 사람에겐 노이즈다.
+     ⚠️ 정렬·필터는 클라이언트에서 바뀐다(history.replaceState, 서버 왕복 없음) → 마크업은 항상 심고
+        컨테이너 클래스로 토글한다. 서버에서 조건부 렌더하면 정렬만 바꿔도 값이 안 나온다 */
+  .pol-gap-line { display: none; }
+  .politicians-grid.show-gap .pol-overlay .pol-gap-line,
+  .politicians-list.show-gap .pol-list-item .pol-gap-line { display: block; }
+  .pol-overlay .pol-gap-line {
+    margin-top: 4px;
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+  .pol-overlay .pol-gap-line strong { font-weight: 700; color: #FFD77A; }
+  /* 자당·타당 원값은 보조라 한 톤 낮춘다 — 격차가 정렬 기준이므로 그쪽이 주인공이다 */
+  .pol-overlay .pol-gap-line span { margin-left: 6px; color: rgba(255,255,255,0.6); }
+
   /* LIST */
   .politicians-list { display: flex; flex-direction: column; gap: 8px; }
   .pol-list-item {
@@ -628,12 +666,13 @@
     margin-bottom: 3px;
     flex-wrap: wrap;
   }
-  .pol-list-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  /* h2 다 (그리드 .pol-name 과 같은 레벨) — margin 0 을 반드시 명시할 것 */
+  .pol-list-name { margin: 0; font-size: 15px; font-weight: 600; color: var(--text); }
   .pol-list-sub { font-size: 12px; color: var(--sub); }
   .pol-list-num {
     font-family: 'JetBrains Mono', monospace;
     font-size: 15px;
-    color: var(--accent);
+    color: var(--accent2);
     text-align: center;
     font-weight: 600;
   }
@@ -670,6 +709,33 @@
     color: var(--sub2);
     font-style: italic;
   }
+  /* 당 성향 격차 — 리스트 뷰 (밝은 배경). 표시 조건은 위 그리드와 같다 (`.show-gap`) */
+  .pol-list-item .pol-gap-line {
+    font-size: 11px;
+    color: var(--sub);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .pol-list-item .pol-gap-line strong { font-weight: 700; color: var(--accent2); }
+  .pol-list-item .pol-gap-line span { margin-left: 6px; color: var(--sub2); }
+
+  /* 격차 정렬·필터를 걸었을 때만 뜨는 해석 각주.
+     🔴 **값을 감추는 대신 각주를 단다** — /xray 격차 섹션과 같은 처리다.
+        상위권에 한 정당이 몰려 보일 수 있지만 그건 사실이고, 왜 그렇게 보이는지를 여기서 말한다 */
+  .gap-note {
+    display: none;
+    margin: 0 0 14px;
+    padding: 12px 16px;
+    background: var(--bg3);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: var(--sub);
+    word-break: keep-all;
+  }
+  .gap-note.is-on { display: block; }
+  .gap-note b { color: var(--text); font-weight: 700; }
 
   .list-header {
     display: grid;
@@ -774,7 +840,7 @@
     border-color: var(--border);
   }
   .filter-sheet-apply {
-    background: var(--accent);
+    background: var(--accent2);
     color: #fff;
   }
   .filter-sheet-close {
@@ -1171,6 +1237,16 @@
       </div>
     </div>
 
+    <%# 🔴 격차 정렬·필터를 걸었을 때만 뜨는 해석 각주 (JS 가 `.is-on` 을 붙인다).
+        **값을 감추는 대신 각주를 단다** — /xray 격차 섹션과 같은 처리다.
+        상위권에 한 정당이 몰려 보일 수 있는데 그건 사실이고, 감출 이유가 아니라 왜 그런지 쓸 이유다.
+        ⚠️ 카드마다 붙이지 않고 목록 머리에 한 번만 — 309장에 같은 문장이 반복되면 안 읽힌다 %>
+    <p class="gap-note" id="gap-note">
+      <b>격차</b>는 자기 당이 낸 법안과 다른 당이 낸 법안의 찬성률 차이입니다. 클수록 발의한 정당에 따라 표결이 갈렸다는 뜻입니다.
+      다만 이 값으로 정당끼리 비교하면 오해가 됩니다. 다수당은 자기 당 법안이 무난히 통과되는 의사일정 구조라 격차가 낮게 나오는 경향이 있습니다.
+      불참은 뺀 값이고, 자당·타당 표결이 각각 50건 이상인 의원만 나옵니다.
+    </p>
+
     <!-- GRID VIEW -->
     <div id="grid-view">
       <div class="politicians-grid" id="grid-container">
@@ -1212,7 +1288,9 @@
             <div class="pol-overlay">
               <%# 현역 API 에서 빠진 의원. **이유는 쓰지 않는다** — 사퇴·퇴임·당선무효 등이
                   섞여 있고 원천이 사유를 주지 않는다. 홈 화면(index.ejs)과 같은 라벨 %>
-              <div class="pol-name"><%= p.name %></div>
+              <%# 🔴 div 가 아니라 h2 다 (2026-09-02) — 카드 309장에 heading 이 0 이라
+                  스크린리더로 의원 사이를 건너뛸 수 없었다. 시각 스타일은 그대로다. %>
+              <h2 class="pol-name"><%= p.name %></h2>
               <div class="pol-district"><%= p.electoral_district || '—' %></div>
               <div class="pol-stats-line">
                 <span><span class="num"><%= p.propose_cnt %></span><span class="label">발의</span></span>
@@ -1226,6 +1304,15 @@
                 <div class="pol-match-line" title="<%= matchTitle(_d) %>">나의 성향 진단과 <strong><%= _sim %>%</strong> 일치</div>
               <% } else if (locals.balanceGameCompleted === false) { %>
                 <div class="pol-match-line is-pending" title="성향 진단 후 당신과의 일치도가 표시됩니다">진단 후 일치도 표시</div>
+              <% } %>
+              <%# 🔴 당 성향 격차 — **격차로 정렬하거나 필터를 걸었을 때만** 보인다 (`.politicians-grid.show-gap`).
+                  그전에는 `data-gap` 만 있고 화면에 값이 없어서, 「당 성향 뚜렷한 순」으로 정렬해도
+                  각자 몇 %p 인지 알 수 없었다 — 한 명씩 상세로 들어가야 했다 (2026-09-01).
+                  🔴 이 값을 감추지 않는다. 상위권에 한 정당이 몰려 보일 수 있지만 그건 **사실**이고,
+                     감출 이유가 아니라 각주를 달 이유다 (목록 머리 `.gap-note` · /xray 격차 섹션과 같은 처리).
+                  ⚠️ 격차만 두면 "무엇과 무엇의 차이" 인지 안 읽혀 자당·타당 찬성률을 같이 쓴다 %>
+              <% if (p.cpv_gap !== null && p.cpv_gap !== undefined) { %>
+                <div class="pol-gap-line" title="자기 당이 낸 법안 찬성률 <%= Number(p.cpv_own_rate).toFixed(1) %>% · 다른 당이 낸 법안 찬성률 <%= Number(p.cpv_other_rate).toFixed(1) %>%. 불참은 뺀 값입니다.">격차 <strong><%= Number(p.cpv_gap).toFixed(1) %>%p</strong><span>자당 <%= Math.round(p.cpv_own_rate) %> · 타당 <%= Math.round(p.cpv_other_rate) %></span></div>
               <% } %>
             </div>
           </a>
@@ -1377,6 +1464,17 @@
     };
     gridItems.sort(sortFn).forEach(el => gridContainer.appendChild(el));
     listItems.sort(sortFn).forEach(el => listContainer.appendChild(el));
+
+    /* 🔴 격차를 **보러 온 사람에게만** 카드에 값을 띄운다 (2026-09-01).
+       그전에는 `data-gap` 만 있고 화면에 값이 없어서 「당 성향 뚜렷한 순」으로 정렬해도
+       각자 몇 %p 인지 알 수 없었다 — 한 명씩 상세로 들어가야 했다.
+       항상 띄우지 않는 이유: 카드마다 줄이 하나 늘어 목록이 길어지고, 그 값을 보러 온 게 아닌 사람에겐 노이즈다.
+       ⚠️ 정렬·필터는 서버 왕복 없이 바뀌므로(history.replaceState) 서버 조건부 렌더로는 안 된다 */
+    const showGap = state.sort === 'gap-desc' || state.sort === 'gap-asc' || !!state.gap;
+    gridContainer.classList.toggle('show-gap', showGap);
+    listContainer.classList.toggle('show-gap', showGap);
+    const gapNote = document.getElementById('gap-note');
+    if (gapNote) gapNote.classList.toggle('is-on', showGap);
 
     visibleCount = gridItems.filter(el => el.style.display !== 'none').length;
     countEl.textContent = `총 ${visibleCount.toLocaleString('ko-KR')}명`;
@@ -1736,7 +1834,9 @@
       const main = document.createElement('div');
       const nameRow = document.createElement('div');
       nameRow.className = 'pol-list-name-row';
-      const nm = document.createElement('span');
+      // 🔴 span 이 아니라 h2 — 그리드 카드의 .pol-name(h2) 과 레벨을 맞춘다.
+      //    두 뷰의 구조가 갈리면 리스트로 바꾼 순간 heading 이 사라진다.
+      const nm = document.createElement('h2');
       nm.className = 'pol-list-name';
       nm.textContent = d.name || '';
       nameRow.appendChild(nm);
@@ -1770,6 +1870,16 @@
         m.title = match.title;
         m.innerHTML = match.innerHTML;      // <strong>N%</strong> — 서버가 만든 것 그대로
         aside.appendChild(m);
+      }
+      /* 당 성향 격차 — 일치도와 **같은 방식으로 복제**한다 (문자열로 다시 만들지 말 것.
+         서버가 붙인 title·<strong> 이 갈린다). 보이고 숨기는 건 `.show-gap` 이 한다 */
+      const gapLine = card.querySelector('.pol-gap-line');
+      if (gapLine) {
+        const g = document.createElement('span');
+        g.className = gapLine.className;
+        g.title = gapLine.title;
+        g.innerHTML = gapLine.innerHTML;
+        aside.appendChild(g);
       }
       const arrow = document.createElement('span');
       arrow.className = 'pol-list-detail-arrow';

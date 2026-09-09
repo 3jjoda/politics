@@ -2,17 +2,21 @@
   const nf = (n) => Number(n || 0).toLocaleString('ko-KR');
   const pct = (num, den) => den > 0 ? ((num / den) * 100) : 0;
 
-  // 정당 색상
-  const partyColorOf = (name) => {
-    if (!name) return '#4B5563';
-    if (name.indexOf('더불어민주') > -1) return '#1E40AF';
-    if (name.indexOf('국민의힘') > -1) return '#B91C1C';
-    if (name.indexOf('조국혁신') > -1) return '#6D28D9';
-    if (name.indexOf('개혁') > -1) return '#B45309';
-    if (name.indexOf('진보') > -1) return '#991B1B';
-    return '#4B5563';
-  };
-  const partyColor = partyColorOf(politician.party_name);
+  // 🔴 정당색을 쓰지 않는다 (2026-09-02). 구 버전은 소속 정당에 따라
+  //    #1E40AF(민주)·#B91C1C(국힘)·#6D28D9(조국) 를 돌려줬고, 그 값이
+  //    **의원 사진의 4px 원형 테두리와 글로우**(380·382) · 히어로 배경 틴트(95) ·
+  //    정당 배지(407~409)에 그대로 들어갔다. 상세 페이지에서 가장 큰 요소가 진영색이었다는 뜻이다.
+  //    같은 파일 1682행에 "정당색 금지 (2026-08-15 제거)" 라고 적어두고 히어로만 빠져 있었다.
+  //
+  //    ⚠️ 소속 정당은 배지 **글자**로 그대로 나간다. 지운 건 색뿐이다.
+  //    ⚠️ hex 여야 한다 — 이 값을 출력한 **바로 뒤에 알파 2자리(22)를 이어 붙여** 쓰는 자리가 있어
+  //       var(--accent) 로 바꾸면 조용히 깨진다. 값은 --accent 와 같은 #B8740C 다.
+  //    🔴 위 문장에 EJS 출력 태그를 예시로 적지 말 것 — 주석 안이어도 EJS 는 텍스트로 찾아
+  //       거기서 스크립틀릿을 닫는다. 실제로 그렇게 적었다가 이 파일이 통째로 컴파일 실패해
+  //       의원 상세 310장이 전부 500 이 났다 (2026-09-07 발견, 미커밋 상태에서 잡음).
+  const PARTY_NEUTRAL = '#B8740C';
+  const partyColorOf = () => PARTY_NEUTRAL;
+  const partyColor = PARTY_NEUTRAL;
 
   // 결과 배지 매핑
   const resultClass = (r) => {
@@ -405,7 +409,8 @@
     font-size: 13px;
     font-weight: 600;
     background: <%= partyColor %>22;
-    color: <%= partyColor %>;
+    /* ⚠️ 글자는 accent2 다. 골드 틴트 위 골드 글자(accent)는 3.50 으로 AA 미달 */
+    color: var(--accent2);
     border: 1px solid <%= partyColor %>44;
   }
   /* 특수 직위 배지 — 정당 배지 옆. 여러 개가 붙을 수 있다.
@@ -794,6 +799,20 @@
   }
   .bill-row-days { font-family: 'JetBrains Mono', monospace; }
   .bill-row-myvote { color: var(--sub2); }
+  /* 법안명 아래 발의 정당·대표발의자 (2026-09-01).
+     ⚠️ **정당색을 쓰지 말 것** — 여기서 색을 주면 목록 전체가 정당 대비 구도로 읽힌다 */
+  .bill-row-proposer {
+    display: block; margin-top: 3px; font-size: 12px; color: var(--sub2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* 표결 목록의 비교 기준 한 줄 — 🔴 이게 없으면 "불참한 게 다 저 당 법안" 이라는 인상이 생긴다 */
+  .vote-basis {
+    margin: 0 0 14px; padding: 11px 14px;
+    background: var(--bg3); border-left: 3px solid var(--accent); border-radius: 8px;
+    font-size: 12.5px; line-height: 1.75; color: var(--sub); word-break: keep-all;
+  }
+  .vote-basis b { color: var(--text); font-weight: 700; }
+  .vote-basis .base { color: var(--sub2); }
   /* ⚠️ 배경 없이 **글자색만** 쓴다 — 칩으로 만들면 행이 높아지고 옆 처리결과 배지와 무게가 같아진다.
      초록·빨강은 본회의 표결 결과(객관 데이터)라 허용된다 */
   .bill-row-myvote b { font-weight: 700; background: none; }
@@ -1283,9 +1302,28 @@
   .vtd-sum strong { color: var(--text); font-weight: 700; }
   .vtd-break { margin-top: 4px; font-size: 11px; color: var(--sub2); }
   .vtd-bills { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px dashed var(--border2); list-style: none; }
-  .vtd-bills li { margin-bottom: 5px; }
-  .vtd-bills a { color: var(--sub); text-decoration: none; }
+  /* 한 줄 = [표결결과 40px] [법안명 8] [발의 정당 2].
+     ⚠️ 첫 칸 40px 은 `.vtd-r` 배지 폭 34 + 그 오른쪽 여백 6이다. 배지 크기를 바꾸면 여기도 같이.
+     🔴 정당 칸은 **`minmax(76px, 2fr)`** 다. 순수 `2fr` 로 두면 375px 에서 43px 이 되어
+        `더불어민주당`은 물론 `국민의힘`까지 전부 잘린다 (실측). 76px 은 6자(11px 폰트) + 왼쪽 여백 8.
+        데스크톱은 2fr 이 83px 이라 하한에 안 걸리고 8:2 비율 그대로다 */
+  .vtd-bills li {
+    display: grid; grid-template-columns: 40px 8fr minmax(76px, 2fr);
+    align-items: baseline; margin-bottom: 5px;
+  }
+  /* ⚠️ grid item 이라도 `block` 을 명시해야 말줄임(ellipsis)이 먹는다 (a 는 기본 inline) */
+  .vtd-bills a {
+    display: block; min-width: 0; color: var(--sub); text-decoration: none;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .vtd-bills a:hover { color: var(--accent2); text-decoration: underline; }
+  /* 발의 정당 — 법안명 오른쪽. ⚠️ 정당색을 쓰지 말 것.
+     ⚠️ **좌측 정렬**이다. 우측 정렬하면 정당명 길이가 제각각이라(무소속 3자 ~ 더불어민주당 6자)
+        시작점이 들쭉날쭉해 열로 안 읽힌다 */
+  .vtd-by {
+    min-width: 0; padding-left: 8px; font-size: 11px; color: var(--sub2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .vtd-r {
     display: inline-block; min-width: 34px; margin-right: 6px;
     font-size: 10px; font-weight: 700;
@@ -2111,6 +2149,19 @@
           <% } }) %>
         </div>
 
+        <%# 🔴 **비교 기준** (2026-09-01). 표결 내역에 발의 정당이 없던 시절, 사용자가 불참 법안을
+            하나씩 열어보고 "다 국민의힘 법안" 이라는 인상을 얻었다. 실측은 다르다 —
+            본회의 표결 법안의 42.1%가 원래 국민의힘 발의라 무작위로 열어도 10건 중 4건이고,
+            불참이 가장 쏠린 의원조차 57.9%(기저율 +15.8%p)였다.
+            → **분모를 화면이 먼저 준다.** 숫자 옆에 기준선을 두는 이 사이트의 규칙과 같다.
+            ⚠️ 분모는 국회 전체가 아니라 **이 의원이 표결한 것 전체**다 — 재직 기간이 달라 모수가 다르다.
+            ⚠️ 필터를 바꾸면 JS 가 이 줄을 다시 계산한다 (`window.__VOTE_PARTY__`) %>
+        <% if (Array.isArray(voteParty) && voteParty.length) { %>
+          <p class="vote-basis" id="vote-basis"></p>
+          <%# 정당명이 그대로 들어가므로 `<` 를 이스케이프한다 (법안명 주입 방어와 같은 처리) %>
+          <script>window.__VOTE_PARTY__ = <%- JSON.stringify(voteParty).replace(/</g, '\\u003c') %>;</script>
+        <% } %>
+
         <div class="bill-table">
           <div class="bill-table-header">
             <span>법안명</span>
@@ -2126,7 +2177,14 @@
           <div id="vote-rows">
             <% votes.slice(0, 20).forEach(v => { %>
               <a href="/bill/<%= v.bill_id %>" class="bill-table-row">
-                <div class="bill-row-name"><%= v.bill_name || v.bill_id %></div>
+                <%# 🔴 **발의 정당을 법안명 아래 보조줄로** 준다 (2026-09-01). 열을 늘리지 않는 이유:
+                    이미 5열이라 법안명 칸이 좁아진다. 계류 `+N일`·`내 표결` 이 쓰던 보조줄 패턴과 같다.
+                    ⚠️ 정당색을 쓰지 말 것 — 여기서 색을 주면 목록 전체가 정당 대비 구도로 읽힌다 %>
+                <div class="bill-row-name"><%= v.bill_name || v.bill_id %>
+                  <% if (v.bill_party || v.bill_proposer) { %>
+                    <span class="bill-row-proposer"><%= [v.bill_party, v.bill_proposer && `${v.bill_proposer} 대표발의`].filter(Boolean).join(' · ') %></span>
+                  <% } %>
+                </div>
                 <div>
                   <span class="vote-result-chip v-<%= v.vote_result === '찬성' ? 'for' : v.vote_result === '반대' ? 'against' : v.vote_result === '기권' ? 'abstain' : 'absent' %>">
                     <%= v.vote_result %>
@@ -2175,7 +2233,10 @@
           </div>
           <div class="profile-kpi-label">법안 발의 <span class="pb-help" data-help-href="/guide/glossary#rep-proposer" title="대표발의 설명">?</span></div>
           <%- kpiRankBar(rank && rank.propose, rank && rank.cohortCnt) %>
-          <div class="profile-kpi-sub"><% if (med && med.propose != null) { %><span class="is-med">의원 중앙값 <%= nf(Math.round(med.propose)) %>건</span><% } else { %>대표발의한 법안<% } %></div>
+          <%# 🔴 값은 중앙값이지만 화면에는 **그 뜻을 말로** 쓴다 (2026-09-01).
+              "중앙값" 은 통계 용어라 어려운 데다, 평균으로 바꾸면 숫자가 달라진다
+              (실측 대표발의 55 → 63.8건 · 가결률 2.5 → 3.5%). 뜻을 그대로 푼 표현이 `절반은 N 이상` 이다 %>
+          <div class="profile-kpi-sub"><% if (med && med.propose != null) { %><span class="is-med">절반은 <%= nf(Math.round(med.propose)) %>건 이상</span><% } else { %>대표발의한 법안<% } %></div>
         </div>
         <%
           /* 대표발의 비중 = 대표 / (대표+공동). "이름만 올리는 편인가, 직접 주도하는 편인가".
@@ -2193,7 +2254,7 @@
           <%- kpiRankBar(rank && rank.copropose, rank && rank.cohortCnt) %>
           <%# ⚠️ 해석 한계는 KPI 행 아래 주의 문구가 담당한다 —
               공동발의 수는 "이름을 얼마나 걸었는지" 지 중요도·기여도가 아니다 %>
-          <div class="profile-kpi-sub"><% if (med && med.copropose != null) { %><span class="is-med">의원 중앙값 <%= nf(Math.round(med.copropose)) %>건</span><% } %></div>
+          <div class="profile-kpi-sub"><% if (med && med.copropose != null) { %><span class="is-med">절반은 <%= nf(Math.round(med.copropose)) %>건 이상</span><% } %></div>
           <%# 🔴 대표발의 비중 — **큰 숫자 옆(.profile-kpi-frac)에 넣지 말 것.**
               "885건 중 87건" 까지 쓰면 146px 인데 375px 2열의 카드 내부는 111px 뿐이다 (실측).
               전용 줄로 빼야 `몇 건 중 몇 건 · 비중 얼마` 를 온전히 쓸 수 있다.
@@ -2225,7 +2286,7 @@
           <% if (vsTotal === 0) { %>
             <div class="profile-kpi-sub">표결 데이터 수집 전</div>
           <% } else if (med && med.vote != null) { %>
-            <div class="profile-kpi-sub is-med">의원 중앙값 <%= med.vote.toFixed(0) %>%</div>
+            <div class="profile-kpi-sub is-med">절반은 <%= med.vote.toFixed(0) %>% 이상</div>
           <% } %>
         </div>
         <div class="profile-kpi">
@@ -2247,7 +2308,7 @@
           <% if (proposeCnt === 0) { %>
             <div class="profile-kpi-sub">대표발의 없음</div>
           <% } else if (med && med.passRate != null) { %>
-            <div class="profile-kpi-sub is-med">의원 중앙값 <%= med.passRate.toFixed(1) %>%</div>
+            <div class="profile-kpi-sub is-med">절반은 <%= med.passRate.toFixed(1) %>% 이상</div>
           <% } %>
         </div>
       </div>
@@ -2263,7 +2324,7 @@
           <% if (med && med.leadShare != null) { %>
             <br>
             공동발의 카드의 <strong>대표 비중</strong>(대표+공동 전체 중 대표발의가 차지하는 비율)은
-            의원 중앙값이 <strong><%= med.leadShare.toFixed(1) %>%</strong>입니다. 공동발의가 훨씬 많은 것이 일반적입니다.
+            의원 절반이 <strong><%= med.leadShare.toFixed(1) %>%</strong> 이상입니다. 공동발의가 훨씬 많은 것이 일반적입니다.
           <% } %>
           공동발의 수는 <strong>이름을 얼마나 걸었는지</strong>일 뿐 기여도·중요도와 다릅니다.
         </p>
@@ -2796,9 +2857,16 @@
            + '" data-r="' + r + '">' + r + ' ' + cnt[r] + '</button>';
       } });
       h += '</div>';
+      /* 🔴 **발의 정당을 같이 쓴다** (2026-09-01). 누가 낸 법안인지가 없으면
+         "불참한 게 다 특정 당 법안" 이라는 인상이 생기는데, 본회의 표결 법안의 42.1%가
+         원래 국민의힘 발의라 무작위로 봐도 그렇게 보인다 (표결 내역 탭과 같은 이유).
+         ⚠️ **정당만** 쓴다 — 대표발의자 이름까지 넣으면 한 줄이 길어져 열이 무너진다.
+            이름이 필요하면 법안 상세로 간다. 정당색은 쓰지 않는다 */
       h += '<ul class="vtd-bills">' + slice.map((b) =>
         '<li><span class="vtd-r r-' + esc(b.vote_result) + '">' + esc(b.vote_result) + '</span>'
-        + '<a href="/bill/' + encodeURIComponent(b.bill_id) + '">' + esc(b.bill_name) + '</a></li>').join('') + '</ul>';
+        + '<a href="/bill/' + encodeURIComponent(b.bill_id) + '">' + esc(b.bill_name) + '</a>'
+        + '<span class="vtd-by">' + esc(b.bill_party || '') + '</span>'
+        + '</li>').join('') + '</ul>';
       if (pages > 1) {
         /* ⚠️ `data-p`(절대 페이지)다. 예전엔 `data-d`(±1 델타)라 처음·끝으로 한 번에 갈 수 없었다 */
         const pg = (label, p, off, title) => '<button type="button" class="vtd-pg" data-p="' + p + '"'
@@ -3046,8 +3114,14 @@
     let result = '', page = 1, loading = false;
     let total = Number(statusEl?.dataset.total) || null;
 
+    /* ⚠️ 이 마크업은 위 SSR 행과 **같아야 한다** — 다르면 1페이지와 2페이지가 달라 보인다 */
     const rowHtml = (v) => '<a href="/bill/' + encodeURIComponent(v.bill_id) + '" class="bill-table-row">'
-      + '<div class="bill-row-name">' + esc(v.bill_name || v.bill_id) + '</div>'
+      + '<div class="bill-row-name">' + esc(v.bill_name || v.bill_id)
+      + ((v.bill_party || v.bill_proposer)
+          ? '<span class="bill-row-proposer">'
+            + esc([v.bill_party, v.bill_proposer ? v.bill_proposer + ' 대표발의' : null].filter(Boolean).join(' · '))
+            + '</span>' : '')
+      + '</div>'
       + '<div><span class="vote-result-chip v-' + (RES_CLASS[v.vote_result] || 'absent') + '">'
       + esc(v.vote_result) + '</span></div>'
       + '<div style="font-family:\'JetBrains Mono\';font-size:12px;color:var(--sub2)">' + esc(v.vote_date) + '</div>'
@@ -3093,16 +3167,59 @@
         });
     };
 
+    /* 🔴 **비교 기준 한 줄** (2026-09-01). 표결 목록에 발의 정당이 없던 시절, 사용자가 불참 법안을
+       하나씩 열어보고 "다 국민의힘 법안" 이라는 인상을 얻었다 — 실제로는 이 의원이 표결한 법안의
+       42% 안팎이 원래 그 당 발의라 무작위로 열어도 그렇게 보인다.
+       → 필터를 바꿀 때마다 **그 결과의 정당 분포 vs 전체 분포**를 다시 쓴다.
+       ⚠️ 추가 요청은 없다 — 서버가 결과별 분포를 통째로 심어둔다 (`__VOTE_PARTY__`).
+       ⚠️ 분모는 국회 전체가 아니라 **이 의원이 표결한 것 전체**다 (재직 기간이 달라 모수가 다르다) */
+    const basisEl = document.getElementById('vote-basis');
+    const PARTY = Array.isArray(window.__VOTE_PARTY__) ? window.__VOTE_PARTY__ : [];
+    const KEY = { '': 'total_n', '찬성': 'agree_n', '반대': 'oppose_n', '기권': 'abstain_n', '불참': 'absent_n' };
+    const pct = (n, d) => (d > 0 ? (n / d * 100).toFixed(1) : '0.0');
+
+    const drawBasis = () => {
+      if (!basisEl || !PARTY.length) return;
+      const key = KEY[result] || 'total_n';
+      const cur = PARTY.map((p) => ({ party: p.party, n: Number(p[key]) || 0 }))
+        .filter((p) => p.n > 0).sort((a, b) => b.n - a.n);
+      const curTot = cur.reduce((s, p) => s + p.n, 0);
+      if (!curTot) { basisEl.textContent = ''; return; }
+      const allTot = PARTY.reduce((s, p) => s + (Number(p.total_n) || 0), 0);
+      const baseOf = (name) => {
+        const row = PARTY.find((p) => p.party === name);
+        return row ? pct(Number(row.total_n) || 0, allTot) : '0.0';
+      };
+      /* 상위 3개까지만 — 더 늘어놓으면 기준선이 안 읽힌다 */
+      const head = cur.slice(0, 3)
+        .map((p) => esc(p.party) + ' <b>' + pct(p.n, curTot) + '%</b>' + '(' + p.n + '건)')
+        .join(' · ');
+
+      /* ⚠️ 「전체」에서는 견줄 대상이 자기 자신이라 두 줄이 같은 값이 된다 — 기준선 줄을 쓰지 않는다.
+         대신 이 줄이 곧 기준선임을 알리고 필터로 유도한다 */
+      if (!result) {
+        basisEl.innerHTML = '이 의원이 표결한 <b>' + allTot + '건</b>을 낸 정당 — ' + head
+          + '<br><span class="base">아래 <b>찬성·반대·기권·불참</b>을 누르면 이 분포와 견줄 수 있습니다.</span>';
+        return;
+      }
+      basisEl.innerHTML = '<b>' + esc(result) + ' ' + curTot + '건</b>을 낸 정당 — ' + head
+        + '<br><span class="base">이 의원이 표결한 ' + allTot + '건 전체는 '
+        + cur.slice(0, 3).map((p) => esc(p.party) + ' ' + baseOf(p.party) + '%').join(' · ')
+        + '입니다. 본회의에 오르는 법안 자체가 정당별로 고르지 않아, 이 비율만으로 판단할 수 없습니다.</span>';
+    };
+
     filterBox?.addEventListener('click', (e) => {
       const chip = e.target.closest('.vf-chip');
       if (!chip || loading) return;
       filterBox.querySelectorAll('.vf-chip').forEach((c) => c.classList.toggle('is-on', c === chip));
       result = chip.dataset.result || '';
       page = 1;                       // 필터를 바꾸면 1페이지로 — 안 그러면 범위 밖 페이지를 요청한다
+      drawBasis();
       load();
     });
 
     setStatus();
+    drawBasis();                      // 첫 렌더 — SSR 이 값을 심어두므로 요청 0회
     drawPager();                      // 첫 20건은 SSR 이라 페이저만 그린다 (요청 0회)
   })();
 

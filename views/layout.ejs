@@ -249,7 +249,13 @@
             <li><a href="/guide">읽는 법</a></li>
             <li><a href="/guide/glossary">용어</a></li>
             <li><a href="https://open.assembly.go.kr" target="_blank" rel="noopener">데이터 출처</a></li>
+            <%# 문의 — CONTACT_EMAIL 이 있으면 실제 연락 수단, 없으면 구 동작(커뮤니티)으로 떨어진다.
+                nav 에 커뮤니티가 이미 있어 이 자리는 원래 중복이었다 %>
+            <% if (locals.contactEmail) { %>
+            <li><a href="mailto:<%= contactEmail %>">문의</a></li>
+            <% } else { %>
             <li><a href="/community">피드백</a></li>
+            <% } %>
             <li><a href="/terms">이용약관</a></li>
             <li><a href="/privacy">개인정보처리방침</a></li>
         </ul>

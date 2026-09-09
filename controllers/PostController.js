@@ -74,6 +74,12 @@ export default (db) => {
                     pageStyles: null,
                     currentUrl: '/community',
                     pageDesc: '당말사 커뮤니티. 법안·의원·브리핑에 달린 의견과 자유 게시글이 한자리에 모입니다',
+                    /* 🔴 색인에서 뺀다 (2026-09-07, AdSense 2차 반려 대응).
+                       실측 게시글 1건 · 댓글 0건이라 크롤러에겐 "미완성 사이트" 신호가 된다.
+                       사이트맵에서도 뺐다 (utils/sitemap.js) — 두 곳은 같은 조건이어야 한다.
+                       follow 라 내부 링크는 살아 있고, 사람은 nav 로 그대로 들어온다.
+                       글이 쌓이면 여기와 사이트맵을 같이 되돌릴 것 */
+                    noindex: true,
                     rows, filter, feedTabs: FEED_TABS,
                     postTypes: POST_TYPES,
                     activeType: effType,
@@ -93,6 +99,7 @@ export default (db) => {
                 pageTitle: '글쓰기 · 커뮤니티',
                 pageStyles: null,
                 currentUrl: '/community/write',
+                noindex: true,   // 로그인 의존 폼 — 색인 대상이 아니다 (2026-09-07)
                 mode: 'create',
                 post: { title: '', content: '', linked_bill_id: null, post_type: preset, is_pinned: false },
                 attachedBill: null,
@@ -130,6 +137,7 @@ export default (db) => {
                     pageStyles: null,
                     currentUrl: `/community/${id}`,
                     pageDesc: String(post.content || '').replace(/s+/g, ' ').slice(0, 140),
+                    noindex: true,   // 위 목록과 같은 이유 (2026-09-07)
                     post,
                     postTypeMeta: postTypeOf(post.post_type)
                 });
@@ -158,6 +166,7 @@ export default (db) => {
                     pageTitle: '글 수정 · 커뮤니티',
                     pageStyles: null,
                     currentUrl: `/community/${id}/edit`,
+                    noindex: true,   // 위 글쓰기와 같은 이유 (2026-09-07)
                     mode: 'edit',
                     post,
                     attachedBill,

@@ -21,13 +21,23 @@
      ⚠️ 지도가 주인공이고 문항은 곁이다. 순서가 뒤집히면 설문 사이트로 보인다. */
   .home-hero { padding: calc(var(--nav-h) + 34px) 24px 0; }
   .home-hero-inner { max-width: 1280px; margin: 0 auto; }
-  .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 52px; align-items: center; padding-bottom: 34px; }
+  /* 데스크톱: 왼쪽 열에 리드(1행) + 나머지(2행), 오른쪽 열에 지도가 두 행에 걸친다.
+     명시 배치라 마크업 순서(리드 → 지도 → 나머지)와 무관하게 화면은 그대로다. */
+  .hero-grid { display: grid; grid-template-columns: 1fr 1fr;
+               column-gap: 52px; row-gap: 20px; align-items: center; padding-bottom: 34px; }
+  .hero-lead { grid-column: 1; grid-row: 1; align-self: end; }
+  .hero-left { grid-column: 1; grid-row: 2; align-self: start; }
+  .hero-map  { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
   .hero-left { min-width: 0; }
   /* 골드 규칙선 + mono 라벨 — /xray 섹션 라벨과 같은 언어 */
+  <%# 🔴 mono + 넓은 자간을 되돌리지 말 것 (2026-09-02) — 라벨이 전부 한글이라
+      JetBrains Mono 가 폴백되고 자간까지 겹쳐 `좌 표 가  있 는` 으로 흩어졌다.
+      /xray/chart .ch-label · /my .pf-label 에서 두 번 고친 것과 같은 문제다.
+      숫자만 있는 자리(.hero-q-n 의 Q1 / 20)는 mono 가 맞지만 거기도 한글이 섞여 있어 같이 뺐다 %>
   .hero-eyebrow {
     display: flex; align-items: center; gap: 9px;
-    font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700;
-    letter-spacing: 0.14em; color: var(--accent2);
+    font-size: 11.5px; font-weight: 700;
+    color: var(--accent2);
   }
   .hero-eyebrow::before { content: ''; width: 22px; height: 2px; background: var(--accent); flex: 0 0 auto; }
   /* 세리프 900 — /xray 카드 제목·법안 분석 헤드라인과 같은 시각 언어 */
@@ -52,7 +62,7 @@
         `/balance-game/respond` 가 2번 문항부터 이어진다 — 둘 다 같은 엔드포인트를 탄다. */
   .hero-q { margin-top: 24px; background: var(--bg2); border: 1px solid var(--border2); border-top: 3px solid var(--accent); padding: 19px 22px 17px; }
   .hero-q-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .hero-q-n { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent2); }
+  .hero-q-n { font-size: 11px; font-weight: 700; color: var(--accent2); }
   .hero-q-meta { font-size: 11.5px; color: var(--sub2); }
   .hero-q-t { margin: 9px 0 15px; font-size: 18.5px; font-weight: 800; line-height: 1.5; word-break: keep-all; }
   .hero-q-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -76,7 +86,7 @@
 
   /* ── 내 결과 요약 (완료자) — 문항 카드와 같은 자리·같은 상자 ── */
   .hero-mine { margin-top: 24px; background: var(--bg2); border: 1px solid var(--border2); border-top: 3px solid var(--accent); padding: 19px 22px 17px; }
-  .hero-mine-lab { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent2); }
+  .hero-mine-lab { font-size: 11.5px; font-weight: 700; color: var(--accent2); }
   .hero-mine-t { margin: 8px 0 0; font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 24px; line-height: 1.35; letter-spacing: -0.01em; word-break: keep-all; }
   .hero-mine-s { margin: 7px 0 0; font-size: 13.5px; color: var(--sub); line-height: 1.7; word-break: keep-all; }
   .hero-mine-links { margin: 14px 0 0; padding-top: 13px; border-top: 1px dashed var(--border2); display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13.5px; }
@@ -90,7 +100,7 @@
   .hero-map { background: var(--bg2); border: 1px solid var(--border); padding: 18px 20px 14px; min-width: 0; }
   .hero-map-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 11px; border-bottom: 1px solid var(--border); }
   .hero-map-h b { font-size: 14px; font-weight: 800; }
-  .hero-map-h span { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--sub2); white-space: nowrap; }
+  .hero-map-h span { font-size: 11.5px; font-weight: 600; color: var(--sub2); white-space: nowrap; }
   .hero-map svg { display: block; width: 100%; height: auto; }
   .hero-map-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--sub2); }
   .hero-map-legend i { display: inline-block; vertical-align: middle; margin-right: 6px; border-radius: 50%; }
@@ -108,7 +118,7 @@
      ⚠️ 브리핑 **헤드라인은 쓰지 않는다.** 바로 아래 「오늘의 1면」이 그 문장을 리드 기사로 크게 쓴다 */
   .hero-strip { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg3); }
   .hero-strip-in { max-width: 1280px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--sub); }
-  .hero-strip .d { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; color: var(--accent2); }
+  .hero-strip .d { font-size: 11.5px; font-weight: 700; color: var(--accent2); }
   .hero-strip .sep { color: var(--border2); }
   .hero-strip b { color: var(--text); font-weight: 700; }
   /* nav 와 목적지가 겹치는 링크(의원·법안·차트·읽는 법)는 데스크톱에서 숨긴다 - 바로 위 메뉴줄과 중복이다.
@@ -187,10 +197,10 @@
                border: 1px solid var(--accent); border-radius: 10px; }
   .mine-pick[hidden] { display: none; }
   .mine-pick-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .mine-pick-open { padding: 7px 16px; border: 1px solid var(--accent); background: var(--accent);
+  .mine-pick-open { padding: 7px 16px; border: 1px solid var(--accent2); background: var(--accent2);
                     color: #fff; border-radius: 999px; font-size: 13px; font-weight: 700;
                     cursor: pointer; font-family: inherit; }
-  .mine-pick-open:hover { background: var(--accent2); border-color: var(--accent2); }
+  .mine-pick-open:hover { background: var(--accent3); border-color: var(--accent3); }
   .mine-pick-sub { margin: 4px 0 0; font-size: 12.5px; color: var(--sub); line-height: 1.7; }
   .mine-pick-form { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
   .mine-pick-form[hidden] { display: none; }
@@ -281,7 +291,7 @@
         읽지 않고도 크기가 오게 하는 게 목적이라 장식이 아니다.
      ⚠️ 숫자는 전부 `getHomeFacts` 산출값이다. 화면에 하드코딩하지 말 것 — 배치가 매일 움직인다. */
   .nums-kick { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding-bottom: 15px; border-bottom: 2px solid var(--text); }
-  .nums-kick .t { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; letter-spacing: 0.16em; color: var(--text); }
+  .nums-kick .t { font-size: 12px; font-weight: 800; color: var(--text); }
   .nums-kick .s { font-size: 12.5px; color: var(--sub2); }
   .nums-kick .go { margin-left: auto; font-size: 13px; color: var(--sub); text-decoration: none; border-bottom: 1px solid var(--border2); padding-bottom: 2px; }
   .nums-kick .go:hover { color: var(--accent2); border-color: var(--accent2); }
@@ -297,7 +307,7 @@
      mono 를 쓰지 않는다 — 산문이고, JetBrains Mono 는 한글 글리프가 없어 폴백된다 */
   .nums-so { display: block; margin: 16px 0 0; max-width: 46ch; font-size: 14.5px; line-height: 1.8; color: var(--sub); word-break: keep-all; }
   .nums-so b { color: var(--text); font-weight: 700; }
-  .nums-sub { display: block; margin: 10px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: var(--sub2); }
+  .nums-sub { display: block; margin: 10px 0 0; font-size: 12.5px; color: var(--sub2); }
   /* 해석 주의 — 숫자와 세트다. `.pb-note`(main.css)가 타이포를 정하고 여기는 자리만 잡는다 */
   /* ⚠️ 아래 여백을 빼지 말 것 — `.nums-band` 의 위 테두리에 글자가 그대로 붙는다 (실측 간격 0) */
   /* ⚠️ 바로 위 카드 각주(`.fn`, 11.5px)와 크기가 비슷해 그냥 두면 한 덩어리로 읽힌다.
@@ -324,7 +334,9 @@
   .nums-cell .v { font-family: 'Noto Serif KR', serif; font-weight: 900; font-size: 44px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
   .nums-cell .k { font-size: 13px; font-weight: 700; color: var(--sub); }
   .nums-cell .say { display: block; margin: 11px 0 0; font-size: 15px; font-weight: 700; line-height: 1.6; word-break: keep-all; }
-  .nums-cell .fn { display: block; margin: 7px 0 0; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--sub2); line-height: 1.6; }
+  <%# 각주는 산문이다 — mono 를 쓰지 않는다 (바로 위 .nums-said 규칙과 같은 이유).
+      12px 은 이 프로젝트의 문장형 설명 하한이다 %>
+  .nums-cell .fn { display: block; margin: 7px 0 0; font-size: 12px; color: var(--sub2); line-height: 1.65; }
   /* 눈금 147개 중 하나 = 반대표 0.68%. 희소함 자체가 정보다 */
   .nums-ticks { display: flex; gap: 1px; margin-top: 15px; height: 26px; align-items: flex-end; }
   .nums-ticks i { flex: 1 1 0; min-width: 1px; height: 13px; background: var(--border2); display: block; }
@@ -356,7 +368,7 @@
         여섯 섹션 중 하나로 묻혔다. 리드 기사 크기로 키우고 2단 조판·드롭캡을 준다.
      ⚠️ 사이드바(오늘의 숫자)를 여기 다시 두지 말 것 — 바로 위 B 가 그 셋을 크게 말한다. */
   .bf-mast { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 9px 0; border-top: 3px solid var(--text); border-bottom: 1px solid var(--text); margin-bottom: 22px; }
-  .bf-mast .d { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; font-weight: 700; letter-spacing: 0.13em; }
+  .bf-mast .d { font-size: 12px; font-weight: 800; }
   .bf-mast .x { color: var(--border2); }
   .bf-mast .s { font-size: 12px; color: var(--sub2); }
   .bf-mast .go { margin-left: auto; font-size: 12.5px; color: var(--sub); text-decoration: none; border-bottom: 1px solid var(--border2); padding-bottom: 2px; }
@@ -365,7 +377,7 @@
   .home-bf { display: grid; grid-template-columns: 1.62fr 1fr; gap: 0; align-items: start; }
   .bf-lead { display: block; padding: 0 34px 0 0; border-right: 1px solid var(--border2); text-decoration: none; color: inherit; min-width: 0; }
   .bf-lead-top { display: flex; align-items: center; gap: 10px; }
-  .bf-stamp { display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em; color: var(--accent2); border: 1px solid var(--accent); padding: 4px 9px; }
+  .bf-stamp { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: var(--accent2); border: 1px solid var(--accent); padding: 4px 9px; }
   .bf-stamp.is-fallback, .bf-stamp.is-none { color: var(--sub2); border-color: var(--border2); }
   .bf-lead-title {
     margin: 13px 0 0; font-family: 'Noto Serif KR', serif; font-weight: 900;
@@ -381,7 +393,7 @@
   /* `pb-boxlink` 을 안 쓴다 (그건 카드용 셰브론·테두리 문법이다). 리드 기사는 제목 색으로만 반응한다 */
   .bf-lead:hover .bf-lead-title { color: var(--accent2); }
   .bf-side { padding-left: 30px; min-width: 0; }
-  .bf-side-h { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 700; letter-spacing: 0.15em; color: var(--sub2); padding-bottom: 9px; border-bottom: 1px solid var(--border2); }
+  .bf-side-h { font-size: 11.5px; font-weight: 700; color: var(--sub2); padding-bottom: 9px; border-bottom: 1px solid var(--border2); }
   .bf-list { list-style: none; margin: 0; padding: 0; }
   .bf-list a {
     display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: baseline;
@@ -443,8 +455,8 @@
     transition: border-color 0.15s, transform 0.15s;
   }
   .explore-kicker {
-    font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
-    letter-spacing: 0.1em; color: var(--accent2);
+    font-size: 11.5px; font-weight: 700;
+    color: var(--accent2);
   }
   .explore-title {
     margin: 10px 0 0; font-size: 17px; font-weight: 800; color: var(--text);
@@ -459,9 +471,12 @@
   /* ⚠️ 1024 가 아니라 940 이다. 1024 에서 접으면 지도가 620px, 글이 그 아래로 내려가 히어로가
      1,195px 이 된다 — 2열로 두면 706px 이고 지도도 여전히 읽힌다 (실측). 940 아래에서만 접는다 */
   @media (max-width: 940px) {
+    /* 1열: 리드 → 지도 → 문항. grid-column/row 명시를 풀어야 order 가 먹는다 */
     .hero-grid { grid-template-columns: 1fr; gap: 26px; }
-    .hero-left { order: 2; }
-    .hero-map { order: 1; }
+    .hero-lead, .hero-left, .hero-map { grid-column: auto; grid-row: auto; }
+    .hero-lead { order: 1; }
+    .hero-map  { order: 2; }
+    .hero-left { order: 3; }
     .hero-deck { max-width: none; }
     /* 🔴 1열이 되면 지도 폭을 반드시 조일 것. 판이 거의 정사각(520×460)이라 976px 폭이면
        **863px 높이**가 되어 히어로가 한 화면을 통째로 먹는다 (1024px 실측). 620px 이면 약 511px */
@@ -576,8 +591,13 @@
         다시 1번 문항을 보여주면 안 된다 (`/auth/welcome` 에서 겪은 것과 같은 실수) -->
 <section class="home-hero">
   <div class="home-hero-inner">
+    <%# 🔴 리드(눈썹·헤드라인·데크)를 .hero-left 에서 떼어냈다 (2026-09-02).
+        모바일은 지도가 위로 가는데(order), 그 탓에 375px 첫 화면이 **회색 점구름뿐**이고
+        그게 무슨 그림인지 말해주는 헤드라인은 약 1,050px 아래에 있었다.
+        지금 순서: 리드 → 지도 → 문항. 지도는 여전히 문항보다 위라 "그림이 먼저 눈을 멈춘다" 는 유지된다.
+        ⚠️ 데스크톱 2열 배치는 그리드 명시 배치로 그대로 유지된다 (아래 .hero-lead/.hero-left/.hero-map) %>
     <div class="hero-grid">
-      <div class="hero-left">
+      <div class="hero-lead">
         <% if (_cloud.length) { %>
           <div class="hero-eyebrow">좌표가 있는 의원 <%= nf(_cloud.length) %>명</div>
         <% } else { %>
@@ -593,6 +613,9 @@
           <p class="hero-deck">국회의원 한 사람 한 사람이 <strong>어떤 법안에 이름을 올렸는지</strong>로 좌표를 만들었습니다.
             점 하나가 의원 한 명입니다. 문항에 답하면 그 사이에 <strong>당신의 점</strong>이 찍힙니다.</p>
         <% } %>
+      </div>
+
+      <div class="hero-left">
 
         <% if (_me) { %>
           <%# ── 완료자 — 문항 카드와 같은 자리·같은 상자 ── %>
@@ -739,13 +762,15 @@
             걸러지는 곳은 본회의가 아니라 위원회입니다</span>
         </a>
         <a class="nums-cell" href="/xray#xr-absent">
-          <span class="h"><span class="v"><%= f.absent_median %>%</span><span class="k">불참률 중앙값</span></span>
+          <%# 🔴 값은 중앙값이지만 화면에는 뜻을 말로 쓴다 (2026-09-01) — 바로 아래 `.say` 가
+              `의원 절반은 …` 이라고 말하므로 라벨도 그 말과 같은 축이어야 한다 %>
+          <span class="h"><span class="v"><%= f.absent_median %>%</span><span class="k">절반은 이보다 더 빠집니다</span></span>
           <span class="say">의원 절반은 다섯 번 중 한 번 이상 자리에 없습니다.</span>
           <span class="nums-bar" aria-hidden="true">
             <span style="width: <%= _absent %>%"></span>
             <em style="left: <%= _absent %>%"></em>
           </span>
-          <span class="nums-scale"><span>0%</span><span>중앙값 <%= f.absent_median %>%</span><span>100%</span></span>
+          <span class="nums-scale"><span>0%</span><span>가운데 <%= f.absent_median %>%</span><span>100%</span></span>
           <%# 🔴 `게으름이 아니다` 를 빼지 말 것 — 장관 겸직·의장 관례·표결 보이콧이 전부 여기 섞인다.
               SNS 카드(`/promo/numbers`)의 불참 편에도 같은 각주가 붙어 있어야 한다 %>
           <span class="fn">표결 모수 100건 이상인 의원 <%= nf(f.absent_cohort) %>명 기준 ·
@@ -1272,7 +1297,7 @@
     [['시장 · 자율', P + 10, P + 20, 'start'], ['개입 · 자율', W - P - 10, P + 20, 'end'],
      ['시장 · 전통', P + 10, H - P - 12, 'start'], ['개입 · 전통', W - P - 10, H - P - 12, 'end']]
       .forEach(function (o) {
-        p.push('<text x="' + o[1] + '" y="' + o[2] + '" text-anchor="' + o[3] + '" font-size="11" fill="#A8A095" font-family="JetBrains Mono, monospace" letter-spacing="1">' + o[0] + '</text>');
+        p.push('<text x="' + o[1] + '" y="' + o[2] + '" text-anchor="' + o[3] + '" font-size="11" fill="var(--sub2)" font-weight="700">' + o[0] + '</text>');
       });
     p.push('<line x1="' + sx(0) + '" y1="' + P + '" x2="' + sx(0) + '" y2="' + (H - P) + '" stroke="#E2DFD4" stroke-dasharray="3 4"/>');
     p.push('<line x1="' + P + '" y1="' + sy(0) + '" x2="' + (W - P) + '" y2="' + sy(0) + '" stroke="#E2DFD4" stroke-dasharray="3 4"/>');

@@ -78,7 +78,9 @@
             </span>
           </div>
 
-          <a class="bf-card-head" href="/briefing/<%= p.id %>"><%= p.headline %></a>
+          <%# 🔴 h2 로 감쌌다 (2026-09-02) — 피드 23장에 heading 이 하나도 없어서
+              스크린리더로 카드 사이를 건너뛸 수 없었다. 타이포는 그대로 안쪽 a 가 갖는다 %>
+          <h2 class="bf-card-h"><a class="bf-card-head" href="/briefing/<%= p.id %>"><%= p.headline %></a></h2>
           <p class="bf-card-body"><%= p.body %></p>
 
           <%# 주제 묶음 — 이 카드에서 AI 가 실제로 값을 더한 부분.
@@ -164,7 +166,7 @@
     padding: 13px 18px; margin-bottom: 22px;
   }
   .bf-strip-nums { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; font-size: 13.5px; color: var(--sub); }
-  .bf-strip-item b { font-family: 'JetBrains Mono', monospace; font-size: 17px; color: var(--accent); font-weight: 700; }
+  .bf-strip-item b { font-family: 'JetBrains Mono', monospace; font-size: 17px; color: var(--accent2); font-weight: 700; }
   .bf-strip-sep { color: var(--border2); }
   .bf-spark { display: flex; align-items: flex-end; gap: 3px; height: 28px; flex-shrink: 0; }
   .bf-spark-col { width: 6px; height: 100%; display: flex; align-items: flex-end; }
@@ -200,6 +202,8 @@
   .bf-pending-head { font-size: 15px; font-weight: 600; color: var(--sub); margin: 0; word-break: keep-all; }
   .bf-pending-why { font-size: 13px; line-height: 1.7; color: var(--sub2); margin: 7px 0 0; word-break: keep-all; }
 
+  /* h2 래퍼 — 여백은 안쪽 a 가 갖고 있으므로 0 으로 눌러야 카드 높이가 안 변한다 */
+  .bf-card-h { margin: 0; font-size: inherit; font-weight: inherit; }
   .bf-card-head {
     display: block; font-family: 'Noto Serif KR', serif; font-size: 21px; font-weight: 700;
     line-height: 1.45; color: var(--text); text-decoration: none; word-break: keep-all; margin-bottom: 9px;
@@ -236,7 +240,7 @@
     text-decoration: none; font-family: inherit; min-height: 40px; display: inline-flex; align-items: center;
   }
   .bf-act:hover { border-color: var(--accent); color: var(--accent); }
-  .bf-more { margin-left: auto; font-size: 12.5px; color: var(--accent); text-decoration: none; }
+  .bf-more { margin-left: auto; font-size: 12.5px; color: var(--accent2); text-decoration: none; }
   .bf-more:hover { text-decoration: underline; }
 
   /* 페이저 — 라벨을 "이전/다음" 대신 "최신 / 이전 날짜" 로 쓴다.

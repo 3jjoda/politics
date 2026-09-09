@@ -128,9 +128,9 @@ html,body{margin:0;width:${W}px;height:${H}px;overflow:hidden;background:${BG};c
     } else if (sc.kind === 'person') {
         const P = S.person;
         const stats = [];
-        if (P.propose != null) stats.push({ l: '대표발의', v: `<b>${P.propose}</b><small>건 · 의원 중앙값 ${P.medPropose ?? '—'}건</small>` });
+        if (P.propose != null) stats.push({ l: '대표발의', v: `<b>${P.propose}</b><small>건 · 절반은 ${P.medPropose ?? '—'}건 이상</small>` });
         if (P.voteTotal) stats.push({ l: '본회의 표결 참여', v: `<b>${P.voteRate}%</b><small>${P.voteTotal}건 중 ${P.voteAttended}건</small>` });
-        if (P.ownRate != null && P.otherRate != null) stats.push({ l: '자기 당 · 상대 당 법안 찬성', v: `<b>${P.ownRate}%</b> · ${P.otherRate}%<small>격차 ${P.gap}%p · 중앙값 ${P.gapMedian ?? '—'}</small>` });
+        if (P.ownRate != null && P.otherRate != null) stats.push({ l: '자기 당 · 상대 당 법안 찬성', v: `<b>${P.ownRate}%</b> · ${P.otherRate}%<small>격차 ${P.gap}%p · 절반은 ${P.gapMedian ?? '—'} 이상</small>` });
         if (P.cmtRate != null) stats.push({ l: `${esc(P.cmtName)} 회의 참여율`, v: `<b>${P.cmtRate}%</b><small>평균 ${P.cmtAvg ?? '—'}%</small>` });
         const shown = Math.min(stats.length, Math.max(1, Math.round((cut + 1) / cuts * (stats.length + 1)) - 1));
         const face = P.photo ? `<img src="${esc(P.photo)}" alt="">` : `<div class="ini">${esc([...P.name][0] || '')}</div>`;

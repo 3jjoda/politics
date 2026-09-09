@@ -124,6 +124,13 @@ export default (db) => {
             return rows;
         },
 
+        /* 표결한 법안의 **발의 정당 분포** — 결과별 + 전체를 한 번에.
+           비교 기준이 없으면 "불참한 게 다 저 당 법안" 같은 인상이 생긴다 (쿼리 주석 참조) */
+        getVoteBillPartyDist: async (monaCd) => {
+            const { rows } = await db.query(queries.getVoteBillPartyDist, [monaCd]);
+            return rows;
+        },
+
         /* 「나와의 성향 일치」 — 순위 + 축별 변별력. 왜 %가 아니라 순위인지는 쿼리 주석에 */
         getMatchContext: async (axis, monaCd) => {
             const { rows } = await db.query(queries.getMatchContext,

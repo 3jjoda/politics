@@ -293,7 +293,7 @@
       <h2 class="iss-h">이 쟁점에 이름을 많이 올린 의원</h2>
       <p class="iss-h-sub">
         이름을 올린 <%= nf(sig.total_signers) %>명 중 상위 <%= topSigners.length %>명입니다.
-        중앙값은 <strong><%= nf(sig.median_n) %>건</strong>이라, 그보다 많이 올린 사람이 여기 보입니다.
+        절반은 <strong><%= nf(sig.median_n) %>건</strong> 이상이라, 그보다 많이 올린 사람이 여기 보입니다.
       </p>
       <ul class="iss-people-list">
         <% topSigners.forEach((s) => { %>

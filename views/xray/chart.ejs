@@ -220,7 +220,7 @@
               <line x1="<%= padL %>" y1="<%= yy.toFixed(1) %>" x2="<%= W - padR %>" y2="<%= yy.toFixed(1) %>"
                     stroke="#E2DFD4" stroke-dasharray="<%= p === 0 ? '0' : '3 4' %>"/>
               <text x="<%= padL - 8 %>" y="<%= (yy + 4).toFixed(1) %>" text-anchor="end"
-                    font-size="11" font-family="JetBrains Mono" fill="#7A8090"><%= nf(Math.round(max * p)) %></text>
+                    font-size="11" font-family="JetBrains Mono" fill="var(--sub2)"><%= nf(Math.round(max * p)) %></text>
             <% }); %>
 
             <% if (spec.type === 'line') { %>

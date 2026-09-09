@@ -76,7 +76,7 @@ export default (db) => {
             }
             const politician = politicianData[0];
 
-            const [billCounts, votes, topics, monthly, voteSummary, crossPartyVote, partyCoop, partyCoopOut, committees, titles, speeches, kpiRank, matchCtx] = await Promise.all([
+            const [billCounts, votes, topics, monthly, voteSummary, crossPartyVote, partyCoop, partyCoopOut, committees, titles, speeches, kpiRank, matchCtx, voteParty] = await Promise.all([
                 politicianService.getBillCounts(monaCd),
                 politicianService.getVotesByMonaCd(monaCd),
                 politicianService.getTopicsByMonaCd(monaCd),
@@ -91,7 +91,10 @@ export default (db) => {
                 politicianService.getKpiPercentiles(monaCd),
                 /* 🔴 일치도는 **순위**로 낸다 — 절대 %는 임의 보정값(1.5)에 의존해 못 믿는다.
                    근거 실측은 getMatchContext.sql 머리 주석에 (매핑 48건 · 안보축 84% 동일값 등) */
-                politicianService.getMatchContext(res.locals.userAxis, monaCd)
+                politicianService.getMatchContext(res.locals.userAxis, monaCd),
+                /* 표결 법안의 발의 정당 분포 — 표결 내역 탭 머리의 비교 기준 (2026-09-01).
+                   🔴 이게 없으면 "불참한 게 다 저 당 법안" 이라는 인상이 생긴다 (실측 기저율 42.1%) */
+                politicianService.getVoteBillPartyDist(monaCd)
             ]);
 
             /* 페이지 고유 description (2026-08-19 AdSense 대응 — 전 페이지 동일 문구 금지).
@@ -126,6 +129,7 @@ export default (db) => {
                 topics,
                 monthly,
                 voteSummary: voteSummary || { for_cnt: 0, against_cnt: 0, abstain_cnt: 0, absent_cnt: 0, total_cnt: 0 },
+                voteParty: voteParty || [],
                 crossPartyVote,
                 partyCoop,
                 partyCoopOut,

@@ -25,7 +25,12 @@ const STATIC_PATHS = [
     ['/bill',         'daily',   '0.9'],
     ['/politician',   'weekly',  '0.9'],
     ['/xray',         'weekly',  '0.7'],
-    ['/community',    'daily',   '0.6'],
+    /* 🔴 /community 는 뺐다 (2026-09-07). 실측 게시글 1건 · 댓글 0건이라
+       심사자·크롤러에게 "미완성 사이트" 신호가 된다 (AdSense 2차 반려 대응).
+       PostController 가 커뮤니티 페이지에 noindex 를 건다 — 두 곳은 같은 조건이어야 한다.
+       ⚠️ 사이트를 닫는 게 아니다. nav 로 들어갈 수 있고 사람은 그대로 쓴다. 색인만 뺀다.
+       ⚠️ robots.txt 로 막지 말 것 — 크롤이 막히면 noindex 를 읽지 못해 오히려 색인이 남는다.
+       글이 쌓이면 이 줄을 되살리고 noindex 를 같이 풀 것 */
     ['/balance-game', 'monthly', '0.6'],
     ['/balance-game/types', 'monthly', '0.5'],
     ['/guide/glossary', 'monthly', '0.5'],   // 구 /glossary 는 301
@@ -77,16 +82,9 @@ const SOURCES = [
                 FROM briefing_posts
                ORDER BY briefing_date DESC`,
     },
-    {
-        key: 'posts',
-        prefix: '/community/',
-        changefreq: 'weekly',
-        priority: '0.5',
-        sql: `SELECT id AS slug, TO_CHAR(updated_at, 'YYYY-MM-DD') AS lastmod
-                FROM posts
-               WHERE is_deleted = FALSE
-               ORDER BY id DESC`,
-    },
+    /* 🔴 posts(/community/:id) 소스도 뺐다 (2026-09-07). 위 /community 목록과 한 세트다 —
+       PostController 가 상세에 noindex 를 거는데 사이트맵에 남겨두면 서로 모순된 신호가 된다.
+       실측 게시글 1건이라 되살릴 이득도 없었다. 글이 쌓이면 목록·noindex 와 함께 셋을 같이 되돌릴 것 */
 ];
 
 const esc = (s) => String(s)

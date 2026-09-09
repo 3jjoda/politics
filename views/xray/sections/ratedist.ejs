@@ -55,16 +55,16 @@
       <line x1="<%= dx(rd.own.median).toFixed(1) %>" y1="<%= dPadT - 5 %>" x2="<%= dx(rd.own.median).toFixed(1) %>" y2="<%= dPadT + bandH %>"
             stroke="#8F5800" stroke-width="2"/>
       <text x="<%= (dx(rd.own.median) + offsetFor(rd.own.median)).toFixed(1) %>" y="<%= dPadT - 10 %>"
-            text-anchor="<%= anchorFor(rd.own.median) %>" font-size="12" font-family="JetBrains Mono" fill="#8F5800">중앙값 <%= rd.own.median %>%</text>
+            text-anchor="<%= anchorFor(rd.own.median) %>" font-size="12" font-family="JetBrains Mono" fill="#8F5800">가운데 <%= rd.own.median %>%</text>
       <line x1="<%= dx(rd.other.median).toFixed(1) %>" y1="<%= dPadT + bandH + rowGap %>"
             x2="<%= dx(rd.other.median).toFixed(1) %>" y2="<%= dPadT + bandH * 2 + rowGap + 5 %>"
             stroke="#4B5362" stroke-width="2"/>
       <text x="<%= (dx(rd.other.median) + offsetFor(rd.other.median)).toFixed(1) %>" y="<%= dPadT + bandH * 2 + rowGap + 20 %>"
-            text-anchor="<%= anchorFor(rd.other.median) %>" font-size="12" font-family="JetBrains Mono" fill="#4B5362">중앙값 <%= rd.other.median %>%</text>
+            text-anchor="<%= anchorFor(rd.other.median) %>" font-size="12" font-family="JetBrains Mono" fill="#4B5362">가운데 <%= rd.other.median %>%</text>
 
       <%# x축 %>
       <% [65, 70, 80, 90, 100].forEach(t => { %>
-        <text x="<%= dx(t).toFixed(1) %>" y="<%= dH - 8 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="#7A8090"><%= t %>%</text>
+        <text x="<%= dx(t).toFixed(1) %>" y="<%= dH - 8 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="var(--sub2)"><%= t %>%</text>
       <% }) %>
     </svg>
   </div>

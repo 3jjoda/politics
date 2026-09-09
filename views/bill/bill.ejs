@@ -199,7 +199,7 @@
   .search-input::placeholder { color: var(--sub2); }
   .search-btn {
     padding: 10px 20px;
-    background: var(--accent);
+    background: var(--accent2);
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -250,7 +250,7 @@
     background: var(--bg3);
     color: var(--sub2);
   }
-  .status-tab.active .tab-badge { background: rgba(184,116,12,0.15); color: var(--accent); }
+  .status-tab.active .tab-badge { background: rgba(184,116,12,0.15); color: var(--accent2); }
 
   /* Layout */
   .layout {
@@ -290,15 +290,14 @@
     overflow: hidden;
     flex-shrink: 0;
   }
+  /* mono + 자간 금지 (한글 라벨) · 12px 하한 */
   .side-title {
     padding: 14px 18px;
-    font-size: 11px;
-    font-weight: 600;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--sub2);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
     border-bottom: 1px solid var(--border);
-    font-family: 'JetBrains Mono', monospace;
   }
   .side-list { padding: 6px 0; max-height: 400px; overflow-y: auto; }
   .side-item {
@@ -313,7 +312,7 @@
     text-decoration: none;
   }
   .side-item:hover { background: var(--bg3); }
-  .side-item.active { background: rgba(184,116,12,0.08); color: var(--accent); }
+  .side-item.active { background: rgba(184,116,12,0.08); color: var(--accent2); }
   .side-item-left {
     display: flex;
     align-items: flex-start;
@@ -339,7 +338,7 @@
     flex-shrink: 0;
     margin-left: 8px;
   }
-  .side-item.active .side-count { color: var(--accent); }
+  .side-item.active .side-count { color: var(--accent2); }
 
   /* AI 분석 진행률 배너 */
   .analysis-progress-banner {
@@ -359,7 +358,7 @@
     flex: 1;
     min-width: 0;
   }
-  .progress-text strong { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+  .progress-text strong { color: var(--accent2); font-family: 'JetBrains Mono', monospace; }
   .progress-bar-track {
     flex: 0 0 200px;
     height: 6px;
@@ -375,7 +374,7 @@
   .progress-pct {
     font-family: 'JetBrains Mono', monospace;
     font-size: 12px;
-    color: var(--accent);
+    color: var(--accent2);
     flex-shrink: 0;
     min-width: 48px;
     text-align: right;
@@ -461,7 +460,7 @@
     font-weight: 600;
     color: var(--text);
     line-height: 1.55;
-    margin-bottom: 10px;
+    margin: 0 0 10px;
   }
   .bill-card-info {
     display: flex;
@@ -706,7 +705,7 @@
     border-color: var(--border);
   }
   .filter-sheet-apply {
-    background: var(--accent);
+    background: var(--accent2);
     color: #fff;
   }
   .filter-sheet-close {
@@ -724,7 +723,7 @@
   /* pending 시각 — 데스크톱/모바일 공통 */
   #filter-sidebar .side-item.sheet-pending {
     background: rgba(184,116,12,0.08);
-    color: var(--accent);
+    color: var(--accent2);
   }
   #filter-sidebar .side-item.sheet-pending .side-dot { background: var(--accent); }
 
@@ -1150,7 +1149,10 @@
                   </span>
                 <% } %>
               </div>
-              <div class="bill-card-name"><%= b.bill_name %></div>
+              <%# 🔴 div 가 아니라 h2 다 (2026-09-02). 목록 50장에 heading 이 하나도 없어서
+                  스크린리더로 항목 사이를 건너뛸 수 없었다. 크기·굵기는 그대로 두고 레벨만 올린 것 —
+                  .bill-card-name 의 margin 을 0 으로 명시해야 UA 기본 여백이 안 붙는다. %>
+              <h2 class="bill-card-name"><%= b.bill_name %></h2>
               <%
                 // 카드 본문 — 법안의 87%가 동명("○○법 일부개정법률안")이라 이름만으로는 구분이 안 된다.
                 // AI 요약이 있으면 그걸(쉬운 말), 없으면 국회 원문 제안이유를 보여준다.

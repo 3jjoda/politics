@@ -167,6 +167,13 @@
             운영 비용은 광고로 충당하며, 정치 관련 광고 카테고리는 차단합니다.</p>
         <p>잘못된 데이터나 오해를 부르는 표현을 발견하시면 알려주세요.
             <strong>고칠 수 있는 것은 고치고, 고칠 수 없는 것은 왜 그런지 화면에 적겠습니다.</strong></p>
+        <%# 🔴 이 자리가 비면 바로 위 "알려주세요" 가 빈 약속이 된다 (CONTACT_EMAIL 미설정 시 렌더 안 됨) %>
+        <% if (locals.contactEmail) { %>
+        <p class="about-contact">
+            <span class="about-contact-label">문의 · 정정 요청</span>
+            <a href="mailto:<%= contactEmail %>"><%= contactEmail %></a>
+        </p>
+        <% } %>
         <p class="about-links">
             <a href="/guide/glossary">용어 설명</a>
             <a href="/privacy">개인정보처리방침</a>

@@ -203,7 +203,7 @@ function buildShort(p, slides, person) {
         person.lead = lead;
         bits.push(`${lead} ${person.name} 의원${person.district ? `, ${person.district}` : ''}.`);
         // 60초 상한 — 숫자는 화면이 다 보여주므로 말은 핵심만 (실측: 다 읽으면 사람 장면만 20초)
-        if (person.propose != null) bits.push(`대표발의 ${nf(person.propose)}건${person.medPropose != null ? `, 중앙값 ${nf(person.medPropose)}건` : ''}.`);
+        if (person.propose != null) bits.push(`대표발의 ${nf(person.propose)}건${person.medPropose != null ? `, 의원 절반은 ${nf(person.medPropose)}건 이상` : ''}.`);
         if (person.voteRate != null) bits.push(`본회의 표결 참여 ${person.voteRate}%.`);
         if (person.ownRate != null && person.otherRate != null) bits.push(`자기 당 법안 찬성 ${person.ownRate}%, 상대 당 ${person.otherRate}%.`);
         if (person.cmtRate != null) bits.push(`상임위 회의 참여 ${person.cmtRate}%${person.cmtAvg != null ? `, 평균 ${person.cmtAvg}` : ''}.`);

@@ -89,13 +89,13 @@ const EPISODES = {
             { kind: 'count', no: 1 },
             { kind: 'reveal', no: 1, pick: 2, say: `정답은 C. 의원 절반이 ${d.own_med}퍼센트 이상. 100퍼센트인 의원이 ${d.own_full_pct}퍼센트나 됩니다.`,
               q: '국회의원은 <b>자기 당</b>이 낸 법안에<br>몇 % 찬성할까?', opts: ['약 70%', '약 85%', `${Math.floor(d.own_med)}% 이상`],
-              big: `${d.own_med}%`, cap: `의원 중앙값 · ${d.n}명 중 ${d.own_full}명은 100%` },
+              big: `${d.own_med}%`, cap: `여기가 한가운데 · ${d.n}명 중 ${d.own_full}명은 100%` },
             { kind: 'q', no: 2, say: '그럼, 상대 당이 낸 법안에는요?',
               q: '그럼 <b>상대 당</b>이 낸 법안에는?', opts: ['약 40%', '약 70%', `약 ${Math.round(d.other_med)}%`] },
             { kind: 'count', no: 2 },
             { kind: 'reveal', no: 2, pick: 2, say: `${d.other_med}퍼센트. 자기 당과 차이는 겨우 ${d.gap_med}퍼센트포인트입니다.`,
               q: '그럼 <b>상대 당</b>이 낸 법안에는?', opts: ['약 40%', '약 70%', `약 ${Math.round(d.other_med)}%`],
-              big: `${d.other_med}%`, cap: `의원 중앙값 · 자기 당과 격차 ${d.gap_med}%p`, pair: [`자기 당 ${d.own_med}%`, `상대 당 ${d.other_med}%`] },
+              big: `${d.other_med}%`, cap: `여기가 한가운데 · 자기 당과 격차 ${d.gap_med}%p`, pair: [`자기 당 ${d.own_med}%`, `상대 당 ${d.other_med}%`] },
             { kind: 'fact', say: `본회의 표결 ${nf(d.total)}건 중 반대는 ${d.against_pct}퍼센트. 본회의에 오를 때쯤이면 이미 여야가 걸러낸 뒤거든요.`,
               kick: '왜 이렇게 높을까', big: `${d.against_pct}%`, lbl: `본회의 표결 ${nf(d.total)}건 중 반대표`, foot: '걸러지는 곳은 본회의가 아니라 <b>위원회</b>' },
             { kind: 'outro', say: `그런데 이 격차가 ${Math.floor(d.gap_max)}퍼센트포인트 넘는 의원도 있습니다. 누굴까요. 의원 이름으로 보는 표결 기록, 당말사. 당 말고 사람.`,
@@ -153,19 +153,19 @@ const EPISODES = {
                 { kind: 'q', no: 1, who: P, say: `${who}. 22대 국회에서 대표발의한 법안, 몇 건일까요?`,
                   q: `<b>${esc(P.name)}</b> 의원이 22대에서<br>대표발의한 법안은?`, opts: o1.opts },
                 { kind: 'count', no: 1 },
-                { kind: 'reveal', no: 1, pick: o1.pick, say: `${P.propose}건. 의원 중앙값은 ${P.medPropose}건입니다.`,
-                  opts: o1.opts, big: `${P.propose}건`, cap: `의원 중앙값 ${P.medPropose}건${P.kpi?.propose?.label ? ` · ${P.kpi.propose.label}` : ''}` },
+                { kind: 'reveal', no: 1, pick: o1.pick, say: `${P.propose}건. 의원 절반은 ${P.medPropose}건 이상입니다.`,
+                  opts: o1.opts, big: `${P.propose}건`, cap: `절반은 ${P.medPropose}건 이상${P.kpi?.propose?.label ? ` · ${P.kpi.propose.label}` : ''}` },
             ];
             if (o2) sc.push(
                 { kind: 'q', no: 2, say: `본회의 표결에는 얼마나 참여했을까요?`,
                   q: `본회의 표결 <b>${nf(P.voteTotal)}번</b> 중<br>몇 %나 참여했을까?`, opts: o2.opts },
                 { kind: 'count', no: 2 },
-                { kind: 'reveal', no: 2, pick: o2.pick, say: `${Math.round(P.voteRate)}퍼센트. ${nf(P.voteTotal)}번 중 ${nf(P.voteAttended)}번. 의원 중앙값은 ${Math.round(P.medVote)}퍼센트.`,
-                  opts: o2.opts, big: `${P.voteRate}%`, cap: `${nf(P.voteTotal)}번 중 ${nf(P.voteAttended)}번 · 의원 중앙값 ${P.medVote}%` },
+                { kind: 'reveal', no: 2, pick: o2.pick, say: `${Math.round(P.voteRate)}퍼센트. ${nf(P.voteTotal)}번 중 ${nf(P.voteAttended)}번. 의원 절반은 ${Math.round(P.medVote)}퍼센트 이상.`,
+                  opts: o2.opts, big: `${P.voteRate}%`, cap: `${nf(P.voteTotal)}번 중 ${nf(P.voteAttended)}번 · 절반은 ${P.medVote}% 이상` },
             );
             if (P.ownRate != null && P.otherRate != null) sc.push(
-                { kind: 'fact', say: `자기 당이 낸 법안엔 ${P.ownRate}퍼센트 찬성. 상대 당 법안엔 ${P.otherRate}퍼센트. 격차 ${P.gap}퍼센트포인트, 의원 중앙값은 ${P.gapMedian}.`,
-                  kick: '자기 당 · 상대 당 법안 찬성', pair: [`자기 당 ${P.ownRate}%`, `상대 당 ${P.otherRate}%`], lbl: `격차 ${P.gap}%p · 의원 중앙값 ${P.gapMedian}%p`, foot: '' },
+                { kind: 'fact', say: `자기 당이 낸 법안엔 ${P.ownRate}퍼센트 찬성. 상대 당 법안엔 ${P.otherRate}퍼센트. 격차 ${P.gap}퍼센트포인트, 의원 절반은 ${P.gapMedian} 이상.`,
+                  kick: '자기 당 · 상대 당 법안 찬성', pair: [`자기 당 ${P.ownRate}%`, `상대 당 ${P.otherRate}%`], lbl: `격차 ${P.gap}%p · 절반은 ${P.gapMedian}%p 이상`, foot: '' },
             );
             sc.push({ kind: 'outro', who: P, say: `${P.name} 의원의 발의·표결·발언 기록 전부, 당말사에서. 당신 지역구 의원도 찾아보세요. 당 말고 사람.`,
                       tease: `${esc(P.name)} 의원의 기록,<br>전부 있습니다`, sub: '당신 지역구 의원은?', desc: `발의 · 표결 · 발언 기록을<br>의원 309명 이름으로 봅니다` });
@@ -173,7 +173,7 @@ const EPISODES = {
         },
         titleOf: (P) => `${P.district ? P.district + ' ' : ''}${P.name} 의원, 법안 몇 건 냈을까? #국회 #퀴즈`.slice(0, 95),
         desc: (P) => [
-            `${P.district ? P.district + ' ' : ''}${P.name} 의원의 22대 국회 기록 — 대표발의 ${P.propose}건(중앙값 ${P.medPropose}) · 본회의 표결 참여 ${P.voteRate}% · 자기 당 법안 찬성 ${P.ownRate}% / 상대 당 ${P.otherRate}%.`, '',
+            `${P.district ? P.district + ' ' : ''}${P.name} 의원의 22대 국회 기록 — 대표발의 ${P.propose}건(절반은 ${P.medPropose}건 이상) · 본회의 표결 참여 ${P.voteRate}% · 자기 당 법안 찬성 ${P.ownRate}% / 상대 당 ${P.otherRate}%.`, '',
             `📌 ${P.name} 의원 상세: https://dangmalsa.kr/politician/${P.mona}`,
             `🔎 우리 지역구 의원 찾기: https://dangmalsa.kr/politician`,
             `🧭 나와 가장 가까운 국회의원은? https://dangmalsa.kr/balance-game`, '',

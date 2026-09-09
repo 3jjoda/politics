@@ -324,7 +324,9 @@
                 <span class="vp-scale-dot" style="left:<%= _selfPos %>%"></span>
                 <% if (_medPos !== null) { %>
                   <span class="vp-scale-mark" style="left:<%= _medPos %>%"></span>
-                  <span class="vp-scale-med<%= _labAlign(_medPos) %>" style="left:<%= _medPos %>%">의원 중앙값 <%= _median.toFixed(1) %>%p</span>
+                  <%# ⚠️ 눈금 위 라벨이라 짧아야 한다 — 좁은 자리에서는 `가운데` 를 쓴다
+                      (넓은 자리의 `절반은 N 이상` 과 같은 값을 가리킨다) %>
+                  <span class="vp-scale-med<%= _labAlign(_medPos) %>" style="left:<%= _medPos %>%">가운데 <%= _median.toFixed(1) %>%p</span>
                 <% } %>
               </div>
               <div class="vp-scale-foot">
@@ -370,13 +372,43 @@
               달라 수치만으로 단정하기 어렵습니다. 불참은 제외했고, 대표발의자가 확인되지 않는 위원장 대안 등도 뺐습니다.
             </p>
           </section>
+        <% } else if (_cpv && Number(_cpv.other_total) > 0) { %>
+          <%# 🔴 **자당 법안이 없다고 이 사람의 표결까지 가려지면 안 된다** (2026-09-01 사용자 지적).
+              구 화면은 격차를 못 내면 `표결 기록이 없어 비교할 수 없습니다 · 표결 참여가 적은 경우`
+              라고만 썼는데 **사실과 정반대**였다 — 실측 코호트 탈락 27명이 **전원 "자당 법안만 부족"** 이고
+              전체 표결 참여는 평균 617/639건이다 (용혜인: 자당 0 · 타당 335 · 전체 639 · 타당 찬성 90.1%).
+              의석이 적은 정당은 소속 의원이 대표발의한 법안이 본회의 표결까지 오르는 일 자체가 드물다.
+              → **낼 수 있는 것은 낸다.** 타당 찬성률은 표본이 충분하므로 그대로 보여주고,
+                 격차를 못 내는 이유만 정확히 쓴다 %>
+          <section class="vp-panel">
+            <h4 class="vp-h">누구 법안에 찬성했나</h4>
+            <p class="vp-lede">
+              법안을 <strong>대표발의한 의원의 소속 정당</strong>으로 나눠 봤습니다.
+              <span class="vp-lede-sub">이 의원은 자당·타당 비교가 되지 않아 타당 쪽만 냅니다</span>
+            </p>
+            <div class="vp-cmp">
+              <div class="vp-cmp-item">
+                <span class="vp-cmp-lab">타당 발의</span>
+                <span class="vp-cmp-val is-other"><%= Number(_cpv.other_rate).toFixed(1) %><small>%</small></span>
+                <span class="vp-cmp-n"><%= nf(_cpv.other_total) %>건 중 찬성</span>
+              </div>
+            </div>
+            <%# 🔴 "표결 참여가 적다" 고 쓰지 말 것 — 이 분기의 의원들은 표결에 거의 다 참여했다.
+                못 내는 건 격차뿐이고 이유는 소속 정당의 크기다 %>
+            <p class="vp-note">
+              소속 정당이 대표발의한 법안 중 본회의 표결에 오른 것이
+              <strong><%= nf(_cpv.own_total || 0) %>건</strong>이라 자당·타당을 비교할 수 없습니다.
+              의석이 적은 정당은 구조적으로 그렇습니다. 표결에 참여하지 않아서가 아닙니다.
+            </p>
+          </section>
         <% } else { %>
-          <%# ⚠️ 빈 칸으로 두지 말 것 — 왜 없는지 쓴다 (무소속·자당 표결 0건 등) %>
+          <%# ⚠️ 빈 칸으로 두지 말 것 — 왜 없는지 쓴다. 여기까지 오면 표결 기록 자체가 없다
+              (임기 중 합류 직후 등). 위 분기가 "자당만 없는" 경우를 이미 가져간다 %>
           <section class="vp-panel is-empty">
             <h4 class="vp-h">누구 법안에 찬성했나</h4>
             <p class="vp-note">
-              자당 또는 타당 발의 법안의 표결 기록이 없어 비교할 수 없습니다.
-              무소속이거나 표결 참여가 적은 경우입니다.
+              본회의 표결 기록이 아직 없어 비교할 수 없습니다.
+              임기 도중 합류해 표결이 쌓이지 않은 경우입니다.
             </p>
           </section>
         <% } %>

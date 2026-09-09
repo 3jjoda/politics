@@ -53,6 +53,10 @@ SELECT pol.politician_id
      /* 교차 표결 성향 격차(%p) — 사전 계산 MV. 정의는 CLAUDE.md 참조.
         in_cohort(자·타당 각 50건 이상) 아니면 NULL → UI 에서 필터 제외·정렬 최후미 */
      , CASE WHEN cpv.in_cohort THEN cpv.gap END AS cpv_gap
+     /* 격차만으로는 "무엇과 무엇의 차이" 인지 안 읽힌다 — 목록 카드가 자당·타당 찬성률을
+        같이 보여주므로 두 값을 함께 내린다 (2026-09-01). 행 하나에 숫자 둘, 비용 없음 */
+     , CASE WHEN cpv.in_cohort THEN cpv.own_rate   END AS cpv_own_rate
+     , CASE WHEN cpv.in_cohort THEN cpv.other_rate END AS cpv_other_rate
   FROM pol
   LEFT JOIN (
       SELECT mona_cd, COUNT(*) AS propose_cnt

@@ -18,9 +18,15 @@ SELECT bv.bill_id
      , b.bill_name
      , b.proc_result_name
      , b.committee AS bill_topic_nm
+     /* 🔴 **발의 정당** (2026-09-01). 이게 없어서 "이 법안 누가 냈나" 를 보려면 법안 상세로
+        하나씩 들어가야 했고, 분모를 모르는 채 "불참한 게 다 특정 당 법안" 이라는 인상이 생겼다.
+        실측: 본회의 표결 법안 639건 중 국민의힘 발의가 42.1% 라 무작위로 열어도 10건 중 4건이다 */
+     , b.proposer_name AS bill_proposer
+     , bp.party_name   AS bill_party
      , COUNT(*) OVER() AS total_count
   FROM bill_votes bv
   LEFT JOIN bills b ON b.bill_id = bv.bill_id
+  LEFT JOIN politicians bp ON bp.mona_cd = b.mona_cd
  WHERE bv.mona_cd = $1
    AND ($2 = 'all' OR bv.vote_result = $2)
  ORDER BY bv.vote_date DESC, bv.bill_id DESC

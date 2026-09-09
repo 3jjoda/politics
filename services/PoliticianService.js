@@ -247,6 +247,14 @@ export default (db) => {
         },
         getVotesByMonaCd: async (monaCd) => politicianDao.getVotesByMonaCd(monaCd),
 
+        /* 표결한 법안의 발의 정당 분포 (결과별 + 전체). 🔴 비교 기준이 없으면
+           "불참한 게 다 저 당 법안" 같은 인상이 생긴다 — 실측 기저율 42.1% (쿼리 주석 참조).
+           ⚠️ 실패해도 [] 를 준다 — 표결 탭 본문은 살아야 한다 */
+        getVoteBillPartyDist: async (monaCd) => {
+            try { return await politicianDao.getVoteBillPartyDist(monaCd); }
+            catch (e) { logger.error(`[PoliticianService] 발의 정당 분포 실패: ${e.message}`); return []; }
+        },
+
         /* 표결 내역 탭 한 페이지 (+ 결과별 필터).
            🔴 `result` 는 화이트리스트로만. 모르는 값은 에러가 아니라 'all' 로 조용히 접는다 —
               URL 을 손으로 고쳐도 안전하고, 링크가 깨져도 빈 화면보다 낫다 (/xray/chart 와 같은 판단) */

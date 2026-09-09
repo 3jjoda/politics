@@ -27,7 +27,7 @@
       <% }) %>
       <line x1="<%= hPadL %>" y1="<%= hH - hPadB %>" x2="<%= hW - 8 %>" y2="<%= hH - hPadB %>" stroke="#C9C5B6" stroke-width="1"/>
       <% [0, 25, 50, 75, 100].forEach(t => { %>
-        <text x="<%= (hPadL + t / 100 * (bw * 20)).toFixed(1) %>" y="<%= hH - 8 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="#7A8090"><%= t %>%</text>
+        <text x="<%= (hPadL + t / 100 * (bw * 20)).toFixed(1) %>" y="<%= hH - 8 %>" text-anchor="middle" font-size="11" font-family="JetBrains Mono" fill="var(--sub2)"><%= t %>%</text>
       <% }) %>
     </svg>
   </div>

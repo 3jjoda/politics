@@ -10,7 +10,11 @@ SELECT bv.bill_id
      , b.bill_name
      , b.proc_result_name
      , b.committee AS bill_topic_nm
+     /* 발의 정당 — 페이지 쿼리와 **같은 컬럼**이어야 한다 (SSR 첫 페이지와 더 보기가 같은 행을 그린다) */
+     , b.proposer_name AS bill_proposer
+     , bp.party_name   AS bill_party
   FROM bill_votes bv
   LEFT JOIN bills b ON b.bill_id = bv.bill_id
+  LEFT JOIN politicians bp ON bp.mona_cd = b.mona_cd
  WHERE bv.mona_cd = $1
  ORDER BY bv.vote_date DESC, bv.bill_id DESC

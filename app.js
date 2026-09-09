@@ -84,6 +84,17 @@ app.locals.kakaoJsKey = (process.env.KAKAO_JS_KEY || '').trim();
 app.locals.naverSiteVerification  = (process.env.NAVER_SITE_VERIFICATION  || '').trim();
 app.locals.googleSiteVerification = (process.env.GOOGLE_SITE_VERIFICATION || '').trim();
 
+/* ===== 연락처 (2026-09-07) =====
+   🔴 값이 없으면 소개·푸터의 문의 자리가 통째로 렌더되지 않는다. 반드시 Railway 에 넣을 것.
+   AdSense 2차 반려(가치가 별로 없는 콘텐츠)의 구체적 결함 중 하나가 이것이었다 —
+   소개 페이지가 "발견하시면 알려주세요" 라고 써놓고 알릴 수단이 사이트 전체에 한 줄도 없었다.
+   구글이 반려 화면에 링크한 웹마스터 품질 가이드라인이 연락처를 명시적으로 요구한다.
+
+   ⚠️ 저장소에 박지 않고 env 로 빼는 이유 — 이 레포는 공개다(github.com/3jjoda/politics).
+      개인 메일 주소를 커밋하면 되돌릴 수 없는 스크랩 대상이 된다. ads.txt 의 pub 아이디와 같은 판단.
+   ⚠️ 화면에는 mailto 링크로 나간다. 스팸이 걱정되면 별칭 주소를 만들어 여기에 넣을 것 */
+app.locals.contactEmail = (process.env.CONTACT_EMAIL || '').trim();
+
 /* ads.txt — "이 도메인의 광고 재고를 팔 권한이 있는 사업자" 선언.
    없으면 AdSense 가 "수익 손실 위험" 경고를 계속 띄운다. 반드시 apex 루트에서 200 이어야 한다
    (www·railway.app 로 오면 canonicalHost 가 301 로 넘겨주므로 크롤러가 따라온다).

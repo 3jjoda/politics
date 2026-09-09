@@ -34,7 +34,7 @@
     color: var(--sub2);
     margin-bottom: 18px;
   }
-  .bd-breadcrumb a { color: var(--accent); }
+  .bd-breadcrumb a { color: var(--accent2); }
 
   .bd-section {
     background: var(--bg2);
@@ -464,7 +464,7 @@
     text-decoration: none;
   }
   .ba-pp-rep-name:hover { text-decoration: underline; text-decoration-color: var(--ba-gold); text-underline-offset: 4px; }
-  .ba-pp-others { color: #8B8578; }
+  .ba-pp-others { color: var(--sub2); }
   .ba-pp-sep    { color: #C8C0AA; }
   .ba-pp-parties { color: var(--ba-meta); }
   .ba-pp-toggle {
@@ -513,7 +513,9 @@
   .ba-pp-card:hover { border-color: var(--ba-gold); transform: translateY(-1px); }
   .ba-pp-card.is-rep { border: 1.5px solid var(--ba-gold); }
   .ba-pp-card.is-retired {
-    color: #9B9486;
+    /* 🔴 #9B9486 은 2.88 이었다 (2026-09-02 수정). 빈 상태 문구는 그 섹션의 **유일한 글자**라
+       가장 잘 읽혀야 하는데 페이지에서 가장 안 보이는 색이었다. --sub 은 7.7 이다 */
+    color: var(--sub);
     font-style: italic;
     cursor: default;
     background: #F3F1EA;
@@ -557,7 +559,7 @@
   }
   .ba-pp-card-party {
     font-size: 10px;
-    color: #8B8578;
+    color: var(--sub2);
     line-height: 1.4;
     white-space: nowrap;
     overflow: hidden;
@@ -1578,7 +1580,8 @@
   .ba-chapter-sub {
     font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', sans-serif;
     font-size: 15px;
-    color: #6B7280;
+    /* #6B7280 은 4.47 로 아슬하게 미달이었다 (--ba-meta 를 #646E7E 로 내린 것과 같은 이유) */
+    color: var(--ba-sub);
     line-height: 1.7;
     margin: 0;
     word-break: keep-all;
@@ -1632,7 +1635,7 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 13px;
     font-weight: 400;
-    color: #8B8578;
+    color: var(--sub2);
     margin-left: 6px;
   }
   .pb-part-sub {
@@ -1644,13 +1647,15 @@
   .pb-part-foot {
     margin-top: 14px;
     font-size: 12px;
-    color: #8B8578;
+    color: var(--sub2);
     text-align: center;
   }
   .pb-part-empty {
     padding: 40px 24px;
     text-align: center;
-    color: #9B9486;
+    /* 🔴 #9B9486 은 2.88 이었다 (2026-09-02 수정). 빈 상태 문구는 그 섹션의 **유일한 글자**라
+       가장 잘 읽혀야 하는데 페이지에서 가장 안 보이는 색이었다. --sub 은 7.7 이다 */
+    color: var(--sub);
     font-style: italic;
     font-size: 14px;
   }
@@ -1684,7 +1689,7 @@
   .pb-part .cv-dot { width: 8px; height: 8px; }
   .pb-part .cv-dot-agree    { background: #0F1B1F; }
   .pb-part .cv-dot-disagree { background: #8F5800; }
-  .pb-part .cv-total { color: #8B8578; }
+  .pb-part .cv-total { color: var(--sub2); }
   .pb-part .cv-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .pb-part .cv-btn {
     flex: 1;
@@ -1713,7 +1718,7 @@
     width: 100%;
     margin: 8px 0 0;
     font-size: 12px;
-    color: #8B8578;
+    color: var(--sub2);
     text-align: center;
   }
 
@@ -1748,7 +1753,9 @@
   .pb-proposer-card:hover { border-color: #8F5800; transform: translateY(-1px); }
   .pb-proposer-card.is-rep { border: 1.5px solid #8F5800; }   /* 대표만 골드 외곽선 = 대표 표시 */
   .pb-proposer-card.is-retired {
-    color: #9B9486;
+    /* 🔴 #9B9486 은 2.88 이었다 (2026-09-02 수정). 빈 상태 문구는 그 섹션의 **유일한 글자**라
+       가장 잘 읽혀야 하는데 페이지에서 가장 안 보이는 색이었다. --sub 은 7.7 이다 */
+    color: var(--sub);
     font-style: italic;
     cursor: default;
     background: #F3F1EA;
@@ -1774,11 +1781,11 @@
   }
   .pb-pp-party {
     font-size: 11px;
-    color: #8B8578;
+    color: var(--sub2);
     line-height: 1.4;
   }
   .pb-proposer-card.is-retired .pb-pp-name,
-  .pb-proposer-card.is-retired .pb-pp-party { color: #9B9486; }
+  .pb-proposer-card.is-retired .pb-pp-party { color: var(--sub2); }
 
   @media (max-width: 1024px) {
     .pb-proposers-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -1794,13 +1801,13 @@
     border-radius: 10px;
   }
   .pb-part .write-input::placeholder,
-  .pb-part input::placeholder { color: #9B9486; }
-  .pb-part .comment-sort { color: #8B8578; font-size: 13px; }
+  .pb-part input::placeholder { color: var(--sub2); }
+  .pb-part .comment-sort { color: var(--sub2); font-size: 13px; }
   .pb-part .sort-btn {
     padding: 0;
     background: transparent;
     border: none;
-    color: #8B8578;
+    color: var(--sub2);
     font-size: 13px;
     font-weight: 500;
     cursor: pointer;
@@ -1815,7 +1822,7 @@
     text-decoration-thickness: 1.5px;
     background: transparent;
   }
-  .pb-part .sort-count { color: #8B8578; font-family: 'JetBrains Mono', monospace; }
+  .pb-part .sort-count { color: var(--sub2); font-family: 'JetBrains Mono', monospace; }
   .pb-part .comment-card {
     background: #FFFFFF;
     border: 1px solid #E8E5DC;
@@ -1826,15 +1833,17 @@
   .pb-part .comment-card:hover { border-color: #D9D3C3; }
   .pb-part .comment-replies .comment-card { background: #FAFAF7; }
   .pb-part .comment-nickname { color: #0F1B1F; font-weight: 700; font-size: 14px; }
-  .pb-part .comment-date { color: #8B8578; font-size: 12px; }
+  .pb-part .comment-date { color: var(--sub2); font-size: 12px; }
   .pb-part .comment-body { color: #0F1B1F; font-size: 14px; line-height: 1.7; }
-  .pb-part .comment-action { color: #8B8578; }
+  .pb-part .comment-action { color: var(--sub2); }
   .pb-part .comment-action:hover { color: #0F1B1F; background: #F3F1EA; }
   .pb-part .comment-action.liked { color: #8F5800; background: rgba(143,88,0,0.08); }
   .pb-part .comment-action.liked strong { color: #8F5800; }
   .pb-part .comments-empty {
     background: transparent;
-    color: #9B9486;
+    /* 🔴 #9B9486 은 2.88 이었다 (2026-09-02 수정). 빈 상태 문구는 그 섹션의 **유일한 글자**라
+       가장 잘 읽혀야 하는데 페이지에서 가장 안 보이는 색이었다. --sub 은 7.7 이다 */
+    color: var(--sub);
     font-style: italic;
     border: 1px dashed #E8E5DC;
   }
