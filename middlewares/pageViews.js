@@ -227,23 +227,28 @@ export function pageViews(db) {
         const today = kstToday();
         const parsed = parseVid(readCookie(req.headers.cookie, COOKIE));
 
-        /* 🔴 쿠키 없이 상세 URL 로 곧장 들어온 요청은 세지 않는다 (2026-09-07).
-           2026-09-06 에 위 필터 넷을 전부 통과한 크롤러가 하루 1,443뷰를 남겼다 —
-           bill_detail 1,443뷰 / 1,443유니크, 즉 방문자 1명당 정확히 1뷰다.
-           쿠키를 한 번도 되돌려주지 않아 요청마다 새 방문자로 잡힌 것이고,
-           그 하루가 30일 유니크(1,618)의 91%를 먹어 통계를 통째로 못 쓰게 만들었다.
+        /* 🔴 쿠키 없이 홈이 아닌 경로로 곧장 들어온 요청은 세지 않는다
+           (2026-09-07 상세 한정으로 도입 → 2026-09-10 홈 제외 전 경로로 확대).
 
-           판정: 쿠키 없음 + Sec-Fetch-Site: none(주소창 입력·북마크) + 상세 페이지(target 있음).
-           사람은 /bill/PRC_… 같은 불투명 ID 를 손으로 치지 않는다 — 검색·SNS 를 타고 오므로
-           그 경우엔 cross-site 나 same-site 가 붙는다. 홈·목록의 none 은 그대로 센다
-           (dangmalsa.kr 를 직접 치는 건 정상이다).
+           2026-09-06 에 위 필터 넷을 전부 통과한 크롤러가 하루 1,479뷰를 남겼다 —
+           뷰와 유니크가 정확히 같다, 즉 방문자 1명당 1뷰다. 쿠키를 한 번도 되돌려주지 않아
+           요청마다 새 방문자로 잡혔고, 그 하루가 30일 유니크의 91%를 먹어 통계를 못 쓰게 만들었다.
+
+           🔴 경로를 나열해 막으면 봇이 그 경로만 피해 간다. 실제로 09-09 에 Cloudflare WAF 로
+           상세 3종을 막자 다음 날 곧바로 /balance-game 으로 옮겨갔다 (09-09 balance 23뷰 ·
+           09-10 20뷰, 이틀 다 1인당 정확히 1페이지). 그래서 조건을 뒤집는다 —
+           막을 경로를 세는 대신 통과시킬 경로를 홈 하나로 둔다.
+
+           판정: 쿠키 없음 + Sec-Fetch-Site: none(주소창 입력·북마크) + 홈이 아닌 경로.
+           주소를 직접 치는 건 dangmalsa.kr 뿐이고 그건 그대로 센다. 검색·SNS 유입은
+           cross-site, 사이트 안 클릭은 same-origin 이라 어느 것도 안 걸린다.
 
            ⚠️ 헤더가 없는 구형 브라우저는 이 조건에 걸리지 않는다 (=== 비교라 자연히 통과).
-           ⚠️ 쿠키를 지운 사람이 북마크한 법안을 여는 경우는 누락된다. 드물고,
-              봇을 세는 것보다 그쪽을 조금 덜 세는 편이 낫다.
-           ⚠️ 근본 차단은 앱이 아니라 Cloudflare(Bot Fight Mode·Rate limiting) 몫이다.
-              여기는 통계 오염만 막는다 */
-        if (!parsed && page.target && req.get('sec-fetch-site') === 'none') return next();
+           ⚠️ 쿠키를 지운 사람이 북마크한 목록·상세를 여는 경우는 누락된다. `_v` 가 1년짜리라
+              드물고, 봇을 세는 것보다 그쪽을 조금 덜 세는 편이 낫다.
+           ⚠️ 근본 차단은 앱이 아니라 Cloudflare 몫이다 — 여기는 통계 오염만 막는다.
+              WAF 규칙도 같은 조건으로 넓혀야 origin 부하까지 막힌다 (CLAUDE.md 「Cloudflare 봇 차단」) */
+        if (!parsed && path !== '/' && req.get('sec-fetch-site') === 'none') return next();
 
         let vid, isNewVisitor;
         if (!parsed) {

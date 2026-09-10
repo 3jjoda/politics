@@ -119,7 +119,7 @@
 | **Supabase 대시보드** | Data API(Exposed schemas) 끄기 | 전 테이블이 인터넷에 열린다 → 위 "Data API 는 꺼져 있다" |
 | **Supabase DB** | 세션 타임존 KST (`ALTER DATABASE`) | 모든 시각이 9시간 밀린다 → `ddl/migrations/2026-08-06-db-timezone-kst.sql` |
 | **Railway 대시보드** | 크론 스케줄·서비스별 환경변수·리전 | 배치가 안 돌거나 그날 전체가 멈춘다 |
-| **Cloudflare** | DNS 4레코드·프록시 ON·SSL `Full (strict)` | 무한 리다이렉트 또는 전 페이지 무압축 |
+| **Cloudflare** | DNS 4레코드·프록시 ON·SSL `Full (strict)` · **Bot Fight Mode ON + WAF `cookieless-detail-challenge`** | 무한 리다이렉트 · 전 페이지 무압축 · 크롤러가 origin 직격 |
 | **AdSense 콘솔** | 정치 카테고리 차단 | 이용약관 10항이 **거짓 약속**이 된다 |
 | **Railway 대시보드** | `CONTACT_EMAIL` | 소개의 "알려주세요" 가 **빈 약속**이 되고, AdSense 가 요구하는 연락처가 없는 상태로 남는다 |
 
@@ -1737,14 +1737,24 @@ daos/queries/admin/getStats*.sql       ← 읽기 5종 / views/admin/stats.ejs
 - 🔴 **봇 필터가 생명선이다** (08-14 크롤러 116,880건이 세어지면 그래프가 죽는다): UA 패턴 + **`Sec-Fetch-Dest: document`**
   (curl·대부분의 크롤러는 안 보낸다) + `Accept: text/html` + 정적·API·`/admin`·`/auth`·`/my`·robots/sitemap·`/xray/s/`·
   브리핑 card/threads 제외 + 응답 200·text/html 만. 완벽하지 않으므로 **Cloudflare 대시보드와 같이 본다**
-- 🔴 **쿠키 없이 상세 URL 로 곧장 들어온 요청은 세지 않는다** (2026-09-07 작성 · **2026-09-09 배포**). 위 필터 넷을
+- 🔴 **쿠키 없이 홈이 아닌 경로로 곧장 들어온 요청은 세지 않는다**
+  (2026-09-07 작성 · 09-09 배포 · **09-10 상세 한정 → 홈 제외 전 경로로 확대**). 위 필터 넷을
   **전부 통과한** 크롤러가 2026-09-06 에 하루 **1,479뷰 / 1,479유니크**를 남겼다 — 뷰와 유니크가 정확히 같다,
   즉 1인당 1뷰다. 그중 `bill_detail` 이 1,435뷰이고 **서로 다른 법안 1,406장**이다.
   쿠키를 한 번도 되돌려주지 않아 요청마다 새 방문자로 잡혔고, 그 하루가 **30일 유니크의 91%**를 먹어
   통계를 통째로 못 쓰게 만들었다 (실사용자는 하루 8명 안팎이다).
-  - 판정: **쿠키 없음 + `Sec-Fetch-Site: none` + 상세 페이지(`target` 있음)**.
-    사람은 `/bill/PRC_…` 같은 불투명 ID 를 손으로 치지 않는다 — 검색·SNS 를 타고 오므로 `cross-site`·`same-site` 가 붙는다.
-    **홈·목록의 `none` 은 그대로 센다** (주소를 직접 치는 건 정상이다)
+  - 판정: **쿠키 없음 + `Sec-Fetch-Site: none` + 홈이 아닌 경로**.
+    주소를 직접 치는 건 `dangmalsa.kr` 뿐이라 **홈의 `none` 만 그대로 센다.**
+    검색·SNS 유입은 `cross-site`, 사이트 안 클릭은 `same-origin` 이라 어느 것도 안 걸린다
+  - 🔴 **경로를 나열해 막으면 봇이 그 경로만 피해 간다** (2026-09-10, 실제로 겪음).
+    구 조건은 **상세 페이지(`page.target`)에만** 걸렸고 09-09 오전 WAF 규칙도 `/bill/`·`/politician/`·`/briefing/`
+    셋만 지정했다. 그러자 **같은 날 오후부터 `/balance-game/*` 로 옮겨갔다** —
+    09-09 balance **23뷰** · 09-10 **20뷰**, 이틀 다 site 뷰=유니크(45/43 · **35/35**)로 **1인당 1페이지**.
+    상세는 09-10 에 **0건**이라 차단은 정상 작동했다. 즉 막은 게 아니라 **밀어낸 것**이었다
+    - 🔴 **막을 경로를 세지 말고 통과시킬 경로를 홈 하나로 둔다.** 그래야 다음에 또 안 옮겨간다
+    - ⚠️ **SNS 유입과 헷갈리지 말 것** — 판별은 **1인당 페이지 수**다.
+      평상시 1.9 · **09-03 SNS 게시일 6.3**(50뷰/8유니크, 진짜 사람) vs 09-09·10 **1.0**.
+      09-09 에도 인스타·쓰레드에 올렸지만 그건 **브리핑** 게시물인데 그 이틀 `briefing_detail` 이 **0건**이었다
   - 🔴 **구글이 아니다.** `BOT_UA` 에 `bot` 이 있어 Googlebot 은 애초에 집계에서 빠진다 — 세어진 것은
     자기를 봇이라 밝히지 않고 **브라우저 헤더를 흉내낸** 수집기다. 사이트맵에 실린 법안은 160건뿐인데
     1,406장을 훑었으니 색인이 아니라 **내부 링크 전수 순회**다.
@@ -4629,8 +4639,61 @@ public/styles/guide.css           ← .gd-*  (720px · 16px/1.85 · 세리프 �
 - 판별법: `curl -H 'Accept-Encoding: gzip, br' -o /dev/null -D - https://dangmalsa.kr/politician` 에
   `Content-Encoding: br` 이 있는지. **localhost 직결로 재면 Cloudflare 를 안 거쳐 1MB 가 나온다** — 그게 오해의 출처였다
 
+### Cloudflare 봇 차단 (2026-09-09)
+09-06 크롤러 사건(위 「방문 통계」 참조) 대응. 🔴 **대시보드 설정이라 `git clone` 으로 안 따라온다** — 맨 위 「코드 밖 설정」 표와 한 쌍이다.
+
+| 어디 | 설정 |
+|---|---|
+| Security → Bots | **Bot fight mode ON** |
+| Security → WAF → Custom rules | **`cookieless-detail-challenge`** (아래) |
+
+- 🔴 **Bot Fight Mode 만으로는 안 잡힌다.** 켠 직후 실측에서 `python-requests`·`curl`·`Scrapy` UA 가
+  **전부 200 으로 통과했다**(4분간 20초 간격 재시도). 무료 티어의 넓은 휴리스틱이라 단순 자동화 요청도 놓친다 —
+  켜두되 여기에 기대지 말 것
+- **실제로 막는 쪽은 WAF 규칙이다.** 판정 신호가 앱 필터(`middlewares/pageViews.js`)와 **같다** —
+  쿠키를 한 번도 안 돌려주고 홈이 아닌 경로로 직행하는 것. 브라우저 UA 를 흉내내도 이건 못 숨긴다
+
+```
+http.request.headers["sec-fetch-dest"][0] eq "document"
+and http.request.uri.path ne "/"
+and len(http.cookie) == 0
+and http.request.headers["sec-fetch-site"][0] eq "none"
+and not cf.client.bot
+```
+Action: **Managed Challenge**
+
+- 🔴 **경로를 나열하지 않는다** (2026-09-10 확대). 처음엔 `starts_with(…, "/bill/") or "/politician/" or "/briefing/"`
+  로 상세 3종만 지정했는데, **봇이 다음 날 곧바로 `/balance-game/*` 으로 옮겨갔다** (위 「방문 통계」 참조).
+  경로를 쫓아 추가하는 건 끝이 없으므로 **통과시킬 경로를 홈 하나로** 둔다
+  - 🔴 **`sec-fetch-dest eq "document"` 가 정적 자산·기계용 파일을 빼주는 줄이다.**
+    이게 없으면 `robots.txt`·`sitemap.xml`·CSS·이미지까지 조건에 걸린다 — 크롤러는 이 헤더를 안 보내므로
+    자동으로 제외된다 (앱 필터의 첫 조건과 같은 판정)
+  - ⚠️ 헤더가 없는 구형 브라우저는 이 줄에서 자연히 빠진다 (통과하는 쪽이라 안전한 방향)
+
+- 🔴 **Block 이 아니라 Managed Challenge 다.** 쿠키를 지운 사람이 북마크한 상세를 열면 Block 은 그대로 막지만
+  챌린지는 브라우저면 통과한다
+- 🔴 **`not cf.client.bot` 을 빼지 말 것 — 이 한 줄이 Googlebot 을 지킨다.** Googlebot 은 쿠키를 안 보내고
+  크롬 기반이라 `Sec-Fetch-Site: none` 을 보낼 수 있어 나머지 조건에 전부 걸린다. 게다가 이 규칙이 덮는 경로가
+  **사이트맵에 실린 페이지 그 자체**다 (법안 160 · 의원 310 · 브리핑 44)
+  - ⚠️ **밖에서는 검증할 수 없다** — `cf.client.bot` 은 UA 가 아니라 역방향 DNS 로 검증하므로
+    Googlebot UA 를 흉내내면 "가짜" 로 판정돼 챌린지를 받는다(정상 동작이다). 확인 수단은
+    **Search Console → 크롤링 통계**에서 403 이 늘거나 크롤 요청이 급감하는지 보는 것뿐이다
+- ⚠️ **앱 필터와 역할이 다르다. 둘 다 필요하다** — 앱 필터는 통계 오염만 막고(요청은 이미 origin 에 도달해 있다),
+  WAF 규칙은 **origin 부하까지** 막는다
+- ⚠️ **9월 15일 결정이 열려 있다** — `Block AI bots` 가 deprecated 되면서 **mixed purpose 크롤러
+  (검색 색인 + AI 학습 겸용) 차단 여부**를 고르게 한다. 현재 `차단` 으로 선택돼 있는데, `robots.txt` 는
+  `OAI-SearchBot`·`Claude-SearchBot`·`PerplexityBot` 을 **의도적으로 허용**하고 있어 서로 어긋난다.
+  어느 쪽을 고르든 **둘이 같은 말을 해야 한다** (위 `robots.txt` 항목의 절충 근거 참조)
+- ⚠️ **AI Labyrinth 는 켜지 않았다** — 봇에게 AI 생성 미끼 콘텐츠를 심는 기능(Beta)인데,
+  AdSense 가 두 번 반려한 사유가 "96%가 기계 산출물" 이라 방향이 정반대다
+- ✅ 실측 2026-09-09 (6케이스 · 구 경로 지정 규칙): 법안상세·의원상세 + 쿠키없음 + `none` → **403 `cf-mitigated: challenge`** /
+  `cross-site`(검색·SNS 유입) · 쿠키 있음 · 홈 · 목록(`/bill`) → **전부 200 통과**
+- ⚠️ 2026-09-10 실측: 상세는 **403 유지**인데 `/balance-game`·`/guide/…`·`/issue` 는 **전부 200** —
+  위 확대 표현식은 **대시보드에 반영해야 적용된다** (앱 필터는 같은 날 코드로 넓혔다).
+  둘이 어긋나 있으면 통계는 깨끗한데 origin 은 계속 맞는다
+
 ### 아직 안 한 것 — Cloudflare 캐시
-**캐시 히트율 0.09%** 는 그대로다 (HTML 이 전부 origin 직행).
+**캐시 히트율 0.09%** 는 그대로다 (HTML 이 전부 origin 직행. 2026-09-06 재실측 3.2% — 3,800요청 중 origin 3,670).
 - 🔴 **캐시 룰을 걸 땐 세션 쿠키(`connect.sid`) 유무로 반드시 분기할 것.** 로그인 사용자의 nav 가 들어간 HTML 이 엣지에 캐시되면 **세션·닉네임이 다른 사람에게 노출된다**
 - Cloudflare 무료 플랜으로 충분하다 (`Upgrade to Pro` 불필요). 봇 대응도 Bot Fight Mode + Rate limiting 규칙으로 무료 범위에서 된다
 
