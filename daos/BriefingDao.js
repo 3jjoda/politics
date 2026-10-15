@@ -50,6 +50,9 @@ export default (db) => {
 
         getPost: (id) => run('getPost', [id]).then((r) => r[0] || null),
 
+        /* 그날 발의된 법안 전건 — 브리핑 상세 「그날의 법안」 (bill_no 접수 순) */
+        getDayBills: (date) => run('getDayBills', [date]),
+
         /* 인스타 카드 보조 데이터 — 비교 기준선 / 몰린 법률의 대표발의자 (렌더 시 계산, 저장 안 함) */
         getCardBaseline: (date) => run('getCardBaseline', [date]).then((r) => r[0] || null),
         getCardLawProposers: (date, names) => run('getCardLawProposers', [date, names]),

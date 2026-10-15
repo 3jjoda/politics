@@ -26,6 +26,17 @@
   // JS 로 줄이면 캡처 타이밍에 따라 크기가 달라진다 (자동화가 폰트 로드 전에 찍을 수 있음).
   const hl = p.headline || '';
   const hlSize = hl.length <= 18 ? 112 : hl.length <= 30 ? 94 : hl.length <= 44 ? 76 : 62;
+
+  /* 뉴스카드형 표지 (2026-10-15) — hook 이 있으면 표지를 질문형으로 그린다.
+       cv.person 있음 → A형 (사람 사진 + 질문)  /  없음 → B형 (질문만, 세리프)
+       cv 자체가 없으면(과거 카드·폴백·활동없음) 아래 기존 표지 그대로 — 과거 카드를 다시 그리지 않는다.
+     크기는 역시 서버가 길이로 정한다 (hlSize 와 같은 이유) */
+  const cv = (typeof cover !== 'undefined' && cover && cover.text) ? cover : null;
+  const hkLen = cv ? cv.text.length : 0;
+  const hkA = cv ? (hkLen <= 12 ? 96 : hkLen <= 18 ? 86 : hkLen <= 26 ? 74 : 62) : 0;
+  const hkB = cv ? (hkLen <= 12 ? 108 : hkLen <= 18 ? 96 : hkLen <= 26 ? 82 : 68) : 0;
+  const hkStory = cv ? (hkLen <= 12 ? 118 : hkLen <= 18 ? 102 : hkLen <= 26 ? 86 : 72) : 0;
+  const hkStoryFlow = cv ? (hkLen <= 12 ? 78 : hkLen <= 18 ? 68 : hkLen <= 26 ? 58 : 50) : 0;
   // 스토리는 세로가 570px 더 길어 헤드라인을 키울 수 있다
   const hlStory = hl.length <= 18 ? 128 : hl.length <= 30 ? 108 : hl.length <= 44 ? 88 : 72;
   // 🔴 흐름 블록이 실리는 스토리는 헤드라인을 한 단계 줄인다 — 세로를 나눠 쓰기 때문이다.
@@ -48,9 +59,17 @@
      헤드라인은 AI 가 쓴 요약이라 추상적으로 흐르기 쉽다 — 무엇이 발의됐는지 **구체적인 것**이 있어야 탭한다.
      ⚠️ 캐러셀 흐름 장과 같은 재료(p.threads)를 쓰되 법안 목록은 뺀다 (스토리는 축소율이 커서 못 읽는다).
      ⚠️ 개수는 데이터가 정한다. 3개까지 — 넘치면 CSS 가 잘라내는 게 아니라 아래 measure 로 잡아야 한다 */
-  const storyThreads = (p.threads || []).slice(0, STORY_THREADS).map((t) => ({
+  /* 훅의 흐름을 맨 앞으로 — 피드 캐러셀과 같은 구성 원칙 ("표지가 물은 것부터 갚는다").
+     threads 에 없으면(1건짜리로 걸러짐) cv 재료로 합성한다 */
+  let _st = (p.threads || []).map((t) => ({
       theme: t.theme, what: t.what, cnt: Number(t.bill_count) || 0,
   })).filter((t) => t.theme);
+  if (cv && cv.theme) {
+    const _hi = _st.findIndex((t) => t.theme === cv.theme);
+    if (_hi > 0) _st.unshift(_st.splice(_hi, 1)[0]);
+    else if (_hi < 0) _st.unshift({ theme: cv.theme, what: cv.what || '', cnt: cv.count || 0 });
+  }
+  const storyThreads = _st.slice(0, STORY_THREADS);
 %><!doctype html>
 <html lang="ko" class="<%= one ? 'one' : '' %><%= story ? ' story' : '' %>">
 <head>
@@ -138,7 +157,48 @@
   .sl-url { margin-left: auto; font-family:'JetBrains Mono',monospace; font-size: 26px; font-weight: 500; color: var(--gold-d); letter-spacing: .02em; }
   .sl-src { font-size: 24px; color: var(--sub2); }
 
-  /* ── 표지 ── */
+  /* ── 뉴스카드형 표지 (2026-10-15) ───────────────────────────
+     A형(.sl.is-photo): 사람 사진 + 질문. 레퍼런스(보도사진 뉴스카드)의 구도를 공식 사진으로 옮긴 것.
+     🔴 사진이 위, 질문이 아래 — 엄지를 멈추는 건 얼굴이고, 읽게 만드는 건 질문이다.
+     ⚠️ 공식 사진은 흰 스튜디오 배경이라 상단 오버레이 글자는 잉크색 그대로 쓴다 (흰 글자는 묻힌다) */
+  .sl.is-photo .sl-rule { display: none; }      /* 사진이 맨 위 가장자리까지 간다 */
+  .sl.is-photo .sl-in { padding: 0; }
+  .sl.is-photo .sl-foot { margin: 0 76px; padding-bottom: 44px; }
+  .ph { position: relative; height: 640px; flex: 0 0 auto; overflow: hidden; background: #E9E6DD; }
+  /* 공식 사진은 세로형(머리가 위쪽) — 가로 720px 로 올려두면 얼굴이 위 절반에 들어오고
+     어깨 아래가 잘린다. object-fit cover 로 바꾸려면 309장 얼굴 위치부터 다시 잴 것 */
+  .ph-img { position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 720px; filter: saturate(.92); }
+  .ph::after { content: ''; position: absolute; inset: auto 0 0 0; height: 260px;
+               background: linear-gradient(to bottom, rgba(247,246,241,0), var(--bg) 88%); }
+  /* 상단에도 옅은 페이드 — 사진마다 머리 위치가 달라 날짜·배지가 어두운 머리카락과 겹칠 수 있다
+     (실측 최혁진 — 얼굴이 커서 date 가 머리에 얹혔다). 309장 어느 사진에서도 오버레이가 읽히게 한다 */
+  .ph::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 170px; z-index: 1;
+                background: linear-gradient(to bottom, rgba(247,246,241,.94) 30%, rgba(247,246,241,0)); }
+  .ph-head { z-index: 2; }
+  .ph-head { position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+             display: flex; align-items: center; justify-content: space-between; padding: 44px 76px 0; }
+  .ph-who { position: absolute; left: 76px; right: 76px; bottom: 16px; z-index: 2; margin: 0;
+            font-size: 30px; font-weight: 500; color: var(--sub); }
+  .ph-who b { font-weight: 800; color: var(--ink); }
+  .ph-zone { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding: 10px 76px 0; }
+  .ph-hl { font-weight: 900; line-height: 1.22; letter-spacing: -0.015em; margin: 0;
+           display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .ph-facts { margin: 36px 0 0 10px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
+  .ph-facts span { font-size: 50px; font-weight: 800; line-height: 1.3; color: var(--ink);
+                   background: var(--tint); box-shadow: 0 0 0 10px var(--tint);
+                   border-left: 10px solid var(--gold); padding-left: 20px; }
+  .ph-sub { margin: 36px 0 0; font-size: 30px; line-height: 1.6; color: var(--sub2); }
+
+  /* B형: 질문만 (세리프). hook 은 있는데 사진 쓸 사람이 없는 날 */
+  .cvb-kicker { font-size: 32px; font-weight: 500; color: var(--sub); margin: 0 0 40px; }
+  .cvb-kicker b { color: var(--gold-d); font-weight: 800; }
+  .cvb-q { font-family:'Noto Serif KR',serif; font-weight: 900; line-height: 1.32; margin: 0;
+           display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .cvb-a { margin: 56px 0 0; font-size: 42px; line-height: 1.65; color: var(--sub); }
+  .cvb-a b { color: var(--ink); font-weight: 800; }
+  .cvb-note { margin: 40px 0 0; font-size: 30px; line-height: 1.6; color: var(--sub2); }
+
+  /* ── 표지 (구형 — hook 없는 카드) ── */
   .sl-hl { font-family:'Noto Serif KR',serif; font-weight: 900; line-height: 1.34; margin: 0; padding-left: 34px; border-left: 12px solid var(--gold); }
   .sl-kicker { font-size: 32px; font-weight: 500; color: var(--sub); margin: 0 0 30px; letter-spacing: .02em; }
   .sl-cov { display: flex; gap: 56px; margin: 60px 0 0; padding: 36px 0 0; border-top: 2px solid var(--line2); }
@@ -170,6 +230,9 @@
 
   /* ── 주제 묶음 ── */
   /* 줄 수를 고정해야 카드 높이가 예측된다 — AI 출력은 길이가 들쭉날쭉하다 */
+  /* 훅 장 머리의 표지 질문 재인용 — 표지와 이 장이 한 이야기라는 신호 (작게, 골드) */
+  .th-q { font-size: 34px; font-weight: 700; color: var(--gold-d); margin: 0 0 24px;
+          display:-webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .th-theme { font-family:'Noto Serif KR',serif; font-size: 64px; font-weight: 900; line-height: 1.36; margin: 0 0 34px;
               display:-webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .th-what { font-size: 38px; line-height: 1.72; color: var(--sub); margin: 0;
@@ -315,7 +378,7 @@
 <body class="<%= one ? 'one' : '' %><%= story ? ' story' : '' %>">
 
 <% if (story) { %>
-  <%- include('_card_story', { p, D, DOW, badge, hlStory, hlStoryFlow, coverNums, storyThreads }) %>
+  <%- include('_card_story', { p, D, DOW, badge, hlStory, hlStoryFlow, coverNums, storyThreads, cv, hkStory, hkStoryFlow }) %>
 <% } %>
 
 <% if (!one) { %>
@@ -337,11 +400,53 @@
 <% shown.forEach((s, i) => { const no = single || (i + 1); %>
   <% if (!one) { %><div class="pv-item" id="pv-<%= no %>"><div class="pv-box"><% } %>
 
-  <section class="sl <%= s.kind === 'cover' ? '' : 'is-sub' %>" data-slide="<%= no %>">
+  <section class="sl <%= s.kind === 'cover' ? '' : 'is-sub' %><%= s.kind === 'cover' && cv && cv.person ? ' is-photo' : '' %>" data-slide="<%= no %>">
     <div class="sl-rule"></div>
     <div class="sl-in">
 
-      <% if (s.kind === 'cover') { %>
+      <% if (s.kind === 'cover' && cv && cv.person) { %>
+        <%# ── A형: 사람 사진 + 질문 (2026-10-15 뉴스카드형) ──
+            사람은 컨트롤러 buildCover 가 **데이터로** 고른다 (훅이 가리킨 흐름의 최다 대표발의자 —
+            쇼츠 pickShortPerson 과 같은 규칙. 편집이 아니다).
+            🔴 사진은 /img/politician 프록시(같은 출처)여야 한다 — assembly.go.kr 직결이면
+               cardShot 의 PNG 저장이 CORS 로 깨진다. 정당은 싣지 않는다 (공유 카드와 같은 규칙) %>
+        <div class="ph">
+          <img class="ph-img" src="<%= cv.person.photo %>" alt="">
+          <div class="ph-head">
+            <span class="sl-date is-hero"><%= D %><span class="sl-dow">(<%= DOW %>)</span></span>
+            <span class="sl-tag<%= p.isAi ? '' : ' is-plain' %>"><%= badge %></span>
+          </div>
+          <p class="ph-who"><b><%= cv.person.name %></b> 의원<% if (cv.person.district) { %> · <%= cv.person.district %><% } %><% if (st.proposers) { %> · 이날 발의한 <%= nf(st.proposers) %>명 중 한 사람<% } %></p>
+        </div>
+        <div class="ph-zone">
+          <h1 class="ph-hl" style="font-size: <%= hkA %>px"><%= cv.text %></h1>
+          <% if (cv.theme && cv.count) { %>
+            <div class="ph-facts"><span><%= cv.theme %> 법안 <%= nf(cv.count) %>건 발의</span></div>
+          <% } %>
+          <%# 🔴 판단 유보 문구는 훅과 세트다 (사용자 결정 2026-10-15) — 훅이 긴장 있는 질문까지
+              가도 되는 근거가 이 줄이다. 훅을 세게 쓰려면 이 줄을 빼지 말 것 %>
+          <%# 🔴 두 문장을 <br> 로 가른다 — 한 줄로 이으면 "직접" 만 홀로 둘째 줄로 떨어진다 (실측) %>
+          <p class="ph-sub">이날 국회 발의 <%= nf(st.proposed || 0) %>건 중 눈에 띈 흐름 하나<br>판단은 원문과 기록을 보고 직접 하세요</p>
+        </div>
+
+      <% } else if (s.kind === 'cover' && cv) { %>
+        <%# ── B형: 질문만 (사람·사진이 없는 날 — 퇴임 의원 흐름 등) ── %>
+        <div class="sl-head">
+          <span class="sl-date is-hero"><%= D %><span class="sl-dow">(<%= DOW %>)</span></span>
+          <span class="sl-tag<%= p.isAi ? '' : ' is-plain' %>"><%= badge %></span>
+        </div>
+        <div class="sl-body">
+          <p class="cvb-kicker">이날 국회 발의 <%= nf(st.proposed || 0) %>건 중 <b>눈에 띈 하나</b></p>
+          <h1 class="cvb-q" style="font-size: <%= hkB %>px"><%= cv.text %></h1>
+          <% if (cv.theme && cv.count) { %>
+            <p class="cvb-a"><b><%= cv.theme %></b> 법안 <%= nf(cv.count) %>건이 나왔습니다.</p>
+          <% } %>
+          <%# A형 ph-sub 와 같은 세트 — 훅이 긴장 질문이어도 되는 근거. 빼지 말 것 %>
+          <p class="cvb-note">판단은 원문과 기록을 보고 직접 하세요</p>
+        </div>
+
+      <% } else if (s.kind === 'cover') { %>
+        <%# 구 표지 — hook 없는 카드(2026-10-15 이전·폴백·활동없음)는 이대로 그린다 %>
         <div class="sl-head">
           <span class="sl-date is-hero"><%= D %><span class="sl-dow">(<%= DOW %>)</span></span>
           <span class="sl-tag<%= p.isAi ? '' : ' is-plain' %>"><%= badge %></span>
@@ -381,17 +486,19 @@
         </div>
 
       <% } else if (s.kind === 'thread') { %>
-        <%# 흐름 장에만 날짜가 없었다 — 캐러셀에서 한 장만 캡처돼 돌아다니면 언제 건지 알 수 없다 %>
+        <%# 흐름 장에만 날짜가 없었다 — 캐러셀에서 한 장만 캡처돼 돌아다니면 언제 건지 알 수 없다.
+            🔴 훅 장(isHook)은 표지 질문의 답이라 번호 나열이 아니다 — 라벨이 표지와 이어져야 한다 %>
         <div class="sl-head">
-          <span class="sl-label">이날의 흐름 <%= s.idx %>/<%= s.of %></span>
+          <span class="sl-label"><%= s.isHook ? '무슨 법안이길래' : (cv ? `이날의 다른 흐름 ${s.idx}/${s.of}` : `이날의 흐름 ${s.idx}/${s.of}`) %></span>
           <span class="sl-head-r">
             <span class="sl-date"><%= D %></span>
             <span class="th-cnt"><%= nf(s.t.bill_count) %>건</span>
           </span>
         </div>
         <div class="sl-body is-top">
+          <% if (s.isHook && cv) { %><p class="th-q">“<%= cv.text %>”</p><% } %>
           <h2 class="th-theme"><%= s.t.theme %></h2>
-          <p class="th-what"><%= s.t.what %></p>
+          <% if (s.t.what) { %><p class="th-what"><%= s.t.what %></p><% } %>
           <% if (s.bills.length) { %>
             <ul class="th-bills">
               <% s.bills.forEach((b) => { %>
@@ -472,7 +579,7 @@
   <% if (!one) { %>
     </div>
     <div class="pv-cap">
-      <span><%= no %>. <%= { cover:'표지', stats:'숫자', thread:'흐름', laws:'몰린 법률', outro:'마무리' }[s.kind] %></span>
+      <span><%= no %>. <%= s.kind === 'thread' && s.isHook ? '훅의 법안' : { cover:'표지', stats:'숫자', thread:'흐름', laws:'몰린 법률', outro:'마무리' }[s.kind] %></span>
       <button type="button" class="pv-dl" data-name="<%= p.briefing_date %>-<%= String(no).padStart(2, '0') %>.png">PNG 저장</button>
       <a href="?slide=<%= no %>" target="_blank" rel="noopener">1:1 ↗</a>
     </div>
@@ -484,7 +591,7 @@
 <% if (!one) { %>
   <div class="pv-item">
     <div class="pv-box is-story">
-      <%- include('_card_story', { p, D, DOW, badge, hlStory, hlStoryFlow, coverNums, storyThreads }) %>
+      <%- include('_card_story', { p, D, DOW, badge, hlStory, hlStoryFlow, coverNums, storyThreads, cv, hkStory, hkStoryFlow }) %>
     </div>
     <div class="pv-cap">
       <span>스토리 (9:16)</span>

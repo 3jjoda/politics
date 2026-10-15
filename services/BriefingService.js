@@ -176,6 +176,17 @@ export default (db) => {
             return p ? shapePost(p) : null;
         },
 
+        /* 그날 발의된 법안 전건 — 상세 페이지 「그날의 법안」 (2026-10-15)
+           ⚠️ 실패하면 [] 로 접는다 — 뷰가 bill_ids(대표 5건) 목록으로 폴백하므로 페이지는 산다 */
+        getDayBills: async (date) => {
+            try {
+                return await dao.getDayBills(date);
+            } catch (err) {
+                logger.error(`[briefing] 그날 법안 전건 조회 실패 (${date}): ${err.message}`);
+                return [];
+            }
+        },
+
         /* 인스타 카드 보조 데이터 (렌더 시 계산 — briefing_posts 에 저장하지 않는다)
              baseline      { base_days, base_avg, days_above } | null  → "그날의 숫자" 장의 비교 기준
              lawProposers  { [bill_name]: [이름…] }                     → "몰린 법률" 장의 발의자

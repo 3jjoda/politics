@@ -23,7 +23,15 @@ const THREAD_BILLS = 5;
 /* 카드 한 장 → 슬라이드 배열.
    ⚠️ 슬라이드 수는 **데이터가 정한다** (폴백 카드는 threads 가 비어 4장, AI 카드는 최대 7장).
       뷰에서 개수를 가정하지 말 것.
-   ctx: BriefingService.getCardContext() — { baseline, lawProposers } (없으면 그 장을 뺀다) */
+   ctx: BriefingService.getCardContext() — { baseline, lawProposers } (없으면 그 장을 뺀다)
+
+   🔴 구성 원칙 — **한 포스트 = 한 이야기, 다이제스트는 부록** (2026-10-15 사용자 지적).
+      훅 표지를 달았더니 2번 장부터 그날 숫자·다른 주제로 넘어가 "표지가 물은 것을 캐러셀이
+      갚지 않는" 구조가 됐다 — 질문으로 멈추게 했으면 **2번 장이 바로 그 법안**이어야 한다.
+        hook 있음: 표지 → 그 법안(훅의 흐름) → 나머지 흐름 → 숫자 → 몰린 법률 → 마무리
+        hook 없음(과거 카드·폴백): 표지 → 숫자 → 흐름 → 몰린 법률 → 마무리 (구 순서 그대로 — 이미 게시된 카드가 바뀌면 안 된다)
+      훅의 흐름이 threads 저장에서 걸러진 1건짜리면 hook(theme·what·bill_ids)으로 그 장을 **합성**한다 —
+      안 그러면 질문만 있고 답이 캐러셀 어디에도 없게 된다 (실측으로 겪은 케이스). */
 function buildSlides(p, ctx = {}) {
     const st = p.stats || {};
     const slides = [{ kind: 'cover' }];
@@ -75,19 +83,42 @@ function buildSlides(p, ctx = {}) {
 
     // 주제 묶음 — AI 카드의 핵심. 묶인 법안 이름을 같이 실어야 검증이 가능하다
     const tb = p.thread_bills || {};
-    const threads = (p.threads || []).slice(0, MAX_THREAD_SLIDES);
-    threads.forEach((t, i) => {
-        slides.push({
-            kind: 'thread',
-            t,
-            idx: i + 1,
-            of: threads.length,
-            // ⚠️ 대표발의자를 반드시 같이 실을 것 — 법안의 87%가 동명이라 이름만 늘어놓으면
-            //    같은 줄이 두 번 찍힌 것처럼 보인다 (실제로 "소득세법 일부개정법률안" 이 2줄 나왔다)
-            bills: (t.bill_ids || []).filter((id) => tb[id]).slice(0, THREAD_BILLS)
-                .map((id) => ({ name: tb[id].bill_name, by: tb[id].proposer_name, mona: tb[id].mona_cd })),
-        });
-    });
+
+    /* 훅의 흐름을 맨 앞으로 — 표지 질문의 답이 2번 장이어야 한다 (위 구성 원칙).
+       threads 안에 있으면 꺼내 앞세우고, 걸러져 없으면(1건짜리) hook 재료로 합성한다 */
+    const h = p.hook;
+    let ordered = (p.threads || []).slice();
+    let hasHookThread = false;
+    if (h && h.text && Array.isArray(h.bill_ids) && h.bill_ids.length) {
+        const ids = new Set(h.bill_ids);
+        const i = ordered.findIndex((t) => (t.bill_ids || []).some((id) => ids.has(id)));
+        const hookT = i >= 0
+            ? ordered.splice(i, 1)[0]
+            : { theme: h.theme || '', what: h.what || '', bill_count: Number(h.bill_count) || h.bill_ids.length, bill_ids: h.bill_ids };
+        ordered.unshift(hookT);
+        hasHookThread = true;
+    }
+    ordered = ordered.slice(0, MAX_THREAD_SLIDES);
+
+    const threadSlides = ordered.map((t, i) => ({
+        kind: 'thread',
+        t,
+        isHook: hasHookThread && i === 0,   // 표지 질문의 답 — 뷰가 라벨을 다르게 단다
+        // 훅 장은 번호가 없다 ("무슨 법안이길래") — 나머지만 "이날의 다른 흐름 n/N" 으로 센다
+        idx: hasHookThread ? i : i + 1,
+        of: hasHookThread ? ordered.length - 1 : ordered.length,
+        // ⚠️ 대표발의자를 반드시 같이 실을 것 — 법안의 87%가 동명이라 이름만 늘어놓으면
+        //    같은 줄이 두 번 찍힌 것처럼 보인다 (실제로 "소득세법 일부개정법률안" 이 2줄 나왔다)
+        bills: (t.bill_ids || []).filter((id) => tb[id]).slice(0, THREAD_BILLS)
+            .map((id) => ({ name: tb[id].bill_name, by: tb[id].proposer_name, mona: tb[id].mona_cd })),
+    }));
+
+    if (hasHookThread) {
+        // 흐름(훅 먼저)을 숫자 앞으로 — slides 는 [cover, stats?] 상태라 cover 바로 뒤에 끼운다
+        slides.splice(1, 0, ...threadSlides);
+    } else {
+        slides.push(...threadSlides);
+    }
 
     /* "몰린 법률" — 건수(2건 × 3줄)만으로는 왜 주목할 일인지가 없다. 이 장의 이야기는
        **같은 법을 두고 서로 다른 의원이 각자 안을 냈다**는 것이라 대표발의자를 같이 싣는다 (getCardLawProposers).
@@ -104,6 +135,44 @@ function buildSlides(p, ctx = {}) {
 
     slides.push({ kind: 'outro' });
     return slides;
+}
+
+/* 뉴스카드형 표지 재료 (2026-10-15) — hook 이 있는 카드만.
+     { text, theme, count, person: { mona, name, district, photo } | null } | null
+   사람은 **데이터가 고른다**: 훅이 가리킨 흐름(hook.bill_ids)에서 대표발의가 가장 많은 사람
+   (같으면 앞 — 쇼츠 pickShortPerson 과 같은 규칙). 사진이 없으면(퇴임 의원 등) person=null → B형.
+   🔴 photo 는 /img/politician 프록시 경로다 — assembly.go.kr 직결이면 cardShot(브라우저 PNG 저장)이
+      CORS 로 깨진다. 정당은 싣지 않는다 (공유 카드·인스타 카드 공통 규칙). */
+function buildCover(post) {
+    const h = post?.hook;
+    if (!h || !h.text) return null;
+    const tb = post.thread_bills || {};
+    let person = null;
+    const cnt = new Map();
+    for (const id of (Array.isArray(h.bill_ids) ? h.bill_ids : [])) {
+        const b = tb[id];
+        if (b && b.mona_cd) cnt.set(b.mona_cd, (cnt.get(b.mona_cd) || 0) + 1);
+    }
+    let best = null;
+    for (const [mona, c] of cnt) if (!best || c > best.c) best = { mona, c };
+    if (best) {
+        const b = Object.values(tb).find((x) => x.mona_cd === best.mona);
+        if (b && b.photo_url) {
+            person = {
+                mona: best.mona,
+                name: b.proposer_name,
+                district: b.district || '',
+                photo: `/img/politician/${encodeURIComponent(best.mona)}`,
+            };
+        }
+    }
+    return {
+        text: String(h.text),
+        theme: h.theme || null,
+        what: h.what || null,   // 스토리가 훅의 흐름을 합성할 때 쓴다 (threads 에서 걸러진 1건짜리 대비)
+        count: Number(h.bill_count) || (Array.isArray(h.bill_ids) ? h.bill_ids.length : 0),
+        person,
+    };
 }
 
 /* 슬라이드별 나레이션 — 유튜브 쇼츠(genBriefingVideo.js)의 TTS 원고. 화면 글자를 그대로 읽지 않고 **말로 들었을 때 자연스러운 문장**으로.
@@ -132,7 +201,8 @@ function buildNarration(p, slides) {
                 const cnt = Number(s.t.bill_count || (s.t.bill_ids || []).length || 0);
                 // what 은 첫 문장만 (두 문장짜리가 있다)
                 const what = String(s.t.what || '').split(/(?<=[.다])\s+/)[0];
-                return `${s.of > 1 ? `${s.idx}. ` : ''}${s.t.theme}. ${what}${cnt ? ` 관련 법안 ${cnt}건.` : ''}`;
+                // 훅 장은 번호를 안 읽는다 (idx 가 0 이고, 표지 질문의 답이라 나열의 일부가 아니다)
+                return `${!s.isHook && s.of > 1 ? `${s.idx}. ` : ''}${s.t.theme}. ${what}${cnt ? ` 관련 법안 ${cnt}건.` : ''}`;
             }
             case 'laws': {
                 // 읽을 땐 `일부개정법률안`·`법률안` 꼬리를 뗀다 (귀로는 정보가 아니라 길이다 — 60초 상한)
@@ -314,10 +384,15 @@ export default (db) => {
             // 🔴 그날 발의된 법안이 어느 쟁점에 걸리는지. **날짜로 잇는다** —
             //    post.bill_ids 는 대표 5건뿐이라 그걸로 매칭하면 겹침을 크게 놓친다
             //    (실측 bill_ids 9/32 카드 → 날짜 19/32). 실패해도 [] 라 브리핑은 산다
-            const relatedIssues = await issueService.getIssuesForDate(post.briefing_date);
+            // 그날 법안 **전건**도 같이 — SNS 카드를 보고 들어온 사람이 전부 볼 수 있어야 한다 (2026-10-15)
+            const [relatedIssues, dayBills] = await Promise.all([
+                issueService.getIssuesForDate(post.briefing_date),
+                briefingService.getDayBills(post.briefing_date),
+            ]);
 
             res.render('briefing/post', {
                 relatedIssues,
+                dayBills,
                 pageTitle: post.headline,
                 pageStyles: null,
                 /* 🔴 '/briefing' 으로 두면 안 된다 (2026-08-19 수정) — layout 의 canonical 이 currentUrl 을 쓰므로
@@ -373,6 +448,7 @@ export default (db) => {
                 layout: false,
                 post,
                 slides,
+                cover: buildCover(post),   // 뉴스카드형 표지 재료 — null 이면 뷰가 구 표지로 그린다
                 single,          // null = 전체 미리보기 / 1-based 인덱스 = 그 장만
                 story,
                 // 미리보기에서만 쓴다 — 배치(genInstaCards)의 caption.txt 와 같은 함수라 웹에서 미리 볼 수 있다

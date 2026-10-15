@@ -358,6 +358,9 @@ $$ LANGUAGE plpgsql;
 - `politician_party_memberships` — 의원-정당 이력
 - `briefing_posts` — **브리핑 카드** (2026-08-11, `genBriefing.js`). `briefing_date` UNIQUE 라 하루 1장.
   `stats`(SQL 집계) · `threads`(주제 묶음, v2) · `keywords` · `bill_ids` JSONB. 상세는 아래 "`/briefing` AI 카드 피드"
+  - `hook` JSONB (2026-10-15, `ddl/migrations/2026-10-15-briefing-hook.sql`) — SNS 표지용 질문 한 문장.
+    `{text(AI), theme, bill_count(코드 산출), bill_ids(코드 매핑)}`. **NULL 이면 카드 뷰가 구 표지로 그린다** —
+    과거 카드는 소급 생성하지 않는다. 아래 「뉴스카드형 표지」 참조
   - ⚠️ `id` 가 **연속하지 않는다** — `GENERATED ALWAYS AS IDENTITY` 가 ON CONFLICT 판정 전에 값을 뽑아 `--force` 재실행이 시퀀스를 태운다
   - ⚠️ `stats`·`threads[].bill_count` 는 **AI 출력이 아니라 SQL/코드 산출값**이다 (숫자를 생성물에서 받지 않는다는 원칙)
 - `politician_speeches` — **의원 발언 기록** (2026-08-12 적재 · 2026-08-15 배치 재작성 · 2026-09-01 파서·분류 재작성, `batch/syncSpeeches.js`). 실측 **68,483행 / 의원 309명 / 2024-06-05~2026-08-31**
@@ -657,6 +660,8 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
   - `ddl/migrations/2026-08-16-bill-axis-mapping-v2.sql` — **법안-축 매핑 v2 · 3축**. `bill_axis_mapping` PK → `(bill_id, mapping_version)`, `politician_axis_score` 축 컬럼 NULL 허용 + `*_n` 서명 수, 파일럿 테이블에서 4,854건 적재. ⚠️ 실행 후 `calcPoliticianAxis.js` 를 돌려야 좌표가 생긴다
   - `ddl/migrations/2026-08-15-committee-speech-mv.sql` — **상임위 발언 참여율 MV** `politician_committee_speech`. 소속기간으로 정규화한 참여율 + 코호트 판정. **어떤 대안을 왜 버렸는지가 파일 주석에 전부 있다** — 되돌리기 전에 읽을 것
     - ⚠️ **LIKE 조인 위치가 성능을 좌우한다.** `politician_committees`(477) × `politician_speeches`(66,882) 를 LIKE 로 붙이면 3,200만 번 평가돼 **15초**, 회의↔위원회를 먼저 매칭해두고 등치 조인하면 **2.4초**. 결과는 동일
+  - `ddl/migrations/2026-10-15-briefing-hook.sql` — **브리핑 카드 훅 컬럼** `briefing_posts.hook` JSONB.
+    SNS 표지 뉴스카드형 전환 (위 `briefing_posts` 항목 · 「뉴스카드형 표지」 참조). **2026-10-15 라이브 DB 적용 완료**
   - `ddl/migrations/2026-08-12-supabase-data-api-off.sql` — **Supabase Data API 노출 차단**. 실행할 SQL 이 아니라 **대시보드 설정의 기록** + 검증 쿼리 + 폴백 RLS 스크립트. ⚠️ DB 재생성 시 반드시 재설정 (빠뜨려도 에러 없이 전 테이블이 인터넷에 열림). 위 "Supabase Data API 는 꺼져 있다" 참조
 - `etc/ddl/seeds/` — 데이터 시드
   - `bill_axis_mapping_v1.sql` — 법안-축 매핑 v1 (AI 1차 매핑 48건, 사용자 1라운드 검토 반영). **2026-08-16 v2(4,854건 · `ddl/migrations/2026-08-16-bill-axis-mapping-v2.sql`)로 대체됨** — 검토 표본은 `BILL_AXIS_MAPPING_v2_REVIEW.md`. `BILL_AXIS_MAPPING_GUIDE.md` 는 v1 기준 문서
@@ -671,7 +676,7 @@ UPDATE users SET email=NULL, nickname=NULL, provider='deleted',
 |---|---|---|
 | `/` | `views/index.ejs` | 홈 (결론 3칸, 국회 브리핑, 나와 맞는 의원, 주목 법안, 숫자로 본 국회) |
 | `/briefing` | `briefing/feed.ejs` | **브리핑 피드** — AI 카드가 하루 단위로 쌓인다 + 상단 주간 요약 스트립. `?page=N` (20건/페이지) |
-| `/briefing/:id` | `briefing/post.ejs` | 브리핑 카드 상세 — **댓글·공유의 단위**. 그날 숫자 · 대표 법안 · 키워드별 뉴스 검색 링크 |
+| `/briefing/:id` | `briefing/post.ejs` | 브리핑 카드 상세 — **댓글·공유의 단위**. 그날 숫자 · **그날 발의 전건**(`.bp-day` 발의자 얼굴 카드, 2026-10-15 — `getDayBills.sql`. 접수 순 · 카드 전체가 법안 상세 링크라 퇴임 의원 404 함정이 없다 · 흐름 주제 칩 · 조회 실패 시 대표 5건 폴백) · 키워드별 뉴스 검색 링크 |
 | `/briefing/:id/card` | `briefing/card.ejs` | **인스타 카드** (1080×1350 캐러셀). `layout:false`. `?slide=N` 이면 그 장만 1:1 |
 | `/briefing/:id/threads` | `briefing/threads.ejs` | **쓰레드 연결 게시물** — 500자 단위로 쪼갠 체인 + 게시물별 복사 버튼 |
 | `/issue` | `issue/index.ejs` | **쟁점 목록** (2026-08-23) — 정의는 `utils/issues.js` 단일 소스 |
@@ -2611,8 +2616,43 @@ views/briefing/card.ejs    ← 인스타 카드 (1080×1350 캐러셀)
 브리핑을 **인스타 캐러셀 이미지로 뽑는 자리**. 홍보용 콘텐츠를 따로 만들지 않기 위한 것 —
 인스타 계정이 죽는 1순위 원인이 "올릴 게 떨어져서" 인데, 이 파이프라인은 국회가 여는 한 고갈되지 않는다.
 
-- 슬라이드: `표지 → 숫자 → 흐름 ×N → 몰린 법률 → 마무리`. **개수는 데이터가 정한다** (실측 5~7장).
-  주제 묶음은 `MAX_THREAD_SLIDES = 3` 까지만 — 캐러셀이 길면 끝까지 안 넘긴다
+- 🔴 **슬라이드 구성 원칙 — 한 포스트 = 한 이야기, 다이제스트는 부록** (2026-10-15 사용자 지적:
+  표지가 질문을 던져놓고 2번 장부터 그날 숫자·다른 주제로 넘어가 "표지가 물은 것을 캐러셀이 갚지 않았다"):
+  | | 순서 |
+  |---|---|
+  | hook 있음 | `표지(질문) → **무슨 법안이길래**(훅의 흐름 — 질문 재인용 + what + 법안 목록) → 이날의 다른 흐름 ×N → 숫자 → 몰린 법률 → 마무리` |
+  | hook 없음 (과거·폴백) | `표지 → 숫자 → 흐름 ×N → 몰린 법률 → 마무리` (구 순서 그대로 — 이미 게시된 카드가 바뀌면 안 된다) |
+  **개수는 데이터가 정한다** (실측 5~7장). 주제 묶음은 `MAX_THREAD_SLIDES = 3` 까지만 — 캐러셀이 길면 끝까지 안 넘긴다
+  - 🔴 **캐러셀 이탈이 가장 큰 2번 장이 훅의 답이어야 한다** — 숫자 비교 장은 뒤로 밀렸다.
+    훅의 흐름이 threads 저장에서 걸러진 1건짜리면 `hook`(theme·what·bill_ids)으로 그 장을 **합성**한다
+    (안 그러면 질문만 있고 답이 캐러셀 어디에도 없다 — 실측으로 겪음). 그래서 genBriefing 이 `hook.what` 도 저장한다
+  - 스토리의 「이날의 흐름」도 같은 원칙 — 훅의 흐름이 맨 앞 (없으면 cv 재료로 합성)
+- 🔴 **표지는 뉴스카드형이다 (2026-10-15)** — 구 표지(날짜 + 요약 헤드라인 + 숫자 3칸)는 "너무 딱딱해서
+  눈길을 못 끈다" 는 피드백으로 바꿨다 (쇼츠가 08-17 에 "흐름 하나 + 사람" 으로 전환한 것과 같은 진단).
+  `hook`(briefing_posts, 질문 한 문장)이 있으면 세 갈래로 갈린다 — 컨트롤러 `buildCover`:
+  | | 조건 | 생김새 |
+  |---|---|---|
+  | **A형** `.sl.is-photo` | hook + 사람 사진 있음 | 의원 **공식 사진** 상단 640px(베이지 페이드) + 질문 헤드라인(산세리프 900) + 사실 하이라이트 줄(`theme 법안 N건 발의`) |
+  | **B형** | hook 만 (사진 없음 — 퇴임 등) | 세리프 900 질문 + 답 한 줄 |
+  | 구 표지 | hook 없음 (과거 카드·폴백·활동없음) | 그대로 — **과거 카드를 다시 그리지 않는다** |
+  - 🔴 **사람은 데이터가 고른다** — 훅이 가리킨 흐름(bill_ids)의 최다 대표발의자 (쇼츠 `pickShortPerson` 과 같은 규칙).
+    **정당은 싣지 않는다** (공유 카드와 같은 규칙 — 이름·지역구까지만)
+  - 🔴 **사진은 `/img/politician/:monaCd` 같은-출처 프록시**다 (`ImageProxyController`, 메모리 캐시 24h ·
+    허용 호스트 assembly.go.kr 고정). assembly 직결이면 cardShot(브라우저 PNG 저장)의 `inlineImages` fetch 가
+    **CORS 로 막혀 저장이 통째로 깨진다.** 같은 출처면 기존 인라인 경로가 알아서 data URI 로 만든다 (검증 완료)
+  - 🔴 **언론 보도사진을 쓰지 말 것** — 레퍼런스 계정들은 통신사 사진을 쓰지만 우리가 쓰면 저작권 침해다.
+    **정당 주어 헤드라인("민주당, ~추진")도 금지** — 그 계정들 조회수의 핵심이지만 진영 대비 구도라
+    "당 말고 사람" 과 정면충돌한다. 우리 훅은 사람·사실 주어다
+  - 🔴 **훅의 톤 — 긴장 있는 질문 허용 (사용자 결정 2026-10-15).** "누구 책임일까" 같은 책임·모순을
+    건드리는 질문도 된다 — 이목을 끄는 게 우선이고, 중립은 감추기가 아니라 **판단을 넘기는 것**으로 지킨다
+    (「중립성의 경계」와 같은 논리). 그래서 **카드의 판단 유보 문구가 훅과 세트다**:
+    A형 `.ph-sub`·B형 `.cvb-note` 의 `판단은 원문과 기록을 보고 직접` · 스토리 CTA `원문 보고 직접 판단하기`.
+    **훅을 세게 쓰려면 이 줄들을 빼면 안 된다.** 금지는 둘뿐 — ① 특정 정당·정치인 겨냥·암시
+    ② 답이 정해진 유도 질문. 38자 초과 훅은 자르지 않고 버린다 (문장을 자르면 뜻이 바뀐다 — 구 표지로 접힐 뿐)
+  - 공식 사진은 흰 스튜디오 배경이라 상단 오버레이(날짜·배지)는 **잉크색 그대로** 쓴다 (흰 글자는 묻힌다).
+    `.ph-img` 는 가로 720px 고정 — object-fit cover 로 바꾸려면 309장 얼굴 위치부터 다시 잴 것
+  - 스토리 표지도 같은 훅을 쓴다 (`_card_story.ejs` — cv 없으면 기존 headline)
+  - 훅 크기도 **서버가 길이로 정한다** (`hkA`/`hkB`/`hkStory` — hlSize 와 같은 이유)
 - 🔴 **2번 「그날의 숫자」 는 표지 숫자의 반복이 아니라 비교다** (2026-08-16 피드백: "2번에서 새로 얻는 게 없다 — 캐러셀은 2번째 이탈이 가장 크다").
   표지의 29/20/341 은 그대로 두고(AI 문장 아래 SQL 근거 배치), 2번은 `발의 N건 → 최근 30 평일 평균의 M배 · 그중 K번째` ·
   `법안 1건당 공동발의 명` · `대표발의 의원 1명당 건` (+ 본회의 처리). 기준선은 **렌더 시 SQL** (`getCardBaseline.sql`,
@@ -4222,7 +4262,7 @@ PC/모바일 동일 패턴으로 통일.
 | `findRareCellCandidates.js` | DB 집계 | **희소 셀(전통·안정) 사람 검토 후보** (2026-08-16) — none/반대방향/low/미분류 + 서명자 쏠림 신호를 주제별 표로 → `out/rare-cell-candidates.md`. **AI 호출 0.** 실측 수확 2건 — 위 「희소 셀 사람 검토」 참조. 다시 돌리기 전에 그걸 읽을 것 |
 | `refreshCrossPartyVote.js` | DB 집계 | `politician_cross_party_vote` MV 갱신 (`REFRESH ... CONCURRENTLY`, ~0.4초). 의원 목록의 격차 필터·정렬이 이걸 읽는다. **syncBills·syncVotes 다음에 실행** |
 | `refreshDissent.js` | DB 집계 | `politician_dissent` MV 갱신 (`REFRESH ... CONCURRENTLY`). "숫자로 본 국회"의 소신 표결이 이걸 읽는다. **syncPoliticians·syncVotes 다음에 실행** |
-| `genBriefing.js` | 그날 법안 전건 + Claude Haiku 4.5 | 브리핑 카드 생성 (v2 프롬프트, 주제 묶음). 하루 1콜 · `--date` `--limit` `--force` `--dry-run`. `START_DATE`(2026-08-13) 이후 · 주말 제외 · 활동 없는 평일은 `model='none'` 카드. **체인 맨 뒤** — 그날 법안·요약이 다 들어온 뒤 읽는다 |
+| `genBriefing.js` | 그날 법안 전건 + Claude Haiku 4.5 | 브리핑 카드 생성 (프롬프트 b3 — 주제 묶음 + **표지 훅** 질문 한 문장, 2026-10-15). 하루 1콜 · `--date` `--limit` `--force` `--dry-run`. `START_DATE`(2026-08-13) 이후 · 주말 제외 · 활동 없는 평일은 `model='none'` 카드. **체인 맨 뒤** — 그날 법안·요약이 다 들어온 뒤 읽는다 |
 | `genInstaCards.js` | 헤드리스 브라우저 | **인스타 캐러셀 PNG + 캡션** 생성 (`npm run insta`). `--id` `--date` `--out` `--base`. **로컬 전용** — 크론 체인에 넣지 않는다 |
 | `genBriefingVideo.js` | 헤드리스 브라우저 + `say` + ffmpeg | **유튜브 쇼츠 MP4** (`npm run video`). 카드 PNG 슬라이드쇼 + TTS 나레이션 + 자막, 60초 상한. `--date` `--rate` `--voice` `--tts edge`. **로컬 전용** — 위 「유튜브 쇼츠」 참조 |
 | `genQuizVideo.js` | DB + edge-tts + 헤드리스 브라우저 | **퀴즈형 쇼츠** 「예상 vs 데이터」. `--ep own-vs-other` `--voice`. 숫자는 렌더 시 DB. **로컬 전용** — 위 「퀴즈형 쇼츠」 참조 |

@@ -11,6 +11,7 @@ import BriefingController from '../controllers/BriefingController.js';
 import ChartController from '../controllers/ChartController.js';
 import PromoController from '../controllers/PromoController.js';
 import IssueController from '../controllers/IssueController.js';
+import ImageProxyController from '../controllers/ImageProxyController.js';
 import { requireLogin } from '../middlewares/auth.js';
 import { GUIDE_ARTICLES, guideBySlug, guideNeighbors } from '../utils/guideArticles.js';
 import BillService from '../services/BillService.js';
@@ -30,8 +31,13 @@ export default (db) => {
     const issueController = IssueController(db);
     const billService = BillService(db);   // /guide 1편의 살아 있는 숫자(getHomeFacts, 10분 캐시)
 
+    const imageProxyController = ImageProxyController(db);
+
     // 메인 페이지
     router.get('/', initController.getHomePage);
+
+    // 의원 공식 사진 같은-출처 프록시 — SNS 카드 표지(A형)가 쓴다 (cardShot 의 CORS·taint 회피)
+    router.get('/img/politician/:monaCd', imageProxyController.getPoliticianPhoto);
 
     // 브리핑 — AI 카드 피드 (+ 상단 주간 요약 스트립)
     //   /briefing      피드

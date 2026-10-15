@@ -13,8 +13,17 @@
     </div>
 
     <div class="sl-body">
-      <p class="sl-kicker">이날 국회에서</p>
-      <h1 class="sl-hl" style="font-size: <%= (storyThreads && storyThreads.length) ? hlStoryFlow : hlStory %>px"><%= p.headline %></h1>
+      <%# hook(질문형 훅)이 있으면 헤드라인 자리를 그것이 갖는다 — 스토리는 링크 스티커가 붙는
+          유일한 1탭 경로라 요약문보다 질문이 멈추게 한다 (피드 표지와 같은 판단, 2026-10-15).
+          과거 카드(cv 없음)는 기존 headline 그대로 %>
+      <% const hasCv = typeof cv !== 'undefined' && cv && cv.text; %>
+      <% if (hasCv) { %>
+        <p class="sl-kicker">이날 국회 발의 <%= nf((p.stats || {}).proposed || 0) %>건 중 눈에 띈 하나</p>
+        <h1 class="sl-hl" style="font-size: <%= (storyThreads && storyThreads.length) ? hkStoryFlow : hkStory %>px"><%= cv.text %></h1>
+      <% } else { %>
+        <p class="sl-kicker">이날 국회에서</p>
+        <h1 class="sl-hl" style="font-size: <%= (storyThreads && storyThreads.length) ? hlStoryFlow : hlStory %>px"><%= p.headline %></h1>
+      <% } %>
       <% if (coverNums.length) { %>
         <div class="sl-cov">
           <% coverNums.forEach((n) => { %>
@@ -44,9 +53,10 @@
         </div>
       <% } %>
 
-      <%# 활동 없음 카드에는 붙이지 않는다 — 그날 법안이 0건인데 "법안별 발의자" 로 유도하면 거짓이 된다 %>
+      <%# 활동 없음 카드에는 붙이지 않는다 — 그날 법안이 0건인데 "법안별 발의자" 로 유도하면 거짓이 된다.
+          훅 카드는 CTA 가 판단 유보 문구를 겸한다 (훅이 긴장 질문이어도 되는 근거 — 사용자 결정 2026-10-15) %>
       <% if (!p.isEmpty) { %>
-        <p class="st-cta">법안별 발의자와 원문 <span>· 프로필 링크 또는 아래 스티커</span></p>
+        <p class="st-cta"><%= hasCv ? '원문 보고 직접 판단하기' : '법안별 발의자와 원문' %> <span>· 프로필 링크 또는 아래 스티커</span></p>
       <% } %>
     </div>
 

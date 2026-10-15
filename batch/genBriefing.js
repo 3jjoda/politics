@@ -33,7 +33,8 @@ import { summaryPreview } from '../utils/billSummary.js';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 // b1 = 집계 재서술 (폴백과 결과물이 거의 같았음) / b2 = 주제 종합 + 쉬운 말 번역
-const PROMPT_VERSION = 'b2';
+// b3 = b2 + hook (SNS 표지용 질문형 한 문장 — 2026-10-15, 뉴스카드형 표지)
+const PROMPT_VERSION = 'b3';
 // per MTok — 비용 기록용 (syncBillAiAnalysis 와 같은 단가)
 const PRICE_IN = 1.0, PRICE_OUT = 5.0;
 
@@ -137,12 +138,27 @@ const SYSTEM = `당신은 대한민국 국회 데이터를 시민에게 전달�
   "headline": "그날 국회가 무엇을 다뤘는지 한 줄 (40자 이내, 마침표 없이). 건수를 헤드라인으로 쓰지 마세요.",
   "body": "4~6문장. 주제 → 대표 법안이 실제로 바꾸려는 것(쉬운 말). 건수 나열 금지.",
   "threads": [{ "theme": "주제명(15자 이내)", "what": "그 주제의 법안들이 바꾸려는 것 한 문장", "bills": [1, 4, 7] }],
+  "hook": { "text": "SNS 표지용 질문 한 문장", "thread": 1 },
   "keywords": ["뉴스 검색어 5개"]
 }
 
 threads 는 0~3개입니다. 실제로 **2건 이상**이 같은 문제를 다룰 때만 넣고, 억지로 채우지 마세요.
 - "bills" 는 입력 목록의 **번호**입니다. 그 주제에 해당하는 법안 번호를 빠짐없이 적으세요.
 - ⚠️ **건수를 세지 마세요.** 개수는 번호 목록에서 자동으로 계산됩니다.
+
+hook 은 SNS 카드 표지에 크게 들어가는 **단 한 문장**입니다. threads 중 보통 사람이 가장
+궁금해할 하나를 골라, 그 주제를 **일상의 질문**으로 바꿔 쓰세요. "thread" 는 고른 주제의
+번호(threads 배열에서 1부터)입니다.
+- 좋은 예: "특수학교엔 왜 운동부가 없을까", "법이 어려우면 손해는 누가 볼까"
+- 나쁜 예: "장애학생 체육 기반 등 다양한 분야 입법" (요약 나열 — 멈추게 하지 못합니다)
+- **긴장이 있는 질문이 좋습니다.** 책임·모순·불편한 지점을 건드려도 됩니다 ("누구 책임일까" 허용).
+  카드에 "판단은 기록을 보고 직접" 문구가 함께 실리므로, 질문은 세게 하되 **답을 주지는 마세요.**
+- 금지는 둘뿐입니다: ① 특정 정당·정치인을 겨냥하거나 암시하는 질문 ② 답이 이미 정해져 있는
+  유도 질문 ("~가 문제 아닐까" 처럼 동의를 구하는 형태)
+- 규칙: 12~28자 · 숫자 금지 · 정당명·의원 이름 금지
+- **짧을수록 좋습니다.** 어미는 "~일까 / ~없을까 / ~받을까" 처럼 반말 의문형으로 끝내세요
+  ("~일까요" 같은 해요체는 길고 힘이 빠집니다). 수식어를 덜어내고 핵심 명사만 남기세요.
+- threads 가 하나도 없으면 hook 은 null 로 두세요. 억지로 만들지 마세요.
 
 keywords 는 뉴스 검색어로 쓰이므로:
 - 법률명·정책 분야·제도명 같은 **주제어**로 (예: "조세특례제한법", "소상공인 지원")
@@ -282,9 +298,42 @@ async function generate(anthropic, d) {
 
     const threads = shapeThreads(out.threads, d);
 
+    /* hook — SNS 표지용 질문 한 문장 (2026-10-15 뉴스카드형 표지).
+       🔴 건수·법안 목록은 AI 번호를 코드가 매핑해 센다 (threads 와 같은 원칙 — AI 가 센 값을 믿지 않는다).
+       ⚠️ AI 의 thread 번호는 **자기 출력(out.threads) 기준**이다 — shapeThreads 가 거른 배열이 아니라
+          raw 배열에서 찾아야 번호가 안 어긋난다. 형식이 어긋나면 hook 만 버린다 (카드는 그대로 나간다). */
+    let hook = null;
+    if (out.hook && typeof out.hook.text === 'string') {
+        const text = out.hook.text.trim();
+        // 길이 밖이면 자르지 않고 **버린다** — 문장을 중간에서 자르면 뜻이 바뀐다.
+        // 훅이 없으면 표지가 구형으로 접힐 뿐이라 안전하다 (38자 = 28자 규칙 + 여유)
+        if (text.length < 6 || text.length > 38) {
+            if (text) logger.warn(`  훅 길이 밖(${text.length}자) → 버림: "${text}"`);
+        } else {
+            const rawT = Array.isArray(out.threads) ? out.threads[Number(out.hook.thread) - 1] : null;
+            const picked = rawT
+                ? [...new Set((Array.isArray(rawT.bills) ? rawT.bills : [])
+                    .map((n) => Number(n))
+                    .filter((n) => Number.isInteger(n) && n >= 1 && n <= d.allBills.length))]
+                    .map((n) => d.allBills[n - 1])
+                : [];
+            hook = {
+                text,
+                theme: rawT ? String(rawT.theme || '').slice(0, 40) : null,
+                // what 도 저장 — 훅의 흐름이 threads 저장에서 걸러지면(1건짜리) 캐러셀 2번 장을
+                // 이걸로 합성한다 (buildSlides). 없으면 질문만 있고 답이 캐러셀에 없게 된다
+                what: rawT ? String(rawT.what || '') : null,
+                bill_count: picked.length,                 // ← 코드가 센 값
+                bill_ids: picked.map((b) => b.bill_id),
+            };
+        }
+    }
+
     // ⚠️ threads 의 `what` 도 화면에 그대로 나간다 — body 와 **같은 검사를 받아야 한다.**
-    //    본문만 검사하면 중립성·기간 문제가 threads 로 새어나간다.
-    const full = [out.headline, out.body, ...threads.map((t) => `${t.theme} ${t.what}`)].join(' ');
+    //    본문만 검사하면 중립성·기간 문제가 threads 로 새어나간다. hook 도 같다 (표지에 가장 크게 나간다).
+    //    hook.what 은 걸러진 흐름의 것일 수 있어(threads 에 없음) 따로 넣는다.
+    const full = [out.headline, out.body, hook ? `${hook.text} ${hook.what || ''}` : '',
+                  ...threads.map((t) => `${t.theme} ${t.what}`)].join(' ');
 
     const check = neutralityCheck(full);
     if (!check.ok) throw new Error(`중립성 검사 탈락 — 금지 표현: ${check.hits.join(', ')}`);
@@ -296,6 +345,7 @@ async function generate(anthropic, d) {
         headline: String(out.headline).slice(0, 140),
         body: String(out.body),
         threads,
+        hook,
         keywords: Array.isArray(out.keywords) ? out.keywords.slice(0, 5).map(String) : [],
         usage: res.usage,
     };
@@ -474,17 +524,19 @@ async function run() {
 
                 logger.info(`  ${day} — "${g.headline}" $${c.toFixed(5)}`);
                 (g.threads || []).forEach((t) => logger.info(`      · ${t.theme} (${t.bill_count}건) — ${t.what}`));
+                if (g.hook) logger.info(`      ◆ 훅: "${g.hook.text}" (${g.hook.theme || '주제 없음'} · ${g.hook.bill_count}건)`);
 
                 if (!DRY) {
                     await pool.query(`
                         INSERT INTO briefing_posts
-                            (briefing_date, headline, body, keywords, stats, bill_ids, threads,
+                            (briefing_date, headline, body, keywords, stats, bill_ids, threads, hook,
                              model, prompt_version, tokens_input, tokens_output, cost_usd)
-                        VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9,$10,$11,$12)
+                        VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,$7::jsonb,$8::jsonb,$9,$10,$11,$12,$13)
                         ON CONFLICT (briefing_date) DO UPDATE SET
                             headline = EXCLUDED.headline, body = EXCLUDED.body,
                             keywords = EXCLUDED.keywords, stats = EXCLUDED.stats,
                             bill_ids = EXCLUDED.bill_ids, threads = EXCLUDED.threads,
+                            hook = EXCLUDED.hook,
                             model = EXCLUDED.model,
                             prompt_version = EXCLUDED.prompt_version,
                             tokens_input = EXCLUDED.tokens_input, tokens_output = EXCLUDED.tokens_output,
@@ -492,6 +544,8 @@ async function run() {
                         [day, g.headline, g.body, JSON.stringify(g.keywords), JSON.stringify(stats),
                          JSON.stringify(d.topBills.map((b) => b.bill_id)),
                          JSON.stringify(g.threads || []),
+                         // 폴백·활동없음 카드는 hook 이 없다 → NULL (뷰가 구 표지로 그린다)
+                         g.hook ? JSON.stringify(g.hook) : null,
                          // 화면 배지를 가르는 값: none=활동 없음 / fallback=데이터 요약 / 그 외=AI 브리핑
                          g.empty ? 'none' : (g.fallback ? 'fallback' : MODEL),
                          PROMPT_VERSION, g.usage.input_tokens, g.usage.output_tokens, c.toFixed(6)]);

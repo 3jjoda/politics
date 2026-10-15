@@ -93,8 +93,41 @@
       </section>
     <% } %>
 
-    <!-- 대표 법안 -->
-    <% if (bills.length) { %>
+    <%# 그날 발의된 법안 **전건** — 발의자 얼굴이 먼저 보이는 카드형 (2026-10-15).
+        SNS 카드(훅)를 보고 들어온 사람이 "그날 무슨 법안들이 나왔나" 를 여기서 전부 본다.
+        🔴 카드 전체가 법안 상세로 가는 <a> 다 — 의원 링크를 따로 걸지 않는다 (퇴임 의원 mona_cd 는
+           상세가 404 라, 링크 대상을 법안 하나로 두면 그 함정을 통째로 피한다).
+        ⚠️ 정렬은 접수 순(bill_no) — 값 기준 기본 정렬은 그 자체가 편집이 된다 (쿼리 주석 참조) %>
+    <% const day = (typeof dayBills !== 'undefined' && Array.isArray(dayBills)) ? dayBills : []; %>
+    <% if (day.length) { %>
+      <section class="bp-sec">
+        <h2 class="bp-h">그날의 법안 <%= nf(day.length) %>건</h2>
+        <p class="bp-sub">이날 발의된 법안 <strong>전부</strong>입니다. 접수 순서대로 두었고, 눌러서 전문과 처리 경과를 볼 수 있습니다.</p>
+        <%# 흐름(threads)에 묶인 법안은 주제 칩을 단다 — 위 섹션과 목록을 잇는 다리 %>
+        <% const themeOf = {}; (p.threads || []).forEach((t) => (t.bill_ids || []).forEach((id) => { if (!themeOf[id]) themeOf[id] = t.theme; })); %>
+        <ul class="bp-day">
+          <% day.forEach((bl) => { %>
+            <li>
+              <a class="bp-dcard" href="/bill/<%= bl.bill_id %>">
+                <span class="bp-dcard-head">
+                  <span class="bp-dcard-avatar"><%- avatarHtml(bl.proposer_name || '', bl.photo_url, 46) %></span>
+                  <span class="bp-dcard-who">
+                    <b><%= bl.proposer_name || '발의자 미상' %></b>
+                    <span class="bp-dcard-meta"><% if (bl.party_name) { %><%= bl.party_name %> · <% } %>공동발의 <%= nf(bl.co_proposer_count || 0) %>인</span>
+                  </span>
+                  <% if (themeOf[bl.bill_id]) { %><span class="bp-dcard-theme"><%= themeOf[bl.bill_id] %></span><% } %>
+                </span>
+                <span class="bp-dcard-name"><%= bl.bill_name %></span>
+                <% const dprev = summaryPreview(bl.summary, 120); %>
+                <% if (dprev) { %><span class="bp-dcard-sum"><%= dprev %></span><% } %>
+                <% if (bl.committee) { %><span class="bp-dcard-foot"><%= bl.committee %></span><% } %>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+      </section>
+    <% } else if (bills.length) { %>
+      <%# 전건 조회가 실패했을 때의 폴백 — 카드에 저장된 대표 5건(bill_ids)이라도 보여준다 %>
       <section class="bp-sec">
         <h2 class="bp-h">그날의 법안</h2>
         <ul class="bp-bills">
@@ -248,6 +281,30 @@
   .bp-bill-foot b { color: var(--text); }
   .bp-party { color: var(--sub2); margin-left: 4px; }   /* 정당은 텍스트로만 — 정당색 안 씀 */
 
+  /* 그날의 법안 전건 — 발의자 얼굴 카드 (2026-10-15).
+     사진·이름이 먼저, 법안명이 헤드라인 — "당 말고 사람" 을 목록 문법으로 옮긴 것.
+     정당은 텍스트로만 (정당색 금지), 카드끼리 크기·색 차등 없음 (전건이 같은 무게) */
+  .bp-day { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bp-dcard { height: 100%; display: flex; flex-direction: column; gap: 9px;
+              background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+              padding: 14px 15px; text-decoration: none; color: inherit; }
+  .bp-dcard:hover { background: #fff; border-color: var(--border2); }
+  .bp-dcard-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .bp-dcard-avatar { width: 46px; height: 46px; flex: 0 0 auto; border-radius: 50%; overflow: hidden;
+                     border: 1px solid var(--border); background: var(--bg3); line-height: 0; }
+  .bp-dcard-who { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .bp-dcard-who b { font-size: 13.5px; font-weight: 800; color: var(--text); }
+  .bp-dcard-meta { font-size: 11.5px; color: var(--sub2); }
+  /* 흐름 주제 칩 — 길면 말줄임 (keep-all 로 두면 head 행이 카드를 밀어낸다) */
+  .bp-dcard-theme { margin-left: auto; flex: 0 1 auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis;
+                    white-space: nowrap; font-size: 11px; font-weight: 700; color: #8F5800;
+                    background: #FBF5EA; border: 1px solid #EFE3CC; border-radius: 6px; padding: 2px 8px; }
+  .bp-dcard-name { font-size: 15px; font-weight: 800; line-height: 1.5; color: var(--text);
+                   word-break: keep-all; overflow-wrap: anywhere; }
+  .bp-dcard-sum { font-size: 12.5px; line-height: 1.65; color: var(--sub); word-break: keep-all;
+                  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .bp-dcard-foot { margin-top: auto; font-size: 11.5px; color: var(--sub2); }
+
   .bp-news { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   /* 이날 움직인 쟁점 — 정당색 금지, 강조는 골드 단색 (사이트 공통) */
   .bp-issues { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -281,6 +338,10 @@
     .bp-card { padding: 20px 17px; }
     .bp-head { font-size: 23px; }
     .bp-body { font-size: 15px; }
+  }
+  /* 2열은 카드 내부가 ~300px 은 되어야 법안명이 읽힌다 — 그 아래는 1열 */
+  @media (max-width: 640px) {
+    .bp-day { grid-template-columns: 1fr; }
   }
 </style>
 
